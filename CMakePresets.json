@@ -1,0 +1,45 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {"major": 3, "minor": 28, "patch": 0},
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "dev",
+      "inherits": "base",
+      "displayName": "Debug, ASan + UBSan",
+      "cacheVariables": {"CMAKE_BUILD_TYPE": "Debug", "BLZ_SANITIZE": "ON"}
+    },
+    {
+      "name": "rel",
+      "inherits": "base",
+      "displayName": "Release, CPU",
+      "cacheVariables": {"CMAKE_BUILD_TYPE": "Release"}
+    },
+    {
+      "name": "rel-cuda",
+      "inherits": "base",
+      "displayName": "Release, CPU + CUDA (sm_75, sm_80)",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BLZ_ENABLE_CUDA": "ON",
+        "CMAKE_CUDA_COMPILER": "/opt/cuda/bin/nvcc",
+        "CMAKE_CUDA_ARCHITECTURES": "75;80"
+      }
+    }
+  ],
+  "buildPresets": [
+    {"name": "dev", "configurePreset": "dev"},
+    {"name": "rel", "configurePreset": "rel"},
+    {"name": "rel-cuda", "configurePreset": "rel-cuda"}
+  ],
+  "testPresets": [
+    {"name": "dev", "configurePreset": "dev", "filter": {"include": {"label": "fast"}}, "output": {"outputOnFailure": true}},
+    {"name": "rel", "configurePreset": "rel", "filter": {"include": {"label": "fast"}}, "output": {"outputOnFailure": true}},
+    {"name": "rel-cuda", "configurePreset": "rel-cuda", "filter": {"include": {"label": "fast"}}, "output": {"outputOnFailure": true}}
+  ]
+}

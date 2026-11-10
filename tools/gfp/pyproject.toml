@@ -1,0 +1,12 @@
+[project]
+name = "blz-gfp"
+version = "0.1.0"
+description = "GFP (snapml) parity oracle and timing baseline for BlazingAML (SPEC §11)"
+requires-python = "==3.12.*"
+dependencies = [
+    "snapml==1.17.2",
+    "numpy",
+]
+
+[tool.uv]
+package = false

@@ -1,2 +1,7 @@
 *.pdf
 dataset/
+build/
+data/
+features/
+tools/gfp/.venv/
+__pycache__/
