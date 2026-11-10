@@ -2,6 +2,11 @@
 
 Never call fit()/fit_transform() and never re-send an edge: snapml >= 1.14.1 double-counts
 edges that are already in the graph (SPEC Appendix A, A29).
+
+Parity runs feed GFP ts + GFP_TS_OFFSET (D-12): snapml drops every temporal cycle through a node
+with an in-window self-loop at exactly ts 0 (A33). Every SPEC §4 rule is translation-invariant,
+and ts 0 is only this repo's epoch (D-1), so the shift removes the artifact without changing
+any other output.
 """
 
 import numpy as np
@@ -16,6 +21,7 @@ PATTERN_BLOCKS = {
     "lc-cycle": ["lcyc"],
 }
 BLOCK_ORDER = [b for blocks in PATTERN_BLOCKS.values() for b in blocks]
+GFP_TS_OFFSET = 1
 
 
 def make_preprocessor(patterns, tw, bins, lc_len=None, num_threads=1):

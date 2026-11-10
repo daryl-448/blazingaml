@@ -40,12 +40,17 @@ add_library(blz_core
   src/io/csv.cpp
   src/io/blzg.cpp
   src/graph/prepare.cpp
-  src/graph/stats.cpp)
+  src/graph/stats.cpp
+  src/graph/fuzz_gen.cpp
+  src/runtime/features.cpp
+  src/oracle/oracle.cpp)
 target_include_directories(blz_core PUBLIC include src)
-target_link_libraries(blz_core PUBLIC blz_flags nlohmann_json::nlohmann_json OpenMP::OpenMP_CXX)
+target_link_libraries(blz_core PUBLIC blz_flags nlohmann_json::nlohmann_json OpenMP::OpenMP_CXX
+  PRIVATE yaml-cpp::yaml-cpp)
 
 add_executable(blz src/apps/blz.cpp)
 target_link_libraries(blz PRIVATE blz_core CLI11::CLI11)
+target_compile_definitions(blz PRIVATE BLZ_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 
 if(BUILD_TESTING)
   add_subdirectory(tests)

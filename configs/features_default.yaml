@@ -1,0 +1,13 @@
+# Feature config (SPEC §4.8). Window lower bounds are fixed by SPEC §4.1, not configured:
+# fan and degree are open (t' > t - window), sg and tcyc closed (t' >= t - window).
+# Bins: an instance of size S counts in bin i when b_i <= S < b_{i+1}; the last bin is open.
+# Instances smaller than 2 or than b_0 are dropped.
+# Default (D-7, D-8, D-9): 67 columns.
+k_max: 10
+blocks:
+  fan_in:  {window: 86400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50]}
+  fan_out: {window: 86400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50]}
+  deg_in:  {window: 86400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50]}
+  deg_out: {window: 86400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50]}
+  sg:      {window: 21600, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20]}
+  tcyc:    {window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}

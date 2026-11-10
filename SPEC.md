@@ -57,7 +57,7 @@ Stretch items are listed in §16 (P6). They MUST NOT block v1 acceptance.
 | ID | Criterion |
 |---|---|
 | AC1 | For every v1 pattern, generated-CPU and generated-CUDA features are **bit-identical** to the oracle. This MUST hold on HI-Small and on ≥ 10,000 random fuzz graphs (§13.3). |
-| AC2 | Oracle features equal GFP in stream mode (batch size 1, §11.1) on HI-Small, for every column of fan_in, fan_out, deg_in, deg_out, sg and tcyc. The one exception allowed by design is tcyc instances longer than `K_MAX` (DG-1). Any other mismatch fails AC2 unless it is (a) reproduced as a minimal probe, (b) explained in Appendix A, and (c) accepted through a new `D-n` decision. |
+| AC2 | Oracle features equal GFP in stream mode (batch size 1, §11.1) on HI-Small, for every column of fan_in, fan_out, deg_in, deg_out, sg and tcyc. GFP is fed `ts + 1` (D-12, [X A33]). The one exception allowed by design is tcyc instances longer than `K_MAX` (DG-1). Any other mismatch fails AC2 unless it is (a) reproduced as a minimal probe, (b) explained in Appendix A, and (c) accepted through a new `D-n` decision. |
 | AC3 | The five HI-Small F1 values of Table 2 and the Table 3 confusion matrix are produced with the pre-declared default classifier config (§10.2). They are reported next to the paper's numbers. No choice is tuned on the test split. |
 | AC4 | Per-pattern mining time, thread-scaling curves (1–12 threads, Ryzen 5 3600), GPU times (GTX 1650 SUPER, A30) and speedup versus GFP on the same machine are reported in `results/` (§12). |
 | AC5 | The compiler rejects every case in the invalid-spec suite (§13.4), E101–E401, with the specified error code and a `file:line:col` location. E402 needs the feature config, so it is checked by a runtime registration test instead (§13.1). |
@@ -791,9 +791,12 @@ The oracle is hand-written straight from §4, separately from the DSL and compil
   2. computes each definition literally:
      - fan and degree: sets and counts;
      - SG: an explicit set intersection for each s (gather role) and each w (scatter role);
-     - tcyc: DFS over distinct nodes, checking each path for an increasing timestamp assignment by
-       exhaustive search over parallel edges. It deliberately does not use the greedy rule, so that
-       the rule itself gets tested.
+     - tcyc: DFS over distinct node sequences from v. For each prefix it carries the full set of
+       arrival times at the prefix's last node over every valid assignment of parallel edges, so
+       the search over parallel edges is exhaustive. It deliberately does not reduce that set to
+       its minimum (the greedy rule), so that the rule itself gets tested. The DFS is pruned,
+       without changing the result, by each node's latest departure time towards u inside the
+       window (a backward search from u).
 - **Parallelism.** OpenMP over triggers is allowed. HI-Small MUST finish within 2 h on `local`.
   If it does not, the oracle MAY use the greedy rule for tcyc only after the exhaustive version has
   been validated on all fuzz graphs (§13.3) and on a 1% random trigger sample of HI-Small.
@@ -857,10 +860,14 @@ Each is computed in C++ and written to the results JSON.
   participating edge is credited [X A28]. Batch mode is therefore never used for parity.
 - Never calls `fit()` or `fit_transform()`, and never sends an edge twice. snapml ≥ 1.14.1
   double-counts edges that are already in the graph [X A29].
+- Sends `ts + 1` [D-12]. snapml drops every temporal cycle through a node that has an in-window
+  self-loop at exactly ts 0 [X A33]. Every rule of §4 is translation-invariant and ts 0 is only
+  this repo's epoch (D-1), so the shift removes the artifact and changes nothing else.
 - Writes `uint32` blocks shaped like `blz`'s, so `blz compare` can diff them.
 - Expected runtime is minutes, dominated by Python call overhead.
 
-`blz compare a.npy b.npy` prints:
+`blz compare a.npy b.npy [--graph g --tw δ] [--report r.json --name key]` prints (and with
+`--report`, merges into that JSON under `key`):
 
 - per-column mismatch counts;
 - the first 20 mismatching eids with both rows;
@@ -893,16 +900,18 @@ compare equal work, not identical outputs.
 
 ### 11.3 Fuzz versus GFP
 
-`fuzz_vs_gfp.py` generates random small multigraphs (§13.3 generator, the same seed scheme), runs
-GFP in stream mode and `blz mine --backend oracle`, and diffs the two. It is used in P1 to settle
+`fuzz_vs_gfp.py` runs `blz fuzz`, which writes the §13.3 graphs and the oracle's features
+(bins 2..33, tcyc uncapped), then replays each graph into a fresh GFP in stream mode and diffs every
+row. It is used in P1 to settle
 the SG self-loop rules and to confirm Appendix A at scale.
 
 ### 11.4 Probe suite
 
 `probes.py` re-runs every case of Appendix A. It writes `tests/golden/gfp_probes.json`
 (edges + params → expected per-edge histograms), which is committed. The C++ tests consume it, so
-the GFP-derived behaviour is checked without Python at test time. A28 (batch mode) and A29
-(the snapml bug) document GFP itself and are not part of the golden set.
+the GFP-derived behaviour is checked without Python at test time. A28 (batch mode), A29
+(the double-count bug) and A33 (the ts-0 artifact) document GFP itself and are not part of the
+golden set. Every probe stream is in ts order, as `blz` streams are (§3.3).
 
 ---
 
@@ -962,10 +971,12 @@ Plots are written to `results/plots/`.
 The generator draws random multigraphs:
 
 - n ∈ [3, 40] nodes, m ∈ [5, 400] edges;
-- timestamps from a small range so that ties are common;
-- self-loop probability 0.1 and parallel-edge probability 0.2;
-- small δ, so window boundaries are hit often;
-- seed-indexed and reproducible.
+- timestamps uniform in [0, T) with T ∈ [2, 60], so that ties are common;
+- self-loop probability 0.1 and parallel-edge probability 0.2 (a parallel edge repeats a random
+  earlier pair);
+- one δ ∈ [1, T] for every block, so window boundaries are hit often;
+- seed-indexed and reproducible: `src/graph/fuzz_gen.cpp`, a splitmix64 stream seeded with the
+  seed, with no `<random>` distributions.
 
 AC1 compares oracle, CPU and CUDA on ≥ 10,000 seeds. `fuzz_vs_gfp.py` compares the oracle with GFP
 on ≥ 2,000 seeds in P1.
@@ -1000,7 +1011,8 @@ blz stats    --graph data/hi_small.blzg --out results/e0_profile.json
 blz mine     --graph data/hi_small.blzg --config configs/features_default.yaml
              --backend oracle|cpu|cuda [--threads N] [--schedule dynamic|sorted]
              [--blocks fan_in,...] [--triggers all|train|test|range:a:b] --out features/<run>/
-blz compare  <a.npy> <b.npy> [--graph ...]
+blz compare  <a.npy> <b.npy> [--graph ... --tw δ] [--first-eid E] [--report r.json --name key]
+blz fuzz     --seeds a:b [--bins 2..33] [--k-max 64] --out data/fuzz/
 blz train    --graph ... --features features/<run>/ --set xgb_only|fan|fan_deg|fan_deg_cyc|all
              --xgb configs/xgb_default.yaml --out results/<run>.json
 blz bench    --graph ... --config ... --backend cpu|cuda --threads 1,2,4,6,8,12 --reps 5 --out ...
@@ -1060,6 +1072,13 @@ Each phase lists its exit criterion.
 
 **Exit:** AC2. §4 and Appendix A are updated, and the semantics are **frozen**: later changes need
 a new `D-n`.
+
+**Outcome (2026-11-10).** The oracle matches the golden probes, GFP on 2,000 fuzz graphs
+(403,557 edges) and GFP on every HI-Small row of all six blocks (`results/e1_parity.json`). The
+one GFP divergence found, the ts-0 self-loop artifact, is A33 and is handled by D-12. HI-Small
+SG is sparse (808 instances in the parity bins), so the fuzz graphs carry most of the SG
+evidence. The oracle mines all of HI-Small in under 2 minutes on `local` (12 threads), with a
+peak RSS of 0.8 GB. §4 is frozen.
 
 ### P2 — Classifier with oracle features
 
@@ -1162,7 +1181,7 @@ Only the non-empty outputs are listed. `{size: count}` gives the histogram.
 | A21 | 10→11@1, 11→10@2 | tcyc{2:1} | 2-cycles count. |
 | A22 | 10→10@1, 10→11@2 | nothing | No 1-cycles. |
 | A23 | 10→11@1, 11→12@2, 10→11@3, 11→12@4, 12→10@5 | tcyc{3:1} | Distinct node cycles, not edge combinations. |
-| A24 | 10→11@1, 11→12@2, 10→13@1, 13→12@2, 12→10@3 | tcyc{3:2} | Two node cycles. |
+| A24 | 10→11@1, 10→13@1, 11→12@2, 13→12@2, 12→10@3 | tcyc{3:2} | Two node cycles. |
 | A25 | 10→11@1, 11→12@3, 10→11@4, 12→10@5 | tcyc{3:1} | All parallel edges are searched (existence). |
 | A26 | 30→31→…→35→30 at ts 1..6 | tcyc{6:1} | No small length cap. |
 | A27 | 40→41@1, 41→40@2, 40→42@3, 42→40@4 | 41→40: tcyc{2:1}. 42→40: tcyc{2:1}. | Simple cycles only. |
@@ -1171,6 +1190,7 @@ Only the non-empty outputs are listed. `{size: count}` gives the histogram.
 | A30 | 5→5@1, 0→5@2, 1→5@3, 0→1@4 | 0→1: sg{2:1} | Scatter role: w ∈ I through w→w. |
 | A31 | 0→5@2, 1→5@3, 0→1@4 | no sg | Control for A30. |
 | A32 | 0→0@1, 0→5@2, 1→5@3, 0→1@4 | no sg | Scatter role: s ∉ I, even with s→s. |
+| A33 | 13→13@0, 13→9@3, 9→13@4 (and 9 variants in `probes.py`) | 9→13: no tcyc. With the loop at ts 1, or every ts shifted by +1: tcyc{2:1}. | **snapml artifact:** a temporal cycle is dropped when any of its nodes other than the trigger's source u has an in-window self-loop at exactly ts 0 (also for intermediates; a loop at u, or at a node off the cycle, has no effect; other cycles of the same trigger are kept). Not reproduced by `blz`; the harness sends ts + 1 (D-12). Fan, degree and SG are unaffected (2,000 fuzz graphs). On HI-Small the shift changes no tcyc row. |
 
 **Open items.**
 
@@ -1211,3 +1231,4 @@ Only the non-empty outputs are listed. `{size: count}` gives the histogram.
 | D-9 | Bins as in §4.8. |
 | D-10 | `xgb_only` uses `src_id` and `dst_id`. |
 | D-11 | XGBoost library defaults, threshold 0.5. |
+| D-12 | The GFP harness (parity and fuzz) sends ts + 1, to avoid the ts-0 self-loop artifact [X A33]. Our semantics keep the cycle. |

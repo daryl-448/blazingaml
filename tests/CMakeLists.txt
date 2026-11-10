@@ -6,10 +6,14 @@ add_executable(blz_unit_tests
   unit/test_prepare.cpp
   unit/test_blzg.cpp
   unit/test_npy.cpp
-  unit/test_stats.cpp)
+  unit/test_stats.cpp
+  unit/test_features.cpp
+  unit/test_fuzz_gen.cpp
+  unit/test_oracle.cpp)
 target_link_libraries(blz_unit_tests PRIVATE blz_core Catch2::Catch2WithMain)
 target_compile_definitions(blz_unit_tests PRIVATE
-  BLZ_TEST_TMPDIR="${CMAKE_CURRENT_BINARY_DIR}/tmp")
+  BLZ_TEST_TMPDIR="${CMAKE_CURRENT_BINARY_DIR}/tmp"
+  BLZ_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 catch_discover_tests(blz_unit_tests PROPERTIES LABELS fast)
 
 # HI-Small checks (SPEC §13.5): run manually with `ctest -L slow`.

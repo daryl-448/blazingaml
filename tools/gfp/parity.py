@@ -1,7 +1,7 @@
 """GFP parity run in stream mode (SPEC §11.1).
 
 One fresh GFP instance with one pattern enabled, num_threads=1, vertex_stats=False; transform()
-is called once per edge in stream order. Writes <out>/<block>.npy (uint32[m, bins]) per output
+is called once per edge in stream order, with ts + GFP_TS_OFFSET (D-12). Writes <out>/<block>.npy (uint32[m, bins]) per output
 block of the pattern, the same layout as `blz mine`.
 
 Usage: uv run parity.py --edges data/edges.npy --block tcyc --tw 86400 --bins 2..33 --out data/gfp/
@@ -14,7 +14,7 @@ from pathlib import Path
 
 import numpy as np
 
-from gfp_common import PATTERN_BLOCKS, make_preprocessor
+from gfp_common import GFP_TS_OFFSET, PATTERN_BLOCKS, make_preprocessor
 
 PATTERNS = {"fan": "fan", "degree": "degree", "sg": "scatter-gather", "tcyc": "temp-cycle"}
 
@@ -40,6 +40,7 @@ def main():
     assert edges.ndim == 2 and edges.shape[1] == 4, edges.shape
     m = edges.shape[0] if args.limit is None else min(args.limit, edges.shape[0])
     assert (np.asarray(edges[:m, 0]) == np.arange(m)).all(), "edges must be in eid order"
+    assert (np.asarray(edges[:m, 3]) >= 0).all(), "ts must be >= 0 (D-1)"
     bins = parse_bins(args.bins)
     pattern = PATTERNS[args.block]
     blocks = PATTERN_BLOCKS[pattern]
@@ -55,6 +56,7 @@ def main():
     t0 = last = time.time()
     for i in range(m):
         row[0] = edges[i]
+        row[0, 3] += GFP_TS_OFFSET
         feats = g.transform(row)[0, 4:]
         for k, o in enumerate(outs):
             o[i] = feats[k * nb:(k + 1) * nb]

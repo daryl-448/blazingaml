@@ -1,0 +1,86 @@
+{
+ "fuzz_vs_gfp": {
+  "edges": 403557,
+  "first_mismatches": [],
+  "generator": "blz fuzz (SPEC §13.3), oracle bins 2..33, tcyc uncapped",
+  "gfp": "snapml==1.17.2, stream mode, fresh instance per graph",
+  "gfp_ts_offset": 1,
+  "graphs": 2000,
+  "mismatched_rows_by_block": {
+   "deg_in": 0,
+   "deg_out": 0,
+   "fan_in": 0,
+   "fan_out": 0,
+   "sg": 0,
+   "tcyc": 0
+  },
+  "mismatched_seeds": [],
+  "seconds": {
+   "blz_fuzz": 71.3,
+   "gfp": 43.1
+  },
+  "seeds": "0:2000"
+ },
+ "hi_small_oracle_vs_gfp": {
+  "deg_in": {
+   "a": "features/oracle_parity/deg_in.npy",
+   "b": "data/gfp/deg_in.npy",
+   "cols": 32,
+   "first_eid": 0,
+   "first_mismatches": [],
+   "mismatched_rows": 0,
+   "mismatches_by_column": {},
+   "rows": 5078345
+  },
+  "deg_out": {
+   "a": "features/oracle_parity/deg_out.npy",
+   "b": "data/gfp/deg_out.npy",
+   "cols": 32,
+   "first_eid": 0,
+   "first_mismatches": [],
+   "mismatched_rows": 0,
+   "mismatches_by_column": {},
+   "rows": 5078345
+  },
+  "fan_in": {
+   "a": "features/oracle_parity/fan_in.npy",
+   "b": "data/gfp/fan_in.npy",
+   "cols": 32,
+   "first_eid": 0,
+   "first_mismatches": [],
+   "mismatched_rows": 0,
+   "mismatches_by_column": {},
+   "rows": 5078345
+  },
+  "fan_out": {
+   "a": "features/oracle_parity/fan_out.npy",
+   "b": "data/gfp/fan_out.npy",
+   "cols": 32,
+   "first_eid": 0,
+   "first_mismatches": [],
+   "mismatched_rows": 0,
+   "mismatches_by_column": {},
+   "rows": 5078345
+  },
+  "sg": {
+   "a": "features/oracle_parity/sg.npy",
+   "b": "data/gfp/sg.npy",
+   "cols": 32,
+   "first_eid": 0,
+   "first_mismatches": [],
+   "mismatched_rows": 0,
+   "mismatches_by_column": {},
+   "rows": 5078345
+  },
+  "tcyc": {
+   "a": "features/oracle_parity/tcyc.npy",
+   "b": "data/gfp/tcyc.npy",
+   "cols": 32,
+   "first_eid": 0,
+   "first_mismatches": [],
+   "mismatched_rows": 0,
+   "mismatches_by_column": {},
+   "rows": 5078345
+  }
+ }
+}

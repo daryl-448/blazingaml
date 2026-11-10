@@ -1,7 +1,8 @@
 """Re-run every SPEC Appendix A probe against snapml GFP and write the golden JSON (SPEC §11.4).
 
 Each probe asserts the facts that its Appendix A row states (edge, block -> {size: count}; an
-empty dict means "no instance"). Every probe except A28 and A29 is also written, with GFP's full
+empty dict means "no instance"). Every probe except A28, A29 and A33 (GFP behaviours the C++
+code does not reproduce) is also written, with GFP's full
 per-edge output, to tests/golden/gfp_probes.json for the C++ tests.
 
 Usage: uv run probes.py [--out ../../tests/golden/gfp_probes.json] [--check-only]
@@ -99,7 +100,7 @@ CASES = [
     ("A21", "10>11@1 11>10@2", 100, [E(0, tcyc={}), E(1, tcyc={2: 1})]),
     ("A22", "10>10@1 10>11@2", 100, [E(0, NOTHING), E(1, NOTHING)]),
     ("A23", "10>11@1 11>12@2 10>11@3 11>12@4 12>10@5", 100, [E(4, tcyc={3: 1})]),
-    ("A24", "10>11@1 11>12@2 10>13@1 13>12@2 12>10@3", 100, [E(4, tcyc={3: 2})]),
+    ("A24", "10>11@1 10>13@1 11>12@2 13>12@2 12>10@3", 100, [E(4, tcyc={3: 2})]),
     ("A25", "10>11@1 11>12@3 10>11@4 12>10@5", 100, [E(3, tcyc={3: 1})]),
     ("A26", "30>31@1 31>32@2 32>33@3 33>34@4 34>35@5 35>30@6", 100, [E(5, tcyc={6: 1})]),
     ("A27", "40>41@1 41>40@2 40>42@3 42>40@4", 100,
@@ -144,6 +145,8 @@ def main():
     failures, golden = [], []
     for case_id, spec, tw, expects in CASES:
         es = edges(spec)
+        # Streams are in ts order (SPEC §3.3); the C++ consumers rely on it.
+        assert [t for _, _, t in es] == sorted(t for _, _, t in es), case_id
         out = run_stream(es, tw)
         check(case_id, out, expects, failures)
         golden.append({"id": case_id, "edges": [list(e) for e in es], "tw": tw, "output": out})
@@ -169,9 +172,27 @@ def main():
     if g.__getstate__()[0].shape[0] != len(es):  # exported graph: one row per stored edge
         failures.append("A29: exported graph does not hold exactly the 8 edges")
 
+    # A33: snapml drops every temporal cycle through a node other than the trigger's source that
+    # has an in-window self-loop at exactly ts 0. The same streams shifted by +1, or with the loop
+    # at ts 1, keep the cycle. Asserts the artifact as the ledger row records it.
+    for spec, tw, want in [
+        ("13>9@3 9>13@4", 100, {2: 1}),
+        ("13>13@0 13>9@3 9>13@4", 100, {}),          # loop at v
+        ("13>13@1 13>9@4 9>13@5", 100, {2: 1}),      # the same, shifted by +1
+        ("13>13@1 13>9@3 9>13@4", 100, {2: 1}),      # loop at ts 1
+        ("13>13@0 13>9@3 9>13@4", 3, {2: 1}),        # loop outside the window
+        ("13>13@0 13>9@3 9>13@4", 4, {}),            # closed lower bound reaches ts 0
+        ("9>9@0 13>9@3 9>13@4", 100, {2: 1}),        # loop at u: no effect
+        ("11>11@0 10>11@1 11>12@2 12>10@3", 100, {}),  # loop at an intermediate
+        ("11>11@0 10>11@1 10>13@1 11>12@2 13>12@2 12>10@3", 100, {3: 1}),  # other cycle kept
+        ("5>5@0 13>5@1 13>9@3 9>13@4", 100, {2: 1}),  # loop off the cycle: no effect
+    ]:
+        es = edges(spec)
+        check(f"A33/{spec}/tw={tw}", run_stream(es, tw), [E(len(es) - 1, tcyc=want)], failures)
+
     for f in failures:
         print("FAIL", f, file=sys.stderr)
-    print(f"{len(CASES)} stream probes + A28 + A29: {len(failures)} failures")
+    print(f"{len(CASES)} stream probes + A28 + A29 + A33: {len(failures)} failures")
     if failures:
         sys.exit(1)
     if not args.check_only:

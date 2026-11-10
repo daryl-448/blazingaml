@@ -9,9 +9,10 @@ FetchContent_Declare(nlohmann_json
   GIT_REPOSITORY https://github.com/nlohmann/json.git GIT_TAG v3.12.0 GIT_SHALLOW TRUE)
 FetchContent_Declare(CLI11
   GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git GIT_TAG v2.7.2 GIT_SHALLOW TRUE)
-# Used from P2 (xgboost) and P3 (yaml-cpp).
+# yaml-cpp: feature configs (P1) and specs (P3); 0.8.0 lacks <cstdint> includes for GCC 16.
+# xgboost: from P2.
 FetchContent_Declare(yaml-cpp
-  GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git GIT_TAG 0.8.0 GIT_SHALLOW TRUE)
+  GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git GIT_TAG yaml-cpp-0.9.0 GIT_SHALLOW TRUE)
 FetchContent_Declare(xgboost
   GIT_REPOSITORY https://github.com/dmlc/xgboost.git GIT_TAG v3.4.2 GIT_SHALLOW TRUE
   GIT_SUBMODULES_RECURSE TRUE)
@@ -20,7 +21,11 @@ set(JSON_BuildTests OFF CACHE INTERNAL "")
 set(CLI11_BUILD_TESTS OFF CACHE INTERNAL "")
 set(CLI11_BUILD_EXAMPLES OFF CACHE INTERNAL "")
 set(CLI11_BUILD_DOCS OFF CACHE INTERNAL "")
-FetchContent_MakeAvailable(nlohmann_json CLI11)
+set(YAML_CPP_BUILD_TESTS OFF CACHE INTERNAL "")
+set(YAML_CPP_BUILD_TOOLS OFF CACHE INTERNAL "")
+set(YAML_CPP_BUILD_CONTRIB OFF CACHE INTERNAL "")
+set(YAML_CPP_INSTALL OFF CACHE INTERNAL "")
+FetchContent_MakeAvailable(nlohmann_json CLI11 yaml-cpp)
 if(BUILD_TESTING)
   FetchContent_MakeAvailable(Catch2)
 endif()

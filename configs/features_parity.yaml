@@ -1,0 +1,13 @@
+# Feature config (SPEC §4.8). Window lower bounds are fixed by SPEC §4.1, not configured:
+# fan and degree are open (t' > t - window), sg and tcyc closed (t' >= t - window).
+# Bins: an instance of size S counts in bin i when b_i <= S < b_{i+1}; the last bin is open.
+# Instances smaller than 2 or than b_0 are dropped.
+# Parity with GFP (SPEC §11.1): the default windows and k_max, bins 2..33 for every block.
+k_max: 10
+blocks:
+  fan_in:  {window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]}
+  fan_out: {window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]}
+  deg_in:  {window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]}
+  deg_out: {window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]}
+  sg:      {window: 21600, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]}
+  tcyc:    {window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]}

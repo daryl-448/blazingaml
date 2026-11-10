@@ -26,3 +26,16 @@ TEST_CASE(".npy int64 writer") {
   CHECK(got == data);
   CHECK_THROWS(blz::write_npy_i64(path, data, 3, 4));
 }
+
+TEST_CASE(".npy uint32 writer and reader round trip") {
+  const std::vector<std::uint32_t> data = {0, 1, 2, 3, 4, 5, 0xffffffffu, 7, 8};
+  const std::string path = test_tmp("u.npy");
+  blz::write_npy_u32(path, data, 3, 3);
+  blz::NpyU32View v(path);
+  CHECK(v.rows() == 3);
+  CHECK(v.cols() == 3);
+  CHECK(std::vector<std::uint32_t>(v.data().begin(), v.data().end()) == data);
+  CHECK(v.row(2)[1] == 7);
+  blz::write_npy_i64(path, std::vector<std::int64_t>{1, 2}, 1, 2);
+  CHECK_THROWS(blz::NpyU32View(path));  // wrong dtype
+}
