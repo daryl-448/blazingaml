@@ -1103,7 +1103,7 @@ all 6.4 (46.6). Table 3 analogue for `all`: TP 60, FN 1,737, FP 18, TN 1,013,854
 1,239, 31, 1,013,841). Python XGBoost 3.4.1 from a plain `DMatrix` (`bench/xgb_xcheck.py`)
 gives the same confusion counts for `all` and `xgb_only`, so the C API path is not the cause.
 The model has the paper's high-precision profile (0.77) but a tenth of its recall (0.03).
-`all` is outside [36.6, 56.6]: **DG-2 is open** (§17). Training takes under 20 s per set on
+`all` is outside [36.6, 56.6]: **DG-2 is open and parked** (§17); the gap is reported, not closed. Training takes under 20 s per set on
 12 threads.
 
 ### P3 — DSL front end and IR
@@ -1158,7 +1158,7 @@ The model has the paper's high-precision profile (0.77) but a tenth of its recal
 | R5 | A JarvisLabs image's nvcc and GCC pair differs from `local`'s. | Code targets GCC ≥ 12 and CUDA ≥ 12.4 (§2.2). The CPU build never needs nvcc. |
 | R6 | The comparison hardware is far smaller than the paper's. | Only same-machine ratios and scaling shapes are compared; no absolute claims. |
 | DG-1 | E0 shows GFP tcyc cycles longer than `K_MAX` on > 0.1% of triggers. | Raise `K_MAX` to cover 99.9%, or to the maximum if that is ≤ 16. Above 16, decide between an explicit-stack lowering of `repeat` and accepting the mismatch, and record a `D-n`. |
-| DG-2 | `all` F1 is off by > 10 points. | Before changing anything, check in order:<br>1. the split positives (1,797);<br>2. the feature column order;<br>3. the `credit=participants` variant (P6, pulled forward);<br>4. bins.<br>Record each result.<br>**Opened 2026-11-10 (P2: `all` = 6.4).** 1: 1,797 test positives, as expected. 2: GFP block order (sg before tcyc) gives the same confusion counts (`bench/xgb_xcheck.py`). 3: not run; it needs the P6 variant in the oracle and a new `D-n`. 4: parity bins 2..33 (194 columns, `features/oracle_parity`) give 4.6. Unresolved; no change made. |
+| DG-2 | `all` F1 is off by > 10 points. | Before changing anything, check in order:<br>1. the split positives (1,797);<br>2. the feature column order;<br>3. the `credit=participants` variant (P6, pulled forward);<br>4. bins.<br>Record each result.<br>**Opened 2026-11-10 (P2: `all` = 6.4).** 1: 1,797 test positives, as expected. 2: GFP block order (sg before tcyc) gives the same confusion counts (`bench/xgb_xcheck.py`). 3: not run; it needs the P6 variant in the oracle and a new `D-n`. 4: parity bins 2..33 (194 columns, `features/oracle_parity`) give 4.6. Extra diagnostics (`bench/dg2/`, Python XGBoost, same params; test-split looks, so never a headline): IDs + raw attributes (amounts, currencies, format) 5.0; `all` + raw attributes 24.7 (TP 257, FP 31, FN 1,540); fan/degree with no window (all earlier edges; equal to the oracle on every edge of day 1) 7.9, but with 2,064 FP, the opposite of the paper's high-precision profile. **Parked 2026-11-11**: the gap is reported as is. Leads for later: GFP vertex statistics; GFP batch mode or `fit_transform` (credit to every edge plus visibility of later edges, [X A28, A29]); check 3. |
 
 ---
 
