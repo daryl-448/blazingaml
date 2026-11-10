@@ -43,10 +43,12 @@ add_library(blz_core
   src/graph/stats.cpp
   src/graph/fuzz_gen.cpp
   src/runtime/features.cpp
-  src/oracle/oracle.cpp)
+  src/oracle/oracle.cpp
+  src/ml/metrics.cpp
+  src/ml/xgb.cpp)
 target_include_directories(blz_core PUBLIC include src)
 target_link_libraries(blz_core PUBLIC blz_flags nlohmann_json::nlohmann_json OpenMP::OpenMP_CXX
-  PRIVATE yaml-cpp::yaml-cpp)
+  PRIVATE yaml-cpp::yaml-cpp xgboost)
 
 add_executable(blz src/apps/blz.cpp)
 target_link_libraries(blz PRIVATE blz_core CLI11::CLI11)

@@ -1,5 +1,5 @@
 // blz — BlazingAML runtime CLI (SPEC §14). Commands so far: prepare, export-edges, stats (P0);
-// mine (oracle backend), compare, fuzz (P1).
+// mine (oracle backend), compare, fuzz (P1); train (P2).
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -7,8 +7,12 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <memory>
+#include <sstream>
 #include <tuple>
 #include <vector>
+
+#include <sys/resource.h>
 
 #include <CLI/CLI.hpp>
 #include <omp.h>
@@ -22,6 +26,8 @@
 #include "graph/stats.hpp"
 #include "io/blzg.hpp"
 #include "io/csv.hpp"
+#include "ml/metrics.hpp"
+#include "ml/xgb.hpp"
 #include "oracle/oracle.hpp"
 #include "runtime/features.hpp"
 
@@ -343,6 +349,142 @@ int fuzz(const std::string& seeds, const std::string& bins_opt, int k_max, const
   return 0;
 }
 
+// Table 2 feature sets (SPEC §10.1): src_id and dst_id, then these blocks in the order the sets
+// add them, so each set's columns are a prefix of the next set's.
+std::vector<blz::Block> set_blocks(const std::string& set) {
+  using B = blz::Block;
+  const std::vector<std::pair<std::string, std::vector<B>>> sets = {
+      {"xgb_only", {}},
+      {"fan", {B::fan_in, B::fan_out}},
+      {"fan_deg", {B::fan_in, B::fan_out, B::deg_in, B::deg_out}},
+      {"fan_deg_cyc", {B::fan_in, B::fan_out, B::deg_in, B::deg_out, B::tcyc}},
+      {"all", {B::fan_in, B::fan_out, B::deg_in, B::deg_out, B::tcyc, B::sg}}};
+  for (const auto& [name, blocks] : sets)
+    if (name == set) return blocks;
+  throw std::runtime_error("unknown feature set '" + set + "'");
+}
+
+// Trains XGBoost on the train split and evaluates on the test split (SPEC §10). Merges the
+// result into `out` under `name`.
+int train(const std::string& graph, const std::string& features, const std::string& set,
+          const std::string& xgb_path, const std::string& out, const std::string& name,
+          int threads) {
+  const std::vector<blz::Block> blocks = set_blocks(set);
+  std::ifstream xgb_in(xgb_path);
+  if (!xgb_in) throw std::runtime_error("cannot open " + xgb_path);
+  std::stringstream xgb_text;
+  xgb_text << xgb_in.rdbuf();
+  const blz::XgbConfig cfg = blz::parse_xgb_config(xgb_text.str(), xgb_path);
+  const std::string xgb_str = xgb_text.str();
+
+  blz::BlzgView g(graph);
+  const std::uint64_t m = g.m(), ntrain = blz::train_size(m);
+  std::vector<std::string> columns = {"src_id", "dst_id"};
+  std::vector<std::unique_ptr<blz::NpyU32View>> views;
+  nlohmann::json feat = nullptr;
+  if (!blocks.empty()) {
+    const std::string meta_path = features + "/features.json";
+    std::ifstream meta_in(meta_path);
+    if (!meta_in) throw std::runtime_error("cannot open " + meta_path);
+    const auto meta = nlohmann::json::parse(meta_in);
+    const auto& run = meta.at("run");
+    if (run.at("csv_sha256") != blz::to_hex(g.csv_sha256()))
+      throw std::runtime_error(meta_path + ": mined from a different CSV than " + graph);
+    if (run.at("triggers").at("first") != 0 || run.at("triggers").at("last") != m)
+      throw std::runtime_error(meta_path + ": features must cover every eid (--triggers all)");
+    for (blz::Block b : blocks) {
+      const std::string bname(blz::block_name(b));
+      if (!meta.at("blocks").contains(bname))
+        throw std::runtime_error(meta_path + ": no block '" + bname + "'");
+      const auto& j = meta["blocks"][bname];
+      auto v = std::make_unique<blz::NpyU32View>(features + "/" + j.at("file").get<std::string>());
+      const auto names = j.at("columns").get<std::vector<std::string>>();
+      if (v->rows() != m || v->cols() != names.size())
+        throw std::runtime_error(bname + ".npy: shape does not match the graph and features.json");
+      columns.insert(columns.end(), names.begin(), names.end());
+      views.push_back(std::move(v));
+    }
+    feat = {{"dir", features}, {"run", run}, {"git", meta.value("git", nlohmann::json())},
+            {"config", meta.value("config", "")}};
+  }
+
+  const std::uint64_t ncols = columns.size();
+  auto rows_from = [&](std::uint64_t e0, std::uint64_t rows) {
+    blz::RowSource s;
+    s.rows = rows;
+    s.cols = ncols;
+    s.fill = [&, e0](std::uint64_t first, std::uint64_t count, float* x, float* y) {
+#pragma omp parallel for schedule(static)
+      for (std::int64_t r = 0; r < std::int64_t(count); ++r) {
+        const std::uint64_t e = e0 + first + std::uint64_t(r);
+        float* row = x + std::uint64_t(r) * ncols;
+        std::uint64_t c = 0;
+        row[c++] = float(g.src[e]);  // node ids < 2^24, exact in float
+        row[c++] = float(g.dst[e]);
+        for (const auto& v : views)
+          for (std::uint32_t f : v->row(e)) row[c++] = float(f);
+        y[r] = float(g.label[e]);
+      }
+    };
+    return s;
+  };
+  if (threads > 0) omp_set_num_threads(threads);
+  const int nthread = omp_get_max_threads();
+
+  std::fprintf(stderr, "train %s: %llu columns, %llu train rows, %llu test rows, %d threads\n",
+               set.c_str(), (unsigned long long)ncols, (unsigned long long)ntrain,
+               (unsigned long long)(m - ntrain), nthread);
+  blz::XgbTimings t;
+  const std::vector<float> score =
+      blz::xgb_train_predict(rows_from(0, ntrain), rows_from(ntrain, m - ntrain), cfg, nthread, &t);
+  const auto test_labels = g.label.subspan(ntrain);
+  const blz::Metrics mt = blz::compute_metrics(score, test_labels, cfg.threshold);
+  std::uint64_t train_pos = 0, test_pos = 0;
+  for (std::uint64_t e = 0; e < m; ++e) (e < ntrain ? train_pos : test_pos) += g.label[e] != 0;
+
+  rusage ru{};
+  getrusage(RUSAGE_SELF, &ru);
+  nlohmann::json params = nlohmann::json::object();
+  for (const auto& [k, v] : cfg.params) params[k] = v;
+  nlohmann::json res = {
+      {"set", set},
+      {"columns", columns},
+      {"graph", graph},
+      {"csv_sha256", blz::to_hex(g.csv_sha256())},
+      {"features", feat},
+      {"xgb", {{"config", xgb_path},
+               {"config_sha256", blz::to_hex(blz::sha256(xgb_str.data(), xgb_str.size()))},
+               {"params", params},
+               {"num_boost_round", cfg.num_boost_round},
+               {"threshold", cfg.threshold},
+               {"batch_rows", cfg.batch_rows},
+               {"nthread", nthread},
+               {"version", blz::xgb_version()}}},
+      {"split", {{"train_rows", ntrain}, {"train_positives", train_pos},
+                 {"test_rows", m - ntrain}, {"test_positives", test_pos}}},
+      {"metrics", {{"f1_x100", 100 * mt.f1},
+                   {"precision", mt.precision},
+                   {"recall", mt.recall},
+                   {"pr_auc", mt.pr_auc},
+                   {"confusion", {{"tp", mt.cm.tp}, {"fn", mt.cm.fn},
+                                  {"fp", mt.cm.fp}, {"tn", mt.cm.tn}}}}},
+      {"seconds", {{"train_matrix", t.train_matrix_s}, {"train", t.train_s},
+                   {"test_matrix", t.test_matrix_s}, {"predict", t.predict_s}}},
+      {"peak_rss_mb", double(ru.ru_maxrss) / 1024.0},
+      {"git", git_info()},
+      {"compiler", __VERSION__}};
+  std::fprintf(stderr, "F1 %.1f  precision %.3f  recall %.3f  PR-AUC %.3f  TP %llu FP %llu FN %llu\n",
+               100 * mt.f1, mt.precision, mt.recall, mt.pr_auc, (unsigned long long)mt.cm.tp,
+               (unsigned long long)mt.cm.fp, (unsigned long long)mt.cm.fn);
+
+  nlohmann::json doc = nlohmann::json::object();
+  if (std::filesystem::exists(out)) doc = nlohmann::json::parse(std::ifstream(out));
+  doc[nlohmann::json::json_pointer("/" + name)] = res;
+  ensure_parent(out);
+  std::ofstream(out) << doc.dump(1) << '\n';
+  return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -393,6 +535,17 @@ int main(int argc, char** argv) {
   fz->add_option("--k-max", k_max, "tcyc cap; the default exceeds every fuzz graph's n");
   fz->add_option("--out", out)->required();
 
+  std::string features, set, xgb = "configs/xgb_default.yaml";
+  auto* tr = app.add_subcommand("train", "XGBoost on the train split, metrics on the test split");
+  tr->add_option("--graph", graph)->required();
+  tr->add_option("--features", features, "blz mine output dir (not read for xgb_only)")->required();
+  tr->add_option("--set", set)->required()->check(
+      CLI::IsMember({"xgb_only", "fan", "fan_deg", "fan_deg_cyc", "all"}));
+  tr->add_option("--xgb", xgb);
+  tr->add_option("--threads", threads);
+  tr->add_option("--out", out, "merge the result into this JSON file")->required();
+  tr->add_option("--name", name, "key (JSON pointer path) in --out; default: the set");
+
   CLI11_PARSE(app, argc, argv);
   try {
     if (*prep) return prepare(csv, out);
@@ -404,6 +557,7 @@ int main(int argc, char** argv) {
       return compare(a_npy, b_npy, graph, tw, first_eid, report, name);
     }
     if (*fz) return fuzz(seeds, bins, k_max, out);
+    if (*tr) return train(graph, features, set, xgb, out, name.empty() ? set : name, threads);
   } catch (const std::exception& e) {
     std::fprintf(stderr, "error: %s\n", e.what());
     return 1;

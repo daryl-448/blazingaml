@@ -93,7 +93,7 @@ therefore not comparable; only ratios on the same machine are reported [P §6].
 - **Dependencies** come through CMake `FetchContent`, each pinned to an exact tag in
   `cmake/deps.cmake`:
   - `yaml-cpp` (spec parsing);
-  - `xgboost` (C API, built as a static library; `USE_CUDA` follows `BLZ_ENABLE_CUDA`);
+  - `xgboost` (C API, built as a static, CPU-only library, `USE_CUDA=OFF` [D-13]);
   - `Catch2` v3 (tests);
   - `nlohmann_json` (results files);
   - `CLI11` (command-line parsing).
@@ -104,7 +104,7 @@ therefore not comparable; only ratios on the same machine are reported [P §6].
 
 | Option | Default | Effect |
 |---|---|---|
-| `BLZ_ENABLE_CUDA` | `OFF` | Builds the CUDA backend and CUDA XGBoost. |
+| `BLZ_ENABLE_CUDA` | `OFF` | Builds the CUDA backend. |
 | `BLZ_NATIVE` | `ON` | Adds `-march=native`. Benchmark result files record the flags used. |
 | `BLZ_SANITIZE` | `OFF` | ASan + UBSan, for test builds. |
 
@@ -347,6 +347,7 @@ On HI-Small the indexes take ≈ 300 MB: T-CSR 2 × m × 16 B ≈ 162 MB, plus P
 - `blz mine` MUST mine **one block at a time** and write each block to its own `.npy`.
 - `blz train` MUST stream the blocks into an XGBoost QuantileDMatrix in row batches (§10.2), so
   that peak RSS stays ≤ 3 GB on `local`. Peak RSS is measured with `/usr/bin/time -v` and recorded.
+  Measured in P2: 2.35 GB for `all` (69 columns), most of it the mapped `.npy` pages.
 
 ---
 
@@ -815,6 +816,9 @@ The oracle is hand-written straight from §4, separately from the DSL and compil
 | `fan_deg_cyc` | + tcyc |
 | `all` | + sg |
 
+Columns are `src_id`, `dst_id`, then the blocks in the order the sets add them (fan_in, fan_out,
+deg_in, deg_out, tcyc, sg), so each set's columns are a prefix of the next set's.
+
 ### 10.2 XGBoost (pre-declared; no tuning on test)
 
 - **Default config [D-11].** XGBoost library defaults, as an untuned `XGBClassifier()` would use
@@ -823,8 +827,9 @@ The oracle is hand-written straight from §4, separately from the DSL and compil
   - `objective=binary:logistic`, `tree_method=hist`, `max_depth=6`, `eta=0.3`,
     `num_boost_round=100`, `min_child_weight=1`, `subsample=1`, `colsample_bytree=1`, `lambda=1`,
     `max_bin=256`, `scale_pos_weight=1`, `seed=0`.
-  - Decision threshold 0.5.
-  - Device: CPU on `local`. `device=cuda` is an option, but reported results use CPU unless stated.
+  - Decision threshold 0.5: a row is predicted laundering when its probability is **> 0.5**
+    (`XGBClassifier.predict`'s rule).
+  - Device: CPU [D-13].
 - **Data path.** `XGQuantileDMatrixCreateFromCallback`, with row batches of 262,144 converted to
   float32 from the `.npy` blocks (memory, §5.4). The steps:
   1. Build the training matrix from train rows only.
@@ -841,9 +846,12 @@ Reported per run:
 - the F1 of the laundering class, on the paper's ×100 scale;
 - precision and recall;
 - the confusion matrix (the Table 3 layout);
-- PR-AUC.
+- PR-AUC, as average precision: Σₖ (Rₖ − Rₖ₋₁)·Pₖ over the distinct scores in decreasing order,
+  with tied scores forming one step (sklearn's `average_precision_score`).
 
-Each is computed in C++ and written to the results JSON.
+Each is computed in C++ (`src/ml/metrics.cpp`) and written to the results JSON.
+`bench/xgb_xcheck.py` retrains a set with Python XGBoost from an in-memory `DMatrix` as an
+independent check of the C API path.
 
 ---
 
@@ -937,7 +945,7 @@ golden set. Every probe stream is in ts order, as `blz` streams are (§3.3).
 |---|---|---|
 | E0 | Dataset profile:<br>• degree and distinct-neighbour distributions<br>• window occupancy at 6 h and 24 h<br>• pair count and multiplicity<br>• timestamp-tie histogram<br>• self-loop endpoints<br>• GFP tcyc length histogram (bins 2..33) | `results/e0_profile.json` |
 | E1 | Parity: oracle vs GFP stream mode (AC2); generated CPU/CUDA vs oracle (AC1) | `results/e1_parity.json` |
-| E2 | Table 2 HI-Small row with the default config | `results/e2_table2.json` and a markdown table next to the paper's numbers |
+| E2 | Table 2 HI-Small row with the default config (`bench/e2.sh`) | `results/e2_table2.json` and `results/e2_table2.md`, next to the paper's numbers |
 | E3 | Table 3 confusion matrix for `all` | in `e2` |
 | E4 | CPU: per-block mining time for threads {1..12}, plus speedup vs GFP best (the Figs. 6–8 analogue) | `results/e4_cpu_<host>.json` |
 | E5 | GPU: per-block time on the 1650S and A30, with the light/heavy split recorded | `results/e5_gpu_<host>.json` |
@@ -1088,6 +1096,16 @@ peak RSS of 0.8 GB. §4 is frozen.
 **Exit:** AC3, the first Table 2 row. If `all` is outside [36.6, 56.6], i.e. off by more than
 10 points from 46.6, open decision gate DG-2 (§17) before going further.
 
+**Outcome (2026-11-10).** `blz train` (XGBoost 3.4.2 C API, QuantileDMatrix callback) and the
+metrics are in; `bench/e2.sh` produces `results/e2_table2.{json,md}`. F1 ×100, paper in
+parentheses: xgb_only 0.0 (11.1), fan 0.9 (23.2), fan_deg 6.1 (38.4), fan_deg_cyc 6.6 (42.6),
+all 6.4 (46.6). Table 3 analogue for `all`: TP 60, FN 1,737, FP 18, TN 1,013,854 (paper 558,
+1,239, 31, 1,013,841). Python XGBoost 3.4.1 from a plain `DMatrix` (`bench/xgb_xcheck.py`)
+gives the same confusion counts for `all` and `xgb_only`, so the C API path is not the cause.
+The model has the paper's high-precision profile (0.77) but a tenth of its recall (0.03).
+`all` is outside [36.6, 56.6]: **DG-2 is open** (§17). Training takes under 20 s per set on
+12 threads.
+
 ### P3 — DSL front end and IR
 
 - Parser, expansion, resolve, type-check, classification, planner.
@@ -1141,7 +1159,7 @@ peak RSS of 0.8 GB. §4 is frozen.
 | R6 | snapml's licence is proprietary. | Installed locally from PyPI only. Never vendored. Only its outputs and timings are reported. |
 | R7 | The comparison hardware is far smaller than the paper's. | Only same-machine ratios and scaling shapes are compared; no absolute claims. |
 | DG-1 | E0 shows GFP tcyc cycles longer than `K_MAX` on > 0.1% of triggers. | Raise `K_MAX` to cover 99.9%, or to the maximum if that is ≤ 16. Above 16, decide between an explicit-stack lowering of `repeat` and accepting the mismatch, and record a `D-n`. |
-| DG-2 | `all` F1 is off by > 10 points. | Before changing anything, check in order:<br>1. the split positives (1,797);<br>2. the feature column order;<br>3. the `credit=participants` variant (P6, pulled forward);<br>4. bins.<br>Record each result. |
+| DG-2 | `all` F1 is off by > 10 points. | Before changing anything, check in order:<br>1. the split positives (1,797);<br>2. the feature column order;<br>3. the `credit=participants` variant (P6, pulled forward);<br>4. bins.<br>Record each result.<br>**Opened 2026-11-10 (P2: `all` = 6.4).** 1: 1,797 test positives, as expected. 2: GFP block order (sg before tcyc) gives the same confusion counts (`bench/xgb_xcheck.py`). 3: not run; it needs the P6 variant in the oracle and a new `D-n`. 4: parity bins 2..33 (194 columns, `features/oracle_parity`) give 4.6. Unresolved; no change made. |
 
 ---
 
@@ -1232,3 +1250,4 @@ Only the non-empty outputs are listed. `{size: count}` gives the histogram.
 | D-10 | `xgb_only` uses `src_id` and `dst_id`. |
 | D-11 | XGBoost library defaults, threshold 0.5. |
 | D-12 | The GFP harness (parity and fuzz) sends ts + 1, to avoid the ts-0 self-loop artifact [X A33]. Our semantics keep the cycle. |
+| D-13 | XGBoost is built CPU-only in every preset. Training takes < 20 s per set on `local` (P2), while the CUDA build of XGBoost takes hours there and would be rebuilt on every temporary A30 instance. |

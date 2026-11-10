@@ -1,0 +1,576 @@
+{
+ "all": {
+  "columns": [
+   "src_id",
+   "dst_id",
+   "fan_in[2,3)",
+   "fan_in[3,4)",
+   "fan_in[4,5)",
+   "fan_in[5,6)",
+   "fan_in[6,8)",
+   "fan_in[8,10)",
+   "fan_in[10,13)",
+   "fan_in[13,16)",
+   "fan_in[16,20)",
+   "fan_in[20,30)",
+   "fan_in[30,50)",
+   "fan_in[50,inf)",
+   "fan_out[2,3)",
+   "fan_out[3,4)",
+   "fan_out[4,5)",
+   "fan_out[5,6)",
+   "fan_out[6,8)",
+   "fan_out[8,10)",
+   "fan_out[10,13)",
+   "fan_out[13,16)",
+   "fan_out[16,20)",
+   "fan_out[20,30)",
+   "fan_out[30,50)",
+   "fan_out[50,inf)",
+   "deg_in[2,3)",
+   "deg_in[3,4)",
+   "deg_in[4,5)",
+   "deg_in[5,6)",
+   "deg_in[6,8)",
+   "deg_in[8,10)",
+   "deg_in[10,13)",
+   "deg_in[13,16)",
+   "deg_in[16,20)",
+   "deg_in[20,30)",
+   "deg_in[30,50)",
+   "deg_in[50,inf)",
+   "deg_out[2,3)",
+   "deg_out[3,4)",
+   "deg_out[4,5)",
+   "deg_out[5,6)",
+   "deg_out[6,8)",
+   "deg_out[8,10)",
+   "deg_out[10,13)",
+   "deg_out[13,16)",
+   "deg_out[16,20)",
+   "deg_out[20,30)",
+   "deg_out[30,50)",
+   "deg_out[50,inf)",
+   "tcyc[2,3)",
+   "tcyc[3,4)",
+   "tcyc[4,5)",
+   "tcyc[5,6)",
+   "tcyc[6,7)",
+   "tcyc[7,8)",
+   "tcyc[8,9)",
+   "tcyc[9,10)",
+   "tcyc[10,inf)",
+   "sg[2,3)",
+   "sg[3,4)",
+   "sg[4,5)",
+   "sg[5,6)",
+   "sg[6,8)",
+   "sg[8,10)",
+   "sg[10,13)",
+   "sg[13,16)",
+   "sg[16,20)",
+   "sg[20,inf)"
+  ],
+  "compiler": "16.2.1 20260810",
+  "csv_sha256": "b19d39f515523373f991b689c07e11e7b0b95c17a2c27a87d91584ae16c5b040",
+  "features": {
+   "config": "configs/features_default.yaml",
+   "dir": "features/oracle_default",
+   "git": {
+    "dirty": true,
+    "sha": "cf7a2610bfbb966bfd1a5887a7916e358f85368a"
+   },
+   "run": {
+    "backend": "oracle",
+    "csv_sha256": "b19d39f515523373f991b689c07e11e7b0b95c17a2c27a87d91584ae16c5b040",
+    "k_max": 10,
+    "triggers": {
+     "first": 0,
+     "last": 5078345,
+     "spec": "all"
+    }
+   }
+  },
+  "git": {
+   "dirty": true,
+   "sha": "cf7a2610bfbb966bfd1a5887a7916e358f85368a"
+  },
+  "graph": "data/hi_small.blzg",
+  "metrics": {
+   "confusion": {
+    "fn": 1737,
+    "fp": 18,
+    "tn": 1013854,
+    "tp": 60
+   },
+   "f1_x100": 6.4,
+   "pr_auc": 0.07326734837739707,
+   "precision": 0.7692307692307693,
+   "recall": 0.0333889816360601
+  },
+  "peak_rss_mb": 2346.25,
+  "seconds": {
+   "predict": 0.203235255,
+   "test_matrix": 0.517297593,
+   "train": 14.263920428,
+   "train_matrix": 3.591739551
+  },
+  "set": "all",
+  "split": {
+   "test_positives": 1797,
+   "test_rows": 1015669,
+   "train_positives": 3380,
+   "train_rows": 4062676
+  },
+  "xgb": {
+   "batch_rows": 262144,
+   "config": "configs/xgb_default.yaml",
+   "config_sha256": "200e24ee9ccee008dda6e7f370ea3e3b97872bdc44bbc45d8d089db9ab1dfdd0",
+   "nthread": 12,
+   "num_boost_round": 100,
+   "params": {
+    "colsample_bytree": "1",
+    "eta": "0.3",
+    "lambda": "1",
+    "max_bin": "256",
+    "max_depth": "6",
+    "min_child_weight": "1",
+    "objective": "binary:logistic",
+    "scale_pos_weight": "1",
+    "seed": "0",
+    "subsample": "1",
+    "tree_method": "hist"
+   },
+   "threshold": 0.5,
+   "version": "3.4.2"
+  }
+ },
+ "fan": {
+  "columns": [
+   "src_id",
+   "dst_id",
+   "fan_in[2,3)",
+   "fan_in[3,4)",
+   "fan_in[4,5)",
+   "fan_in[5,6)",
+   "fan_in[6,8)",
+   "fan_in[8,10)",
+   "fan_in[10,13)",
+   "fan_in[13,16)",
+   "fan_in[16,20)",
+   "fan_in[20,30)",
+   "fan_in[30,50)",
+   "fan_in[50,inf)",
+   "fan_out[2,3)",
+   "fan_out[3,4)",
+   "fan_out[4,5)",
+   "fan_out[5,6)",
+   "fan_out[6,8)",
+   "fan_out[8,10)",
+   "fan_out[10,13)",
+   "fan_out[13,16)",
+   "fan_out[16,20)",
+   "fan_out[20,30)",
+   "fan_out[30,50)",
+   "fan_out[50,inf)"
+  ],
+  "compiler": "16.2.1 20260810",
+  "csv_sha256": "b19d39f515523373f991b689c07e11e7b0b95c17a2c27a87d91584ae16c5b040",
+  "features": {
+   "config": "configs/features_default.yaml",
+   "dir": "features/oracle_default",
+   "git": {
+    "dirty": true,
+    "sha": "cf7a2610bfbb966bfd1a5887a7916e358f85368a"
+   },
+   "run": {
+    "backend": "oracle",
+    "csv_sha256": "b19d39f515523373f991b689c07e11e7b0b95c17a2c27a87d91584ae16c5b040",
+    "k_max": 10,
+    "triggers": {
+     "first": 0,
+     "last": 5078345,
+     "spec": "all"
+    }
+   }
+  },
+  "git": {
+   "dirty": true,
+   "sha": "cf7a2610bfbb966bfd1a5887a7916e358f85368a"
+  },
+  "graph": "data/hi_small.blzg",
+  "metrics": {
+   "confusion": {
+    "fn": 1789,
+    "fp": 3,
+    "tn": 1013869,
+    "tp": 8
+   },
+   "f1_x100": 0.8849557522123894,
+   "pr_auc": 0.021163097715162883,
+   "precision": 0.7272727272727273,
+   "recall": 0.004451864218141347
+  },
+  "peak_rss_mb": 1029.16796875,
+  "seconds": {
+   "predict": 0.196820371,
+   "test_matrix": 0.166955978,
+   "train": 10.552282582,
+   "train_matrix": 1.884546365
+  },
+  "set": "fan",
+  "split": {
+   "test_positives": 1797,
+   "test_rows": 1015669,
+   "train_positives": 3380,
+   "train_rows": 4062676
+  },
+  "xgb": {
+   "batch_rows": 262144,
+   "config": "configs/xgb_default.yaml",
+   "config_sha256": "200e24ee9ccee008dda6e7f370ea3e3b97872bdc44bbc45d8d089db9ab1dfdd0",
+   "nthread": 12,
+   "num_boost_round": 100,
+   "params": {
+    "colsample_bytree": "1",
+    "eta": "0.3",
+    "lambda": "1",
+    "max_bin": "256",
+    "max_depth": "6",
+    "min_child_weight": "1",
+    "objective": "binary:logistic",
+    "scale_pos_weight": "1",
+    "seed": "0",
+    "subsample": "1",
+    "tree_method": "hist"
+   },
+   "threshold": 0.5,
+   "version": "3.4.2"
+  }
+ },
+ "fan_deg": {
+  "columns": [
+   "src_id",
+   "dst_id",
+   "fan_in[2,3)",
+   "fan_in[3,4)",
+   "fan_in[4,5)",
+   "fan_in[5,6)",
+   "fan_in[6,8)",
+   "fan_in[8,10)",
+   "fan_in[10,13)",
+   "fan_in[13,16)",
+   "fan_in[16,20)",
+   "fan_in[20,30)",
+   "fan_in[30,50)",
+   "fan_in[50,inf)",
+   "fan_out[2,3)",
+   "fan_out[3,4)",
+   "fan_out[4,5)",
+   "fan_out[5,6)",
+   "fan_out[6,8)",
+   "fan_out[8,10)",
+   "fan_out[10,13)",
+   "fan_out[13,16)",
+   "fan_out[16,20)",
+   "fan_out[20,30)",
+   "fan_out[30,50)",
+   "fan_out[50,inf)",
+   "deg_in[2,3)",
+   "deg_in[3,4)",
+   "deg_in[4,5)",
+   "deg_in[5,6)",
+   "deg_in[6,8)",
+   "deg_in[8,10)",
+   "deg_in[10,13)",
+   "deg_in[13,16)",
+   "deg_in[16,20)",
+   "deg_in[20,30)",
+   "deg_in[30,50)",
+   "deg_in[50,inf)",
+   "deg_out[2,3)",
+   "deg_out[3,4)",
+   "deg_out[4,5)",
+   "deg_out[5,6)",
+   "deg_out[6,8)",
+   "deg_out[8,10)",
+   "deg_out[10,13)",
+   "deg_out[13,16)",
+   "deg_out[16,20)",
+   "deg_out[20,30)",
+   "deg_out[30,50)",
+   "deg_out[50,inf)"
+  ],
+  "compiler": "16.2.1 20260810",
+  "csv_sha256": "b19d39f515523373f991b689c07e11e7b0b95c17a2c27a87d91584ae16c5b040",
+  "features": {
+   "config": "configs/features_default.yaml",
+   "dir": "features/oracle_default",
+   "git": {
+    "dirty": true,
+    "sha": "cf7a2610bfbb966bfd1a5887a7916e358f85368a"
+   },
+   "run": {
+    "backend": "oracle",
+    "csv_sha256": "b19d39f515523373f991b689c07e11e7b0b95c17a2c27a87d91584ae16c5b040",
+    "k_max": 10,
+    "triggers": {
+     "first": 0,
+     "last": 5078345,
+     "spec": "all"
+    }
+   }
+  },
+  "git": {
+   "dirty": true,
+   "sha": "cf7a2610bfbb966bfd1a5887a7916e358f85368a"
+  },
+  "graph": "data/hi_small.blzg",
+  "metrics": {
+   "confusion": {
+    "fn": 1740,
+    "fp": 12,
+    "tn": 1013860,
+    "tp": 57
+   },
+   "f1_x100": 6.109324758842444,
+   "pr_auc": 0.07173512059291492,
+   "precision": 0.8260869565217391,
+   "recall": 0.03171953255425709
+  },
+  "peak_rss_mb": 1763.87109375,
+  "seconds": {
+   "predict": 0.199737728,
+   "test_matrix": 0.327233142,
+   "train": 12.363556307,
+   "train_matrix": 3.085188337
+  },
+  "set": "fan_deg",
+  "split": {
+   "test_positives": 1797,
+   "test_rows": 1015669,
+   "train_positives": 3380,
+   "train_rows": 4062676
+  },
+  "xgb": {
+   "batch_rows": 262144,
+   "config": "configs/xgb_default.yaml",
+   "config_sha256": "200e24ee9ccee008dda6e7f370ea3e3b97872bdc44bbc45d8d089db9ab1dfdd0",
+   "nthread": 12,
+   "num_boost_round": 100,
+   "params": {
+    "colsample_bytree": "1",
+    "eta": "0.3",
+    "lambda": "1",
+    "max_bin": "256",
+    "max_depth": "6",
+    "min_child_weight": "1",
+    "objective": "binary:logistic",
+    "scale_pos_weight": "1",
+    "seed": "0",
+    "subsample": "1",
+    "tree_method": "hist"
+   },
+   "threshold": 0.5,
+   "version": "3.4.2"
+  }
+ },
+ "fan_deg_cyc": {
+  "columns": [
+   "src_id",
+   "dst_id",
+   "fan_in[2,3)",
+   "fan_in[3,4)",
+   "fan_in[4,5)",
+   "fan_in[5,6)",
+   "fan_in[6,8)",
+   "fan_in[8,10)",
+   "fan_in[10,13)",
+   "fan_in[13,16)",
+   "fan_in[16,20)",
+   "fan_in[20,30)",
+   "fan_in[30,50)",
+   "fan_in[50,inf)",
+   "fan_out[2,3)",
+   "fan_out[3,4)",
+   "fan_out[4,5)",
+   "fan_out[5,6)",
+   "fan_out[6,8)",
+   "fan_out[8,10)",
+   "fan_out[10,13)",
+   "fan_out[13,16)",
+   "fan_out[16,20)",
+   "fan_out[20,30)",
+   "fan_out[30,50)",
+   "fan_out[50,inf)",
+   "deg_in[2,3)",
+   "deg_in[3,4)",
+   "deg_in[4,5)",
+   "deg_in[5,6)",
+   "deg_in[6,8)",
+   "deg_in[8,10)",
+   "deg_in[10,13)",
+   "deg_in[13,16)",
+   "deg_in[16,20)",
+   "deg_in[20,30)",
+   "deg_in[30,50)",
+   "deg_in[50,inf)",
+   "deg_out[2,3)",
+   "deg_out[3,4)",
+   "deg_out[4,5)",
+   "deg_out[5,6)",
+   "deg_out[6,8)",
+   "deg_out[8,10)",
+   "deg_out[10,13)",
+   "deg_out[13,16)",
+   "deg_out[16,20)",
+   "deg_out[20,30)",
+   "deg_out[30,50)",
+   "deg_out[50,inf)",
+   "tcyc[2,3)",
+   "tcyc[3,4)",
+   "tcyc[4,5)",
+   "tcyc[5,6)",
+   "tcyc[6,7)",
+   "tcyc[7,8)",
+   "tcyc[8,9)",
+   "tcyc[9,10)",
+   "tcyc[10,inf)"
+  ],
+  "compiler": "16.2.1 20260810",
+  "csv_sha256": "b19d39f515523373f991b689c07e11e7b0b95c17a2c27a87d91584ae16c5b040",
+  "features": {
+   "config": "configs/features_default.yaml",
+   "dir": "features/oracle_default",
+   "git": {
+    "dirty": true,
+    "sha": "cf7a2610bfbb966bfd1a5887a7916e358f85368a"
+   },
+   "run": {
+    "backend": "oracle",
+    "csv_sha256": "b19d39f515523373f991b689c07e11e7b0b95c17a2c27a87d91584ae16c5b040",
+    "k_max": 10,
+    "triggers": {
+     "first": 0,
+     "last": 5078345,
+     "spec": "all"
+    }
+   }
+  },
+  "git": {
+   "dirty": true,
+   "sha": "cf7a2610bfbb966bfd1a5887a7916e358f85368a"
+  },
+  "graph": "data/hi_small.blzg",
+  "metrics": {
+   "confusion": {
+    "fn": 1735,
+    "fp": 17,
+    "tn": 1013855,
+    "tp": 62
+   },
+   "f1_x100": 6.609808102345416,
+   "pr_auc": 0.07449102127307436,
+   "precision": 0.7848101265822784,
+   "recall": 0.03450194769059544
+  },
+  "peak_rss_mb": 2044.4453125,
+  "seconds": {
+   "predict": 0.208639898,
+   "test_matrix": 0.365025483,
+   "train": 13.162387659,
+   "train_matrix": 3.34680823
+  },
+  "set": "fan_deg_cyc",
+  "split": {
+   "test_positives": 1797,
+   "test_rows": 1015669,
+   "train_positives": 3380,
+   "train_rows": 4062676
+  },
+  "xgb": {
+   "batch_rows": 262144,
+   "config": "configs/xgb_default.yaml",
+   "config_sha256": "200e24ee9ccee008dda6e7f370ea3e3b97872bdc44bbc45d8d089db9ab1dfdd0",
+   "nthread": 12,
+   "num_boost_round": 100,
+   "params": {
+    "colsample_bytree": "1",
+    "eta": "0.3",
+    "lambda": "1",
+    "max_bin": "256",
+    "max_depth": "6",
+    "min_child_weight": "1",
+    "objective": "binary:logistic",
+    "scale_pos_weight": "1",
+    "seed": "0",
+    "subsample": "1",
+    "tree_method": "hist"
+   },
+   "threshold": 0.5,
+   "version": "3.4.2"
+  }
+ },
+ "xgb_only": {
+  "columns": [
+   "src_id",
+   "dst_id"
+  ],
+  "compiler": "16.2.1 20260810",
+  "csv_sha256": "b19d39f515523373f991b689c07e11e7b0b95c17a2c27a87d91584ae16c5b040",
+  "features": null,
+  "git": {
+   "dirty": true,
+   "sha": "cf7a2610bfbb966bfd1a5887a7916e358f85368a"
+  },
+  "graph": "data/hi_small.blzg",
+  "metrics": {
+   "confusion": {
+    "fn": 1797,
+    "fp": 0,
+    "tn": 1013872,
+    "tp": 0
+   },
+   "f1_x100": 0.0,
+   "pr_auc": 0.010703594224793068,
+   "precision": 0.0,
+   "recall": 0.0
+  },
+  "peak_rss_mb": 298.390625,
+  "seconds": {
+   "predict": 0.188279236,
+   "test_matrix": 0.043828267,
+   "train": 7.354305671,
+   "train_matrix": 0.691236453
+  },
+  "set": "xgb_only",
+  "split": {
+   "test_positives": 1797,
+   "test_rows": 1015669,
+   "train_positives": 3380,
+   "train_rows": 4062676
+  },
+  "xgb": {
+   "batch_rows": 262144,
+   "config": "configs/xgb_default.yaml",
+   "config_sha256": "200e24ee9ccee008dda6e7f370ea3e3b97872bdc44bbc45d8d089db9ab1dfdd0",
+   "nthread": 12,
+   "num_boost_round": 100,
+   "params": {
+    "colsample_bytree": "1",
+    "eta": "0.3",
+    "lambda": "1",
+    "max_bin": "256",
+    "max_depth": "6",
+    "min_child_weight": "1",
+    "objective": "binary:logistic",
+    "scale_pos_weight": "1",
+    "seed": "0",
+    "subsample": "1",
+    "tree_method": "hist"
+   },
+   "threshold": 0.5,
+   "version": "3.4.2"
+  }
+ }
+}

@@ -9,7 +9,9 @@ add_executable(blz_unit_tests
   unit/test_stats.cpp
   unit/test_features.cpp
   unit/test_fuzz_gen.cpp
-  unit/test_oracle.cpp)
+  unit/test_oracle.cpp
+  unit/test_metrics.cpp
+  unit/test_xgb.cpp)
 target_link_libraries(blz_unit_tests PRIVATE blz_core Catch2::Catch2WithMain)
 target_compile_definitions(blz_unit_tests PRIVATE
   BLZ_TEST_TMPDIR="${CMAKE_CURRENT_BINARY_DIR}/tmp"
