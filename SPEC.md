@@ -1156,8 +1156,7 @@ The model has the paper's high-precision profile (0.77) but a tenth of its recal
 | R3 | tcyc enumeration blows up at hubs in a 24 h window. | The `K_MAX` cap and E0 profile. Sorted scheduling. The P6 hybrid. |
 | R4 | `local` has little free RAM (≈ 3 GB). | Block-at-a-time mining and QuantileDMatrix streaming (§5.4). The A30 host is the fallback for training. |
 | R5 | A JarvisLabs image's nvcc and GCC pair differs from `local`'s. | Code targets GCC ≥ 12 and CUDA ≥ 12.4 (§2.2). The CPU build never needs nvcc. |
-| R6 | snapml's licence is proprietary. | Installed locally from PyPI only. Never vendored. Only its outputs and timings are reported. |
-| R7 | The comparison hardware is far smaller than the paper's. | Only same-machine ratios and scaling shapes are compared; no absolute claims. |
+| R6 | The comparison hardware is far smaller than the paper's. | Only same-machine ratios and scaling shapes are compared; no absolute claims. |
 | DG-1 | E0 shows GFP tcyc cycles longer than `K_MAX` on > 0.1% of triggers. | Raise `K_MAX` to cover 99.9%, or to the maximum if that is ≤ 16. Above 16, decide between an explicit-stack lowering of `repeat` and accepting the mismatch, and record a `D-n`. |
 | DG-2 | `all` F1 is off by > 10 points. | Before changing anything, check in order:<br>1. the split positives (1,797);<br>2. the feature column order;<br>3. the `credit=participants` variant (P6, pulled forward);<br>4. bins.<br>Record each result.<br>**Opened 2026-11-10 (P2: `all` = 6.4).** 1: 1,797 test positives, as expected. 2: GFP block order (sg before tcyc) gives the same confusion counts (`bench/xgb_xcheck.py`). 3: not run; it needs the P6 variant in the oracle and a new `D-n`. 4: parity bins 2..33 (194 columns, `features/oracle_parity`) give 4.6. Unresolved; no change made. |
 
