@@ -1,0 +1,68 @@
+# patterns/tcyc.yaml expanded with K_MAX = 5 (SPEC §6.5, §13.4), written by hand: the repeat
+# k = 2..3 is inlined and every {...} is substituted.
+version: 1
+pattern: tcyc
+block: tcyc
+consts: {K_MAX: 5}
+window: {span: delta_cyc, lower: closed}
+trigger: {edge: e0, src: U, dst: V}
+constraints: [{skip_if: "U == V"}]
+stages:
+  - id: close_2
+    op: exists
+    src: V.out
+    node: U
+    edge: c2
+    constraints: [{break_if: "c2.t >= t"}]
+    emit: {size: 2}
+  - id: hop_1
+    op: for_all
+    src: V.out
+    edge: h1
+    dst_var: C1
+    constraints:
+      - break_if: "h1.t >= t"
+      - skip_if: "C1 in [U, V]"
+  - id: close_3
+    op: exists
+    src: C1.out
+    node: U
+    edge: c3
+    constraints: [{skip_if: "c3.t <= h1.t"}, {break_if: "c3.t >= t"}]
+    emit: {size: 3}
+  - id: hop_2
+    op: for_all
+    src: C1.out
+    edge: h2
+    dst_var: C2
+    constraints:
+      - skip_if: "h2.t <= h1.t"
+      - break_if: "h2.t >= t"
+      - skip_if: "C2 in [U, V, C1]"
+  - id: close_4
+    op: exists
+    src: C2.out
+    node: U
+    edge: c4
+    constraints:
+      - skip_if: "c4.t <= h2.t"
+      - break_if: "c4.t >= t"
+    emit: {size: 4}
+  - id: hop_3
+    op: for_all
+    src: C2.out
+    edge: h3
+    dst_var: C3
+    constraints:
+      - skip_if: "h3.t <= h2.t"
+      - break_if: "h3.t >= t"
+      - skip_if: "C3 in [U, V, C1, C2]"
+  - id: close_5
+    op: exists
+    src: C3.out
+    node: U
+    edge: c5
+    constraints:
+      - skip_if: "c5.t <= h3.t"
+      - break_if: "c5.t >= t"
+    emit: {size: 5}

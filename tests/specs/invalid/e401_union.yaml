@@ -1,0 +1,15 @@
+# expect: E401 9:9 -- union is reserved
+version: 1
+pattern: p
+block: fan_in
+window: {span: d, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+stages:
+  - id: s
+    op: union
+    src: V.in
+    edge: e1
+    element: X
+    output: n
+    constraints: [{skip_if: "X == V"}]
+    emit: {size: n}

@@ -1,0 +1,7 @@
+# expect: E101 8:1 -- broken YAML flow sequence
+version: 1
+pattern: p
+block: fan_in
+window: {span: d, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+stages: [{id: s, op: count

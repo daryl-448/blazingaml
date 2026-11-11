@@ -1,0 +1,21 @@
+# expect: E204 21:19 -- a witness time in a node filter
+version: 1
+pattern: p
+block: fan_in
+window: {span: d, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+stages:
+  - id: hop_1
+    op: for_all
+    src: V.out
+    edge: h1
+    dst_var: C1
+    constraints: [{break_if: "h1.t >= t"}]
+  - id: hop_2
+    op: for_all
+    src: C1.out
+    edge: h2
+    dst_var: C2
+    constraints:
+      - skip_if: "h2.t <= h1.t"
+      - skip_if: "h1.t > t - 10"

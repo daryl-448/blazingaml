@@ -1,0 +1,15 @@
+# expect: E203 14:30 -- == on a scanned edge's time
+version: 1
+pattern: p
+block: fan_in
+window: {span: d, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+stages:
+  - id: s
+    op: count
+    src: V.in
+    edge: e1
+    element: X
+    output: n
+    constraints: [{skip_if: "e1.t == t"}]
+    emit: {size: n}

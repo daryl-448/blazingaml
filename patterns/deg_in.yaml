@@ -1,0 +1,17 @@
+# deg_in (SPEC §4.4): the in-edges x -> v with x != v, parallel edges counted, e0 included.
+version: 1
+pattern: deg_in
+block: deg_in
+window: {span: delta_deg, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+constraints: [{skip_if: "U == V"}]
+stages:
+  - id: in_edges
+    op: count
+    src: V.in
+    edge: e1
+    element: X
+    multiplicity: edges
+    output: n
+    constraints: [{skip_if: "X == V"}]
+    emit: {size: n}

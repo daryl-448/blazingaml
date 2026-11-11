@@ -1,0 +1,51 @@
+# tcyc (SPEC §4.6): temporal cycles of length 2..K_MAX that the trigger U -> V closes.
+version: 1
+pattern: tcyc
+block: tcyc
+consts: {K_MAX: 10}
+window: {span: delta_cyc, lower: closed}
+trigger: {edge: e0, src: U, dst: V}
+constraints: [{skip_if: "U == V"}]
+stages:
+  - id: close_2                          # the cycle V -> U -> V
+    op: exists
+    src: V.out
+    node: U
+    edge: c2
+    constraints: [{break_if: "c2.t >= t"}]
+    emit: {size: 2}
+  - id: hop_1                            # first hop: only the window bounds it from below
+    op: for_all
+    src: V.out
+    edge: h1
+    dst_var: C1
+    constraints:
+      - break_if: "h1.t >= t"
+      - skip_if: "C1 in [U, V]"
+  - id: close_3
+    op: exists
+    src: C1.out
+    node: U
+    edge: c3
+    constraints: [{skip_if: "c3.t <= h1.t"}, {break_if: "c3.t >= t"}]
+    emit: {size: 3}
+  - repeat: {var: k, from: 2, to: "K_MAX - 2"}
+    stages:
+      - id: "hop_{k}"
+        op: for_all
+        src: "C{k-1}.out"
+        edge: "h{k}"
+        dst_var: "C{k}"
+        constraints:
+          - skip_if: "h{k}.t <= h{k-1}.t"   # strictly after the previous hop
+          - break_if: "h{k}.t >= t"
+          - skip_if: "C{k} in [U, V, C{1..k-1}]"
+      - id: "close_{k+2}"
+        op: exists
+        src: "C{k}.out"
+        node: U
+        edge: "c{k+2}"
+        constraints:
+          - skip_if: "c{k+2}.t <= h{k}.t"
+          - break_if: "c{k+2}.t >= t"
+        emit: {size: "{k+2}"}

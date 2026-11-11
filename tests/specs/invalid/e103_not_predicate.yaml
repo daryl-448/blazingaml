@@ -1,0 +1,15 @@
+# expect: E103 14:30 -- a constraint must be a predicate
+version: 1
+pattern: p
+block: fan_in
+window: {span: d, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+stages:
+  - id: s
+    op: count
+    src: V.in
+    edge: e1
+    element: X
+    output: n
+    constraints: [{skip_if: "d"}]
+    emit: {size: n}

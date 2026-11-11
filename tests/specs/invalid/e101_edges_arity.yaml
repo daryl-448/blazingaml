@@ -1,0 +1,19 @@
+# expect: E101 17:12 -- intersection edges needs two
+version: 1
+pattern: p
+block: fan_in
+window: {span: d, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+stages:
+  - id: sources
+    op: for_all
+    src: U.in
+    edge: e1
+    dst_var: S
+  - id: mid
+    op: intersection
+    src: S.out
+    dst: V.in
+    edges: [e2]
+    output: I
+    element: Y

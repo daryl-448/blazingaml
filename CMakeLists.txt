@@ -43,12 +43,30 @@ add_library(blz_core
   src/graph/stats.cpp
   src/graph/fuzz_gen.cpp
   src/runtime/features.cpp
+  src/runtime/registration.cpp
   src/oracle/oracle.cpp
   src/ml/metrics.cpp
   src/ml/xgb.cpp)
 target_include_directories(blz_core PUBLIC include src)
 target_link_libraries(blz_core PUBLIC blz_flags nlohmann_json::nlohmann_json OpenMP::OpenMP_CXX
   PRIVATE yaml-cpp::yaml-cpp xgboost)
+
+# The pattern compiler's front end (SPEC §7.1): YAML -> AST -> planned IR. A host tool library;
+# it does not depend on the runtime.
+add_library(blz_dsl
+  src/dsl/ynode.cpp
+  src/dsl/expand.cpp
+  src/dsl/expr.cpp
+  src/dsl/parse.cpp
+  src/ir/lower.cpp
+  src/ir/plan.cpp
+  src/ir/dump.cpp
+  src/ir/compile.cpp)
+target_include_directories(blz_dsl PUBLIC src)
+target_link_libraries(blz_dsl PUBLIC blz_flags PRIVATE yaml-cpp::yaml-cpp)
+
+add_executable(blzc src/apps/blzc.cpp)
+target_link_libraries(blzc PRIVATE blz_dsl CLI11::CLI11)
 
 add_executable(blz src/apps/blz.cpp)
 target_link_libraries(blz PRIVATE blz_core CLI11::CLI11)

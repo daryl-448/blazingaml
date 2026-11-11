@@ -11,12 +11,22 @@ add_executable(blz_unit_tests
   unit/test_fuzz_gen.cpp
   unit/test_oracle.cpp
   unit/test_metrics.cpp
-  unit/test_xgb.cpp)
-target_link_libraries(blz_unit_tests PRIVATE blz_core Catch2::Catch2WithMain)
+  unit/test_xgb.cpp
+  unit/test_registration.cpp
+  unit/test_dsl_expr.cpp
+  unit/test_dsl_expand.cpp
+  unit/test_dsl_lower.cpp
+  unit/test_dsl_specs.cpp)
+target_link_libraries(blz_unit_tests PRIVATE blz_core blz_dsl Catch2::Catch2WithMain)
 target_compile_definitions(blz_unit_tests PRIVATE
   BLZ_TEST_TMPDIR="${CMAKE_CURRENT_BINARY_DIR}/tmp"
   BLZ_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 catch_discover_tests(blz_unit_tests PROPERTIES LABELS fast)
+
+# SPEC §16 P3: the front end accepts the whole pattern library.
+file(GLOB BLZ_PATTERN_SPECS CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/patterns/*.yaml)
+add_test(NAME blzc_check_library COMMAND blzc --check-only ${BLZ_PATTERN_SPECS})
+set_tests_properties(blzc_check_library PROPERTIES LABELS fast)
 
 # HI-Small checks (SPEC §13.5): run manually with `ctest -L slow`.
 set(BLZ_HI_SMALL_CSV "${PROJECT_SOURCE_DIR}/dataset/HI-Small_Trans.csv")

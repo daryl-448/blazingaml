@@ -1,0 +1,16 @@
+# expect: E101 14:11 -- gate must be a bool
+version: 1
+pattern: p
+block: fan_in
+window: {span: d, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+stages:
+  - id: s
+    op: count
+    src: V.in
+    edge: e1
+    element: X
+    output: n
+    gate: yes please
+    constraints: [{skip_if: "X == V"}]
+    emit: {size: n}

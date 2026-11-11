@@ -1,0 +1,6 @@
+# expect: E101 2:1 -- no stages
+version: 1
+pattern: p
+block: fan_in
+window: {span: d, lower: open}
+trigger: {edge: e0, src: U, dst: V}

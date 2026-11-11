@@ -1,0 +1,17 @@
+# deg_out (SPEC §4.4): the out-edges u -> y with y != u, parallel edges counted, e0 included.
+version: 1
+pattern: deg_out
+block: deg_out
+window: {span: delta_deg, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+constraints: [{skip_if: "U == V"}]
+stages:
+  - id: out_edges
+    op: count
+    src: U.out
+    edge: e1
+    element: Y
+    multiplicity: edges
+    output: n
+    constraints: [{skip_if: "Y == U"}]
+    emit: {size: n}

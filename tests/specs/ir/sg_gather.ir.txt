@@ -1,0 +1,35 @@
+pattern sg_gather block sg
+window span delta_sg lower closed visibility stream
+trigger e0: X -> W
+  skip if X == W
+level 0 (root)
+  level 1
+    bind for_all sources -> S [distinct]
+      operand e1: X.in access scan_distinct
+        lo >= t - delta_sg [window]
+        hi -
+        range ts >= t - delta_sg
+      skip if S in [X, W]
+      exports S e1
+      // scan T-CSR X.in distinct-first: each S once, e1 = its earliest witness in range
+      // e1 in X.in: ts >= t - delta_sg, eid <= eid(e0) (stream visibility)
+    check intersection intermediates -> I
+      operand e2: S.out access intersect
+        lo >= t - delta_sg [window]
+        hi -
+        range ts >= t - delta_sg
+      operand e3: W.in access intersect
+        lo >= t - delta_sg [window]
+        hi -
+        range ts >= t - delta_sg
+      element Y
+      skip if Y == W
+      emit len(I) (min 2)
+      exports I
+      // intersection S.out ∩ W.in over distinct nodes: per trigger, scan the side with the smaller window (T-CSR, distinct-first) and probe the other (P-CSR)
+      // no materialization: I is used only through len(), so the common neighbours that pass the filters are counted
+      // e2 in S.out: ts >= t - delta_sg, eid <= eid(e0) (stream visibility)
+      // e3 in W.in: ts >= t - delta_sg, eid <= eid(e0) (stream visibility)
+plan depth 1 work sources split sources
+  // work estimate (sorted schedule, CUDA bucketing): the window size of sources.e1 (X.in), two binary searches
+  // CUDA heavy kernel: no root checks; the lanes stride over the scan of sources and each runs every stage nested in its own bindings; lane bin counts are summed across the warp

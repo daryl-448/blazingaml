@@ -1,0 +1,10 @@
+# expect: E102 10:89 -- a rewritten predicate reports the scalar's own position
+version: 1
+pattern: p
+block: fan_in
+window: {span: d, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+stages:
+  - repeat: {var: k, from: 1, to: 1}
+    stages:
+      - {id: "s{k}", op: count, src: V.in, edge: e1, output: n, constraints: [{skip_if: "U == Q{k}"}]}

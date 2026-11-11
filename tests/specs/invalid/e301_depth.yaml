@@ -1,0 +1,20 @@
+# expect: E301 16:9 -- 17 binding levels
+version: 1
+pattern: p
+block: fan_in
+window: {span: d, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+consts: {N: 17}
+stages:
+  - id: h0
+    op: for_all
+    src: V.out
+    edge: f0
+    dst_var: C0
+  - repeat: {var: k, from: 1, to: "N - 1"}
+    stages:
+      - id: "h{k}"
+        op: for_all
+        src: "C{k-1}.out"
+        edge: "f{k}"
+        dst_var: "C{k}"

@@ -1,0 +1,15 @@
+# expect: E101 2:10 -- unsupported version
+version: 2
+pattern: p
+block: fan_in
+window: {span: d, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+stages:
+  - id: s
+    op: count
+    src: V.in
+    edge: e1
+    element: X
+    output: n
+    constraints: [{skip_if: "X == V"}]
+    emit: {size: n}

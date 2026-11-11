@@ -1,0 +1,18 @@
+# expect: E102 18:38 -- an ungated exists exports no witness
+version: 1
+pattern: p
+block: fan_in
+window: {span: d, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+stages:
+  - id: c
+    op: exists
+    src: V.out
+    node: U
+    edge: c2
+  - id: h
+    op: for_all
+    src: V.out
+    edge: h1
+    dst_var: C1
+    constraints: [{skip_if: "h1.t <= c2.t"}]

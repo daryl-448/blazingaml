@@ -1,0 +1,20 @@
+# expect: E102 18:10 -- an element is visible only in its own stage
+version: 1
+pattern: p
+block: fan_in
+window: {span: d, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+stages:
+  - id: s
+    op: count
+    src: V.in
+    edge: e1
+    element: X
+    output: n
+    constraints: [{skip_if: "X == V"}]
+    emit: {size: n}
+  - id: s2
+    op: exists
+    src: X.out
+    node: U
+    edge: e2

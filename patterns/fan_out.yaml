@@ -1,0 +1,17 @@
+# fan_out (SPEC §4.3): the distinct out-neighbours y != u of the trigger's source u, v included.
+version: 1
+pattern: fan_out
+block: fan_out
+window: {span: delta_fan, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+constraints: [{skip_if: "U == V"}]
+stages:
+  - id: out_nbrs
+    op: count
+    src: U.out
+    edge: e1
+    element: Y
+    multiplicity: distinct
+    output: n
+    constraints: [{skip_if: "Y == U"}]
+    emit: {size: n}

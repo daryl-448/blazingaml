@@ -403,9 +403,25 @@ There are two kinds of stage:
 | `count` | check | `src: X.dir`, `edge`, `element`, `multiplicity`, `output: IntVar` | The size of the filtered neighbour set or edge multiset. |
 
 `element` names the per-element node variable of a check stage. It is visible only in that
-stage's own constraints and is never bound for later stages.
+stage's own constraints and is never bound for later stages. It is optional; a stage without
+element filters can omit it.
 
 Every stage MAY carry `emit: {size: <iexpr>, min_size: <int>}` (§6.6) and `constraints`.
+
+**Scope** (fixed in P3). Every name (const, span parameter, trigger variables, and each stage's
+`edge`, `edges`, `dst_var`, `element` and `output`) is declared exactly once per spec; there is no
+shadowing (E102). What a stage makes visible:
+
+| Stage | Own constraints see | Later stages see |
+|---|---|---|
+| `for_all`, binding `intersection` | its scanned edge(s), `dst_var` | `dst_var`; its edge(s) as earliest witnesses |
+| `exists` | its edge | its edge as a witness, **only with `gate: true`** (otherwise there may be no witness) |
+| `count`, check `intersection` | its scanned edge(s), `element` | `output` (not visible in its own constraints) |
+
+`emit` sees what later stages see, plus a binding stage's `dst_var`; it never sees `element`.
+
+**Gate.** A check passes when `exists` finds a witness, or when `count` / a check
+`intersection` produces a non-zero result. `gate` is not allowed on binding stages (E101).
 
 ### 6.4 Constraints: bounds versus filters
 
@@ -420,16 +436,25 @@ The compiler classifies each constraint of a stage:
      scan's end.
    - `break_if` with `<` or `<=` on a scanned edge is error **E201** (non-monotone break).
 2. **Node filter.** The predicate mentions only node variables, ints, params and `len()`. It is
-   applied as `skip_if`. A node-only `break_if` is error **E202**.
+   applied as `skip_if`. A node-only `break_if` is error **E202**. Two clarifications from P3:
+   the trigger's own time (`t`, `e0.t`) is exact, so a filter MAY use it; and any `break_if`
+   that bounds no edge scanned by its stage is E202.
 3. Anything else, such as a mix of a scanned edge's time with a node test inside one predicate, or
    two scanned edges of one intersection compared to each other, is error **E203**. Cross-operand
    ordering inside an intersection is P6.
 
 The **window** and **visibility** bounds are added to every scanned edge automatically.
 
+A top-level `or` is split first: `skip_if: a or b` is `skip_if: a` plus `skip_if: b`, and the same
+holds for `break_if`. Each part is then classified on its own. Trigger-level constraints have no
+scanned edge, so they are always node filters.
+
 **Witness direction rule.** An earlier stage's witness time (`ej.t` with j bound earlier) MAY
 appear only as a *lower* bound of a later scan. Otherwise the earliest-witness rule (§4.6) is not
-exact. A violation is error **E204**.
+exact. A violation is error **E204**. This includes a witness time inside a node filter, and a
+witness lower bound on an aggregating scan (`count`, a check `intersection`, a `for_all` with
+`multiplicity: edges`), whose result would depend on which witness was taken. Witness lower bounds
+are allowed on `exists`, a distinct `for_all` and a binding `intersection`.
 
 ### 6.5 `repeat`
 
@@ -453,7 +478,13 @@ substituted:
   separating comma.
 
 Templated values and predicates MUST be quoted YAML strings (§6.8), because `{` `}` `[` `]` `,`
-are flow indicators. The unrolled depth after expansion MUST be ≤ 16 (error **E301**).
+are flow indicators. The unrolled depth after expansion MUST be ≤ 16 (error **E301**). The depth
+counts binding stages, so tcyc's depth is `K_MAX − 2` and `K_MAX` ≤ 18. E301 also covers a
+`repeat` or range of more than 1,024 values and more than 1,024 stages after expansion.
+
+The implementation (P3) substitutes `{…}` in every scalar outside `consts`, with the consts and
+the enclosing repeat variables in scope, so a const can also be used as `{K_MAX}` outside a
+template. Repeats nest. A YAML list item that is exactly `P{a..b}` expands into separate items.
 `tests/specs/expanded/` holds the expected expansion of `tcyc.yaml` at `K_MAX = 5` (§13.4).
 
 ### 6.6 `emit`
@@ -475,6 +506,8 @@ are flow indicators. The unrolled depth after expansion MUST be ≤ 16 (error **
 | E402 | `emit` or `block` refers to a block that is missing from the feature config. Checked at registration, at runtime start. |
 
 Diagnostics MUST include `file:line:col`, which yaml-cpp marks provide, and the error code.
+Inside a single-line predicate that expansion did not rewrite, the column points at the offending
+token. Otherwise it points at the start of the scalar.
 
 ### 6.8 v1 pattern library (`patterns/*.yaml`)
 
@@ -485,7 +518,7 @@ pattern: fan_in
 block: fan_in
 window: {span: delta_fan, lower: open}
 trigger: {edge: e0, src: U, dst: V}
-constraints: [{skip_if: U == V}]
+constraints: [{skip_if: "U == V"}]
 stages:
   - id: in_nbrs
     op: count
@@ -494,7 +527,7 @@ stages:
     element: X
     multiplicity: distinct
     output: n
-    constraints: [{skip_if: X == V}]
+    constraints: [{skip_if: "X == V"}]
     emit: {size: n}
 ```
 
@@ -505,7 +538,7 @@ pattern: deg_in
 block: deg_in
 window: {span: delta_deg, lower: open}
 trigger: {edge: e0, src: U, dst: V}
-constraints: [{skip_if: U == V}]
+constraints: [{skip_if: "U == V"}]
 stages:
   - id: in_edges
     op: count
@@ -514,7 +547,7 @@ stages:
     element: X
     multiplicity: edges
     output: n
-    constraints: [{skip_if: X == V}]
+    constraints: [{skip_if: "X == V"}]
     emit: {size: n}
 ```
 
@@ -578,7 +611,7 @@ block: tcyc
 consts: {K_MAX: 10}
 window: {span: delta_cyc, lower: closed}
 trigger: {edge: e0, src: U, dst: V}
-constraints: [{skip_if: U == V}]
+constraints: [{skip_if: "U == V"}]
 stages:
   - id: close_2                          # the cycle V→U→V
     op: exists
@@ -631,6 +664,9 @@ Hop k binds C_k, and `close_{k+2}` then emits a cycle of k + 2 edges (the trigge
 C_k→U). Excluding U from the bindings is safe, because the cycle that would close there is the one
 `close_{k+1}` already counted.
 
+`tcyc.yaml` needs `K_MAX ≥ 3`: `hop_1` and `close_3` are outside the repeat, so at `K_MAX = 2`
+it would still count 3-cycles.
+
 ### 6.9 Mapping from the paper's YAML
 
 | Paper [P §5.3] | This DSL | Why |
@@ -670,12 +706,18 @@ They are covered by snapshot tests instead (§13.4).
 Pattern   { name, block, window{span_param, lower_open}, visibility,
             trigger{e0, src_var, dst_var}, trigger_filters[], levels[] }
 Level     { binding: Stage | ROOT, checks[]: Stage }   // checks run inside this level
-Stage     { id, op, operands[]: Operand, bind_var?, output_var?, element_var?,
-            multiplicity, lo_bounds[]: TimeBound, hi_bounds[]: TimeBound,
-            node_filters[]: Pred, gate, emit? }
-Operand   { node_var, dir(in|out), edge_var }
-TimeBound { expr: TExpr, strict: bool }   // the effective bound is the max (lo) or min (hi)
+Stage     { id, op, binding, operands[]: Operand, bind_var?, output_var?, element_var?,
+            probe_node?, multiplicity, node_filters[]: Pred, gate, emit?, exports[], notes[] }
+Operand   { node_var, dir(in|out), edge_var, lo[]: TimeBound, hi[]: TimeBound,
+            lo_incl[], hi_incl[]: TExpr, access }
+TimeBound { expr: TExpr, strict: bool, from_window: bool }
 ```
+
+The time bounds live on the operand (P3). An intersection has two scanned edges, each with its
+own bounds. The planner rewrites them in inclusive form, since timestamps are integers: strict
+lower x becomes x + 1 and strict upper x becomes x − 1. It drops duplicates, so the scan range is
+`ts ≥ max(lo_incl)`, `ts ≤ min(hi_incl)`, plus visibility. Implementation: `src/ir/ir.hpp`;
+`blzc --dump-ir` prints it, and `tests/specs/ir/` holds the library's dumps.
 
 ### 7.3 Planner decisions (each is recorded as a comment in the generated code)
 
@@ -1024,7 +1066,7 @@ blz fuzz     --seeds a:b [--bins 2..33] [--k-max 64] --out data/fuzz/
 blz train    --graph ... --features features/<run>/ --set xgb_only|fan|fan_deg|fan_deg_cyc|all
              --xgb configs/xgb_default.yaml --out results/<run>.json
 blz bench    --graph ... --config ... --backend cpu|cuda --threads 1,2,4,6,8,12 --reps 5 --out ...
-blzc         patterns/<p>.yaml --out <dir> [--check-only]
+blzc         patterns/<p>.yaml... --out <dir> [--check-only | --dump-ir | --expand] [--const NAME=V]
 ```
 
 ---
@@ -1046,7 +1088,7 @@ src/runtime/         block output, binning, OpenMP driver, CUDA driver
 src/oracle/          naive reference (§9)
 src/ml/              XGBoost C-API wrapper, metrics
 src/apps/            blz.cpp, blzc.cpp
-tests/               unit/, golden/, specs/invalid/, snapshots/, fuzz/
+tests/               unit/, golden/, specs/{invalid,expanded,ir}/, snapshots/, fuzz/
 tools/gfp/           pyproject.toml (uv), probes.py, parity.py, bench_gfp.py, fuzz_vs_gfp.py
 bench/               run scripts, report.py
 results/             committed small JSON/markdown results and plots
@@ -1113,6 +1155,18 @@ The model has the paper's high-precision profile (0.77) but a tenth of its recal
 - `blzc --check-only` passes on the library.
 
 **Exit:** AC5.
+
+**Outcome (2026-11-11).** The front end is `src/dsl/` (YAML tree with positions, repeat
+expansion, expression parser, schema check) and `src/ir/` (resolve, type-check, classification,
+planner, IR dump). `blzc --check-only` accepts all seven library specs; it runs as the fast
+`blzc_check_library` test. The invalid-spec suite has 53 cases (`tests/specs/invalid/`), each
+checked for its code and its exact `file:line:col`, and together they cover E101–E401. E402 is
+`check_registration` (`src/runtime/registration.cpp`) with a unit test; P4 wires it to the
+generated registry. `tcyc.yaml` expanded at `K_MAX = 5` matches the hand-written
+`tests/specs/expanded/tcyc_k5.yaml`. The planned IR of every library spec is snapshotted in
+`tests/specs/ir/`. Rules this phase had to pin down are written into §6.3–§6.7 and §7.2: scope,
+gate, `or` splitting, the trigger time in filters, E202/E204 coverage, and per-operand bounds.
+Code generation (`blzc` without a mode flag) is P4.
 
 ### P4 — CPU backend
 

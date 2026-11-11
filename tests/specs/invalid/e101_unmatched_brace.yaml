@@ -1,0 +1,11 @@
+# expect: E101 10:13 -- unmatched brace in a template
+version: 1
+pattern: p
+block: fan_in
+window: {span: d, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+stages:
+  - repeat: {var: k, from: 1, to: 2}
+    stages:
+      - id: "s{k"
+        op: count
