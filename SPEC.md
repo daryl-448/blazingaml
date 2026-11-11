@@ -337,6 +337,18 @@ reproduces GFP's SG self-loop behaviour (§4.5).
 | `pair_exists(dir, x, y, lo_ts, lo_strict, hi)` | P-CSR probe. Returns the earliest witness ts, or `NONE`. |
 | `count_distinct(dir, x, range, exclude)` / `count_edges(...)` | Fan and degree counts in O(window). |
 
+As implemented (P4), every bound is inclusive, because the planner already normalizes strict
+bounds (§7.2), and the direction is the view the call is made on (`g.out`, `g.in`, `g.pout`,
+`g.pin`):
+
+- `TCsrView::range(x, lo_ts, hi_ts, max_eid)`: the entries with `lo_ts ≤ ts ≤ hi_ts` and
+  `eid ≤ max_eid`, by binary search; `hi_ts = kNoUpper` skips the time search on the upper end.
+- `TCsrView::distinct_first(j, lo)`.
+- `PCsrView::pair_exists(x, y, lo_ts, hi_ts, max_eid)`: the earliest witness ts, or `kNoTs`.
+- `count_distinct(view, range, keep)` / `count_edges(view, range, keep)`: `keep(nbr)` is the
+  element filter, which generalizes `exclude`.
+
+`src/graph/index.cpp` builds both directions of T-CSR and P-CSR: 268 MB on HI-Small, in 0.4 s.
 All primitives have unit tests against naive scans (§13.1).
 
 ### 5.4 Memory budget
@@ -498,12 +510,13 @@ template. Repeats nest. A YAML list item that is exactly `P{a..b}` expands into 
 | Code | Check |
 |---|---|
 | E101 | YAML schema error: unknown key, missing required key, wrong type. |
-| E102 | Unknown or duplicate identifier; use before definition. |
+| E102 | Unknown or duplicate identifier; use before definition. Also two specs of one `blzc` run that define the same `pattern` name (P4: it names generated functions and registry entries). |
 | E103 | Type error (node, time, int and set are kinds that do not mix). |
 | E201–E204 | Constraint classification (§6.4). |
 | E301 | Unrolled depth > 16. |
 | E401 | Reserved op (`union`, `difference`, `differentiate`): "not supported in v1". |
 | E402 | `emit` or `block` refers to a block that is missing from the feature config. Checked at registration, at runtime start. |
+| E501 | Code generation (P4): a spec the front end accepts but the v1 backends cannot generate. These are `visibility: timestamp` (a P6 variant), a `pattern` name with an index, and two names that map to the same C++ identifier (`C[3]` and `C_3`). |
 
 Diagnostics MUST include `file:line:col`, which yaml-cpp marks provide, and the error code.
 Inside a single-line predicate that expansion did not rewrite, the column points at the offending
@@ -750,6 +763,34 @@ Scheduling option `--schedule`:
 - `sorted`: triggers ordered by estimated work, descending. The estimate is the first scan's window
   size, computed with two binary searches. This is the paper's degree-based balancing [P §5.4].
 
+As implemented (P4):
+
+- **Files.** For each spec `<stem>.yaml`, `blzc` writes `<stem>.hpp` and `<stem>_cpu.cpp`.
+  `<stem>.hpp` holds `<pattern>_trigger` and `<pattern>_work`, both `BLZ_HD`, plus the declaration
+  of `<pattern>_cpu`. `<stem>_cpu.cpp` holds the OpenMP driver. The driver takes `chunk` as a
+  fifth argument.
+- **Names.** Every DSL name gets a kind prefix in C++: `v_` for nodes, `ts_` for witness times,
+  `i_` for count outputs, `len_` for set sizes, `p_` for parameters, and `r_` / `j_` for ranges
+  and loop indices. A DSL name therefore cannot collide with the fixed locals `g`, `p`, `e`, `t`
+  and `out`.
+- **Lowering.** A binding stage opens a loop. Its level's checks run inside it in spec order, and
+  the next level nests inside them. A node filter is a `continue`, or for an element a rejected
+  element. A failed gate skips the rest of its level: `continue`, or `return` at the root. A
+  check stage emits only when it passed (`exists` found a witness, `count` or a check
+  intersection is non-zero), and the emit runs when `size ≥ max(min_size, 2)`.
+- **Intersection.** Both ranges are computed, and one loop scans the smaller one through a
+  `TCsrView&` and probes the other through a `PCsrView&`, so the body is emitted once.
+- **Work estimate.** `<pattern>_work` is the size of the plan's first scan, from the trigger
+  node, using only the bounds that do not depend on a binding (t, parameters and consts). The
+  result is a superset of the real range.
+- **Sorted schedule.** A stable counting sort on the work estimate (descending, ties in eid
+  order) and chunk 16. Its cost, the estimates plus the sort, is part of the mining time.
+- **Blocks with several patterns.** The patterns of a block (`sg_gather`, `sg_scatter`) run one
+  after the other over the same trigger list and add into the same rows.
+- **Start-up check.** E402 for every registered pattern against the feature config. The
+  config's `k_max` must also equal the compiled `K_MAX` of every pattern that declares it,
+  because `K_MAX` is a compile-time constant (§4.6).
+
 Expected shape of the generated code for `sg_gather`, for illustration only:
 
 ```cpp
@@ -808,6 +849,12 @@ template <class Sink> BLZ_HD inline void sg_gather_trigger(const GraphView& g, c
 `blzc` also generates `registry.cpp`, which defines
 `const PatternInfo kPatterns[] = {{name, block, params[], cpu_fn, cuda_fn}, ...}`. At start-up,
 `blz` checks every pattern against the feature config, including E402.
+
+As implemented (P4), `PatternInfo` (`include/blz/registry.hpp`) holds `name`, `block`,
+`block_loc` (the `file:line:col` of the spec's `block:` value, used in E402), `file`,
+`span_param` (the one runtime parameter, set from the block's `window`), `consts`, `cpu` and
+`work`. P5 adds `cuda`. `registered_patterns()` returns the table in the order of `blzc`'s spec
+arguments.
 
 ---
 
@@ -936,6 +983,7 @@ applies to the warm-up. Construction and `set_params` happen outside the timer, 
 `fit()`, and every edge is sent exactly once. Reusing an instance changes the workload [X A29].
 
 It reports every point. `T_GFP_best` = the minimum over batch sizes at the highest thread count.
+P4 runs a reduced grid, recorded as D-14.
 
     speedup = T_GFP_best / T_BlazingAML
 
@@ -1039,7 +1087,10 @@ on ≥ 2,000 seeds in P1.
 - **Expansion fixture.** Expanding `tcyc.yaml` with `K_MAX = 5` MUST equal
   `tests/specs/expanded/tcyc_k5.yaml` (§6.5).
 - **Snapshot tests.** The generated `.cpp` and `.cu` for each library spec are compared with
-  `tests/snapshots/`. A changed snapshot needs an explicit `--update-snapshots`.
+  `tests/snapshots/`. A changed snapshot needs an explicit `--update-snapshots`. P4 has the CPU
+  files and `registry.cpp`. The fast test `blzc_snapshots` runs
+  `blzc patterns/*.yaml --snapshots tests/snapshots` in the source directory, which is also how
+  the build generates code, and the same command with `--update-snapshots` rewrites them.
 
 ### 13.5 Integration tests (label `slow`, run manually)
 
@@ -1066,8 +1117,15 @@ blz fuzz     --seeds a:b [--bins 2..33] [--k-max 64] --out data/fuzz/
 blz train    --graph ... --features features/<run>/ --set xgb_only|fan|fan_deg|fan_deg_cyc|all
              --xgb configs/xgb_default.yaml --out results/<run>.json
 blz bench    --graph ... --config ... --backend cpu|cuda --threads 1,2,4,6,8,12 --reps 5 --out ...
+             [--schedule dynamic,sorted] [--blocks ...] [--name key]
+blz fuzz-diff --seeds a:b [--bins 2..33] [--report r.json --name key]
 blzc         patterns/<p>.yaml... --out <dir> [--check-only | --dump-ir | --expand] [--const NAME=V]
+blzc         patterns/<p>.yaml... --snapshots <dir> [--update-snapshots]
 ```
+
+`blz fuzz-diff` (P4) compares the generated CPU backend with the oracle on the §13.3 graphs,
+every row of every block, under both schedules (AC1). `blz bench` merges its result into `--out`
+under `--name` (default `cpu`).
 
 ---
 
@@ -1176,6 +1234,45 @@ Code generation (`blzc` without a mode flag) is P4.
 - E4 on `local`, with GFP timing on `local`.
 
 **Exit:** AC1 (CPU) and E4 published.
+
+**Outcome (2026-11-11).** For each library spec, `blzc` writes `<stem>.hpp` (the trigger
+template and its work estimate, both `BLZ_HD` so P5 can reuse them) and `<stem>_cpu.cpp` (the
+OpenMP driver). It also writes `registry.cpp`. The build runs `blzc` on the specs. The 15
+generated files are snapshotted in `tests/snapshots/` (fast test `blzc_snapshots`).
+`blz mine --backend cpu`, `blz bench` and `blz fuzz-diff` run the generated code over the shared
+index (§5.3). Rules this phase pinned down are in §6.7 (E102 for duplicate pattern names, E501),
+§7.4 and §7.6 ("As implemented").
+
+**AC1 (CPU) holds** (`bench/ac1_cpu.sh`, `results/e1_parity.json`):
+
+- On HI-Small, all six blocks equal the oracle bit for bit under two runs:
+  - the default config, at 12 threads with `dynamic`;
+  - the parity config, at 1 thread with `sorted`.
+- On 10,000 fuzz graphs (2,053,897 edges), both schedules give 0 mismatching rows.
+
+**E4** is in `results/e4_cpu_local.{json,md}`.
+
+- With `dynamic`, the six blocks take 17.2 s at 1 thread and 2.67 s at 12 threads (6.4×).
+  fan_out is about 63% of the total.
+- `sorted` is slower for every block except tcyc (0.383 s against 0.394 s at 12 threads), so
+  `dynamic` stays the default.
+- GFP (snapml 1.17.2, reduced grid, D-14): `T_GFP_best` is 98.9 s for fan, 85.0 s for degree,
+  31.7 s for sg and 18.0 s for tcyc.
+- Speedups at 12 threads are 56× (fan), 409× (degree), 109× (sg) and 46× (tcyc). At 1 thread
+  they are 9×, 73×, 16× and 6×.
+
+Caveats (also under "Measurement notes" in `results/e4_cpu_local.md`):
+
+- `local` is a shared desktop. At 12 threads, fan_out measured 1.21–1.70 s across runs. The table
+  keeps the 1.70 s value from the full sweep, which is the conservative figure. The cores held
+  about 3.8 GHz under load, so this is not throttling.
+- GFP degree is bimodal on an idle machine: each run takes about 85 s or about 300 s. At batch
+  2048 and 12 threads the runs took 84.9, 85.0 and 305.0 s. At batch 65536 they took about 296 s
+  at 12 threads but 120 s at 4 threads. The degree speedup therefore depends on which mode the
+  `T_GFP_best` runs hit.
+- The GFP temp-cycle points overlapped an unrelated workload on 2 of the 12 hardware threads.
+  One idle-machine run before the grid took 15.7 s at 12 threads (batch 65536), which gives
+  about 40× rather than 46×. A re-run was also disturbed, so it is not used.
 
 ### P5 — CUDA backend
 
@@ -1304,3 +1401,4 @@ Only the non-empty outputs are listed. `{size: count}` gives the histogram.
 | D-11 | XGBoost library defaults, threshold 0.5. |
 | D-12 | The GFP harness (parity and fuzz) sends ts + 1, to avoid the ts-0 self-loop artifact [X A33]. Our semantics keep the cycle. |
 | D-13 | XGBoost is built CPU-only in every preset. Training takes < 20 s per set on `local` (P2), while the CUDA build of XGBoost takes hours there and would be rebuilt on every temporary A30 instance. |
+| D-14 | The GFP timing grid (§11.2) is reduced. Both batch sizes run at the highest thread count, 3 runs each; that thread count defines `T_GFP_best`. The other thread counts use batch 65536 only, 1 run each, and there is no warm-up run. One GFP traversal of HI-Small takes 16–120 s per pattern at 12 threads (fan is the slowest), so the full grid with a warm-up and 5 runs would take about 10 h on `local`. The reduced grid takes about 1.5 h. `bench_gfp.py` flags restore the full grid. |

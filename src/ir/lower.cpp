@@ -66,7 +66,9 @@ class Lowerer {
     Pattern p;
     p.name = s_.pattern.s;
     p.block = s_.block.s;
+    p.name_loc = s_.pattern.loc;
     p.block_loc = s_.block.loc;
+    p.visibility_loc = s_.visibility_loc;
     p.file = s_.file;
     p.span_param = s_.span.s;
     p.lower_open = s_.lower_open;

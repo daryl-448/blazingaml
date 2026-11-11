@@ -66,6 +66,7 @@ struct Spec {
   Name span;  // the window's span parameter
   bool lower_open = false;
   Visibility visibility = Visibility::stream;
+  Loc visibility_loc;  // the `visibility:` value, if given
   Name trig_edge, trig_src, trig_dst;
   std::vector<Constraint> constraints;  // trigger level, skip_if only
   std::vector<Stage> stages;

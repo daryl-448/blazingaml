@@ -16,17 +16,30 @@ add_executable(blz_unit_tests
   unit/test_dsl_expr.cpp
   unit/test_dsl_expand.cpp
   unit/test_dsl_lower.cpp
-  unit/test_dsl_specs.cpp)
-target_link_libraries(blz_unit_tests PRIVATE blz_core blz_dsl Catch2::Catch2WithMain)
+  unit/test_dsl_specs.cpp
+  unit/test_index.cpp
+  unit/test_cpu_backend.cpp
+  unit/test_codegen.cpp)
+target_link_libraries(blz_unit_tests PRIVATE blz_core blz_codegen Catch2::Catch2WithMain)
 target_compile_definitions(blz_unit_tests PRIVATE
   BLZ_TEST_TMPDIR="${CMAKE_CURRENT_BINARY_DIR}/tmp"
   BLZ_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 catch_discover_tests(blz_unit_tests PROPERTIES LABELS fast)
 
 # SPEC §16 P3: the front end accepts the whole pattern library.
-file(GLOB BLZ_PATTERN_SPECS CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/patterns/*.yaml)
 add_test(NAME blzc_check_library COMMAND blzc --check-only ${BLZ_PATTERN_SPECS})
 set_tests_properties(blzc_check_library PROPERTIES LABELS fast)
+
+# SPEC §13.4: the generated code equals tests/snapshots/. After reviewing a change, update with
+#   (cd <source> && blzc patterns/*.yaml --snapshots tests/snapshots --update-snapshots)
+add_test(NAME blzc_snapshots
+  COMMAND blzc ${BLZ_PATTERN_SPECS_REL} --snapshots tests/snapshots
+  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+set_tests_properties(blzc_snapshots PROPERTIES LABELS fast)
+
+# AC1 (SPEC §13.3): generated CPU vs oracle on 10,000 fuzz graphs, both schedules.
+add_test(NAME fuzz_diff_cpu_10k COMMAND blz fuzz-diff --seeds 0:10000)
+set_tests_properties(fuzz_diff_cpu_10k PROPERTIES LABELS slow)
 
 # HI-Small checks (SPEC §13.5): run manually with `ctest -L slow`.
 set(BLZ_HI_SMALL_CSV "${PROJECT_SOURCE_DIR}/dataset/HI-Small_Trans.csv")

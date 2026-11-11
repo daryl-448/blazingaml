@@ -95,7 +95,7 @@ struct Plan {
 
 struct Pattern {
   std::string name, block, file;
-  Loc block_loc;
+  Loc name_loc, block_loc, visibility_loc;
   std::string span_param;      // runtime int parameter: the window span (the block's window)
   bool lower_open = false;
   Visibility visibility = Visibility::stream;

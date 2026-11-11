@@ -1,0 +1,101 @@
+#include "runtime/cpu_backend.hpp"
+
+#include <algorithm>
+#include <chrono>
+#include <cstring>
+#include <numeric>
+#include <stdexcept>
+
+#include "runtime/registration.hpp"
+
+namespace blz {
+
+namespace {
+
+using Clock = std::chrono::steady_clock;
+double since(Clock::time_point a) { return std::chrono::duration<double>(Clock::now() - a).count(); }
+
+const ConstInfo* find_const(const PatternInfo& p, const char* name) {
+  for (const ConstInfo& c : p.consts)
+    if (std::strcmp(c.name, name) == 0) return &c;
+  return nullptr;
+}
+
+}  // namespace
+
+const char* schedule_name(Schedule s) { return s == Schedule::sorted ? "sorted" : "dynamic"; }
+
+Schedule parse_schedule(const std::string& s) {
+  if (s == "dynamic") return Schedule::dynamic;
+  if (s == "sorted") return Schedule::sorted;
+  throw std::runtime_error("--schedule must be dynamic or sorted, got '" + s + "'");
+}
+
+std::vector<const PatternInfo*> patterns_for(Block b) {
+  std::vector<const PatternInfo*> out;
+  for (const PatternInfo& p : registered_patterns())
+    if (block_name(b) == p.block) out.push_back(&p);
+  return out;
+}
+
+void check_backend_config(const FeatureConfig& cfg, const std::string& config_name) {
+  std::vector<PatternRef> refs;
+  for (const PatternInfo& p : registered_patterns()) refs.push_back({p.name, p.block, p.block_loc});
+  check_registration(refs, cfg, config_name);
+  for (const PatternInfo& p : registered_patterns())
+    if (const ConstInfo* k = find_const(p, "K_MAX"); k && k->value != cfg.k_max)
+      throw std::runtime_error(std::string(p.file) + ": pattern '" + p.name + "' was compiled with K_MAX = " +
+                               std::to_string(k->value) + ", but " + config_name + " has k_max: " +
+                               std::to_string(cfg.k_max));
+}
+
+int compiled_k_max() {
+  int k = -1;
+  for (const PatternInfo& p : registered_patterns())
+    if (const ConstInfo* c = find_const(p, "K_MAX")) {
+      if (k >= 0 && k != c->value) throw std::runtime_error("patterns were compiled with different K_MAX values");
+      k = int(c->value);
+    }
+  if (k < 0) throw std::runtime_error("no registered pattern declares K_MAX");
+  return k;
+}
+
+CpuBlockTiming mine_cpu(const GraphView& g, Block b, const BlockParams& p, std::uint64_t first,
+                        std::uint64_t last, Schedule schedule, std::uint32_t* out) {
+  const auto pats = patterns_for(b);
+  if (pats.empty()) throw std::runtime_error("no registered pattern emits into block " + std::string(block_name(b)));
+  if (first > last || last > g.m) throw std::invalid_argument("mine_cpu: bad trigger range");
+  const Params params{p.window};
+  BlockOut bo{out, first, p.bins.data(), std::uint32_t(p.bins.size()), 0};
+  CpuBlockTiming timing;
+  const std::size_t count = last - first;
+  std::vector<std::uint32_t> triggers(count);
+  std::vector<std::uint32_t> work(schedule == Schedule::sorted ? count : 0);
+  for (const PatternInfo* pat : pats) {
+    auto t0 = Clock::now();
+    if (schedule == Schedule::dynamic) {
+      if (pat == pats.front()) std::iota(triggers.begin(), triggers.end(), std::uint32_t(first));
+    } else {
+      // Descending work, ties in eid order: a stable counting sort on the work estimate (a
+      // window size, so at most m).
+      std::uint32_t max_work = 0;
+#pragma omp parallel for schedule(static) reduction(max : max_work)
+      for (std::int64_t i = 0; i < std::int64_t(count); ++i) {
+        work[std::size_t(i)] = pat->work(g, params, std::uint32_t(first + std::uint64_t(i)));
+        max_work = std::max(max_work, work[std::size_t(i)]);
+      }
+      std::vector<std::uint64_t> start(std::size_t(max_work) + 2, 0);  // by max_work - work
+      for (std::uint32_t w : work) ++start[max_work - w + 1];
+      std::partial_sum(start.begin(), start.end(), start.begin());
+      for (std::size_t i = 0; i < count; ++i) triggers[start[max_work - work[i]]++] = std::uint32_t(first + i);
+    }
+    timing.schedule_seconds += since(t0);
+    auto t1 = Clock::now();
+    pat->cpu(g, params, triggers, bo, schedule == Schedule::sorted ? kSortedChunk : kDynamicChunk);
+    timing.loop_seconds += since(t1);
+  }
+  timing.saturated = bo.saturated;
+  return timing;
+}
+
+}  // namespace blz

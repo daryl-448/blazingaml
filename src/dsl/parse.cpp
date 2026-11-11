@@ -253,6 +253,7 @@ Spec parse_spec(const YNode& root, const std::string& file) {
 
   if (const YNode* v = root.get("visibility")) {
     scalar_of(*v, "'visibility'");
+    s.visibility_loc = v->loc;
     if (v->scalar == "stream") s.visibility = Visibility::stream;
     else if (v->scalar == "timestamp") s.visibility = Visibility::timestamp;
     else fail("E101", v->loc, "visibility must be stream or timestamp, found '" + v->scalar + "'");
