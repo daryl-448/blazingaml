@@ -1,10 +1,21 @@
 // The CPU emitter (SPEC §7.4): planned IR -> <pattern>_trigger, <pattern>_work and the OpenMP
 // driver <pattern>_cpu. The trigger body is built only from the §5.3 primitives and is BLZ_HD,
-// so the CUDA backend (P5) compiles the same text.
+// so the CUDA light kernel compiles the same text. The same lowering, in warp mode, also writes
+// the CUDA heavy kernel's body <pattern>_trigger_warp (SPEC §7.5, used by cuda_emitter.cpp).
 //
 // Lowering, per IR level (§7.2): a binding stage opens a loop, its level's check stages run once
 // per binding in spec order, and the next level nests inside. Node filters `continue` (or skip an
 // element); a failed gate skips the rest of its level (`continue`, or `return` at the root).
+//
+// Warp mode (one warp per trigger, `lane` in 0..31) changes only the root level and the first
+// binding stage (Plan::split_stage):
+//   - the first binding stage's scan is strided over the lanes, so the lanes own disjoint
+//     bindings and every stage nested in them runs unchanged in the lane that owns the binding;
+//   - with no binding stage, the root count named by split_stage is strided over the lanes and
+//     its raw count summed across the warp (cuda::warp_sum) before anything reads it;
+//   - every other root check emits on lane 0 only. A root check that nothing else reads (no
+//     gate, no output used by another stage) runs on lane 0 only; otherwise every lane evaluates
+//     it, so its result and its gate are the same in every lane and need no broadcast.
 #include <map>
 #include <set>
 
@@ -70,6 +81,12 @@ class CpuEmitter {
     w.line("void " + fn("cpu") +
            "(const GraphView& g, const Params& p, std::span<const std::uint32_t> triggers, BlockOut& out, int chunk);");
     w.line();
+    w.line("// The CUDA launchers (" + p_.name + "_cuda.cu, built with BLZ_ENABLE_CUDA).");
+    w.line("void " + fn("cuda_bucket") +
+           "(const GraphView& g, const Params& p, std::uint64_t first, std::uint32_t count, std::uint32_t threshold, "
+           "std::uint8_t* flags, void* stream);");
+    w.line("void " + fn("cuda") + "(const GraphView& g, const Params& p, const CudaRun& run);");
+    w.line();
     w.line("}  // namespace blz::gen");
     return w.str();
   }
@@ -100,6 +117,15 @@ class CpuEmitter {
     return w.str();
   }
 
+  // The CUDA heavy kernel's body (SPEC §7.5): <pattern>_trigger_warp, device code.
+  std::string warp_fn() {
+    Writer w;
+    warp_ = true;
+    trigger_fn(w);
+    warp_ = false;
+    return w.str();
+  }
+
  private:
   std::string fn(const char* what) const { return p_.name + "_" + what; }
 
@@ -125,24 +151,48 @@ class CpuEmitter {
   std::string witness(const std::string& edge) { return edge == p_.e0 ? "t" : id("ts_", edge); }
 
   // --- what the body refers to ----------------------------------------------------------------
-  void collect(const Expr& e) {
-    if (e.k == Expr::K::Name && e.sym == Sym::node) used_.insert(e.name);
-    if (e.k == Expr::K::Name && e.sym == Sym::int_var) used_.insert(e.name);
-    if (e.k == Expr::K::EdgeT || e.k == Expr::K::Len) used_.insert(e.name);
-    for (const Expr& k : e.kids) collect(k);
+  static void refs(const Expr& e, std::set<std::string>& into) {
+    if (e.k == Expr::K::Name && e.sym == Sym::node) into.insert(e.name);
+    if (e.k == Expr::K::Name && e.sym == Sym::int_var) into.insert(e.name);
+    if (e.k == Expr::K::EdgeT || e.k == Expr::K::Len) into.insert(e.name);
+    for (const Expr& k : e.kids) refs(k, into);
   }
-  void collect(const Stage& s) {
-    for (const Expr& f : s.filters) collect(f);
+  // The names stage s reads: its filters, its operands' nodes and bounds, its probe and its emit.
+  static void refs(const Stage& s, std::set<std::string>& into) {
+    for (const Expr& f : s.filters) refs(f, into);
     for (const Operand& o : s.operands) {
-      used_.insert(o.node);
-      for (const Expr& x : o.lo_incl) collect(x);
-      for (const Expr& x : o.hi_incl) collect(x);
+      into.insert(o.node);
+      for (const Expr& x : o.lo_incl) refs(x, into);
+      for (const Expr& x : o.hi_incl) refs(x, into);
     }
-    if (!s.probe_node.empty()) used_.insert(s.probe_node);
-    if (s.emit) collect(s.emit->size);
+    if (!s.probe_node.empty()) into.insert(s.probe_node);
+    if (s.emit) refs(s.emit->size, into);
+  }
+  void collect(const Expr& e) { refs(e, used_); }
+  void collect(const Stage& s) {
+    refs(s, used_);
     if (s.emit) has_emit_ = true;
   }
   bool used(const std::string& name) const { return used_.count(name) != 0; }
+
+  // Warp mode: whether no other stage and no trigger filter reads what root check s defines, and
+  // s has no gate, so it can run on lane 0 alone. Names are unique per spec (E102).
+  bool lane0_only(const Stage& s) const {
+    if (s.gate) return false;
+    std::set<std::string> defs = {s.output_var, s.element_var, s.bind_var};
+    for (const Operand& o : s.operands) defs.insert(o.edge);
+    defs.erase("");
+    std::set<std::string> others;
+    for (const Expr& f : p_.trigger_filters) refs(f, others);
+    for (const Level& lv : p_.levels) {
+      if (lv.binding) refs(*lv.binding, others);
+      for (const Stage& t : lv.checks)
+        if (&t != &s) refs(t, others);
+    }
+    for (const std::string& d : defs)
+      if (others.count(d)) return false;
+    return true;
+  }
 
   // --- expressions -------------------------------------------------------------------------
   static std::string lit(std::int64_t v) {
@@ -215,11 +265,12 @@ class CpuEmitter {
 
   // --- emits -------------------------------------------------------------------------------
   // emit {size, min_size} (SPEC §6.6): +1 at bin(size) when size >= max(min_size, 2). A check
-  // stage emits only when it passed (`guard`).
-  void emit_stmt(Writer& w, const ir::Emit& em, const std::string& guard) {
+  // stage emits only when it passed (`guard`). Warp mode: root emits also need `lane == 0`.
+  void emit_stmt(Writer& w, const ir::Emit& em, const std::string& guard, bool lane0 = false) {
     const std::string size = cx(em.size);
     const bool constant = em.size.k == Expr::K::Int || (em.size.k == Expr::K::Name && em.size.sym == Sym::constant);
-    std::string cond = guard;
+    std::string cond = lane0 ? "lane == 0" : "";
+    if (!guard.empty()) cond += (cond.empty() ? "" : " && ") + guard;
     if (constant) {
       if (em.size.ival < em.min_size) {
         w.line("// emit " + size + " is below the minimum size " + std::to_string(em.min_size) + ": never emits");
@@ -253,8 +304,9 @@ class CpuEmitter {
 
   // --- check stages ------------------------------------------------------------------------
   // Writes the check, its emit and its gate. ok_<id> (the pass flag) exists only when the emit
-  // or the gate needs it.
-  void check(Writer& w, const Stage& s, bool root) {
+  // or the gate needs it. Warp mode: `lane0` guards the emit, and `split` strides a count's scan
+  // over the lanes and sums the partial counts across the warp.
+  void check(Writer& w, const Stage& s, bool root, bool lane0 = false, bool split = false) {
     notes(w, s);
     const bool need_ok = s.gate || s.emit.has_value();
     const std::string ok = id("ok_", s.id);
@@ -266,9 +318,17 @@ class CpuEmitter {
         const bool elem_used = !elem.empty() && used(s.element_var);
         const std::string keep = s.filters.empty() ? "return true;" : "return !(" + any_of(s.filters) + ");";
         const std::string out = id("i_", s.output_var);
-        w.line(std::string(used(s.output_var) || need_ok ? "" : "[[maybe_unused]] ") + "const std::int64_t " + out +
-               " = " + (s.multiplicity == Mult::distinct ? "count_distinct(" : "count_edges(") + tcsr(o.dir) + ", " +
-               id("r_", o.edge) + ", [&](std::uint32_t" + (elem_used ? " " + elem : "") + ") { " + keep + " });");
+        const std::string call = std::string(s.multiplicity == Mult::distinct ? "count_distinct(" : "count_edges(") +
+                                 tcsr(o.dir) + ", " + id("r_", o.edge) + ", [&](std::uint32_t" +
+                                 (elem_used ? " " + elem : "") + ") { " + keep + " }";
+        if (split) {
+          w.line("// heavy kernel: the lanes split this scan; the warp sums their raw counts before any use");
+          w.line("std::int64_t " + out + " = " + call + ", lane, cuda::kWarpSize);");
+          w.line(out + " = cuda::warp_sum(" + out + ");");
+        } else {
+          w.line(std::string(used(s.output_var) || need_ok ? "" : "[[maybe_unused]] ") + "const std::int64_t " + out +
+                 " = " + call + ");");
+        }
         if (need_ok) w.line("const bool " + ok + " = " + out + " != 0;");
         break;
       }
@@ -295,14 +355,28 @@ class CpuEmitter {
       }
       case Op::for_all: unsupported(s.loc, "for_all is a binding stage");
     }
-    if (s.emit) emit_stmt(w, *s.emit, ok);
+    if (s.emit) emit_stmt(w, *s.emit, ok, lane0);
     if (s.gate) w.line("if (!" + ok + ") " + (root ? "return;" : "continue;"));
+  }
+
+  // Warp mode, a root check (see the file comment).
+  void root_check_warp(Writer& w, const Stage& s) {
+    if (p_.plan.split_raw_count && s.id == p_.plan.split_stage) {
+      check(w, s, true, true, true);
+    } else if (lane0_only(s)) {
+      w.open("if (lane == 0) {  // heavy kernel: nothing else reads this root check, so lane 0 runs it alone");
+      check(w, s, true);
+      w.close();
+    } else {
+      w.line("// heavy kernel: every lane evaluates this root check (later stages read it); lane 0 emits");
+      check(w, s, true, true);
+    }
   }
 
   // The shared intersection loop (SPEC §7.3): scan the operand with the smaller window (T-CSR,
   // distinct-first), probe the other (P-CSR). Opens the loop; its body has bound `elem` and
   // passed the filters and the probe. The probe's witness is left in w_<id>.
-  void intersection_loop(Writer& w, const Stage& s, const std::string& elem) {
+  void intersection_loop(Writer& w, const Stage& s, const std::string& elem, bool split = false) {
     const Operand& a = s.operands[0];
     const Operand& b = s.operands[1];
     const std::string sid = s.id;
@@ -322,7 +396,9 @@ class CpuEmitter {
     w.line("const std::uint32_t " + px + " = " + sa + " ? " + node(b.node) + " : " + node(a.node) + ";");
     w.line("const std::int64_t " + plo + " = " + sa + " ? " + lb + " : " + la + ", " + phi + " = " + sa + " ? " + hb +
            " : " + ha + ";");
-    w.open("for (std::uint32_t " + j + " = " + R + ".lo; " + j + " < " + R + ".hi; ++" + j + ") {");
+    if (split) w.line("// heavy kernel: the lanes split this scan (stride 32); each lane owns its bindings");
+    w.open("for (std::uint32_t " + j + " = " + R + ".lo" + (split ? " + lane" : "") + "; " + j + " < " + R +
+           ".hi; " + (split ? j + " += cuda::kWarpSize" : "++" + j) + ") {");
     w.line("if (!" + L + ".distinct_first(" + j + ", " + R + ".lo)) continue;");
     w.line("const std::uint32_t " + elem + " = " + L + ".nbr[" + j + "];");
     for (const Expr& f : s.filters) w.line("if (" + cx(f) + ") continue;");
@@ -342,16 +418,19 @@ class CpuEmitter {
   }
 
   // --- binding stages ----------------------------------------------------------------------
-  // Opens the stage's loop; the caller closes it.
-  void binding(Writer& w, const Stage& s) {
+  // Opens the stage's loop; the caller closes it. `split` (warp mode, the first binding stage)
+  // strides the loop over the lanes.
+  void binding(Writer& w, const Stage& s, bool split = false) {
     notes(w, s);
     if (s.op == Op::intersection) {
-      intersection_loop(w, s, node(s.bind_var));
+      intersection_loop(w, s, node(s.bind_var), split);
     } else if (s.op == Op::for_all) {
       const Operand& o = s.operands[0];
       const std::string r = id("r_", o.edge), j = id("j_", o.edge), L = tcsr(o.dir);
       w.line(range_decl(o));
-      w.open("for (std::uint32_t " + j + " = " + r + ".lo; " + j + " < " + r + ".hi; ++" + j + ") {");
+      if (split) w.line("// heavy kernel: the lanes split this scan (stride 32); each lane owns its bindings");
+      w.open("for (std::uint32_t " + j + " = " + r + ".lo" + (split ? " + lane" : "") + "; " + j + " < " + r +
+             ".hi; " + (split ? j + " += cuda::kWarpSize" : "++" + j) + ") {");
       if (o.access == Access::scan_distinct) w.line("if (!" + L + ".distinct_first(" + j + ", " + r + ".lo)) continue;");
       if (used(s.bind_var))
         w.line("const std::uint32_t " + node(s.bind_var) + " = " + L + ".nbr[" + j + "];");
@@ -365,17 +444,29 @@ class CpuEmitter {
 
   void level(Writer& w, std::size_t i) {
     const Level& lv = p_.levels[i];
-    if (lv.binding) binding(w, *lv.binding);
-    for (const Stage& s : lv.checks) check(w, s, i == 0);
+    if (lv.binding) binding(w, *lv.binding, warp_ && lv.binding->id == p_.plan.split_stage);
+    for (const Stage& s : lv.checks) {
+      if (warp_ && i == 0) root_check_warp(w, s);
+      else check(w, s, i == 0);
+    }
     if (i + 1 < p_.levels.size()) level(w, i + 1);
     if (lv.binding) w.close();
   }
 
   void trigger_fn(Writer& w) {
-    w.line("// One trigger's instances (SPEC §4.1): every emit adds to row e of block " + p_.block + ".");
-    w.line("template <class Sink>");
-    w.open("BLZ_HD inline void " + fn("trigger") + "(const GraphView& g, const Params& p, std::uint32_t e, Sink& " +
-           (has_emit_ ? "out" : "[[maybe_unused]] out") + ") {");
+    const std::string sink = std::string("Sink& ") + (has_emit_ ? "out" : "[[maybe_unused]] out");
+    if (warp_) {
+      w.line("// The heavy kernel's body (SPEC §7.5): trigger e on one warp, this thread being lane `lane`.");
+      w.line("// The lanes' emits together equal " + fn("trigger") + "'s.");
+      w.line("template <class Sink>");
+      w.open("__device__ inline void " + fn("trigger_warp") +
+             "(const GraphView& g, const Params& p, std::uint32_t e, std::uint32_t lane, " + sink + ") {");
+    } else {
+      w.line("// One trigger's instances (SPEC §4.1): every emit adds to row e of block " + p_.block + ".");
+      w.line("template <class Sink>");
+      w.open("BLZ_HD inline void " + fn("trigger") + "(const GraphView& g, const Params& p, std::uint32_t e, " + sink +
+             ") {");
+    }
     prologue(w, used(p_.src_var), used(p_.dst_var));
     for (const Expr& f : p_.trigger_filters) w.line("if (" + cx(f) + ") return;");
     level(w, 0);
@@ -422,6 +513,7 @@ class CpuEmitter {
   std::set<std::string> taken_;
   std::set<std::string> used_;
   bool has_emit_ = false;
+  bool warp_ = false;
 };
 
 }  // namespace
@@ -434,5 +526,11 @@ std::vector<GeneratedFile> emit_cpu(const ir::Pattern& p, const std::string& ste
   out.push_back({stem + "_cpu.cpp", em.driver(p.file, hdr)});
   return out;
 }
+
+namespace detail {
+
+std::string warp_trigger_fn(const ir::Pattern& p) { return CpuEmitter(p).warp_fn(); }
+
+}  // namespace detail
 
 }  // namespace blz::codegen

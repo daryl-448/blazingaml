@@ -1,0 +1,745 @@
+Using CPython 3.10.22 interpreter at: /root/miniconda3/envs/py3.10/bin/python
+Creating virtual environment with seed packages at: .venv
+ + packaging==26.3
+ + pip==26.3
+ + setuptools==84.2.1
+ + wheel==0.48.0
+Activate with: source .venv/bin/activate
+[jl] No dependency file detected, using template packages
++ W=/home/blz
++ cd /home/blz
++ set -a
++ . /home/blz/source.env
+++ BLZ_GIT_SHA=a716c853eb762fd282af9a60952c83515265499e
+++ BLZ_GIT_DIRTY=1
++ set +a
++ rm -rf repo
++ mkdir -p repo
++ tar -xzf repo.tgz -C repo
++ mkdir -p repo/data repo/results
++ ln -sf /home/blz/hi_small.blzg repo/data/hi_small.blzg
++ ln -sf /home/blz/edges.npy repo/data/edges.npy
++ cd repo
+++ nproc
++ NP=16
++ python3 -m venv /home/blz/venv
++ /home/blz/venv/bin/pip install --quiet 'cmake>=3.28' ninja uv
+
+[notice] A new release of pip is available: 23.0.1 -> 26.3
+[notice] To update, run: python3 -m pip install --upgrade pip
++ export PATH=/home/blz/venv/bin:/usr/local/cuda/bin:/home/.venv/bin:/home/.local/bin:/root/miniconda3/envs/py3.10/bin:/root/miniconda3/bin:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
++ PATH=/home/blz/venv/bin:/usr/local/cuda/bin:/home/.venv/bin:/home/.local/bin:/root/miniconda3/envs/py3.10/bin:/root/miniconda3/bin:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
++ CXX=g++
+++ g++ -dumpversion
+++ cut -d. -f1
++ '[' 11 -lt 12 ']'
++ for v in 14 13 12
++ command -v g++-14
++ for v in 14 13 12
++ command -v g++-13
++ for v in 14 13 12
++ command -v g++-12
++ '[' g++ = g++ ']'
++ apt-get update -qq
++ apt-get install -y -qq g++-12
+debconf: delaying package configuration, since apt-utils is not installed
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 30307 files and directories currently installed.)
+Preparing to unpack .../libatomic1_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libatomic1:amd64 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04) ...
+Preparing to unpack .../libubsan1_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libubsan1:amd64 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04) ...
+Preparing to unpack .../gcc-12-base_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking gcc-12-base:amd64 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04) ...
+Setting up gcc-12-base:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 30307 files and directories currently installed.)
+Preparing to unpack .../libstdc++6_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libstdc++6:amd64 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04) ...
+Setting up libstdc++6:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 30307 files and directories currently installed.)
+Preparing to unpack .../0-libquadmath0_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libquadmath0:amd64 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04) ...
+Preparing to unpack .../1-liblsan0_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking liblsan0:amd64 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04) ...
+Preparing to unpack .../2-libitm1_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libitm1:amd64 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04) ...
+Preparing to unpack .../3-libgomp1_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libgomp1:amd64 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04) ...
+Preparing to unpack .../4-libcc1-0_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libcc1-0:amd64 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04) ...
+Preparing to unpack .../5-libgcc-s1_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libgcc-s1:amd64 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04) ...
+Setting up libgcc-s1:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Selecting previously unselected package cpp-12.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 30307 files and directories currently installed.)
+Preparing to unpack .../0-cpp-12_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking cpp-12 (12.3.0-1ubuntu1~22.04.3) ...
+Selecting previously unselected package libasan8:amd64.
+Preparing to unpack .../1-libasan8_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libasan8:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Selecting previously unselected package libtsan2:amd64.
+Preparing to unpack .../2-libtsan2_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libtsan2:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Selecting previously unselected package libgcc-12-dev:amd64.
+Preparing to unpack .../3-libgcc-12-dev_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libgcc-12-dev:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Selecting previously unselected package gcc-12.
+Preparing to unpack .../4-gcc-12_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking gcc-12 (12.3.0-1ubuntu1~22.04.3) ...
+Selecting previously unselected package libstdc++-12-dev:amd64.
+Preparing to unpack .../5-libstdc++-12-dev_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libstdc++-12-dev:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Selecting previously unselected package g++-12.
+Preparing to unpack .../6-g++-12_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking g++-12 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up cpp-12 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up libgomp1:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up libquadmath0:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up libatomic1:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up libubsan1:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up libasan8:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up libtsan2:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up libcc1-0:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up liblsan0:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up libitm1:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up libgcc-12-dev:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up libstdc++-12-dev:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up gcc-12 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up g++-12 (12.3.0-1ubuntu1~22.04.3) ...
+Processing triggers for libc-bin (2.35-0ubuntu3.8) ...
++ CXX=g++-12
+++ command -v nvcc
++ NVCC=/usr/local/cuda/bin/nvcc
++ cuda_ok
++ '[' -n /usr/local/cuda/bin/nvcc ']'
++ local v
+++ /usr/local/cuda/bin/nvcc --version
+++ sed -n 's/.*release \([0-9]*\)\.\([0-9]*\).*/\1 \2/p'
++ v='12 6'
++ set -- 12 6
++ '[' 12 -gt 12 ']'
++ '[' 12 -eq 12 ']'
++ '[' 6 -ge 4 ']'
++ g++-12 --version
++ head -1
+g++-12 (Ubuntu 12.3.0-1ubuntu1~22.04.3) 12.3.0
++ /usr/local/cuda/bin/nvcc --version
++ tail -2
+Cuda compilation tools, release 12.6, V12.6.77
+Build cuda_12.6.r12.6/compiler.34841621_0
++ cmake --version
++ head -1
+cmake version 4.4.4
++ cmake --preset rel-cuda -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc -DCMAKE_CUDA_ARCHITECTURES=80 -DBLZ_WITH_XGBOOST=OFF -DCMAKE_CXX_COMPILER=g++-12 -DCMAKE_CUDA_HOST_COMPILER=g++-12
+-- The CXX compiler identification is GNU 12.3.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/g++-12 - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- The CUDA compiler identification is NVIDIA 12.6.77 with host compiler GNU 12.3.0
+-- Detecting CUDA compiler ABI info
+-- Detecting CUDA compiler ABI info - done
+-- Check for working CUDA compiler: /usr/local/cuda/bin/nvcc - skipped
+-- Detecting CUDA compile features
+-- Detecting CUDA compile features - done
+-- Found CUDAToolkit: /usr/local/cuda/targets/x86_64-linux/include (found version "12.6.77")
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE
+-- Found OpenMP_CXX: -fopenmp (found version "4.5")
+-- Found OpenMP: TRUE (found version "4.5") found components: CXX
+-- Using the multi-header code from /home/blz/repo/build/rel-cuda/_deps/nlohmann_json-src/include/
+-- Performing Test HAVE_FLAG__ffile_prefix_map__home_blz_repo_build_rel_cuda__deps_catch2_src__
+-- Performing Test HAVE_FLAG__ffile_prefix_map__home_blz_repo_build_rel_cuda__deps_catch2_src__ - Success
+-- Configuring done (21.9s)
+-- Generating done (0.1s)
+-- Build files have been written to: /home/blz/repo/build/rel-cuda
++ cmake --build build/rel-cuda -j16
+[0/2] Re-checking globbed directories...
+[1/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/directives.cpp.o
+[2/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/exceptions.cpp.o
+[3/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/binary.cpp.o
+[4/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/null.cpp.o
+[5/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/depthguard.cpp.o
+[6/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/node.cpp.o
+[7/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/exp.cpp.o
+[8/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/emit.cpp.o
+[9/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/memory.cpp.o
+[10/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/emitterstate.cpp.o
+[11/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/emitfromevents.cpp.o
+[12/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/ostream_wrapper.cpp.o
+[13/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/nodebuilder.cpp.o
+[14/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/emitter.cpp.o
+[15/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/fptostring.cpp.o
+[16/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/node_data.cpp.o
+[17/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/convert.cpp.o
+[18/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/regex_yaml.cpp.o
+[19/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/nodeevents.cpp.o
+[20/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/parser.cpp.o
+[21/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/parse.cpp.o
+[22/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/simplekey.cpp.o
+[23/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/stream.cpp.o
+[24/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/tag.cpp.o
+[25/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/scanscalar.cpp.o
+[26/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/singledocparser.cpp.o
+[27/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/scantag.cpp.o
+[28/215] Building CXX object CMakeFiles/blz_codegen.dir/src/codegen/cuda_emitter.cpp.o
+[29/215] Building CXX object CMakeFiles/blz_dsl.dir/src/ir/dump.cpp.o
+[30/215] Building CXX object CMakeFiles/blz_dsl.dir/src/ir/compile.cpp.o
+[31/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/scanner.cpp.o
+[32/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/benchmark/catch_chronometer.cpp.o
+[33/215] Building CXX object CMakeFiles/blz_codegen.dir/src/codegen/registry_emitter.cpp.o
+In file included from /usr/include/c++/12/string:40,
+                 from /home/blz/repo/src/codegen/codegen.hpp:2,
+                 from /home/blz/repo/src/codegen/registry_emitter.cpp:5:
+In static member function ‘static constexpr std::char_traits<char>::char_type* std::char_traits<char>::copy(char_type*, const char_type*, std::size_t)’,
+    inlined from ‘static constexpr void std::__cxx11::basic_string<_CharT, _Traits, _Alloc>::_S_copy(_CharT*, const _CharT*, size_type) [with _CharT = char; _Traits = std::char_traits<char>; _Alloc = std::allocator<char>]’ at /usr/include/c++/12/bits/basic_string.h:431:21,
+    inlined from ‘constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator>& std::__cxx11::basic_string<_CharT, _Traits, _Alloc>::_M_replace(size_type, size_type, const _CharT*, size_type) [with _CharT = char; _Traits = std::char_traits<char>; _Alloc = std::allocator<char>]’ at /usr/include/c++/12/bits/basic_string.tcc:532:22,
+    inlined from ‘constexpr std::__cxx11::basic_string<_CharT, _Traits, _Alloc>& std::__cxx11::basic_string<_CharT, _Traits, _Alloc>::replace(size_type, size_type, const _CharT*, size_type) [with _CharT = char; _Traits = std::char_traits<char>; _Alloc = std::allocator<char>]’ at /usr/include/c++/12/bits/basic_string.h:2179:19,
+    inlined from ‘constexpr std::__cxx11::basic_string<_CharT, _Traits, _Alloc>& std::__cxx11::basic_string<_CharT, _Traits, _Alloc>::insert(size_type, const _CharT*) [with _CharT = char; _Traits = std::char_traits<char>; _Alloc = std::allocator<char>]’ at /usr/include/c++/12/bits/basic_string.h:1936:22,
+    inlined from ‘constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const _CharT*, __cxx11::basic_string<_CharT, _Traits, _Allocator>&&) [with _CharT = char; _Traits = char_traits<char>; _Alloc = allocator<char>]’ at /usr/include/c++/12/bits/basic_string.h:3549:36,
+    inlined from ‘blz::codegen::GeneratedFile blz::codegen::emit_registry(const std::vector<blz::ir::Pattern>&, const std::vector<std::__cxx11::basic_string<char> >&)’ at /home/blz/repo/src/codegen/registry_emitter.cpp:59:16:
+/usr/include/c++/12/bits/char_traits.h:435:56: warning: ‘void* __builtin_memcpy(void*, const void*, long unsigned int)’ accessing 9223372036854775810 or more bytes at offsets [2, 9223372036854775807] and 1 may overlap up to 9223372036854775813 bytes at offset -3 [-Wrestrict]
+  435 |         return static_cast<char_type*>(__builtin_memcpy(__s1, __s2, __n));
+      |                                        ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~
+[34/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/emitterutils.cpp.o
+[35/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/generators/catch_generator_exception.cpp.o
+[36/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/benchmark/catch_benchmark.cpp.o
+[37/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/benchmark/detail/catch_analyse.cpp.o
+[38/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/benchmark/detail/catch_benchmark_function.cpp.o
+[39/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/benchmark/detail/catch_run_for_at_least.cpp.o
+[40/215] Building CXX object CMakeFiles/blz_dsl.dir/src/dsl/expand.cpp.o
+[41/215] Building CXX object CMakeFiles/blz_dsl.dir/src/dsl/ynode.cpp.o
+In file included from /usr/include/c++/12/string:40,
+                 from /home/blz/repo/src/dsl/ynode.hpp:2,
+                 from /home/blz/repo/src/dsl/ynode.cpp:1:
+In static member function ‘static constexpr std::char_traits<char>::char_type* std::char_traits<char>::copy(char_type*, const char_type*, std::size_t)’,
+    inlined from ‘static constexpr void std::__cxx11::basic_string<_CharT, _Traits, _Alloc>::_S_copy(_CharT*, const _CharT*, size_type) [with _CharT = char; _Traits = std::char_traits<char>; _Alloc = std::allocator<char>]’ at /usr/include/c++/12/bits/basic_string.h:431:21,
+    inlined from ‘constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator>& std::__cxx11::basic_string<_CharT, _Traits, _Alloc>::_M_replace(size_type, size_type, const _CharT*, size_type) [with _CharT = char; _Traits = std::char_traits<char>; _Alloc = std::allocator<char>]’ at /usr/include/c++/12/bits/basic_string.tcc:532:22,
+    inlined from ‘constexpr std::__cxx11::basic_string<_CharT, _Traits, _Alloc>& std::__cxx11::basic_string<_CharT, _Traits, _Alloc>::replace(size_type, size_type, const _CharT*, size_type) [with _CharT = char; _Traits = std::char_traits<char>; _Alloc = std::allocator<char>]’ at /usr/include/c++/12/bits/basic_string.h:2179:19,
+    inlined from ‘constexpr std::__cxx11::basic_string<_CharT, _Traits, _Alloc>& std::__cxx11::basic_string<_CharT, _Traits, _Alloc>::insert(size_type, const _CharT*) [with _CharT = char; _Traits = std::char_traits<char>; _Alloc = std::allocator<char>]’ at /usr/include/c++/12/bits/basic_string.h:1936:22,
+    inlined from ‘constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const _CharT*, __cxx11::basic_string<_CharT, _Traits, _Allocator>&&) [with _CharT = char; _Traits = char_traits<char>; _Alloc = allocator<char>]’ at /usr/include/c++/12/bits/basic_string.h:3549:36,
+    inlined from ‘std::string blz::dsl::format_loc(const Loc&)’ at /home/blz/repo/src/dsl/ynode.cpp:10:14:
+/usr/include/c++/12/bits/char_traits.h:435:56: warning: ‘void* __builtin_memcpy(void*, const void*, long unsigned int)’ accessing 9223372036854775810 or more bytes at offsets [2, 9223372036854775807] and 1 may overlap up to 9223372036854775813 bytes at offset -3 [-Wrestrict]
+  435 |         return static_cast<char_type*>(__builtin_memcpy(__s1, __s2, __n));
+      |                                        ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~
+In static member function ‘static constexpr std::char_traits<char>::char_type* std::char_traits<char>::copy(char_type*, const char_type*, std::size_t)’,
+    inlined from ‘static constexpr void std::__cxx11::basic_string<_CharT, _Traits, _Alloc>::_S_copy(_CharT*, const _CharT*, size_type) [with _CharT = char; _Traits = std::char_traits<char>; _Alloc = std::allocator<char>]’ at /usr/include/c++/12/bits/basic_string.h:431:21,
+    inlined from ‘constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator>& std::__cxx11::basic_string<_CharT, _Traits, _Alloc>::_M_replace(size_type, size_type, const _CharT*, size_type) [with _CharT = char; _Traits = std::char_traits<char>; _Alloc = std::allocator<char>]’ at /usr/include/c++/12/bits/basic_string.tcc:532:22,
+    inlined from ‘constexpr std::__cxx11::basic_string<_CharT, _Traits, _Alloc>& std::__cxx11::basic_string<_CharT, _Traits, _Alloc>::replace(size_type, size_type, const _CharT*, size_type) [with _CharT = char; _Traits = std::char_traits<char>; _Alloc = std::allocator<char>]’ at /usr/include/c++/12/bits/basic_string.h:2179:19,
+    inlined from ‘constexpr std::__cxx11::basic_string<_CharT, _Traits, _Alloc>& std::__cxx11::basic_string<_CharT, _Traits, _Alloc>::insert(size_type, const _CharT*) [with _CharT = char; _Traits = std::char_traits<char>; _Alloc = std::allocator<char>]’ at /usr/include/c++/12/bits/basic_string.h:1936:22,
+    inlined from ‘constexpr std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const _CharT*, __cxx11::basic_string<_CharT, _Traits, _Allocator>&&) [with _CharT = char; _Traits = char_traits<char>; _Alloc = allocator<char>]’ at /usr/include/c++/12/bits/basic_string.h:3549:36,
+    inlined from ‘std::string blz::dsl::format_loc(const Loc&)’ at /home/blz/repo/src/dsl/ynode.cpp:11:31:
+/usr/include/c++/12/bits/char_traits.h:435:56: warning: ‘void* __builtin_memcpy(void*, const void*, long unsigned int)’ accessing 9223372036854775810 or more bytes at offsets [2, 9223372036854775807] and 1 may overlap up to 9223372036854775813 bytes at offset -3 [-Wrestrict]
+  435 |         return static_cast<char_type*>(__builtin_memcpy(__s1, __s2, __n));
+      |                                        ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~
+[42/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/generators/catch_generators_throw.cpp.o
+[43/215] Building CXX object _deps/yaml-cpp-build/CMakeFiles/yaml-cpp.dir/src/scantoken.cpp.o
+[44/215] Linking CXX static library _deps/yaml-cpp-build/libyaml-cpp.a
+[45/215] Building CXX object CMakeFiles/blz_dsl.dir/src/dsl/parse.cpp.o
+[46/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/generators/catch_generators.cpp.o
+[47/215] Building CXX object CMakeFiles/blz_dsl.dir/src/dsl/expr.cpp.o
+[48/215] Building CXX object CMakeFiles/blz_dsl.dir/src/ir/plan.cpp.o
+[49/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/benchmark/detail/catch_stats.cpp.o
+[50/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_automake.cpp.o
+[51/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/generators/catch_generators_random.cpp.o
+[52/215] Building CXX object CMakeFiles/blz_dsl.dir/src/ir/lower.cpp.o
+[53/215] Linking CXX static library libblz_dsl.a
+[54/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_common_base.cpp.o
+[55/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_registrars.cpp.o
+[56/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_event_listener.cpp.o
+[57/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_compact.cpp.o
+[58/215] Building CXX object CMakeFiles/blz_codegen.dir/src/codegen/cpu_emitter.cpp.o
+[59/215] Linking CXX static library libblz_codegen.a
+[60/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/interfaces/catch_interfaces_capture.cpp.o
+[61/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_streaming_base.cpp.o
+[62/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/interfaces/catch_interfaces_config.cpp.o
+[63/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_console.cpp.o
+[64/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/interfaces/catch_interfaces_exception.cpp.o
+[65/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/interfaces/catch_interfaces_registry_hub.cpp.o
+[66/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/interfaces/catch_interfaces_testcase.cpp.o
+[67/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_teamcity.cpp.o
+[68/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_tap.cpp.o
+[69/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_cumulative_base.cpp.o
+[70/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_multi.cpp.o
+[71/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/interfaces/catch_interfaces_reporter_factory.cpp.o
+[72/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_sonarqube.cpp.o
+[73/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/interfaces/catch_interfaces_generatortracker.cpp.o
+[74/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_junit.cpp.o
+[75/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_helpers.cpp.o
+[76/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_json.cpp.o
+[77/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_xml.cpp.o
+[78/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_totals.cpp.o
+[79/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_tag_alias_autoregistrar.cpp.o
+[80/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_assertion_result.cpp.o
+[81/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_approx.cpp.o
+[82/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/interfaces/catch_interfaces_reporter.cpp.o
+[83/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_get_random_seed.cpp.o
+[84/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_timer.cpp.o
+[85/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_context.cpp.o
+[86/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_translate_exception.cpp.o
+[87/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_version.cpp.o
+[88/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_case_insensitive_comparisons.cpp.o
+[89/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_message.cpp.o
+[90/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_registry_hub.cpp.o
+[91/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_errno_guard.cpp.o
+[92/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_assertion_handler.cpp.o
+[93/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_test_spec.cpp.o
+[94/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_debug_console.cpp.o
+[95/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_test_case_info.cpp.o
+[96/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_getenv.cpp.o
+[97/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_debugger.cpp.o
+[98/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_enforce.cpp.o
+[99/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_floating_point_helpers.cpp.o
+[100/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_console_colour.cpp.o
+[101/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_enum_info.cpp.o
+[102/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_decomposer.cpp.o
+[103/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_tostring.cpp.o
+[104/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_exception_translator_registry.cpp.o
+[105/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_random_number_generator.cpp.o
+[106/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_leak_detector.cpp.o
+[107/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_fatal_condition_handler.cpp.o
+[108/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_polyfills.cpp.o
+[109/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_message_info.cpp.o
+[110/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_config.cpp.o
+[111/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_istream.cpp.o
+[112/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_lazy_expr.cpp.o
+[113/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_parse_numbers.cpp.o
+[114/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_output_redirect.cpp.o
+[115/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_jsonwriter.cpp.o
+[116/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_singletons.cpp.o
+[117/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_startup_exception_registry.cpp.o
+[118/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_section.cpp.o
+[119/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_random_seed_generation.cpp.o
+[120/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_source_line_info.cpp.o
+[121/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_stdstreams.cpp.o
+[122/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_reusable_string_stream.cpp.o
+[123/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_test_case_info_hasher.cpp.o
+[124/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_stringref.cpp.o
+[125/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_list.cpp.o
+[126/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_test_failure_exception.cpp.o
+[127/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_uncaught_exceptions.cpp.o
+[128/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_string_manip.cpp.o
+[129/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_reporter_spec_parser.cpp.o
+[130/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_session.cpp.o
+[131/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_clara.cpp.o
+[132/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_reporter_registry.cpp.o
+[133/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_tag_alias_registry.cpp.o
+[134/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_test_registry.cpp.o
+[135/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_test_case_tracker.cpp.o
+[136/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_wildcard_pattern.cpp.o
+[137/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/matchers/catch_matchers.cpp.o
+[138/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_test_spec_parser.cpp.o
+[139/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/matchers/catch_matchers_exception.cpp.o
+[140/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/matchers/catch_matchers_container_properties.cpp.o
+[141/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_xmlwriter.cpp.o
+[142/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_run_context.cpp.o
+[143/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/matchers/catch_matchers_predicate.cpp.o
+[144/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/matchers/catch_matchers_quantifiers.cpp.o
+[145/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_test_case_registry_impl.cpp.o
+[146/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/matchers/internal/catch_matchers_impl.cpp.o
+[147/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/matchers/catch_matchers_templated.cpp.o
+[148/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_textflow.cpp.o
+[149/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/matchers/catch_matchers_floating_point.cpp.o
+[150/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2WithMain.dir/catch2/internal/catch_main.cpp.o
+[151/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_commandline.cpp.o
+[152/215] Building CUDA object tests/CMakeFiles/blz_cuda_smoke.dir/cuda/smoke.cu.o
+[153/215] Linking CUDA executable tests/blz_cuda_smoke
+[154/215] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/matchers/catch_matchers_string.cpp.o
+[155/215] Linking CXX static library _deps/catch2-build/src/libCatch2.a
+[156/215] Linking CXX static library _deps/catch2-build/src/libCatch2Main.a
+[157/215] Building CXX object CMakeFiles/blzc.dir/src/apps/blzc.cpp.o
+[158/215] Linking CXX executable blzc
+[159/215] blzc: generating the pattern library
+[160/215] Building CXX object CMakeFiles/blz_patterns.dir/generated/fan_in_cpu.cpp.o
+[161/215] Building CXX object CMakeFiles/blz_patterns.dir/generated/fan_out_cpu.cpp.o
+[162/215] Building CXX object CMakeFiles/blz_patterns.dir/generated/deg_in_cpu.cpp.o
+[163/215] Building CXX object CMakeFiles/blz_patterns.dir/generated/deg_out_cpu.cpp.o
+[164/215] Building CXX object CMakeFiles/blz_patterns.dir/generated/sg_gather_cpu.cpp.o
+[165/215] Building CXX object CMakeFiles/blz_patterns.dir/generated/sg_scatter_cpu.cpp.o
+[166/215] Building CXX object CMakeFiles/blz_patterns.dir/generated/registry.cpp.o
+[167/215] Building CXX object CMakeFiles/blz_core.dir/src/common/sha256.cpp.o
+[168/215] Building CXX object CMakeFiles/blz_patterns.dir/generated/tcyc_cpu.cpp.o
+[169/215] Building CXX object CMakeFiles/blz_core.dir/src/common/mmap_file.cpp.o
+[170/215] Building CXX object CMakeFiles/blz_core.dir/src/graph/fuzz_gen.cpp.o
+[171/215] Building CXX object CMakeFiles/blz_core.dir/src/runtime/registration.cpp.o
+[172/215] Building CXX object CMakeFiles/blz_core.dir/src/io/csv.cpp.o
+[173/215] Building CXX object CMakeFiles/blz_core.dir/src/io/blzg.cpp.o
+[174/215] Building CUDA object CMakeFiles/blz_patterns.dir/generated/deg_in_cuda.cu.o
+[175/215] Building CUDA object CMakeFiles/blz_patterns.dir/generated/fan_in_cuda.cu.o
+[176/215] Building CUDA object CMakeFiles/blz_patterns.dir/generated/deg_out_cuda.cu.o
+[177/215] Building CUDA object CMakeFiles/blz_patterns.dir/generated/fan_out_cuda.cu.o
+[178/215] Building CUDA object CMakeFiles/blz_patterns.dir/generated/sg_gather_cuda.cu.o
+[179/215] Building CUDA object CMakeFiles/blz_patterns.dir/generated/sg_scatter_cuda.cu.o
+[180/215] Building CXX object CMakeFiles/blz_core.dir/src/graph/index.cpp.o
+[181/215] Building CXX object CMakeFiles/blz_core.dir/src/ml/metrics.cpp.o
+[182/215] Building CUDA object CMakeFiles/blz_patterns.dir/generated/tcyc_cuda.cu.o
+[183/215] Linking CXX static library libblz_patterns.a
+[184/215] Building CXX object tests/CMakeFiles/blz_unit_tests.dir/unit/test_sha256.cpp.o
+[185/215] Building CXX object CMakeFiles/blz_core.dir/src/graph/prepare.cpp.o
+[186/215] Building CXX object CMakeFiles/blz_core.dir/src/runtime/cpu_backend.cpp.o
+[187/215] Building CXX object CMakeFiles/blz_core.dir/src/runtime/fuzz_diff.cpp.o
+[188/215] Building CXX object CMakeFiles/blz_core.dir/src/oracle/oracle.cpp.o
+[189/215] Building CXX object tests/CMakeFiles/blz_unit_tests.dir/unit/test_fuzz_gen.cpp.o
+[190/215] Building CXX object tests/CMakeFiles/blz_unit_tests.dir/unit/test_npy.cpp.o
+[191/215] Building CXX object tests/CMakeFiles/blz_unit_tests.dir/unit/test_csv.cpp.o
+[192/215] Building CXX object tests/CMakeFiles/blz_unit_tests.dir/unit/test_prepare.cpp.o
+[193/215] Building CXX object tests/CMakeFiles/blz_unit_tests.dir/unit/test_metrics.cpp.o
+[194/215] Building CXX object tests/CMakeFiles/blz_unit_tests.dir/unit/test_blzg.cpp.o
+[195/215] Building CXX object tests/CMakeFiles/blz_unit_tests.dir/unit/test_features.cpp.o
+[196/215] Building CXX object tests/CMakeFiles/blz_unit_tests.dir/unit/test_registration.cpp.o
+[197/215] Building CXX object CMakeFiles/blz_core.dir/src/runtime/features.cpp.o
+[198/215] Building CXX object tests/CMakeFiles/blz_unit_tests.dir/unit/test_dsl_expr.cpp.o
+[199/215] Building CXX object CMakeFiles/blz_core.dir/src/common/npy.cpp.o
+[200/215] Building CXX object CMakeFiles/blz_core.dir/src/graph/stats.cpp.o
+[201/215] Building CXX object tests/CMakeFiles/blz_unit_tests.dir/unit/test_index.cpp.o
+[202/215] Building CXX object tests/CMakeFiles/blz_unit_tests.dir/unit/test_dsl_expand.cpp.o
+[203/215] Building CXX object tests/CMakeFiles/blz_unit_tests.dir/unit/test_dsl_lower.cpp.o
+[204/215] Building CXX object tests/CMakeFiles/blz_unit_tests.dir/unit/test_codegen.cpp.o
+[205/215] Building CXX object tests/CMakeFiles/blz_unit_tests.dir/unit/test_stats.cpp.o
+[206/215] Building CXX object tests/CMakeFiles/blz_unit_tests.dir/unit/test_oracle.cpp.o
+[207/215] Building CXX object tests/CMakeFiles/blz_unit_tests.dir/unit/test_dsl_specs.cpp.o
+[208/215] Building CXX object tests/CMakeFiles/blz_unit_tests.dir/unit/test_cpu_backend.cpp.o
+[209/215] Building CXX object tests/CMakeFiles/blz_unit_tests.dir/unit/test_cuda_backend.cpp.o
+[210/215] Building CUDA object CMakeFiles/blz_core.dir/src/runtime/cuda_backend.cu.o
+[211/215] Linking CXX static library libblz_core.a
+[212/215] Linking CXX executable tests/blz_unit_tests
+[213/215] Building CXX object CMakeFiles/blz.dir/src/apps/blz.cpp.o
+[214/215] Linking CXX executable blz
++ ctest --preset rel-cuda -j4
+Test project /home/blz/repo/build/rel-cuda
+      Start  1: .blzg rejects malformed files
+      Start  2: .blzg round trip
+      Start  3: .npy int64 writer
+      Start  4: .npy uint32 writer and reader round trip
+ 1/68 Test  #2: .blzg round trip ..........................................................................   Passed    0.00 sec
+      Start  5: add_saturating
+ 2/68 Test  #3: .npy int64 writer .........................................................................   Passed    0.00 sec
+      Start  6: bin_index: bin edges, open last bin, drops below b_0 and below 2
+ 3/68 Test  #4: .npy uint32 writer and reader round trip ..................................................   Passed    0.00 sec
+ 4/68 Test  #1: .blzg rejects malformed files .............................................................   Passed    0.01 sec
+      Start  7: build_edge_table: stable sort, eids, node ids, dictionaries
+      Start  8: codegen: timestamp visibility is E501 at its value
+ 5/68 Test  #5: add_saturating ............................................................................   Passed    0.00 sec
+ 6/68 Test  #6: bin_index: bin edges, open last bin, drops below b_0 and below 2 ..........................   Passed    0.00 sec
+      Start  9: codegen: two specs defining one pattern name are E102
+      Start 10: column names
+ 7/68 Test  #7: build_edge_table: stable sort, eids, node ids, dictionaries ...............................   Passed    0.00 sec
+      Start 11: committed configs load (SPEC §4.8)
+ 8/68 Test  #8: codegen: timestamp visibility is E501 at its value ........................................   Passed    0.00 sec
+      Start 12: count_stream and the HI-Small invariants
+ 9/68 Test  #9: codegen: two specs defining one pattern name are E102 .....................................   Passed    0.00 sec
+      Start 13: cpu backend equals the oracle on fuzz graphs (seeds 0..999)
+10/68 Test #10: column names ..............................................................................   Passed    0.00 sec
+      Start 14: cpu backend matches the GFP golden probes
+11/68 Test #11: committed configs load (SPEC §4.8) .......................................................   Passed    0.00 sec
+      Start 15: cpu backend rows do not depend on the trigger range, threads or schedule
+12/68 Test #12: count_stream and the HI-Small invariants ..................................................   Passed    0.01 sec
+      Start 16: cuda backend equals the oracle on fuzz graphs (seeds 0..499)
+13/68 Test #13: cpu backend equals the oracle on fuzz graphs (seeds 0..999) ...............................   Passed    1.22 sec
+      Start 17: cuda backend matches the GFP golden probes
+14/68 Test #15: cpu backend rows do not depend on the trigger range, threads or schedule ..................   Passed    1.43 sec
+      Start 18: cuda backend rows equal the cpu backend's for any trigger range and threshold
+15/68 Test #14: cpu backend matches the GFP golden probes .................................................   Passed    2.16 sec
+      Start 19: cuda bucketing sends every trigger to one kernel per pattern
+16/68 Test #19: cuda bucketing sends every trigger to one kernel per pattern ..............................   Passed    0.61 sec
+      Start 20: cuda: the registry has launchers for every pattern
+17/68 Test #20: cuda: the registry has launchers for every pattern ........................................   Passed    0.01 sec
+      Start 21: eval_int
+18/68 Test #21: eval_int ..................................................................................   Passed    0.00 sec
+      Start 22: expand_spec: const override and emit_yaml round trip
+19/68 Test #22: expand_spec: const override and emit_yaml round trip ......................................   Passed    0.01 sec
+      Start 23: expand_spec: errors
+20/68 Test #23: expand_spec: errors .......................................................................   Passed    0.01 sec
+      Start 24: expand_spec: nested repeats, sequence ranges, zero iterations
+21/68 Test #24: expand_spec: nested repeats, sequence ranges, zero iterations .............................   Passed    0.01 sec
+      Start 25: expr: canonical text round-trips
+22/68 Test #25: expr: canonical text round-trips ..........................................................   Passed    0.01 sec
+      Start 26: expr: flip
+23/68 Test #26: expr: flip ................................................................................   Passed    0.00 sec
+      Start 27: expr: node positions are column offsets into the scalar
+24/68 Test #27: expr: node positions are column offsets into the scalar ...................................   Passed    0.00 sec
+      Start 28: expr: precedence and associativity
+25/68 Test #28: expr: precedence and associativity ........................................................   Passed    0.00 sec
+      Start 29: expr: syntax errors are E101
+26/68 Test #29: expr: syntax errors are E101 ..............................................................   Passed    0.00 sec
+      Start 30: feature config parsing
+27/68 Test #30: feature config parsing ....................................................................   Passed    0.00 sec
+      Start 31: fuzz graphs are reproducible and within the SPEC §13.3 ranges
+28/68 Test #31: fuzz graphs are reproducible and within the SPEC §13.3 ranges ............................   Passed    0.01 sec
+      Start 32: index: P-CSR holds each node's distinct neighbours by id, each with its eid-ordered run
+29/68 Test #17: cuda backend matches the GFP golden probes ................................................   Passed    3.59 sec
+      Start 33: index: T-CSR lists are the eid-ordered incident edges, prev_same links equal neighbours
+30/68 Test #16: cuda backend equals the oracle on fuzz graphs (seeds 0..499) ..............................   Passed    8.94 sec
+      Start 34: index: rejects an unsorted stream and out-of-range node ids
+31/68 Test #34: index: rejects an unsorted stream and out-of-range node ids ...............................   Passed    0.09 sec
+      Start 35: invalid-spec suite: every file fails with its declared code and position
+32/68 Test #35: invalid-spec suite: every file fails with its declared code and position ..................   Passed    0.02 sec
+      Start 36: library: every pattern compiles, and its IR equals the snapshot
+33/68 Test #36: library: every pattern compiles, and its IR equals the snapshot ...........................   Passed    0.00 sec
+      Start 37: library: fan, degree, sg and tcyc lower and plan as specified
+34/68 Test #37: library: fan, degree, sg and tcyc lower and plan as specified .............................   Passed    0.00 sec
+      Start 38: lower: classification errors
+35/68 Test #38: lower: classification errors ..............................................................   Passed    0.00 sec
+      Start 39: lower: gated exists exports its witness; constants resolve
+36/68 Test #39: lower: gated exists exports its witness; constants resolve ................................   Passed    0.00 sec
+      Start 40: lower: node filters, or-splitting and the trigger time in filters
+37/68 Test #40: lower: node filters, or-splitting and the trigger time in filters .........................   Passed    0.00 sec
+      Start 41: lower: the depth limit is 16 binding levels (E301)
+38/68 Test #41: lower: the depth limit is 16 binding levels (E301) ........................................   Passed    0.01 sec
+      Start 42: lower: time bounds from skip_if / break_if (SPEC §6.4)
+39/68 Test #42: lower: time bounds from skip_if / break_if (SPEC §6.4) ...................................   Passed    0.00 sec
+      Start 43: lower: visibility timestamp and indexed vars are accepted
+40/68 Test #43: lower: visibility timestamp and indexed vars are accepted .................................   Passed    0.00 sec
+      Start 44: metrics: average precision, with tied scores as one step
+41/68 Test #44: metrics: average precision, with tied scores as one step ..................................   Passed    0.00 sec
+      Start 45: metrics: confusion, F1 and the strict > threshold
+42/68 Test #45: metrics: confusion, F1 and the strict > threshold .........................................   Passed    0.01 sec
+      Start 46: metrics: undefined ratios are 0
+43/68 Test #46: metrics: undefined ratios are 0 ...........................................................   Passed    0.00 sec
+      Start 47: oracle matches the GFP golden probes
+44/68 Test #18: cuda backend rows equal the cpu backend's for any trigger range and threshold .............   Passed    7.80 sec
+      Start 48: oracle rows do not depend on the trigger range or the thread count
+45/68 Test #32: index: P-CSR holds each node's distinct neighbours by id, each with its eid-ordered run ...   Passed    7.89 sec
+      Start 49: parse_csv errors carry the line number
+46/68 Test #49: parse_csv errors carry the line number ....................................................   Passed    0.01 sec
+      Start 50: parse_csv fixture
+47/68 Test #50: parse_csv fixture .........................................................................   Passed    0.01 sec
+      Start 51: parse_csv without a trailing newline
+48/68 Test #51: parse_csv without a trailing newline ......................................................   Passed    0.01 sec
+      Start 52: parse_timestamp
+49/68 Test #52: parse_timestamp ...........................................................................   Passed    0.01 sec
+      Start 53: plan: inclusive bounds, deduplicated
+50/68 Test #53: plan: inclusive bounds, deduplicated ......................................................   Passed    0.01 sec
+      Start 54: primitives: range, distinct_first, pair_exists and the counts equal naive scans
+51/68 Test #47: oracle matches the GFP golden probes ......................................................   Passed    4.02 sec
+      Start 55: profile_stream on a small stream
+52/68 Test #48: oracle rows do not depend on the trigger range or the thread count ........................   Passed    4.00 sec
+      Start 56: registration: a block missing from the feature config is E402 (SPEC §6.7, §13.1)
+53/68 Test #56: registration: a block missing from the feature config is E402 (SPEC §6.7, §13.1) ........   Passed    0.00 sec
+      Start 57: registry: start-up checks use the generated E402 locations and the compiled K_MAX
+54/68 Test #57: registry: start-up checks use the generated E402 locations and the compiled K_MAX .........   Passed    0.00 sec
+      Start 58: registry: the library's seven patterns, one block each, sg from two
+55/68 Test #58: registry: the library's seven patterns, one block each, sg from two .......................   Passed    0.01 sec
+      Start 59: sha256 FIPS 180-4 vectors
+56/68 Test #59: sha256 FIPS 180-4 vectors .................................................................   Passed    0.02 sec
+      Start 60: substitute: arithmetic and prefixed ranges (SPEC §6.5)
+57/68 Test #60: substitute: arithmetic and prefixed ranges (SPEC §6.5) ...................................   Passed    0.01 sec
+      Start 61: summarize
+58/68 Test #61: summarize .................................................................................   Passed    0.01 sec
+      Start 62: tcyc needs some parallel edge after the previous hop, not the earliest
+59/68 Test #55: profile_stream on a small stream ..........................................................   Passed    0.20 sec
+      Start 63: tcyc respects k_max
+60/68 Test #62: tcyc needs some parallel edge after the previous hop, not the earliest ....................   Passed    0.05 sec
+      Start 64: tcyc.yaml at the default K_MAX = 10
+61/68 Test #64: tcyc.yaml at the default K_MAX = 10 .......................................................   Passed    0.01 sec
+      Start 65: tcyc.yaml expanded with K_MAX = 5 equals the fixture (SPEC §13.4)
+62/68 Test #65: tcyc.yaml expanded with K_MAX = 5 equals the fixture (SPEC §13.4) ........................   Passed    0.03 sec
+      Start 66: blzc_check_library
+63/68 Test #66: blzc_check_library ........................................................................   Passed    0.01 sec
+      Start 67: blzc_snapshots
+64/68 Test #67: blzc_snapshots ............................................................................   Passed    0.02 sec
+      Start 71: cuda_smoke
+65/68 Test #63: tcyc respects k_max .......................................................................   Passed    0.08 sec
+66/68 Test #33: index: T-CSR lists are the eid-ordered incident edges, prev_same links equal neighbours ...   Passed    9.17 sec
+67/68 Test #71: cuda_smoke ................................................................................   Passed    0.63 sec
+68/68 Test #54: primitives: range, distinct_first, pair_exists and the counts equal naive scans ...........   Passed    3.35 sec
+
+100% tests passed out of 68
+
+Label Time Summary:
+fast    =  55.55 sec*proc (68 tests)
+
+Total Test time (real) =  14.13 sec
++ BLZ=build/rel-cuda/blz
++ build/rel-cuda/blz fuzz-diff --backend cuda --seeds 0:10000 --report results/e1_parity_a30.json --name fuzz_cuda_vs_oracle
+fuzz-diff cuda vs oracle, seeds 0:10000: 10000 graphs, 2053897 edges, 0 mismatching rows (85.1 s)
++ build/rel-cuda/blz bench --graph data/hi_small.blzg --config configs/features_default.yaml --backend cuda --heavy 0,8,16,32,64,128,256,1024,all --reps 5 --out results/e5_gpu_a30.json --name cuda
+index built in 0.43 s; graph upload median 0.029 s (329 MB)
+fan_in   H=0    kernels median   0.0108 s (light 0.0000, heavy 0.0105, bucket 0.0000), d2h 0.0103 s, 5078345 heavy triggers
+fan_in   H=8    kernels median   0.0040 s (light 0.0019, heavy 0.0007, bucket 0.0011), d2h 0.0102 s, 306092 heavy triggers
+fan_in   H=16   kernels median   0.0035 s (light 0.0020, heavy 0.0001, bucket 0.0011), d2h 0.0103 s, 27328 heavy triggers
+fan_in   H=32   kernels median   0.0034 s (light 0.0020, heavy 0.0000, bucket 0.0011), d2h 0.0101 s, 12544 heavy triggers
+fan_in   H=64   kernels median   0.0034 s (light 0.0020, heavy 0.0000, bucket 0.0011), d2h 0.0101 s, 2521 heavy triggers
+fan_in   H=128  kernels median   0.0034 s (light 0.0020, heavy 0.0000, bucket 0.0011), d2h 0.0102 s, 1224 heavy triggers
+fan_in   H=256  kernels median   0.0034 s (light 0.0020, heavy 0.0000, bucket 0.0011), d2h 0.0101 s, 711 heavy triggers
+fan_in   H=1024 kernels median   0.0034 s (light 0.0020, heavy 0.0000, bucket 0.0011), d2h 0.0103 s, 0 heavy triggers
+fan_in   H=all  kernels median   0.0023 s (light 0.0020, heavy 0.0000, bucket 0.0000), d2h 0.0102 s, 0 heavy triggers
+fan_out  H=0    kernels median   0.0504 s (light 0.0000, heavy 0.0501, bucket 0.0000), d2h 0.0103 s, 5078345 heavy triggers
+fan_out  H=8    kernels median   0.0308 s (light 0.0014, heavy 0.0281, bucket 0.0010), d2h 0.0103 s, 1623592 heavy triggers
+fan_out  H=16   kernels median   0.0218 s (light 0.0018, heavy 0.0187, bucket 0.0010), d2h 0.0101 s, 675028 heavy triggers
+fan_out  H=32   kernels median   0.0192 s (light 0.0020, heavy 0.0159, bucket 0.0010), d2h 0.0103 s, 455162 heavy triggers
+fan_out  H=64   kernels median   0.0191 s (light 0.0020, heavy 0.0158, bucket 0.0010), d2h 0.0103 s, 448914 heavy triggers
+fan_out  H=128  kernels median   0.0191 s (light 0.0020, heavy 0.0158, bucket 0.0010), d2h 0.0102 s, 447954 heavy triggers
+fan_out  H=256  kernels median   0.0191 s (light 0.0020, heavy 0.0158, bucket 0.0010), d2h 0.0103 s, 446034 heavy triggers
+fan_out  H=1024 kernels median   0.0192 s (light 0.0026, heavy 0.0153, bucket 0.0010), d2h 0.0103 s, 405053 heavy triggers
+fan_out  H=all  kernels median   0.0784 s (light 0.0781, heavy 0.0000, bucket 0.0000), d2h 0.0103 s, 0 heavy triggers
+deg_in   H=0    kernels median   0.0105 s (light 0.0000, heavy 0.0102, bucket 0.0000), d2h 0.0103 s, 5078345 heavy triggers
+deg_in   H=8    kernels median   0.0037 s (light 0.0016, heavy 0.0007, bucket 0.0011), d2h 0.0103 s, 306092 heavy triggers
+deg_in   H=16   kernels median   0.0032 s (light 0.0017, heavy 0.0001, bucket 0.0011), d2h 0.0102 s, 27328 heavy triggers
+deg_in   H=32   kernels median   0.0032 s (light 0.0017, heavy 0.0000, bucket 0.0011), d2h 0.0101 s, 12544 heavy triggers
+deg_in   H=64   kernels median   0.0031 s (light 0.0017, heavy 0.0000, bucket 0.0011), d2h 0.0102 s, 2521 heavy triggers
+deg_in   H=128  kernels median   0.0031 s (light 0.0017, heavy 0.0000, bucket 0.0011), d2h 0.0101 s, 1224 heavy triggers
+deg_in   H=256  kernels median   0.0031 s (light 0.0017, heavy 0.0000, bucket 0.0011), d2h 0.0102 s, 711 heavy triggers
+deg_in   H=1024 kernels median   0.0031 s (light 0.0017, heavy 0.0000, bucket 0.0011), d2h 0.0101 s, 0 heavy triggers
+deg_in   H=all  kernels median   0.0020 s (light 0.0017, heavy 0.0000, bucket 0.0000), d2h 0.0102 s, 0 heavy triggers
+deg_out  H=0    kernels median   0.0225 s (light 0.0000, heavy 0.0221, bucket 0.0000), d2h 0.0118 s, 5078345 heavy triggers
+deg_out  H=8    kernels median   0.0116 s (light 0.0012, heavy 0.0091, bucket 0.0010), d2h 0.0106 s, 1623592 heavy triggers
+deg_out  H=16   kernels median   0.0089 s (light 0.0015, heavy 0.0060, bucket 0.0010), d2h 0.0108 s, 675028 heavy triggers
+deg_out  H=32   kernels median   0.0081 s (light 0.0016, heavy 0.0052, bucket 0.0010), d2h 0.0106 s, 455162 heavy triggers
+deg_out  H=64   kernels median   0.0081 s (light 0.0016, heavy 0.0051, bucket 0.0010), d2h 0.0104 s, 448914 heavy triggers
+deg_out  H=128  kernels median   0.0081 s (light 0.0016, heavy 0.0051, bucket 0.0010), d2h 0.0105 s, 447954 heavy triggers
+deg_out  H=256  kernels median   0.0081 s (light 0.0016, heavy 0.0051, bucket 0.0010), d2h 0.0104 s, 446034 heavy triggers
+deg_out  H=1024 kernels median   0.0083 s (light 0.0019, heavy 0.0050, bucket 0.0010), d2h 0.0106 s, 405053 heavy triggers
+deg_out  H=all  kernels median   0.0445 s (light 0.0442, heavy 0.0000, bucket 0.0000), d2h 0.0105 s, 0 heavy triggers
+sg       H=0    kernels median   0.0351 s (light 0.0000, heavy 0.0348, bucket 0.0000), d2h 0.0085 s, 10156690 heavy triggers
+sg       H=8    kernels median   0.0123 s (light 0.0061, heavy 0.0045, bucket 0.0015), d2h 0.0084 s, 147363 heavy triggers
+sg       H=16   kernels median   0.0126 s (light 0.0067, heavy 0.0042, bucket 0.0015), d2h 0.0084 s, 95726 heavy triggers
+sg       H=32   kernels median   0.0129 s (light 0.0071, heavy 0.0041, bucket 0.0015), d2h 0.0083 s, 81138 heavy triggers
+sg       H=64   kernels median   0.0131 s (light 0.0075, heavy 0.0039, bucket 0.0015), d2h 0.0084 s, 74081 heavy triggers
+sg       H=128  kernels median   0.0164 s (light 0.0112, heavy 0.0035, bucket 0.0015), d2h 0.0084 s, 26577 heavy triggers
+sg       H=256  kernels median   0.0187 s (light 0.0138, heavy 0.0032, bucket 0.0015), d2h 0.0083 s, 2834 heavy triggers
+sg       H=1024 kernels median   0.0204 s (light 0.0162, heavy 0.0025, bucket 0.0015), d2h 0.0084 s, 1735 heavy triggers
+sg       H=all  kernels median   0.0360 s (light 0.0357, heavy 0.0000, bucket 0.0000), d2h 0.0084 s, 0 heavy triggers
+tcyc     H=0    kernels median   0.0775 s (light 0.0000, heavy 0.0773, bucket 0.0000), d2h 0.0079 s, 5078345 heavy triggers
+tcyc     H=8    kernels median   0.0569 s (light 0.0040, heavy 0.0518, bucket 0.0008), d2h 0.0079 s, 308858 heavy triggers
+tcyc     H=16   kernels median   0.0489 s (light 0.0064, heavy 0.0414, bucket 0.0008), d2h 0.0079 s, 42191 heavy triggers
+tcyc     H=32   kernels median   0.0379 s (light 0.0073, heavy 0.0295, bucket 0.0008), d2h 0.0079 s, 3489 heavy triggers
+tcyc     H=64   kernels median   0.0375 s (light 0.0074, heavy 0.0290, bucket 0.0008), d2h 0.0080 s, 2885 heavy triggers
+tcyc     H=128  kernels median   0.0375 s (light 0.0074, heavy 0.0291, bucket 0.0008), d2h 0.0079 s, 2876 heavy triggers
+tcyc     H=256  kernels median   0.0377 s (light 0.0075, heavy 0.0291, bucket 0.0008), d2h 0.0080 s, 2871 heavy triggers
+tcyc     H=1024 kernels median   0.0387 s (light 0.0087, heavy 0.0288, bucket 0.0008), d2h 0.0080 s, 2808 heavy triggers
+tcyc     H=all  kernels median   0.0917 s (light 0.0915, heavy 0.0000, bucket 0.0000), d2h 0.0081 s, 0 heavy triggers
+wrote results/e5_gpu_a30.json (/cuda)
++ '[' 16 -gt 12 ']'
++ threads=
++ for t in 1 2 4 8 12 16 24 32 48 64
++ '[' 1 -lt 16 ']'
++ threads=1,
++ for t in 1 2 4 8 12 16 24 32 48 64
++ '[' 2 -lt 16 ']'
++ threads=1,2,
++ for t in 1 2 4 8 12 16 24 32 48 64
++ '[' 4 -lt 16 ']'
++ threads=1,2,4,
++ for t in 1 2 4 8 12 16 24 32 48 64
++ '[' 8 -lt 16 ']'
++ threads=1,2,4,8,
++ for t in 1 2 4 8 12 16 24 32 48 64
++ '[' 12 -lt 16 ']'
++ threads=1,2,4,8,12,
++ for t in 1 2 4 8 12 16 24 32 48 64
++ '[' 16 -lt 16 ']'
++ for t in 1 2 4 8 12 16 24 32 48 64
++ '[' 24 -lt 16 ']'
++ for t in 1 2 4 8 12 16 24 32 48 64
++ '[' 32 -lt 16 ']'
++ for t in 1 2 4 8 12 16 24 32 48 64
++ '[' 48 -lt 16 ']'
++ for t in 1 2 4 8 12 16 24 32 48 64
++ '[' 64 -lt 16 ']'
++ threads=1,2,4,8,12,16
++ OMP_PROC_BIND=close
++ OMP_PLACES=threads
++ build/rel-cuda/blz bench --graph data/hi_small.blzg --config configs/features_default.yaml --backend cpu --threads 1,2,4,8,12,16 --schedule dynamic,sorted --reps 5 --out results/e4_cpu_a30.json --name cpu
+index built in 0.45 s (268 MB)
+fan_in   dynamic  1 threads: median    0.659 s (min 0.658, max 0.661)
+fan_in   dynamic  2 threads: median    0.329 s (min 0.326, max 0.337)
+fan_in   dynamic  4 threads: median    0.167 s (min 0.165, max 0.174)
+fan_in   dynamic  8 threads: median    0.097 s (min 0.097, max 0.097)
+fan_in   dynamic 12 threads: median    0.071 s (min 0.071, max 0.075)
+fan_in   dynamic 16 threads: median    0.057 s (min 0.057, max 0.060)
+fan_in   sorted   1 threads: median    1.328 s (min 1.319, max 1.361)
+fan_in   sorted   2 threads: median    0.706 s (min 0.698, max 0.714)
+fan_in   sorted   4 threads: median    0.379 s (min 0.378, max 0.389)
+fan_in   sorted   8 threads: median    0.213 s (min 0.212, max 0.220)
+fan_in   sorted  12 threads: median    0.154 s (min 0.153, max 0.155)
+fan_in   sorted  16 threads: median    0.125 s (min 0.125, max 0.133)
+fan_out  dynamic  1 threads: median   13.406 s (min 13.392, max 13.421)
+fan_out  dynamic  2 threads: median    6.692 s (min 6.673, max 6.698)
+fan_out  dynamic  4 threads: median    3.344 s (min 3.342, max 3.348)
+fan_out  dynamic  8 threads: median    1.685 s (min 1.684, max 1.688)
+fan_out  dynamic 12 threads: median    1.128 s (min 1.128, max 1.128)
+fan_out  dynamic 16 threads: median    0.851 s (min 0.848, max 0.852)
+fan_out  sorted   1 threads: median   13.200 s (min 13.049, max 13.221)
+fan_out  sorted   2 threads: median    6.667 s (min 6.632, max 6.996)
+fan_out  sorted   4 threads: median    3.442 s (min 3.372, max 3.528)
+fan_out  sorted   8 threads: median    1.800 s (min 1.743, max 1.815)
+fan_out  sorted  12 threads: median    1.215 s (min 1.190, max 1.230)
+fan_out  sorted  16 threads: median    0.919 s (min 0.898, max 0.940)
+deg_in   dynamic  1 threads: median    0.606 s (min 0.603, max 0.618)
+deg_in   dynamic  2 threads: median    0.308 s (min 0.304, max 0.314)
+deg_in   dynamic  4 threads: median    0.158 s (min 0.157, max 0.158)
+deg_in   dynamic  8 threads: median    0.096 s (min 0.094, max 0.099)
+deg_in   dynamic 12 threads: median    0.069 s (min 0.069, max 0.071)
+deg_in   dynamic 16 threads: median    0.055 s (min 0.055, max 0.060)
+deg_in   sorted   1 threads: median    1.400 s (min 1.315, max 1.443)
+deg_in   sorted   2 threads: median    0.706 s (min 0.698, max 0.714)
+deg_in   sorted   4 threads: median    0.384 s (min 0.383, max 0.387)
+deg_in   sorted   8 threads: median    0.214 s (min 0.213, max 0.221)
+deg_in   sorted  12 threads: median    0.154 s (min 0.154, max 0.161)
+deg_in   sorted  16 threads: median    0.125 s (min 0.124, max 0.125)
+deg_out  dynamic  1 threads: median    0.889 s (min 0.886, max 0.897)
+deg_out  dynamic  2 threads: median    0.450 s (min 0.447, max 0.456)
+deg_out  dynamic  4 threads: median    0.228 s (min 0.227, max 0.230)
+deg_out  dynamic  8 threads: median    0.127 s (min 0.125, max 0.130)
+deg_out  dynamic 12 threads: median    0.090 s (min 0.090, max 0.091)
+deg_out  dynamic 16 threads: median    0.074 s (min 0.074, max 0.080)
+deg_out  sorted   1 threads: median    1.636 s (min 1.596, max 1.666)
+deg_out  sorted   2 threads: median    0.872 s (min 0.865, max 0.880)
+deg_out  sorted   4 threads: median    0.470 s (min 0.466, max 0.476)
+deg_out  sorted   8 threads: median    0.257 s (min 0.255, max 0.264)
+deg_out  sorted  12 threads: median    0.182 s (min 0.182, max 0.189)
+deg_out  sorted  16 threads: median    0.146 s (min 0.146, max 0.146)
+sg       dynamic  1 threads: median    2.753 s (min 2.731, max 2.780)
+sg       dynamic  2 threads: median    1.379 s (min 1.370, max 1.381)
+sg       dynamic  4 threads: median    0.700 s (min 0.697, max 0.704)
+sg       dynamic  8 threads: median    0.378 s (min 0.377, max 0.379)
+sg       dynamic 12 threads: median    0.264 s (min 0.263, max 0.267)
+sg       dynamic 16 threads: median    0.207 s (min 0.205, max 0.208)
+sg       sorted   1 threads: median    3.118 s (min 3.101, max 3.177)
+sg       sorted   2 threads: median    1.612 s (min 1.605, max 1.620)
+sg       sorted   4 threads: median    0.863 s (min 0.856, max 0.865)
+sg       sorted   8 threads: median    0.501 s (min 0.498, max 0.505)
+sg       sorted  12 threads: median    0.364 s (min 0.362, max 0.367)
+sg       sorted  16 threads: median    0.296 s (min 0.295, max 0.301)
+tcyc     dynamic  1 threads: median    4.002 s (min 3.951, max 4.057)
+tcyc     dynamic  2 threads: median    2.000 s (min 1.997, max 2.002)
+tcyc     dynamic  4 threads: median    1.029 s (min 1.014, max 1.037)
+tcyc     dynamic  8 threads: median    0.517 s (min 0.505, max 0.520)
+tcyc     dynamic 12 threads: median    0.343 s (min 0.331, max 0.343)
+tcyc     dynamic 16 threads: median    0.260 s (min 0.260, max 0.262)
+tcyc     sorted   1 threads: median    3.324 s (min 3.305, max 3.337)
+tcyc     sorted   2 threads: median    1.723 s (min 1.721, max 1.724)
+tcyc     sorted   4 threads: median    0.908 s (min 0.904, max 0.911)
+tcyc     sorted   8 threads: median    0.487 s (min 0.485, max 0.489)
+tcyc     sorted  12 threads: median    0.342 s (min 0.341, max 0.347)
+tcyc     sorted  16 threads: median    0.268 s (min 0.267, max 0.269)
+wrote results/e4_cpu_a30.json (/cpu)
++ cd tools/gfp
++ uv run bench_gfp.py --edges ../../data/edges.npy --threads 16 --out ../../results/e4_cpu_a30.json
+warning: `VIRTUAL_ENV=/home/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+Downloading cpython-3.12.16-linux-x86_64-gnu (download) (32.9MiB)
+ Downloaded cpython-3.12.16-linux-x86_64-gnu (download)
+Using CPython 3.12.16
+Creating virtual environment at: .venv
+Downloading numpy (16.0MiB)
+Downloading scikit-learn (8.7MiB)
+Downloading scipy (33.7MiB)
+ Downloaded scikit-learn
+ Downloaded numpy
+Downloading snapml (7.5MiB)
+ Downloaded scipy
+ Downloaded snapml
+Installed 8 packages in 1.31s
+fan             16 threads batch   2048: median    77.89 s (min 77.73, max 78.05)
+fan             16 threads batch  65536: median    84.05 s (min 83.83, max 84.18)
+degree          16 threads batch   2048: median    43.77 s (min 43.71, max 43.82)
+degree          16 threads batch  65536: median    58.85 s (min 58.65, max 58.94)
+scatter-gather  16 threads batch   2048: median    36.14 s (min 36.06, max 36.27)
+scatter-gather  16 threads batch  65536: median    32.09 s (min 32.05, max 32.23)
+temp-cycle      16 threads batch   2048: median    23.68 s (min 23.41, max 23.69)
+temp-cycle      16 threads batch  65536: median    23.65 s (min 23.14, max 23.70)
+wrote ../../results/e4_cpu_a30.json (/gfp)
++ echo 'a30_remote: done'
+a30_remote: done

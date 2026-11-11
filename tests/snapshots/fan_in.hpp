@@ -39,4 +39,8 @@ BLZ_HD inline std::uint32_t fan_in_work(const GraphView& g, const Params& p, std
 // The OpenMP driver (fan_in_cpu.cpp).
 void fan_in_cpu(const GraphView& g, const Params& p, std::span<const std::uint32_t> triggers, BlockOut& out, int chunk);
 
+// The CUDA launchers (fan_in_cuda.cu, built with BLZ_ENABLE_CUDA).
+void fan_in_cuda_bucket(const GraphView& g, const Params& p, std::uint64_t first, std::uint32_t count, std::uint32_t threshold, std::uint8_t* flags, void* stream);
+void fan_in_cuda(const GraphView& g, const Params& p, const CudaRun& run);
+
 }  // namespace blz::gen

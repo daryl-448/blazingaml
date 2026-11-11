@@ -9,6 +9,13 @@
 #include "sg_scatter.hpp"
 #include "tcyc.hpp"
 
+// The CUDA launchers exist only in a build with BLZ_ENABLE_CUDA (SPEC §7.5).
+#if defined(BLZ_WITH_CUDA)
+#define BLZ_CUDA_FN(f) &f
+#else
+#define BLZ_CUDA_FN(f) nullptr
+#endif
+
 namespace blz {
 
 namespace {
@@ -16,13 +23,13 @@ namespace {
 constexpr ConstInfo kConsts_tcyc[] = {{"K_MAX", 10}};
 
 constexpr PatternInfo kPatterns[] = {
-  {"deg_in", "deg_in", "patterns/deg_in.yaml:4:8", "patterns/deg_in.yaml", "delta_deg", {}, &gen::deg_in_cpu, &gen::deg_in_work},
-  {"deg_out", "deg_out", "patterns/deg_out.yaml:4:8", "patterns/deg_out.yaml", "delta_deg", {}, &gen::deg_out_cpu, &gen::deg_out_work},
-  {"fan_in", "fan_in", "patterns/fan_in.yaml:4:8", "patterns/fan_in.yaml", "delta_fan", {}, &gen::fan_in_cpu, &gen::fan_in_work},
-  {"fan_out", "fan_out", "patterns/fan_out.yaml:4:8", "patterns/fan_out.yaml", "delta_fan", {}, &gen::fan_out_cpu, &gen::fan_out_work},
-  {"sg_gather", "sg", "patterns/sg_gather.yaml:4:8", "patterns/sg_gather.yaml", "delta_sg", {}, &gen::sg_gather_cpu, &gen::sg_gather_work},
-  {"sg_scatter", "sg", "patterns/sg_scatter.yaml:4:8", "patterns/sg_scatter.yaml", "delta_sg", {}, &gen::sg_scatter_cpu, &gen::sg_scatter_work},
-  {"tcyc", "tcyc", "patterns/tcyc.yaml:4:8", "patterns/tcyc.yaml", "delta_cyc", kConsts_tcyc, &gen::tcyc_cpu, &gen::tcyc_work},
+  {"deg_in", "deg_in", "patterns/deg_in.yaml:4:8", "patterns/deg_in.yaml", "delta_deg", {}, &gen::deg_in_cpu, &gen::deg_in_work, BLZ_CUDA_FN(gen::deg_in_cuda_bucket), BLZ_CUDA_FN(gen::deg_in_cuda)},
+  {"deg_out", "deg_out", "patterns/deg_out.yaml:4:8", "patterns/deg_out.yaml", "delta_deg", {}, &gen::deg_out_cpu, &gen::deg_out_work, BLZ_CUDA_FN(gen::deg_out_cuda_bucket), BLZ_CUDA_FN(gen::deg_out_cuda)},
+  {"fan_in", "fan_in", "patterns/fan_in.yaml:4:8", "patterns/fan_in.yaml", "delta_fan", {}, &gen::fan_in_cpu, &gen::fan_in_work, BLZ_CUDA_FN(gen::fan_in_cuda_bucket), BLZ_CUDA_FN(gen::fan_in_cuda)},
+  {"fan_out", "fan_out", "patterns/fan_out.yaml:4:8", "patterns/fan_out.yaml", "delta_fan", {}, &gen::fan_out_cpu, &gen::fan_out_work, BLZ_CUDA_FN(gen::fan_out_cuda_bucket), BLZ_CUDA_FN(gen::fan_out_cuda)},
+  {"sg_gather", "sg", "patterns/sg_gather.yaml:4:8", "patterns/sg_gather.yaml", "delta_sg", {}, &gen::sg_gather_cpu, &gen::sg_gather_work, BLZ_CUDA_FN(gen::sg_gather_cuda_bucket), BLZ_CUDA_FN(gen::sg_gather_cuda)},
+  {"sg_scatter", "sg", "patterns/sg_scatter.yaml:4:8", "patterns/sg_scatter.yaml", "delta_sg", {}, &gen::sg_scatter_cpu, &gen::sg_scatter_work, BLZ_CUDA_FN(gen::sg_scatter_cuda_bucket), BLZ_CUDA_FN(gen::sg_scatter_cuda)},
+  {"tcyc", "tcyc", "patterns/tcyc.yaml:4:8", "patterns/tcyc.yaml", "delta_cyc", kConsts_tcyc, &gen::tcyc_cpu, &gen::tcyc_work, BLZ_CUDA_FN(gen::tcyc_cuda_bucket), BLZ_CUDA_FN(gen::tcyc_cuda)},
 };
 
 }  // namespace

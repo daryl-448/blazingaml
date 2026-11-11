@@ -1,5 +1,6 @@
 // blz — BlazingAML runtime CLI (SPEC §14). Commands so far: prepare, export-edges, stats (P0);
-// mine (oracle backend), compare, fuzz (P1); train (P2); mine --backend cpu, bench, fuzz-diff (P4).
+// mine (oracle backend), compare, fuzz (P1); train (P2); mine --backend cpu, bench, fuzz-diff (P4);
+// the cuda backend of mine, bench and fuzz-diff (P5).
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -29,9 +30,12 @@
 #include "io/blzg.hpp"
 #include "io/csv.hpp"
 #include "ml/metrics.hpp"
+#if BLZ_WITH_XGBOOST
 #include "ml/xgb.hpp"
+#endif
 #include "oracle/oracle.hpp"
 #include "runtime/cpu_backend.hpp"
+#include "runtime/cuda_backend.hpp"
 #include "runtime/features.hpp"
 #include "runtime/fuzz_diff.hpp"
 
@@ -147,7 +151,13 @@ nlohmann::json git_info() {
   };
   const std::string git = "git -C '" BLZ_SOURCE_DIR "' ";
   const std::string sha = run(git + "rev-parse HEAD 2>/dev/null");
-  if (sha.empty()) return nullptr;
+  if (sha.empty()) {
+    // A source tree shipped without .git (bench/a30.sh) names its commit in the environment.
+    const char* env_sha = std::getenv("BLZ_GIT_SHA");
+    const char* env_dirty = std::getenv("BLZ_GIT_DIRTY");
+    if (!env_sha || !*env_sha) return nullptr;
+    return {{"sha", env_sha}, {"dirty", env_dirty && std::string(env_dirty) == "1"}, {"from", "BLZ_GIT_SHA"}};
+  }
   return {{"sha", sha}, {"dirty", !run(git + "status --porcelain 2>/dev/null").empty()}};
 }
 
@@ -178,14 +188,39 @@ std::vector<blz::Block> select_blocks(const blz::FeatureConfig& cfg, const std::
   return blocks;
 }
 
+// The CUDA device and build, for results files (SPEC §12.1).
+nlohmann::json cuda_json() {
+  const blz::CudaDevice d = blz::cuda_device();
+  return {{"device", d.name},
+          {"compute_capability", std::to_string(d.cc_major) + "." + std::to_string(d.cc_minor)},
+          {"sm_count", d.sm_count},
+          {"memory_mb", {{"total", d.total_bytes >> 20}, {"free", d.free_bytes >> 20}}},
+          {"driver_version", d.driver_version},
+          {"runtime_version", d.runtime_version},
+          {"build", BLZ_CUDA_BUILD}};
+}
+
+// "0,16,32,all" -> light/heavy thresholds; "all" (every trigger light) is kAllLight.
+std::vector<std::uint32_t> parse_thresholds(const std::string& s) {
+  std::vector<std::uint32_t> out;
+  for (std::size_t p = 0; p <= s.size();) {
+    auto q = std::min(s.find(',', p), s.size());
+    const std::string v = s.substr(p, q - p);
+    out.push_back(v == "all" ? blz::kAllLight : std::uint32_t(std::stoul(v)));
+    p = q + 1;
+  }
+  return out;
+}
+std::string threshold_name(std::uint32_t h) { return h == blz::kAllLight ? "all" : std::to_string(h); }
+
 int mine(const std::string& graph, const std::string& config, const std::string& backend,
-         int threads, const std::string& schedule_opt, const std::string& blocks_opt,
+         int threads, const std::string& schedule_opt, std::uint32_t heavy, const std::string& blocks_opt,
          const std::string& triggers, const std::string& out) {
-  if (backend == "cuda") throw std::runtime_error("backend 'cuda' is not implemented yet (P5)");
-  const bool cpu = backend == "cpu";
+  const bool cpu = backend == "cpu", gpu = backend == "cuda";
+  if (gpu && !blz::cuda_built()) blz::cuda_device();  // throws: no CUDA backend in this build
   const blz::Schedule schedule = blz::parse_schedule(schedule_opt);
   const blz::FeatureConfig cfg = blz::load_feature_config(config);
-  if (cpu) blz::check_backend_config(cfg, config);
+  if (cpu || gpu) blz::check_backend_config(cfg, config);
   const std::vector<blz::Block> blocks = select_blocks(cfg, blocks_opt, config);
 
   auto t0 = Clock::now();
@@ -204,11 +239,18 @@ int mine(const std::string& graph, const std::string& config, const std::string&
   if (threads > 0) omp_set_num_threads(threads);
   std::optional<blz::Oracle> oracle;
   std::optional<blz::GraphIndex> index;
-  if (cpu) index.emplace(g.src, g.dst, g.ts, g.n());
+  if (cpu || gpu) index.emplace(g.src, g.dst, g.ts, g.n());
   else oracle.emplace(blz::EdgeStream{g.src, g.dst, g.ts, g.n()});
   const double build_s = secs(t0);
   std::fprintf(stderr, "%s index built in %.1f s (m=%llu, n=%llu)\n", backend.c_str(), build_s,
                (unsigned long long)g.m(), (unsigned long long)g.n());
+  std::optional<blz::DeviceGraph> dgraph;
+  std::optional<blz::CudaMiner> miner;
+  if (gpu) {
+    dgraph.emplace(index->view());
+    miner.emplace();
+    std::fprintf(stderr, "graph uploaded in %.3f s (%.0f MB)\n", dgraph->upload_seconds(), double(dgraph->bytes()) / 1e6);
+  }
 
   std::filesystem::create_directories(out);
   const std::string meta_path = out + "/features.json";
@@ -227,6 +269,11 @@ int mine(const std::string& graph, const std::string& config, const std::string&
   meta["git"] = git_info();
   meta["threads"] = omp_get_max_threads();
   if (cpu) meta["schedule"] = blz::schedule_name(schedule);
+  if (gpu)
+    meta["cuda"] = {{"env", cuda_json()},
+                    {"heavy_threshold", threshold_name(heavy)},
+                    {"graph_upload_seconds", dgraph->upload_seconds()},
+                    {"device_graph_bytes", dgraph->bytes()}};
   meta["index_build_seconds"] = build_s;
   if (!meta.contains("blocks")) meta["blocks"] = nlohmann::json::object();
 
@@ -234,19 +281,29 @@ int mine(const std::string& graph, const std::string& config, const std::string&
   std::uint64_t total_saturated = 0;
   for (blz::Block b : blocks) {
     const blz::BlockParams& p = *cfg[b];
-    std::vector<std::uint32_t> feats(rows * p.bins.size(), 0);
+    const std::uint64_t cells = rows * p.bins.size();
+    std::vector<std::uint32_t> feats;
+    std::optional<blz::PinnedBuffer> pinned;  // cuda: the rows, copied straight from the device
+    if (gpu) pinned.emplace(cells);
+    else feats.assign(cells, 0);
     auto t1 = Clock::now();
     std::uint64_t sat = 0;
     blz::CpuBlockTiming tm;
+    blz::CudaBlockTiming ctm;
     if (cpu) {
       tm = blz::mine_cpu(index->view(), b, p, first, last, schedule, feats.data());
       sat = tm.saturated;
+    } else if (gpu) {
+      ctm = miner->mine(*dgraph, b, p, first, last, heavy, pinned->data());
+      sat = ctm.saturated;
     } else {
       sat = oracle->mine(b, p, cfg.k_max, first, last, feats.data());
     }
     const double mine_s = secs(t1);
     const std::string file = std::string(blz::block_name(b)) + ".npy";
-    blz::write_npy_u32(out + "/" + file, feats, rows, p.bins.size());
+    blz::write_npy_u32(out + "/" + file,
+                       gpu ? std::span<const std::uint32_t>(pinned->data(), cells) : std::span<const std::uint32_t>(feats),
+                       rows, p.bins.size());
     auto j = block_params_json(p, b);
     j["file"] = file;
     j["columns"] = blz::column_names(b, p.bins);
@@ -254,6 +311,13 @@ int mine(const std::string& graph, const std::string& config, const std::string&
     if (cpu) {
       j["schedule_seconds"] = tm.schedule_seconds;
       j["loop_seconds"] = tm.loop_seconds;
+    }
+    if (gpu)
+      j["cuda"] = {{"kernel_seconds", ctm.kernel_seconds}, {"bucket_seconds", ctm.bucket_seconds},
+                   {"light_seconds", ctm.light_seconds},   {"heavy_seconds", ctm.heavy_seconds},
+                   {"d2h_seconds", ctm.d2h_seconds},       {"light_triggers", ctm.light},
+                   {"heavy_triggers", ctm.heavy}};
+    if (cpu || gpu) {
       nlohmann::json pats = nlohmann::json::array();
       for (const blz::PatternInfo* pi : blz::patterns_for(b)) pats.push_back(pi->name);
       j["patterns"] = pats;
@@ -388,6 +452,7 @@ int fuzz(const std::string& seeds, const std::string& bins_opt, int k_max, const
   return 0;
 }
 
+#if BLZ_WITH_XGBOOST
 // Table 2 feature sets (SPEC §10.1): src_id and dst_id, then these blocks in the order the sets
 // add them, so each set's columns are a prefix of the next set's.
 std::vector<blz::Block> set_blocks(const std::string& set) {
@@ -523,18 +588,27 @@ int train(const std::string& graph, const std::string& features, const std::stri
   std::ofstream(out) << doc.dump(1) << '\n';
   return 0;
 }
+#else
+int train(const std::string&, const std::string&, const std::string&, const std::string&, const std::string&,
+          const std::string&, int) {
+  throw std::runtime_error("this build has no XGBoost (BLZ_WITH_XGBOOST=OFF); use the rel or rel-cuda preset");
+}
+#endif
+
+// A shell command's stdout ("" if it cannot run).
+std::string run_command(const std::string& cmd) {
+  std::string out;
+  if (FILE* f = popen(cmd.c_str(), "r")) {
+    char buf[512];
+    while (std::fgets(buf, sizeof buf, f)) out += buf;
+    pclose(f);
+  }
+  return out;
+}
 
 // The machine and build a timing was taken on (SPEC §12.1).
 nlohmann::json environment(const std::string& config) {
-  auto run = [](const std::string& cmd) {
-    std::string out;
-    if (FILE* f = popen(cmd.c_str(), "r")) {
-      char buf[512];
-      while (std::fgets(buf, sizeof buf, f)) out += buf;
-      pclose(f);
-    }
-    return out;
-  };
+  auto run = run_command;
   auto env = [](const char* k) -> nlohmann::json {
     const char* v = std::getenv(k);
     return v ? nlohmann::json(v) : nlohmann::json(nullptr);
@@ -586,7 +660,7 @@ std::uint64_t fnv1a(std::span<const std::uint32_t> data) {
 int bench(const std::string& graph, const std::string& config, const std::string& backend,
           const std::string& threads_opt, int reps, const std::string& schedules_opt,
           const std::string& blocks_opt, const std::string& out, const std::string& name) {
-  if (backend != "cpu") throw std::runtime_error("bench: backend '" + backend + "' is not implemented yet (P5)");
+  if (backend != "cpu") throw std::runtime_error("bench: backend '" + backend + "' is not the cpu backend");
   if (reps < 1) throw std::runtime_error("--reps must be >= 1");
   const blz::FeatureConfig cfg = blz::load_feature_config(config);
   blz::check_backend_config(cfg, config);
@@ -672,13 +746,123 @@ int bench(const std::string& graph, const std::string& config, const std::string
   return 0;
 }
 
-// AC1 on fuzz graphs (SPEC §13.3): generated CPU vs oracle. Exit code 0 if equal, 2 if not.
-int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::string& report,
-              const std::string& name) {
+nlohmann::json summary(const std::vector<double>& v) {
+  std::vector<double> s = v;
+  std::sort(s.begin(), s.end());
+  const double med = s.size() % 2 ? s[s.size() / 2] : (s[s.size() / 2 - 1] + s[s.size() / 2]) / 2;
+  return {{"median", med}, {"min", s.front()}, {"max", s.back()}, {"seconds", v}};
+}
+
+// E5 (SPEC §12.2): per block and light/heavy threshold, 1 warm-up and `reps` timed runs of the
+// CUDA backend over every trigger. Every run's rows, at every threshold, must equal the block's
+// first run (determinism, SPEC §8). The graph upload is timed separately, as `reps` fresh uploads
+// after one warm-up upload, and T_BlazingAML(block) = median upload + kernels + D2H (SPEC §11.2).
+int bench_cuda(const std::string& graph, const std::string& config, int reps, const std::string& heavy_opt,
+               const std::string& blocks_opt, const std::string& out, const std::string& name) {
+  if (reps < 1) throw std::runtime_error("--reps must be >= 1");
+  const blz::FeatureConfig cfg = blz::load_feature_config(config);
+  blz::check_backend_config(cfg, config);
+  const std::vector<blz::Block> blocks = select_blocks(cfg, blocks_opt, config);
+  const std::vector<std::uint32_t> thresholds = parse_thresholds(heavy_opt);
+  nlohmann::json hs = nlohmann::json::array();
+  for (std::uint32_t h : thresholds) hs.push_back(threshold_name(h));
+  nlohmann::json env = environment(config);
+  env["nvidia_smi"] = run_command("nvidia-smi -q 2>/dev/null");
+  nlohmann::json res = {{"env", env}, {"cuda", cuda_json()}, {"backend", "cuda"},
+                        {"graph", graph}, {"reps", reps}, {"warmup", 1}, {"heavy_thresholds", hs}};
+
+  blz::BlzgView g(graph);
+  auto t0 = Clock::now();
+  const blz::GraphIndex index(g.src, g.dst, g.ts, g.n());
+  res["index_build_seconds"] = secs(t0);
+  res["index_bytes"] = index.bytes();
+  res["csv_sha256"] = blz::to_hex(g.csv_sha256());
+  std::vector<double> uploads;
+  for (int r = 0; r <= reps; ++r) {  // r == 0 is the warm-up
+    const blz::DeviceGraph dg(index.view());
+    if (r > 0) uploads.push_back(dg.upload_seconds());
+    res["device_graph_bytes"] = dg.bytes();
+  }
+  res["graph_upload"] = summary(uploads);
+  const double upload_med = res["graph_upload"]["median"].get<double>();
+  std::fprintf(stderr, "index built in %.2f s; graph upload median %.3f s (%.0f MB)\n",
+               res["index_build_seconds"].get<double>(), upload_med, res["device_graph_bytes"].get<double>() / 1e6);
+
+  const blz::DeviceGraph dg(index.view());
+  blz::CudaMiner miner;
+  const std::uint64_t m = g.m();
+  nlohmann::json runs = nlohmann::json::object();
+  for (blz::Block b : blocks) {
+    const blz::BlockParams& p = *cfg[b];
+    const std::string bname(blz::block_name(b));
+    const std::uint64_t cells = m * p.bins.size();
+    blz::PinnedBuffer buf(cells);
+    std::vector<std::uint32_t> ref;
+    nlohmann::json jb = {{"patterns", nlohmann::json::array()}, {"window", p.window}, {"bins", p.bins}};
+    for (const blz::PatternInfo* pi : blz::patterns_for(b)) jb["patterns"].push_back(pi->name);
+    for (std::uint32_t h : thresholds) {
+      std::vector<double> kernel, d2h, total, bucket, light, heavy, wall;
+      blz::CudaBlockTiming tm;
+      for (int r = 0; r <= reps; ++r) {  // r == 0 is the warm-up
+        tm = miner.mine(dg, b, p, 0, m, h, buf.data());
+        const std::span<const std::uint32_t> got(buf.data(), cells);
+        if (ref.empty()) {
+          ref.assign(got.begin(), got.end());
+          jb["output_fnv1a"] = fnv1a(ref);
+          jb["saturated"] = tm.saturated;
+        } else if (!std::equal(got.begin(), got.end(), ref.begin())) {
+          throw std::runtime_error("bench: " + bname + " output differs at heavy threshold " + threshold_name(h) +
+                                   " (SPEC §8)");
+        }
+        if (r == 0) continue;
+        kernel.push_back(tm.kernel_seconds);
+        d2h.push_back(tm.d2h_seconds);
+        total.push_back(upload_med + tm.kernel_seconds + tm.d2h_seconds);
+        bucket.push_back(tm.bucket_seconds);
+        light.push_back(tm.light_seconds);
+        heavy.push_back(tm.heavy_seconds);
+        wall.push_back(tm.wall_seconds);
+      }
+      nlohmann::json jh = {{"total", summary(total)},     {"kernel", summary(kernel)},
+                           {"d2h", summary(d2h)},         {"bucket_median", summary(bucket)["median"]},
+                           {"light_median", summary(light)["median"]},
+                           {"heavy_median", summary(heavy)["median"]},
+                           {"wall_median", summary(wall)["median"]},
+                           {"light_triggers", tm.light},  {"heavy_triggers", tm.heavy}};
+      std::fprintf(stderr, "%-8s H=%-4s kernels median %8.4f s (light %.4f, heavy %.4f, bucket %.4f), d2h %.4f s, "
+                   "%llu heavy triggers\n",
+                   bname.c_str(), threshold_name(h).c_str(), jh["kernel"]["median"].get<double>(),
+                   jh["light_median"].get<double>(), jh["heavy_median"].get<double>(),
+                   jh["bucket_median"].get<double>(), jh["d2h"]["median"].get<double>(),
+                   (unsigned long long)tm.heavy);
+      jb["by_threshold"][threshold_name(h)] = jh;
+    }
+    runs[bname] = jb;
+  }
+  res["blocks"] = runs;
+  rusage ru{};
+  getrusage(RUSAGE_SELF, &ru);
+  res["peak_rss_mb"] = double(ru.ru_maxrss) / 1024.0;
+
+  nlohmann::json doc = nlohmann::json::object();
+  if (std::filesystem::exists(out)) doc = nlohmann::json::parse(std::ifstream(out));
+  doc[nlohmann::json::json_pointer("/" + name)] = res;
+  ensure_parent(out);
+  std::ofstream(out) << doc.dump(1) << '\n';
+  std::fprintf(stderr, "wrote %s (/%s)\n", out.c_str(), name.c_str());
+  return 0;
+}
+
+// AC1 on fuzz graphs (SPEC §13.3): a generated backend vs the oracle. Exit code 0 if equal, 2 if
+// not. cuda runs every graph once per light/heavy threshold.
+int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::string& backend,
+              const std::string& heavy_opt, const std::string& report, const std::string& name) {
   const auto [s0, s1] = parse_range(seeds);
   const auto bins = parse_bins(bins_opt);
+  const bool gpu = backend == "cuda";
+  const std::vector<std::uint32_t> thresholds = parse_thresholds(heavy_opt);
   auto t0 = Clock::now();
-  const blz::FuzzDiff d = blz::fuzz_diff_cpu(s0, s1, bins);
+  const blz::FuzzDiff d = gpu ? blz::fuzz_diff_cuda(s0, s1, bins, thresholds) : blz::fuzz_diff_cpu(s0, s1, bins);
   nlohmann::json per_block = nlohmann::json::object();
   std::uint64_t bad = 0;
   for (blz::Block b : blz::kAllBlocks) {
@@ -687,19 +871,27 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
   }
   std::vector<std::uint64_t> first_bad(d.bad_seeds.begin(),
                                        d.bad_seeds.begin() + std::ptrdiff_t(std::min<std::size_t>(20, d.bad_seeds.size())));
-  const nlohmann::json res = {{"seeds", seeds},
-                              {"graphs", d.graphs},
-                              {"edges", d.edges},
-                              {"bins", bins},
-                              {"k_max", blz::compiled_k_max()},
-                              {"schedules", {"dynamic", "sorted"}},
-                              {"mismatched_rows_by_block", per_block},
-                              {"mismatched_seeds", d.bad_seeds.size()},
-                              {"first_mismatched_seeds", first_bad},
-                              {"seconds", secs(t0)},
-                              {"git", git_info()}};
-  std::printf("fuzz-diff cpu vs oracle, seeds %s: %llu graphs, %llu edges, %llu mismatching rows (%.1f s)\n",
-              seeds.c_str(), (unsigned long long)d.graphs, (unsigned long long)d.edges,
+  nlohmann::json res = {{"backend", backend},
+                        {"seeds", seeds},
+                        {"graphs", d.graphs},
+                        {"edges", d.edges},
+                        {"bins", bins},
+                        {"k_max", blz::compiled_k_max()},
+                        {"mismatched_rows_by_block", per_block},
+                        {"mismatched_seeds", d.bad_seeds.size()},
+                        {"first_mismatched_seeds", first_bad},
+                        {"seconds", secs(t0)},
+                        {"git", git_info()}};
+  if (gpu) {
+    nlohmann::json hs = nlohmann::json::array();
+    for (std::uint32_t h : thresholds) hs.push_back(threshold_name(h));
+    res["heavy_thresholds"] = hs;
+    res["cuda"] = cuda_json();
+  } else {
+    res["schedules"] = {"dynamic", "sorted"};
+  }
+  std::printf("fuzz-diff %s vs oracle, seeds %s: %llu graphs, %llu edges, %llu mismatching rows (%.1f s)\n",
+              backend.c_str(), seeds.c_str(), (unsigned long long)d.graphs, (unsigned long long)d.edges,
               (unsigned long long)bad, secs(t0));
   if (bad) std::printf("%s\n", res.dump(1).c_str());
   if (!report.empty()) {
@@ -733,12 +925,14 @@ int main(int argc, char** argv) {
 
   std::string config, backend = "oracle", blocks, triggers = "all", schedule = "dynamic";
   int threads = 0;
+  std::uint32_t heavy = blz::kDefaultHeavyThreshold;
   auto* mn = app.add_subcommand("mine", "Mine feature blocks -> <out>/<block>.npy + features.json");
   mn->add_option("--graph", graph)->required();
   mn->add_option("--config", config)->required();
   mn->add_option("--backend", backend)->check(CLI::IsMember({"oracle", "cpu", "cuda"}));
   mn->add_option("--threads", threads);
   mn->add_option("--schedule", schedule, "cpu backend: dynamic | sorted")->check(CLI::IsMember({"dynamic", "sorted"}));
+  mn->add_option("--heavy-threshold", heavy, "cuda backend: work estimate from which a trigger is heavy");
   mn->add_option("--blocks", blocks, "comma-separated; default: every block in the config");
   mn->add_option("--triggers", triggers, "all | train | test | range:a:b");
   mn->add_option("--out", out)->required();
@@ -774,22 +968,27 @@ int main(int argc, char** argv) {
   tr->add_option("--out", out, "merge the result into this JSON file")->required();
   tr->add_option("--name", name, "key (JSON pointer path) in --out; default: the set");
 
-  std::string threads_list = "1,2,4,6,8,12", schedules = "dynamic", bench_name = "cpu";
+  std::string threads_list = "1,2,4,6,8,12", schedules = "dynamic", bench_name, heavy_list;
   int reps = 5;
-  auto* bn = app.add_subcommand("bench", "E4: time the CPU backend per block and thread count (SPEC §12)");
+  auto* bn = app.add_subcommand("bench", "E4/E5: time the CPU or CUDA backend per block (SPEC §12)");
   bn->add_option("--graph", graph)->required();
   bn->add_option("--config", config)->required();
   bn->add_option("--backend", backend)->check(CLI::IsMember({"cpu", "cuda"}))->required();
   bn->add_option("--threads", threads_list, "comma-separated thread counts");
   bn->add_option("--reps", reps, "timed runs after one warm-up");
-  bn->add_option("--schedule", schedules, "comma-separated: dynamic, sorted");
+  bn->add_option("--schedule", schedules, "cpu: comma-separated: dynamic, sorted");
+  bn->add_option("--heavy", heavy_list, "cuda: comma-separated light/heavy thresholds; 'all' = every trigger light "
+                                        "(default 32)");
   bn->add_option("--blocks", blocks, "comma-separated; default: every block in the config");
   bn->add_option("--out", out, "merge the result into this JSON file")->required();
-  bn->add_option("--name", bench_name, "key (JSON pointer path) in --out");
+  bn->add_option("--name", bench_name, "key (JSON pointer path) in --out; default: the backend");
 
-  auto* fd = app.add_subcommand("fuzz-diff", "AC1: generated CPU vs oracle on fuzz graphs (SPEC §13.3)");
+  std::string fd_backend = "cpu", fd_heavy = "0,4,all";
+  auto* fd = app.add_subcommand("fuzz-diff", "AC1: a generated backend vs the oracle on fuzz graphs (SPEC §13.3)");
   fd->add_option("--seeds", seeds, "a:b")->required();
   fd->add_option("--bins", bins);
+  fd->add_option("--backend", fd_backend)->check(CLI::IsMember({"cpu", "cuda"}));
+  fd->add_option("--heavy", fd_heavy, "cuda: light/heavy thresholds, each run on every graph");
   fd->add_option("--report", report, "merge the summary into this JSON file");
   fd->add_option("--name", name, "key (JSON pointer path) in --report")->needs("--report");
 
@@ -798,11 +997,20 @@ int main(int argc, char** argv) {
     if (*prep) return prepare(csv, out);
     if (*exp) return export_edges(graph, out);
     if (*st) return stats(graph, out);
-    if (*mn) return mine(graph, config, backend, threads, schedule, blocks, triggers, out);
-    if (*bn) return bench(graph, config, backend, threads_list, reps, schedules, blocks, out, bench_name);
+    if (*mn) return mine(graph, config, backend, threads, schedule, heavy, blocks, triggers, out);
+    if (*bn) {
+      if (bench_name.empty()) bench_name = backend;
+      if (backend == "cuda") {
+        if (*bn->get_option("--threads") || *bn->get_option("--schedule"))
+          throw std::runtime_error("bench --backend cuda takes --heavy, not --threads or --schedule");
+        return bench_cuda(graph, config, reps, heavy_list.empty() ? std::to_string(blz::kDefaultHeavyThreshold) : heavy_list, blocks, out, bench_name);
+      }
+      if (!heavy_list.empty()) throw std::runtime_error("--heavy is for --backend cuda");
+      return bench(graph, config, backend, threads_list, reps, schedules, blocks, out, bench_name);
+    }
     if (*fd) {
       if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");
-      return fuzz_diff(seeds, bins, report, name);
+      return fuzz_diff(seeds, bins, fd_backend, fd_heavy, report, name);
     }
     if (*cmp) {
       if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");

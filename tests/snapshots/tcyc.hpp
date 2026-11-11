@@ -167,4 +167,8 @@ BLZ_HD inline std::uint32_t tcyc_work(const GraphView& g, const Params& p, std::
 // The OpenMP driver (tcyc_cpu.cpp).
 void tcyc_cpu(const GraphView& g, const Params& p, std::span<const std::uint32_t> triggers, BlockOut& out, int chunk);
 
+// The CUDA launchers (tcyc_cuda.cu, built with BLZ_ENABLE_CUDA).
+void tcyc_cuda_bucket(const GraphView& g, const Params& p, std::uint64_t first, std::uint32_t count, std::uint32_t threshold, std::uint8_t* flags, void* stream);
+void tcyc_cuda(const GraphView& g, const Params& p, const CudaRun& run);
+
 }  // namespace blz::gen

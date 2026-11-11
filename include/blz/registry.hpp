@@ -1,6 +1,6 @@
 #pragma once
-// What generated pattern code and the runtime share (SPEC §7.4, §7.6): the CPU output sink, the
-// driver and work-estimate signatures, and the registry blzc writes (registry.cpp).
+// What generated pattern code and the runtime share (SPEC §7.4–§7.6): the output sink, the CPU
+// driver, work-estimate and CUDA launcher signatures, and the registry blzc writes (registry.cpp).
 #include <cstdint>
 #include <span>
 
@@ -44,6 +44,29 @@ using CpuFn = void (*)(const GraphView&, const Params&, std::span<const std::uin
 // (SPEC §7.4 `sorted`, §7.5 bucketing).
 using WorkFn = std::uint32_t (*)(const GraphView&, const Params&, std::uint32_t e);
 
+// The CUDA launchers (SPEC §7.5), defined in the generated <stem>_cuda.cu. Every pointer is a
+// device pointer, the GraphView included, and `stream` is a cudaStream_t. They only enqueue work.
+//
+// <pattern>_cuda_bucket: flags[i] = (<pattern>_work(first + i) >= threshold), for i < count.
+using CudaBucketFn = void (*)(const GraphView& g, const Params& p, std::uint64_t first, std::uint32_t count,
+                              std::uint32_t threshold, std::uint8_t* flags, void* stream);
+
+// One launch of a pattern's light or heavy kernel over a trigger list, adding into the block's
+// rows (row r belongs to trigger eid first + r).
+struct CudaRun {
+  std::uint32_t* out = nullptr;
+  std::uint64_t first = 0;
+  const std::uint32_t* bins = nullptr;
+  std::uint32_t nbins = 0;
+  unsigned long long* saturated = nullptr;  // emits lost to saturation are added here
+  const std::uint32_t* triggers = nullptr;
+  std::uint32_t count = 0;
+  bool heavy = false;  // heavy: warp per trigger; light: thread per trigger
+  void* stream = nullptr;
+};
+// <pattern>_cuda: the light or heavy kernel over run.triggers.
+using CudaFn = void (*)(const GraphView& g, const Params& p, const CudaRun& run);
+
 struct ConstInfo {
   const char* name;
   std::int64_t value;
@@ -58,6 +81,8 @@ struct PatternInfo {
   std::span<const ConstInfo> consts;  // compile-time consts, after any --const override
   CpuFn cpu;
   WorkFn work;
+  CudaBucketFn cuda_bucket;  // null in a build without CUDA
+  CudaFn cuda;               // null in a build without CUDA
 };
 
 // Every pattern blzc compiled into this build, in the order of its spec arguments.

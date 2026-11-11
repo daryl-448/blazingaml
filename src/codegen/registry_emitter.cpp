@@ -35,6 +35,13 @@ GeneratedFile emit_registry(const std::vector<ir::Pattern>& patterns, const std:
   w.line();
   for (const std::string& stem : stems) w.line("#include \"" + stem + ".hpp\"");
   w.line();
+  w.line("// The CUDA launchers exist only in a build with BLZ_ENABLE_CUDA (SPEC §7.5).");
+  w.line("#if defined(BLZ_WITH_CUDA)");
+  w.line("#define BLZ_CUDA_FN(f) &f");
+  w.line("#else");
+  w.line("#define BLZ_CUDA_FN(f) nullptr");
+  w.line("#endif");
+  w.line();
   w.line("namespace blz {");
   w.line();
   w.line("namespace {");
@@ -51,7 +58,7 @@ GeneratedFile emit_registry(const std::vector<ir::Pattern>& patterns, const std:
     const std::string consts = p.consts.empty() ? "{}" : "kConsts_" + p.name;
     w.line("{" + quoted(p.name) + ", " + quoted(p.block) + ", " + quoted(dsl::format_loc(p.block_loc)) + ", " +
            quoted(p.file) + ", " + quoted(p.span_param) + ", " + consts + ", &gen::" + p.name + "_cpu, &gen::" +
-           p.name + "_work},");
+           p.name + "_work, BLZ_CUDA_FN(gen::" + p.name + "_cuda_bucket), BLZ_CUDA_FN(gen::" + p.name + "_cuda)},");
   }
   w.close("};");
   w.line();

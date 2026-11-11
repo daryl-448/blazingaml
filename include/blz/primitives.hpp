@@ -1,7 +1,7 @@
 #pragma once
 // The graph view and the primitives that generated pattern code is built from (SPEC §5.3).
 // Everything here is BLZ_HD (host and device) and header-only, so the same loop nest compiles
-// for the OpenMP driver and, in P5, for CUDA. No standard algorithms: they are not device code.
+// for the OpenMP driver and for CUDA (P5). No standard algorithms: they are not device code.
 #include <cstdint>
 
 #if defined(__CUDACC__)
@@ -123,19 +123,24 @@ struct Params {
 };
 
 // count_distinct / count_edges (SPEC §5.3): the number of distinct neighbours, or of edges, in
-// range r whose neighbour passes keep(nbr). Fan and degree counts in O(window).
+// range r whose neighbour passes keep(nbr). Fan and degree counts in O(window). With `stride` > 1
+// only positions r.lo + first, r.lo + first + stride, ... are counted: the CUDA heavy kernel's
+// lanes split one scan this way and sum their partial counts (SPEC §7.5). distinct_first still
+// tests against r.lo, so the partial counts add up to the full count.
 template <class Keep>
-BLZ_HD inline std::uint32_t count_distinct(const TCsrView& l, Range r, Keep keep) {
+BLZ_HD inline std::uint32_t count_distinct(const TCsrView& l, Range r, Keep keep, std::uint32_t first = 0,
+                                           std::uint32_t stride = 1) {
   std::uint32_t n = 0;
-  for (std::uint32_t j = r.lo; j < r.hi; ++j)
+  for (std::uint32_t j = r.lo + first; j < r.hi; j += stride)
     if (l.distinct_first(j, r.lo) && keep(l.nbr[j])) ++n;
   return n;
 }
 
 template <class Keep>
-BLZ_HD inline std::uint32_t count_edges(const TCsrView& l, Range r, Keep keep) {
+BLZ_HD inline std::uint32_t count_edges(const TCsrView& l, Range r, Keep keep, std::uint32_t first = 0,
+                                        std::uint32_t stride = 1) {
   std::uint32_t n = 0;
-  for (std::uint32_t j = r.lo; j < r.hi; ++j)
+  for (std::uint32_t j = r.lo + first; j < r.hi; j += stride)
     if (keep(l.nbr[j])) ++n;
   return n;
 }

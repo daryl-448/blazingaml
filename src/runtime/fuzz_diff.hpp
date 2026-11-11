@@ -19,4 +19,10 @@ struct FuzzDiff {
 
 FuzzDiff fuzz_diff_cpu(std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins);
 
+// AC1 for the generated CUDA backend, the same way: every row of every block against the oracle,
+// once per light/heavy threshold in `thresholds` (0 sends every trigger to the heavy kernel,
+// kAllLight every trigger to the light kernel). mismatched_rows sums over the thresholds.
+FuzzDiff fuzz_diff_cuda(std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
+                        std::span<const std::uint32_t> thresholds);
+
 }  // namespace blz

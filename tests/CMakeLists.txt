@@ -11,7 +11,6 @@ add_executable(blz_unit_tests
   unit/test_fuzz_gen.cpp
   unit/test_oracle.cpp
   unit/test_metrics.cpp
-  unit/test_xgb.cpp
   unit/test_registration.cpp
   unit/test_dsl_expr.cpp
   unit/test_dsl_expand.cpp
@@ -20,6 +19,12 @@ add_executable(blz_unit_tests
   unit/test_index.cpp
   unit/test_cpu_backend.cpp
   unit/test_codegen.cpp)
+if(BLZ_WITH_XGBOOST)
+  target_sources(blz_unit_tests PRIVATE unit/test_xgb.cpp)
+endif()
+if(BLZ_ENABLE_CUDA)
+  target_sources(blz_unit_tests PRIVATE unit/test_cuda_backend.cpp)
+endif()
 target_link_libraries(blz_unit_tests PRIVATE blz_core blz_codegen Catch2::Catch2WithMain)
 target_compile_definitions(blz_unit_tests PRIVATE
   BLZ_TEST_TMPDIR="${CMAKE_CURRENT_BINARY_DIR}/tmp"
@@ -40,6 +45,11 @@ set_tests_properties(blzc_snapshots PROPERTIES LABELS fast)
 # AC1 (SPEC §13.3): generated CPU vs oracle on 10,000 fuzz graphs, both schedules.
 add_test(NAME fuzz_diff_cpu_10k COMMAND blz fuzz-diff --seeds 0:10000)
 set_tests_properties(fuzz_diff_cpu_10k PROPERTIES LABELS slow)
+if(BLZ_ENABLE_CUDA)
+  # The same for CUDA, with every trigger on the heavy kernel, then mixed, then on the light one.
+  add_test(NAME fuzz_diff_cuda_10k COMMAND blz fuzz-diff --backend cuda --seeds 0:10000)
+  set_tests_properties(fuzz_diff_cuda_10k PROPERTIES LABELS slow)
+endif()
 
 # HI-Small checks (SPEC §13.5): run manually with `ctest -L slow`.
 set(BLZ_HI_SMALL_CSV "${PROJECT_SOURCE_DIR}/dataset/HI-Small_Trans.csv")

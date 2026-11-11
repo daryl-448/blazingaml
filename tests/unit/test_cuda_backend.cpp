@@ -1,0 +1,132 @@
+// The generated CUDA backend (SPEC §7.5): golden probes (§13.2) and AC1 on fuzz graphs (§13.3,
+// the fast share; `blz fuzz-diff --backend cuda --seeds 0:10000` is the slow test), each with
+// every trigger on the heavy kernel, mixed, and every trigger on the light kernel; trigger
+// ranges and determinism (§8). Built only with BLZ_ENABLE_CUDA; needs a GPU.
+#include <catch2/catch_test_macros.hpp>
+#include <fstream>
+#include <string>
+#include <vector>
+
+#include <nlohmann/json.hpp>
+
+#include "graph/fuzz_gen.hpp"
+#include "graph/index.hpp"
+#include "runtime/cpu_backend.hpp"
+#include "runtime/cuda_backend.hpp"
+#include "runtime/fuzz_diff.hpp"
+
+using namespace blz;
+
+namespace {
+
+constexpr std::uint32_t kThresholds[] = {0, 2, kAllLight};  // all heavy, mixed, all light
+
+std::vector<std::uint32_t> mine_gpu(CudaMiner& miner, const DeviceGraph& dg, Block b, const BlockParams& p,
+                                    std::uint64_t first, std::uint64_t last, std::uint32_t h) {
+  std::vector<std::uint32_t> out((last - first) * p.bins.size(), 0xdeadbeef);
+  miner.mine(dg, b, p, first, last, h, out.data());
+  return out;
+}
+
+}  // namespace
+
+TEST_CASE("cuda: the registry has launchers for every pattern") {
+  REQUIRE(cuda_built());
+  for (const PatternInfo& p : registered_patterns()) {
+    INFO(p.name);
+    CHECK(p.cuda != nullptr);
+    CHECK(p.cuda_bucket != nullptr);
+  }
+}
+
+// SPEC §13.2: the golden probes, evaluated by the generated CUDA code.
+TEST_CASE("cuda backend matches the GFP golden probes") {
+  std::ifstream in(std::string(BLZ_SOURCE_DIR) + "/tests/golden/gfp_probes.json");
+  REQUIRE(in);
+  const auto doc = nlohmann::json::parse(in);
+  const auto bins = doc["params"]["bins"].get<std::vector<std::uint32_t>>();
+  REQUIRE(doc["cases"].size() >= 30);
+  CudaMiner miner;
+  for (const auto& c : doc["cases"]) {
+    std::vector<std::uint32_t> src, dst;
+    std::vector<std::int32_t> ts;
+    std::uint32_t n = 0;
+    for (const auto& e : c["edges"]) {
+      src.push_back(e[0]);
+      dst.push_back(e[1]);
+      ts.push_back(e[2]);
+      n = std::max(n, std::max(src.back(), dst.back()) + 1);
+    }
+    const GraphIndex idx(src, dst, ts, n);
+    const DeviceGraph dg(idx.view());
+    const std::uint64_t m = src.size();
+    for (std::uint32_t h : kThresholds)
+      for (Block b : kAllBlocks) {
+        const auto got = mine_gpu(miner, dg, b, {c["tw"].get<std::int32_t>(), bins}, 0, m, h);
+        for (std::uint64_t e = 0; e < m; ++e) {
+          const auto want = c["output"][e][std::string(block_name(b))].get<std::vector<std::uint32_t>>();
+          const std::vector<std::uint32_t> row(got.begin() + std::ptrdiff_t(e * bins.size()),
+                                               got.begin() + std::ptrdiff_t((e + 1) * bins.size()));
+          INFO(c["id"].get<std::string>() << " edge " << e << " " << block_name(b) << " H=" << h);
+          CHECK(row == want);
+        }
+      }
+  }
+}
+
+// AC1, fast share: every row of every block on 500 fuzz graphs, at every threshold.
+TEST_CASE("cuda backend equals the oracle on fuzz graphs (seeds 0..499)") {
+  const std::vector<std::uint32_t> bins = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
+  const FuzzDiff d = fuzz_diff_cuda(0, 500, bins, kThresholds);
+  CHECK(d.graphs == 500);
+  for (Block b : kAllBlocks) {
+    INFO(block_name(b));
+    CHECK(d.mismatched_rows[int(b)] == 0);
+  }
+  INFO("first bad seed " << (d.bad_seeds.empty() ? -1 : std::int64_t(d.bad_seeds[0])));
+  CHECK(d.bad_seeds.empty());
+}
+
+// SPEC §8: CUDA rows equal the CPU's, for any trigger range and threshold, and repeat exactly.
+TEST_CASE("cuda backend rows equal the cpu backend's for any trigger range and threshold") {
+  CudaMiner miner;
+  for (std::uint64_t seed = 100; seed < 130; ++seed) {
+    const FuzzGraph fg = fuzz_graph(seed);
+    const GraphIndex idx(fg.src, fg.dst, fg.ts, fg.n);
+    const DeviceGraph dg(idx.view());
+    const std::uint64_t m = fg.src.size(), mid = m / 3;
+    const BlockParams p{fg.window, {2, 3, 4, 5, 6, 8}};
+    for (Block b : kAllBlocks) {
+      std::vector<std::uint32_t> cpu(m * p.bins.size(), 0);
+      mine_cpu(idx.view(), b, p, 0, m, Schedule::dynamic, cpu.data());
+      for (std::uint32_t h : kThresholds) {
+        INFO("seed " << seed << " " << block_name(b) << " H=" << h);
+        CHECK(mine_gpu(miner, dg, b, p, 0, m, h) == cpu);
+        CHECK(mine_gpu(miner, dg, b, p, 0, m, h) == cpu);
+        const auto tail = mine_gpu(miner, dg, b, p, mid, m, h);
+        CHECK(std::equal(tail.begin(), tail.end(), cpu.begin() + std::ptrdiff_t(mid * p.bins.size())));
+        CHECK(mine_gpu(miner, dg, b, p, mid, mid, h).empty());
+      }
+    }
+  }
+}
+
+// Bucketing: every trigger goes to exactly one kernel, once per pattern of the block.
+TEST_CASE("cuda bucketing sends every trigger to one kernel per pattern") {
+  std::vector<std::uint32_t> src(40, 1), dst(40, 2);
+  std::vector<std::int32_t> ts(40);
+  for (int i = 0; i < 40; ++i) ts[std::size_t(i)] = i;
+  const GraphIndex idx(src, dst, ts, 3);  // 40 parallel edges 1 -> 2, one second apart
+  const DeviceGraph dg(idx.view());
+  CudaMiner miner;
+  std::vector<std::uint32_t> out(40, 0);
+  for (std::uint32_t h : {0u, 10u, kAllLight}) {
+    const CudaBlockTiming deg = miner.mine(dg, Block::deg_in, {1000, {2}}, 0, 40, h, out.data());
+    CHECK(deg.light + deg.heavy == 40);
+    CHECK(deg.heavy == (h == 0 ? 40 : h == 10 ? 31 : 0));  // trigger e's window holds e + 1 edges
+    CHECK(out[0] == 0);
+    CHECK(out[39] == 1);
+    const CudaBlockTiming sg = miner.mine(dg, Block::sg, {1000, {2}}, 0, 40, h, out.data());
+    CHECK(sg.light + sg.heavy == 80);  // sg_gather and sg_scatter
+  }
+}

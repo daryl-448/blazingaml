@@ -107,6 +107,7 @@ therefore not comparable; only ratios on the same machine are reported [P §6].
 | `BLZ_ENABLE_CUDA` | `OFF` | Builds the CUDA backend. |
 | `BLZ_NATIVE` | `ON` | Adds `-march=native`. Benchmark result files record the flags used. |
 | `BLZ_SANITIZE` | `OFF` | ASan + UBSan, for test builds. |
+| `BLZ_WITH_XGBOOST` | `ON` | Builds `blz train` against XGBoost. Off only in the A30 runbook (D-15). |
 
 Presets (`CMakePresets.json`): `dev` (Debug, sanitizers), `rel` (Release, CPU), `rel-cuda`.
 
@@ -346,7 +347,9 @@ bounds (§7.2), and the direction is the view the call is made on (`g.out`, `g.i
 - `TCsrView::distinct_first(j, lo)`.
 - `PCsrView::pair_exists(x, y, lo_ts, hi_ts, max_eid)`: the earliest witness ts, or `kNoTs`.
 - `count_distinct(view, range, keep)` / `count_edges(view, range, keep)`: `keep(nbr)` is the
-  element filter, which generalizes `exclude`.
+  element filter, which generalizes `exclude`. P5 adds two defaulted arguments, `first` and
+  `stride`, so that the lanes of a CUDA warp can split one count (positions `lo + first`,
+  `lo + first + stride`, …; `distinct_first` still tests against `lo`).
 
 `src/graph/index.cpp` builds both directions of T-CSR and P-CSR: 268 MB on HI-Small, in 0.4 s.
 All primitives have unit tests against naive scans (§13.1).
@@ -844,6 +847,55 @@ template <class Sink> BLZ_HD inline void sg_gather_trigger(const GraphView& g, c
 - **Targets.** sm_75 and sm_80 from the same source. No architecture-specific intrinsics beyond
   warp shuffles.
 
+As implemented (P5):
+
+- **Files.** For each spec, `blzc` also writes `<stem>_cuda.cu`. It is always generated and
+  snapshotted, and compiled only with `BLZ_ENABLE_CUDA`. It holds `<pattern>_trigger_warp`, the
+  heavy kernel's body, and two host launchers, `<pattern>_cuda_bucket` and `<pattern>_cuda`. They
+  instantiate the kernel templates of `include/blz/cuda_kernels.cuh` with the pattern's light body
+  (`<pattern>_trigger`, the very text the OpenMP driver runs), its heavy body and its work
+  estimate. `<stem>.hpp` declares the launchers.
+- **Light kernel.** 128 threads per block. Each thread runs one trigger of the light list and
+  emits straight into the trigger's row through `RowSink`.
+- **Heavy kernel.** 8 warps per block, one trigger per warp. The emitter's warp mode changes only
+  the root level and the first binding stage:
+  - The first binding stage's scan (`for_all` or a binding `intersection`) visits positions
+    `lo + lane`, `lo + lane + 32`, …. `distinct_first` still tests against `lo`.
+  - With no binding stage, the root count named by the plan's split stage uses the strided
+    `count_distinct` / `count_edges` (§5.3) and `cuda::warp_sum`, before anything reads it.
+  - A root check that has no gate and that no other stage reads (tcyc's `close_2`) runs on lane 0
+    only. Any other root check is evaluated by every lane: its inputs are the same in every lane,
+    so its result and its gate are too, with no broadcast. It emits on lane 0 only. This extends
+    "root checks run once, on lane 0" to root checks whose results later stages read.
+  - Emits go to the warp's 64-bit histogram in shared memory (shared `atomicAdd`). After the
+    body, the lanes add the histogram into the row (lane i takes bins i, i + 32, …), saturating at
+    `UINT32_MAX` and counting the lost emits. This equals `RowSink`'s one-at-a-time saturation.
+- **Bucketing.** Per pattern, a kernel writes `flags[i] = work(trigger i) ≥ H`. Then
+  `cub::DevicePartition::Flagged` puts the heavy triggers first, in eid order, and the light ones
+  after them, in reverse eid order. The heavy count is read back to size the heavy launch.
+  H = 0 (every trigger heavy) and H = `all` (`UINT32_MAX`, every trigger light) skip the
+  estimates.
+- **Memory.** `DeviceGraph` (`src/runtime/cuda_backend.cu`) copies the edge arrays and both
+  directions of T-CSR and P-CSR into one allocation, from pageable memory: 329 MB on HI-Small.
+  `CudaMiner` owns the scratch buffers (output, trigger ids, flags, partition, CUB temp storage)
+  and reuses them across blocks. `blz mine` and `blz bench` copy each block back into pinned host
+  memory.
+- **Timing.** cudaEvents on the miner's stream measure:
+  - the kernel time: output zeroing + bucketing (including the heavy-count read-back) + light +
+    heavy, summed over the block's patterns (the host's timing bookkeeping between patterns is
+    not in it);
+  - the D2H time, separately;
+  - and the host wall time of the whole call.
+
+  The graph upload is timed on its own. `blz bench --backend cuda` takes `reps` fresh uploads
+  after a warm-up, and T_BlazingAML(block) = median upload + kernels + D2H (§11.2).
+- **Threshold.** `blz mine --heavy-threshold H` (default 32). `blz bench --backend cuda --heavy
+  0,8,…,all` times every block at each H. `bench/e5_report.py` takes the H with the smallest
+  kernel time summed over the blocks as the GPU's tuned H, and records it (`tuned`) with each
+  block's own best.
+- **Limits.** 1 to 768 bins per block, because a block's shared histograms (8 warps × 8 B × bins)
+  must fit in 48 KB.
+
 ### 7.6 Registry
 
 `blzc` also generates `registry.cpp`, which defines
@@ -853,8 +905,9 @@ template <class Sink> BLZ_HD inline void sg_gather_trigger(const GraphView& g, c
 As implemented (P4), `PatternInfo` (`include/blz/registry.hpp`) holds `name`, `block`,
 `block_loc` (the `file:line:col` of the spec's `block:` value, used in E402), `file`,
 `span_param` (the one runtime parameter, set from the block's `window`), `consts`, `cpu` and
-`work`. P5 adds `cuda`. `registered_patterns()` returns the table in the order of `blzc`'s spec
-arguments.
+`work`. P5 adds `cuda_bucket` and `cuda`, the CUDA launchers. `registry.cpp` points at them
+only when `BLZ_WITH_CUDA` is defined (a `rel-cuda` build); otherwise they are null.
+`registered_patterns()` returns the table in the order of `blzc`'s spec arguments.
 
 ---
 
@@ -1088,7 +1141,7 @@ on ≥ 2,000 seeds in P1.
   `tests/specs/expanded/tcyc_k5.yaml` (§6.5).
 - **Snapshot tests.** The generated `.cpp` and `.cu` for each library spec are compared with
   `tests/snapshots/`. A changed snapshot needs an explicit `--update-snapshots`. P4 has the CPU
-  files and `registry.cpp`. The fast test `blzc_snapshots` runs
+  files and `registry.cpp`; P5 adds the `.cu` files. The fast test `blzc_snapshots` runs
   `blzc patterns/*.yaml --snapshots tests/snapshots` in the source directory, which is also how
   the build generates code, and the same command with `--update-snapshots` rewrites them.
 
@@ -1111,21 +1164,26 @@ blz export-edges --graph data/hi_small.blzg --out data/edges.npy
 blz stats    --graph data/hi_small.blzg --out results/e0_profile.json
 blz mine     --graph data/hi_small.blzg --config configs/features_default.yaml
              --backend oracle|cpu|cuda [--threads N] [--schedule dynamic|sorted]
-             [--blocks fan_in,...] [--triggers all|train|test|range:a:b] --out features/<run>/
+             [--heavy-threshold H] [--blocks fan_in,...] [--triggers all|train|test|range:a:b]
+             --out features/<run>/
 blz compare  <a.npy> <b.npy> [--graph ... --tw δ] [--first-eid E] [--report r.json --name key]
 blz fuzz     --seeds a:b [--bins 2..33] [--k-max 64] --out data/fuzz/
 blz train    --graph ... --features features/<run>/ --set xgb_only|fan|fan_deg|fan_deg_cyc|all
              --xgb configs/xgb_default.yaml --out results/<run>.json
-blz bench    --graph ... --config ... --backend cpu|cuda --threads 1,2,4,6,8,12 --reps 5 --out ...
+blz bench    --graph ... --config ... --backend cpu --threads 1,2,4,6,8,12 --reps 5 --out ...
              [--schedule dynamic,sorted] [--blocks ...] [--name key]
-blz fuzz-diff --seeds a:b [--bins 2..33] [--report r.json --name key]
+blz bench    --graph ... --config ... --backend cuda --heavy 0,8,16,32,...,all --reps 5 --out ...
+             [--blocks ...] [--name key]
+blz fuzz-diff --seeds a:b [--backend cpu|cuda] [--heavy 0,4,all] [--bins 2..33]
+             [--report r.json --name key]
 blzc         patterns/<p>.yaml... --out <dir> [--check-only | --dump-ir | --expand] [--const NAME=V]
 blzc         patterns/<p>.yaml... --snapshots <dir> [--update-snapshots]
 ```
 
 `blz fuzz-diff` (P4) compares the generated CPU backend with the oracle on the §13.3 graphs,
-every row of every block, under both schedules (AC1). `blz bench` merges its result into `--out`
-under `--name` (default `cpu`).
+every row of every block, under both schedules (AC1). With `--backend cuda` (P5) it compares the
+CUDA backend instead, once per light/heavy threshold of `--heavy`. `blz bench` merges its result
+into `--out` under `--name` (default: the backend's name).
 
 ---
 
@@ -1284,6 +1342,55 @@ Caveats (also under "Measurement notes" in `results/e4_cpu_local.md`):
 
 **Exit:** AC1 (CUDA) and E5 published. **v1 is done.**
 
+**Outcome (2026-11-11).** For each library spec, `blzc` also writes `<stem>_cuda.cu`: the heavy
+kernel's body (`<pattern>_trigger_warp`, derived from the same plan) and the launchers. The light
+kernel runs the shared `<pattern>_trigger`. The kernel templates, the bucketing and the device
+mirror are in `include/blz/cuda_kernels.cuh` and `src/runtime/cuda_backend.cu`. The `.cu`
+files are in the snapshots. `blz mine`, `blz bench` and `blz fuzz-diff` take `--backend cuda`.
+Rules this phase pinned down are in §5.3, §7.5 and §7.6 ("As implemented").
+
+**AC1 (CUDA) holds on the 1650S** (`bench/ac1_cuda.sh`, `results/e1_parity.json`):
+
+- On HI-Small, all six blocks equal the oracle bit for bit in three runs:
+  - the default config at H = 32, which uses both kernels;
+  - the parity config at H = 0 (every trigger on the heavy kernel);
+  - the parity config at H = `all` (every trigger on the light kernel).
+- On 10,000 fuzz graphs (2,053,897 edges), each mined at H = 0, 4 and `all`, 0 rows mismatch.
+- The fast tests run the golden probes and 500 fuzz graphs on the GPU at three thresholds.
+
+**E5 on the 1650S** is in `results/e5_gpu_local.{json,md}` (default config, H swept over
+0, 8, …, 1024, `all`):
+
+- The six blocks' kernels take 626 ms at the tuned H = 32 (the SPEC default), against 629 ms
+  at H = 64, a tie. D2H adds 103 ms, and the graph upload (329 MB) takes 34 ms.
+- Speedups over GFP best on the same machine (upload + kernels + D2H): fan 395×, degree 456×,
+  sg 193× and tcyc 68× (about 60× with E4's idle-machine GFP tcyc time). Against the CPU
+  backend at 12 threads they are 7.1×, 1.1×, 1.8× and 1.5×.
+- Every block's output hash equals the CPU backend's in E4.
+- tcyc is dominated by a few thousand heavy triggers (149 ms for 3,489 triggers): a warp splits
+  only the first hop. This is what the P6 hybrid addresses.
+
+**E5 and E4 on the A30** (`bench/a30.sh`, one run, about 35 minutes of instance time; instance
+destroyed afterwards). The instance was a JarvisLabs container in IN2: an A30 with 56 SMs, driver
+580, and 16 vCPUs of an AMD EPYC 7542. nvcc 12.6 came with the image; the runbook installed
+g++-12. Results are in `results/e5_gpu_a30.{json,md}`, `results/e4_cpu_a30.{json,md}`,
+`results/a30_env.txt`, `results/a30_run.log`, and `fuzz_cuda_vs_oracle_a30` in
+`results/e1_parity.json`.
+
+- AC1 holds on sm_80:
+  - the 68 fast tests pass (no XGBoost tests, D-15);
+  - 10,000 fuzz graphs at H = 0, 4 and `all` have 0 mismatching rows;
+  - every E5 block's hash equals the CPU backend's on the same host.
+- The six blocks' kernels take 84.4 ms at the tuned H = 64, against 84.7 ms at 32, a tie. D2H
+  adds 57.5 ms and the graph upload 29 ms, so the transfers cost as much as the kernels.
+- Speedups over GFP best (16 threads) on the same host are fan 1081×, degree 717×, sg 633× and
+  tcyc 317×. Against the CPU backend at 16 threads they are 12.6×, 2.1×, 4.1× and 3.5×.
+- E4 ran because the instance has 16 vCPUs. With `dynamic`, the six blocks take 22.3 s at 1
+  thread and 1.50 s at 16 (14.8×).
+- tcyc's heavy kernel still dominates its time (29 ms for 2,885 triggers).
+
+The exit criterion is met: AC1 (CUDA) and E5 are published for both GPUs.
+
 ### P6 — Stretch (any order)
 
 - Hybrid CPU/GPU for tcyc: heavy triggers on CPU, light ones on GPU, run concurrently [P §5.4].
@@ -1402,3 +1509,5 @@ Only the non-empty outputs are listed. `{size: count}` gives the histogram.
 | D-12 | The GFP harness (parity and fuzz) sends ts + 1, to avoid the ts-0 self-loop artifact [X A33]. Our semantics keep the cycle. |
 | D-13 | XGBoost is built CPU-only in every preset. Training takes < 20 s per set on `local` (P2), while the CUDA build of XGBoost takes hours there and would be rebuilt on every temporary A30 instance. |
 | D-14 | The GFP timing grid (§11.2) is reduced. Both batch sizes run at the highest thread count, 3 runs each; that thread count defines `T_GFP_best`. The other thread counts use batch 65536 only, 1 run each, and there is no warm-up run. One GFP traversal of HI-Small takes 16–120 s per pattern at 12 threads (fan is the slowest), so the full grid with a warm-up and 5 runs would take about 10 h on `local`. The reduced grid takes about 1.5 h. `bench_gfp.py` flags restore the full grid. |
+| D-15 | The A30 build (`bench/a30.sh`) is `rel-cuda` with `CMAKE_CUDA_ARCHITECTURES=80` and `BLZ_WITH_XGBOOST=OFF`. Nothing trains on the A30, and both XGBoost and an sm_75 pass would be rebuilt on every temporary instance (as for D-13). The source tree is shipped without `.git`; `BLZ_GIT_SHA` and `BLZ_GIT_DIRTY` carry its commit into the results. |
+| D-16 | On the A30, GFP is timed only at nproc threads, with both batch sizes and 3 runs each. That is all T_GFP_best needs; D-14's scaling points are not repeated on paid time. |

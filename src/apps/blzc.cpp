@@ -1,8 +1,8 @@
 // blzc — the BlazingAML pattern compiler (SPEC §7, §14).
 //
-//   blzc <spec.yaml>... --out d               generate code: d/<stem>.hpp, d/<stem>_cpu.cpp for
-//                                             each spec, and d/registry.cpp (files whose text is
-//                                             unchanged are not rewritten)
+//   blzc <spec.yaml>... --out d               generate code: d/<stem>.hpp, d/<stem>_cpu.cpp and
+//                                             d/<stem>_cuda.cu for each spec, and d/registry.cpp
+//                                             (files whose text is unchanged are not rewritten)
 //   blzc <spec.yaml>... --snapshots d         compare the generated code with the snapshots in d
 //                                             (exit 1 on any difference) ...
 //                       [--update-snapshots]  ... or rewrite them (SPEC §13.4)
@@ -118,6 +118,7 @@ int main(int argc, char** argv) {
       if (!seen_stems.insert(stems[i]).second)
         throw std::runtime_error("two specs have the file name " + stems[i] + ".yaml; generated files are named after it");
       for (auto& f : blz::codegen::emit_cpu(patterns[i], stems[i])) files.push_back(std::move(f));
+      files.push_back(blz::codegen::emit_cuda(patterns[i], stems[i]));
     }
     files.push_back(blz::codegen::emit_registry(patterns, stems));
   } catch (const blz::dsl::CompileError& err) {

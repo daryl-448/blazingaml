@@ -19,6 +19,8 @@ class Writer {
     --depth_;
     line(s);
   }
+  // Text that is already indented and ends with a newline.
+  void raw(const std::string& s) { out_ += s; }
   const std::string& str() const { return out_; }
 
  private:

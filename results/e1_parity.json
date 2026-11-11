@@ -58,10 +58,83 @@
   "seconds": 7.252274485,
   "seeds": "0:10000"
  },
+ "fuzz_cuda_vs_oracle": {
+  "backend": "cuda",
+  "bins": [
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26,
+   27,
+   28,
+   29,
+   30,
+   31,
+   32,
+   33
+  ],
+  "cuda": {
+   "build": "nvcc 13.4.92, sm 75,80, -O3 -DNDEBUG",
+   "compute_capability": "7.5",
+   "device": "NVIDIA GeForce GTX 1650 SUPER",
+   "driver_version": 13040,
+   "memory_mb": {
+    "free": 1285,
+    "total": 3728
+   },
+   "runtime_version": 13040,
+   "sm_count": 20
+  },
+  "edges": 2053897,
+  "first_mismatched_seeds": [],
+  "git": {
+   "dirty": true,
+   "sha": "a716c853eb762fd282af9a60952c83515265499e"
+  },
+  "graphs": 10000,
+  "heavy_thresholds": [
+   "0",
+   "4",
+   "all"
+  ],
+  "k_max": 10,
+  "mismatched_rows_by_block": {
+   "deg_in": 0,
+   "deg_out": 0,
+   "fan_in": 0,
+   "fan_out": 0,
+   "sg": 0,
+   "tcyc": 0
+  },
+  "mismatched_seeds": 0,
+  "seconds": 97.517282921,
+  "seeds": "0:10000"
+ },
  "fuzz_vs_gfp": {
   "edges": 403557,
   "first_mismatches": [],
-  "generator": "blz fuzz (SPEC §13.3), oracle bins 2..33, tcyc uncapped",
+  "generator": "blz fuzz (SPEC \u00a713.3), oracle bins 2..33, tcyc uncapped",
   "gfp": "snapml==1.17.2, stream mode, fresh instance per graph",
   "gfp_ts_offset": 1,
   "graphs": 2000,
@@ -206,6 +279,194 @@
    }
   }
  },
+ "hi_small_cuda_vs_oracle": {
+  "default": {
+   "deg_in": {
+    "a": "features/oracle_default/deg_in.npy",
+    "b": "features/cuda_default/deg_in.npy",
+    "cols": 12,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "deg_out": {
+    "a": "features/oracle_default/deg_out.npy",
+    "b": "features/cuda_default/deg_out.npy",
+    "cols": 12,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "fan_in": {
+    "a": "features/oracle_default/fan_in.npy",
+    "b": "features/cuda_default/fan_in.npy",
+    "cols": 12,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "fan_out": {
+    "a": "features/oracle_default/fan_out.npy",
+    "b": "features/cuda_default/fan_out.npy",
+    "cols": 12,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "sg": {
+    "a": "features/oracle_default/sg.npy",
+    "b": "features/cuda_default/sg.npy",
+    "cols": 10,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "tcyc": {
+    "a": "features/oracle_default/tcyc.npy",
+    "b": "features/cuda_default/tcyc.npy",
+    "cols": 9,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   }
+  },
+  "parity_h0": {
+   "deg_in": {
+    "a": "features/oracle_parity/deg_in.npy",
+    "b": "features/cuda_parity_h0/deg_in.npy",
+    "cols": 32,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "deg_out": {
+    "a": "features/oracle_parity/deg_out.npy",
+    "b": "features/cuda_parity_h0/deg_out.npy",
+    "cols": 32,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "fan_in": {
+    "a": "features/oracle_parity/fan_in.npy",
+    "b": "features/cuda_parity_h0/fan_in.npy",
+    "cols": 32,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "fan_out": {
+    "a": "features/oracle_parity/fan_out.npy",
+    "b": "features/cuda_parity_h0/fan_out.npy",
+    "cols": 32,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "sg": {
+    "a": "features/oracle_parity/sg.npy",
+    "b": "features/cuda_parity_h0/sg.npy",
+    "cols": 32,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "tcyc": {
+    "a": "features/oracle_parity/tcyc.npy",
+    "b": "features/cuda_parity_h0/tcyc.npy",
+    "cols": 32,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   }
+  },
+  "parity_light": {
+   "deg_in": {
+    "a": "features/oracle_parity/deg_in.npy",
+    "b": "features/cuda_parity_light/deg_in.npy",
+    "cols": 32,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "deg_out": {
+    "a": "features/oracle_parity/deg_out.npy",
+    "b": "features/cuda_parity_light/deg_out.npy",
+    "cols": 32,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "fan_in": {
+    "a": "features/oracle_parity/fan_in.npy",
+    "b": "features/cuda_parity_light/fan_in.npy",
+    "cols": 32,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "fan_out": {
+    "a": "features/oracle_parity/fan_out.npy",
+    "b": "features/cuda_parity_light/fan_out.npy",
+    "cols": 32,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "sg": {
+    "a": "features/oracle_parity/sg.npy",
+    "b": "features/cuda_parity_light/sg.npy",
+    "cols": 32,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "tcyc": {
+    "a": "features/oracle_parity/tcyc.npy",
+    "b": "features/cuda_parity_light/tcyc.npy",
+    "cols": 32,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   }
+  }
+ },
  "hi_small_oracle_vs_gfp": {
   "deg_in": {
    "a": "features/oracle_parity/deg_in.npy",
@@ -267,5 +528,79 @@
    "mismatches_by_column": {},
    "rows": 5078345
   }
+ },
+ "fuzz_cuda_vs_oracle_a30": {
+  "backend": "cuda",
+  "bins": [
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26,
+   27,
+   28,
+   29,
+   30,
+   31,
+   32,
+   33
+  ],
+  "cuda": {
+   "build": "nvcc 12.6.77, sm 80, -O3 -DNDEBUG",
+   "compute_capability": "8.0",
+   "device": "NVIDIA A30",
+   "driver_version": 13000,
+   "memory_mb": {
+    "free": 23926,
+    "total": 24163
+   },
+   "runtime_version": 12060,
+   "sm_count": 56
+  },
+  "edges": 2053897,
+  "first_mismatched_seeds": [],
+  "git": {
+   "dirty": true,
+   "from": "BLZ_GIT_SHA",
+   "sha": "a716c853eb762fd282af9a60952c83515265499e"
+  },
+  "graphs": 10000,
+  "heavy_thresholds": [
+   "0",
+   "4",
+   "all"
+  ],
+  "k_max": 10,
+  "mismatched_rows_by_block": {
+   "deg_in": 0,
+   "deg_out": 0,
+   "fan_in": 0,
+   "fan_out": 0,
+   "sg": 0,
+   "tcyc": 0
+  },
+  "mismatched_seeds": 0,
+  "seconds": 85.047594057,
+  "seeds": "0:10000"
  }
 }
