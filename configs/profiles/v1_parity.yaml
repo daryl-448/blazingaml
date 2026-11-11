@@ -1,0 +1,15 @@
+# Semantic profile (SPEC v2 §3.1). FROZEN (D-23): AC-V2-0 pins its outputs. Same semantics, and
+# the same profile id, as configs/features_parity.yaml: GFP parity (SPEC §11.1), the v1 default
+# windows and k_max, bins 2..33 for every block.
+version: 2
+profile: v1_parity
+visibility: stream
+credit: trigger
+k_max: 10
+blocks:
+  fan_in:  {patterns: [fan_in], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]}
+  fan_out: {patterns: [fan_out], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]}
+  deg_in:  {patterns: [deg_in], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]}
+  deg_out: {patterns: [deg_out], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]}
+  sg:      {patterns: [sg_gather, sg_scatter], window: 21600, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]}
+  tcyc:    {patterns: [tcyc], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]}

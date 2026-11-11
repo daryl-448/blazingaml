@@ -1,6 +1,7 @@
 // blz — BlazingAML runtime CLI (SPEC §14). Commands so far: prepare, export-edges, stats (P0);
 // mine (oracle backend), compare, fuzz (P1); train (P2); mine --backend cpu, bench, fuzz-diff (P4);
-// the cuda backend of mine, bench and fuzz-diff (P5).
+// the cuda backend of mine, bench and fuzz-diff (P5); profiles, manifests, trigger samples,
+// metamorphic and gt-join (SPEC v2 P7).
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -24,6 +25,7 @@
 #include "common/npy.hpp"
 #include "common/sha256.hpp"
 #include "graph/fuzz_gen.hpp"
+#include "graph/gt_join.hpp"
 #include "graph/index.hpp"
 #include "graph/prepare.hpp"
 #include "graph/stats.hpp"
@@ -38,6 +40,9 @@
 #include "runtime/cuda_backend.hpp"
 #include "runtime/features.hpp"
 #include "runtime/fuzz_diff.hpp"
+#include "runtime/metamorphic.hpp"
+#include "runtime/profile.hpp"
+#include "runtime/triggers.hpp"
 
 namespace {
 
@@ -70,7 +75,13 @@ int prepare(const std::string& csv, const std::string& out) {
   auto bad = blz::check_hi_small_invariants(t);
   for (auto& b : bad) std::fprintf(stderr, "invariant failed: %s\n", b.c_str());
   if (!bad.empty()) return 1;
-  std::fprintf(stderr, "SPEC §3.5 invariants: pass\n");
+  const blz::StreamCounts c = blz::count_stream(t);
+  std::fprintf(stderr,
+               "SPEC §3.5 and v2 §3.3 invariants: pass (b_fv %llu: fit %llu positives, validation %llu, test %llu; "
+               "%llu concatenated node keys; file_row reproduces the stable sort)\n",
+               (unsigned long long)c.fit_val_boundary, (unsigned long long)c.fit_positives,
+               (unsigned long long)c.val_positives, (unsigned long long)c.test_positives,
+               (unsigned long long)c.concatenated_keys);
 
   ensure_parent(out);
   blz::write_blzg(out, t);
@@ -167,25 +178,63 @@ nlohmann::json block_params_json(const blz::BlockParams& p, blz::Block b) {
           {"bins", p.bins}};
 }
 
-// --blocks: a comma-separated list, or every block of the config.
-std::vector<blz::Block> select_blocks(const blz::FeatureConfig& cfg, const std::string& blocks_opt,
-                                      const std::string& config) {
-  std::vector<blz::Block> blocks;
+// --blocks: a comma-separated list (in that order), or every block of the profile.
+std::vector<const blz::ProfileBlock*> select_blocks(const blz::Profile& prof, const std::string& blocks_opt) {
+  std::vector<const blz::ProfileBlock*> blocks;
   if (blocks_opt.empty()) {
-    for (blz::Block b : blz::kAllBlocks)
-      if (cfg[b]) blocks.push_back(b);
-  } else {
-    for (std::size_t p = 0; p <= blocks_opt.size();) {
-      auto q = std::min(blocks_opt.find(',', p), blocks_opt.size());
-      const std::string name = blocks_opt.substr(p, q - p);
-      const auto b = blz::parse_block(name);
-      if (!b) throw std::runtime_error("unknown block '" + name + "'");
-      if (!cfg[*b]) throw std::runtime_error("block '" + name + "' is not in " + config);
-      blocks.push_back(*b);
-      p = q + 1;
-    }
+    for (const blz::ProfileBlock& pb : prof.blocks) blocks.push_back(&pb);
+    return blocks;
+  }
+  for (std::size_t p = 0; p <= blocks_opt.size();) {
+    auto q = std::min(blocks_opt.find(',', p), blocks_opt.size());
+    const std::string name = blocks_opt.substr(p, q - p);
+    const auto b = blz::parse_block(name);
+    if (!b) throw std::runtime_error("unknown block '" + name + "'");
+    const blz::ProfileBlock* pb = prof.find(*b);
+    if (!pb) throw std::runtime_error("block '" + name + "' is not in " + prof.file);
+    blocks.push_back(pb);
+    p = q + 1;
   }
   return blocks;
+}
+
+std::string file_sha256(const std::string& path) {
+  const blz::MappedFile f(path);
+  return blz::to_hex(blz::sha256(f.data(), f.size()));
+}
+
+std::uint64_t fnv1a(std::span<const std::uint32_t> data) {
+  std::uint64_t h = 1469598103934665603ULL;
+  const auto* b = reinterpret_cast<const unsigned char*>(data.data());
+  for (std::size_t i = 0; i < data.size_bytes(); ++i) h = (h ^ b[i]) * 1099511628211ULL;
+  return h;
+}
+
+double peak_rss_mb() {
+  rusage ru{};
+  getrusage(RUSAGE_SELF, &ru);
+  return double(ru.ru_maxrss) / 1024.0;
+}
+
+// The profile part of a manifest (SPEC v2 §3.2).
+nlohmann::json profile_json(const blz::Profile& prof) {
+  return {{"name", prof.name},
+          {"file", prof.file},
+          {"format", prof.format == 1 ? "v1 feature config" : "profile"},
+          {"id", prof.id()},
+          {"causal", prof.causal()},
+          {"row_sees", prof.row_sees()},
+          {"resolved", prof.resolved()}};
+}
+
+// Every pattern the profile lists, with its spec and the spec's SHA-256.
+nlohmann::json patterns_json(const blz::Profile& prof) {
+  nlohmann::json j = nlohmann::json::object();
+  for (const blz::ProfileBlock& pb : prof.blocks)
+    for (const blz::PatternInfo* pi : pb.patterns)
+      j[pi->name] = {{"block", pi->block}, {"spec", pi->file}, {"spec_sha256", pi->spec_sha256},
+                     {"visibility_pin", *pi->visibility ? nlohmann::json(pi->visibility) : nlohmann::json(nullptr)}};
+  return j;
 }
 
 // The CUDA device and build, for results files (SPEC §12.1).
@@ -213,37 +262,32 @@ std::vector<std::uint32_t> parse_thresholds(const std::string& s) {
 }
 std::string threshold_name(std::uint32_t h) { return h == blz::kAllLight ? "all" : std::to_string(h); }
 
-int mine(const std::string& graph, const std::string& config, const std::string& backend,
-         int threads, const std::string& schedule_opt, std::uint32_t heavy, const std::string& blocks_opt,
+int mine(const std::string& graph, const std::string& profile_path, const std::string& backend, int threads,
+         const std::string& schedule_opt, std::uint32_t heavy, const std::string& blocks_opt,
          const std::string& triggers, const std::string& out) {
-  const bool cpu = backend == "cpu", gpu = backend == "cuda";
+  const blz::Backend be = blz::parse_backend(backend);
+  const bool cpu = be == blz::Backend::cpu, gpu = be == blz::Backend::cuda;
   if (gpu && !blz::cuda_built()) blz::cuda_device();  // throws: no CUDA backend in this build
   const blz::Schedule schedule = blz::parse_schedule(schedule_opt);
-  const blz::FeatureConfig cfg = blz::load_feature_config(config);
-  if (cpu || gpu) blz::check_backend_config(cfg, config);
-  const std::vector<blz::Block> blocks = select_blocks(cfg, blocks_opt, config);
+  const blz::Profile prof = blz::load_profile(profile_path);  // E403
+  blz::check_profile_backend(prof, be);                       // E404 (v1 configs: E402, K_MAX)
+  const std::vector<const blz::ProfileBlock*> blocks = select_blocks(prof, blocks_opt);
 
   auto t0 = Clock::now();
   blz::BlzgView g(graph);
-  std::uint64_t first = 0, last = g.m();
-  if (triggers == "train") {
-    last = blz::train_size(g.m());
-  } else if (triggers == "test") {
-    first = blz::train_size(g.m());
-  } else if (triggers.rfind("range:", 0) == 0) {
-    std::tie(first, last) = parse_range(triggers.substr(6));
-    if (last > g.m()) throw std::runtime_error("trigger range past m");
-  } else if (triggers != "all") {
-    throw std::runtime_error("--triggers must be all, train, test or range:a:b");
-  }
+  const blz::TriggerSel sel = blz::select_triggers(triggers, g.ts);
+  if (gpu && sel.sampled)
+    throw std::runtime_error("--triggers sample: runs on the oracle and cpu backends (the preflight of SPEC v2 §2.5 "
+                             "uses cpu); the CUDA kernels take an eid range");
   if (threads > 0) omp_set_num_threads(threads);
   std::optional<blz::Oracle> oracle;
   std::optional<blz::GraphIndex> index;
   if (cpu || gpu) index.emplace(g.src, g.dst, g.ts, g.n());
   else oracle.emplace(blz::EdgeStream{g.src, g.dst, g.ts, g.n()});
   const double build_s = secs(t0);
-  std::fprintf(stderr, "%s index built in %.1f s (m=%llu, n=%llu)\n", backend.c_str(), build_s,
-               (unsigned long long)g.m(), (unsigned long long)g.n());
+  std::fprintf(stderr, "%s index built in %.1f s (m=%llu, n=%llu); profile %s (%s); triggers %s: %llu rows\n",
+               backend.c_str(), build_s, (unsigned long long)g.m(), (unsigned long long)g.n(), prof.name.c_str(),
+               prof.id().c_str(), sel.spec.c_str(), (unsigned long long)sel.rows());
   std::optional<blz::DeviceGraph> dgraph;
   std::optional<blz::CudaMiner> miner;
   if (gpu) {
@@ -254,18 +298,32 @@ int mine(const std::string& graph, const std::string& config, const std::string&
 
   std::filesystem::create_directories(out);
   const std::string meta_path = out + "/features.json";
-  const nlohmann::json run_key = {{"backend", backend},
-                                  {"csv_sha256", blz::to_hex(g.csv_sha256())},
-                                  {"k_max", cfg.k_max},
-                                  {"triggers", {{"spec", triggers}, {"first", first}, {"last", last}}}};
+  const std::string blzg_sha = file_sha256(graph), csv_sha = blz::to_hex(g.csv_sha256());
+  // The run a block belongs to: blocks of an earlier run with the same key are kept, so blocks
+  // can be mined one invocation at a time into one directory.
+  const nlohmann::json run_key = {{"backend", backend},     {"csv_sha256", csv_sha},
+                                  {"blzg_sha256", blzg_sha}, {"profile_id", prof.id()},
+                                  {"k_max", prof.k_max},     {"triggers", sel.json()}};
   nlohmann::json meta = nlohmann::json::object();
   if (std::filesystem::exists(meta_path)) {
     auto old = nlohmann::json::parse(std::ifstream(meta_path));
     if (old.value("run", nlohmann::json()) == run_key) meta = old;  // same run: keep its blocks
   }
+  // The manifest (SPEC v2 §3.2).
+  meta["manifest_version"] = 2;
   meta["run"] = run_key;
+  meta["profile"] = profile_json(prof);
+  meta["patterns"] = patterns_json(prof);
+  nlohmann::json jbe = {{"name", backend}, {"threads", omp_get_max_threads()},
+                        {"disabled_optimizations", nlohmann::json::array()}};  // blzc --disable: SPEC v2 §7.2 (P11)
+  if (cpu) jbe["schedule"] = blz::schedule_name(schedule);
+  if (gpu) jbe["heavy_threshold"] = threshold_name(heavy);
+  meta["backend"] = jbe;
+  meta["triggers"] = sel.json();
   meta["graph"] = graph;
-  meta["config"] = config;
+  meta["blzg_sha256"] = blzg_sha;
+  meta["csv_sha256"] = csv_sha;
+  meta["config"] = profile_path;
   meta["git"] = git_info();
   meta["threads"] = omp_get_max_threads();
   if (cpu) meta["schedule"] = blz::schedule_name(schedule);
@@ -276,38 +334,46 @@ int mine(const std::string& graph, const std::string& config, const std::string&
                     {"device_graph_bytes", dgraph->bytes()}};
   meta["index_build_seconds"] = build_s;
   if (!meta.contains("blocks")) meta["blocks"] = nlohmann::json::object();
+  if (sel.sampled) {
+    blz::write_npy_u32(out + "/triggers.npy", sel.eids, sel.eids.size(), 1);
+    meta["triggers"]["file"] = "triggers.npy";
+  }
 
-  const std::uint64_t rows = last - first;
+  const std::uint64_t rows = sel.rows();
   std::uint64_t total_saturated = 0;
-  for (blz::Block b : blocks) {
-    const blz::BlockParams& p = *cfg[b];
+  for (const blz::ProfileBlock* pb : blocks) {
+    const blz::Block b = pb->block;
+    const blz::BlockParams& p = pb->params;
     const std::uint64_t cells = rows * p.bins.size();
     std::vector<std::uint32_t> feats;
     std::optional<blz::PinnedBuffer> pinned;  // cuda: the rows, copied straight from the device
-    if (gpu) pinned.emplace(cells);
+    if (gpu) pinned.emplace(std::max<std::uint64_t>(cells, 1));
     else feats.assign(cells, 0);
     auto t1 = Clock::now();
     std::uint64_t sat = 0;
     blz::CpuBlockTiming tm;
     blz::CudaBlockTiming ctm;
     if (cpu) {
-      tm = blz::mine_cpu(index->view(), b, p, first, last, schedule, feats.data());
+      tm = blz::mine_cpu(index->view(), pb->patterns, p, sel, schedule, feats.data());
       sat = tm.saturated;
     } else if (gpu) {
-      ctm = miner->mine(*dgraph, b, p, first, last, heavy, pinned->data());
+      ctm = miner->mine(*dgraph, pb->patterns, p, sel.first, sel.last, heavy, pinned->data());
       sat = ctm.saturated;
+    } else if (sel.sampled) {
+      sat = oracle->mine(b, p, prof.k_max, sel.eids, feats.data());
     } else {
-      sat = oracle->mine(b, p, cfg.k_max, first, last, feats.data());
+      sat = oracle->mine(b, p, prof.k_max, sel.first, sel.last, feats.data());
     }
     const double mine_s = secs(t1);
     const std::string file = std::string(blz::block_name(b)) + ".npy";
-    blz::write_npy_u32(out + "/" + file,
-                       gpu ? std::span<const std::uint32_t>(pinned->data(), cells) : std::span<const std::uint32_t>(feats),
-                       rows, p.bins.size());
+    const std::span<const std::uint32_t> data =
+        gpu ? std::span<const std::uint32_t>(pinned->data(), cells) : std::span<const std::uint32_t>(feats);
+    blz::write_npy_u32(out + "/" + file, data, rows, p.bins.size());
     auto j = block_params_json(p, b);
     j["file"] = file;
     j["columns"] = blz::column_names(b, p.bins);
     j["mine_seconds"] = mine_s;
+    if (sel.sampled && rows > 0) j["extrapolated_mine_seconds"] = mine_s * double(g.m()) / double(rows);
     if (cpu) {
       j["schedule_seconds"] = tm.schedule_seconds;
       j["loop_seconds"] = tm.loop_seconds;
@@ -317,16 +383,16 @@ int mine(const std::string& graph, const std::string& config, const std::string&
                    {"light_seconds", ctm.light_seconds},   {"heavy_seconds", ctm.heavy_seconds},
                    {"d2h_seconds", ctm.d2h_seconds},       {"light_triggers", ctm.light},
                    {"heavy_triggers", ctm.heavy}};
-    if (cpu || gpu) {
-      nlohmann::json pats = nlohmann::json::array();
-      for (const blz::PatternInfo* pi : blz::patterns_for(b)) pats.push_back(pi->name);
-      j["patterns"] = pats;
-    }
+    nlohmann::json pats = nlohmann::json::array();
+    for (const blz::PatternInfo* pi : pb->patterns) pats.push_back(pi->name);
+    j["patterns"] = pats;
+    j["output_fnv1a"] = fnv1a(data);
     j["saturated"] = sat;
     meta["blocks"][std::string(blz::block_name(b))] = j;
+    meta["peak_rss_mb"] = peak_rss_mb();
     total_saturated += sat;
-    std::fprintf(stderr, "%-8s %8.1f s  saturated=%llu\n", std::string(blz::block_name(b)).c_str(),
-                 mine_s, (unsigned long long)sat);
+    std::fprintf(stderr, "%-8s %8.1f s  saturated=%llu  fnv1a=%llu\n", std::string(blz::block_name(b)).c_str(), mine_s,
+                 (unsigned long long)sat, (unsigned long long)j["output_fnv1a"].get<std::uint64_t>());
     std::ofstream(meta_path) << meta.dump(1) << '\n';
   }
   if (total_saturated > 0) std::fprintf(stderr, "warning: %llu saturated counts\n",
@@ -494,7 +560,8 @@ int train(const std::string& graph, const std::string& features, const std::stri
     const auto& run = meta.at("run");
     if (run.at("csv_sha256") != blz::to_hex(g.csv_sha256()))
       throw std::runtime_error(meta_path + ": mined from a different CSV than " + graph);
-    if (run.at("triggers").at("first") != 0 || run.at("triggers").at("last") != m)
+    if (run.at("triggers").value("sampled", false) || run.at("triggers").at("first") != 0 ||
+        run.at("triggers").at("last") != m)
       throw std::runtime_error(meta_path + ": features must cover every eid (--triggers all)");
     for (blz::Block b : blocks) {
       const std::string bname(blz::block_name(b));
@@ -508,8 +575,12 @@ int train(const std::string& graph, const std::string& features, const std::stri
       columns.insert(columns.end(), names.begin(), names.end());
       views.push_back(std::move(v));
     }
+    // SPEC v2 §3.2: every results JSON that consumes features records the profile id.
+    const nlohmann::json prof = meta.value("profile", nlohmann::json::object());
     feat = {{"dir", features}, {"run", run}, {"git", meta.value("git", nlohmann::json())},
-            {"config", meta.value("config", "")}};
+            {"config", meta.value("config", "")},
+            {"profile", prof.value("name", nlohmann::json())},
+            {"profile_id", prof.value("id", nlohmann::json())}};
   }
 
   const std::uint64_t ncols = columns.size();
@@ -648,13 +719,6 @@ std::vector<int> parse_int_list(const std::string& s) {
   return out;
 }
 
-std::uint64_t fnv1a(std::span<const std::uint32_t> data) {
-  std::uint64_t h = 1469598103934665603ULL;
-  const auto* b = reinterpret_cast<const unsigned char*>(data.data());
-  for (std::size_t i = 0; i < data.size_bytes(); ++i) h = (h ^ b[i]) * 1099511628211ULL;
-  return h;
-}
-
 // E4 (SPEC §12): per block and thread count, 1 warm-up and `reps` timed runs of the CPU backend
 // over every trigger; each run's output must equal the first (determinism, SPEC §8).
 int bench(const std::string& graph, const std::string& config, const std::string& backend,
@@ -662,9 +726,9 @@ int bench(const std::string& graph, const std::string& config, const std::string
           const std::string& blocks_opt, const std::string& out, const std::string& name) {
   if (backend != "cpu") throw std::runtime_error("bench: backend '" + backend + "' is not the cpu backend");
   if (reps < 1) throw std::runtime_error("--reps must be >= 1");
-  const blz::FeatureConfig cfg = blz::load_feature_config(config);
-  blz::check_backend_config(cfg, config);
-  const std::vector<blz::Block> blocks = select_blocks(cfg, blocks_opt, config);
+  const blz::Profile prof = blz::load_profile(config);
+  blz::check_profile_backend(prof, blz::Backend::cpu);
+  const std::vector<const blz::ProfileBlock*> blocks = select_blocks(prof, blocks_opt);
   const std::vector<int> threads = parse_int_list(threads_opt);
   std::vector<blz::Schedule> schedules;
   for (std::size_t p = 0; p <= schedules_opt.size();) {
@@ -673,7 +737,8 @@ int bench(const std::string& graph, const std::string& config, const std::string
     p = q + 1;
   }
   nlohmann::json res = {{"env", environment(config)}, {"backend", backend}, {"graph", graph},
-                        {"reps", reps}, {"warmup", 1}, {"threads", threads}};
+                        {"reps", reps}, {"warmup", 1}, {"threads", threads},
+                        {"profile", {{"name", prof.name}, {"id", prof.id()}}}};
 
   blz::BlzgView g(graph);
   auto t0 = Clock::now();
@@ -684,13 +749,16 @@ int bench(const std::string& graph, const std::string& config, const std::string
   std::fprintf(stderr, "index built in %.2f s (%.0f MB)\n", secs(t0), double(index.bytes()) / 1e6);
 
   const std::uint64_t m = g.m();
+  blz::TriggerSel all;
+  all.spec = "all";
+  all.last = m;
   nlohmann::json runs = nlohmann::json::object();
-  for (blz::Block b : blocks) {
-    const blz::BlockParams& p = *cfg[b];
-    const std::string bname(blz::block_name(b));
+  for (const blz::ProfileBlock* pb : blocks) {
+    const blz::BlockParams& p = pb->params;
+    const std::string bname(blz::block_name(pb->block));
     std::vector<std::uint32_t> feats(m * p.bins.size()), ref;
     nlohmann::json jb = {{"patterns", nlohmann::json::array()}};
-    for (const blz::PatternInfo* pi : blz::patterns_for(b)) jb["patterns"].push_back(pi->name);
+    for (const blz::PatternInfo* pi : pb->patterns) jb["patterns"].push_back(pi->name);
     for (blz::Schedule sched : schedules) {
       nlohmann::json js = nlohmann::json::object();
       for (int nt : threads) {
@@ -698,7 +766,7 @@ int bench(const std::string& graph, const std::string& config, const std::string
         std::vector<double> total, sched_s, loop_s;
         for (int r = 0; r <= reps; ++r) {  // r == 0 is the warm-up
           std::fill(feats.begin(), feats.end(), 0u);
-          const blz::CpuBlockTiming tm = blz::mine_cpu(index.view(), b, p, 0, m, sched, feats.data());
+          const blz::CpuBlockTiming tm = blz::mine_cpu(index.view(), pb->patterns, p, all, sched, feats.data());
           if (ref.empty()) {
             ref = feats;
             jb["output_fnv1a"] = fnv1a(ref);
@@ -733,9 +801,7 @@ int bench(const std::string& graph, const std::string& config, const std::string
     runs[bname] = jb;
   }
   res["blocks"] = runs;
-  rusage ru{};
-  getrusage(RUSAGE_SELF, &ru);
-  res["peak_rss_mb"] = double(ru.ru_maxrss) / 1024.0;
+  res["peak_rss_mb"] = peak_rss_mb();
 
   nlohmann::json doc = nlohmann::json::object();
   if (std::filesystem::exists(out)) doc = nlohmann::json::parse(std::ifstream(out));
@@ -760,16 +826,17 @@ nlohmann::json summary(const std::vector<double>& v) {
 int bench_cuda(const std::string& graph, const std::string& config, int reps, const std::string& heavy_opt,
                const std::string& blocks_opt, const std::string& out, const std::string& name) {
   if (reps < 1) throw std::runtime_error("--reps must be >= 1");
-  const blz::FeatureConfig cfg = blz::load_feature_config(config);
-  blz::check_backend_config(cfg, config);
-  const std::vector<blz::Block> blocks = select_blocks(cfg, blocks_opt, config);
+  const blz::Profile prof = blz::load_profile(config);
+  blz::check_profile_backend(prof, blz::Backend::cuda);
+  const std::vector<const blz::ProfileBlock*> blocks = select_blocks(prof, blocks_opt);
   const std::vector<std::uint32_t> thresholds = parse_thresholds(heavy_opt);
   nlohmann::json hs = nlohmann::json::array();
   for (std::uint32_t h : thresholds) hs.push_back(threshold_name(h));
   nlohmann::json env = environment(config);
   env["nvidia_smi"] = run_command("nvidia-smi -q 2>/dev/null");
   nlohmann::json res = {{"env", env}, {"cuda", cuda_json()}, {"backend", "cuda"},
-                        {"graph", graph}, {"reps", reps}, {"warmup", 1}, {"heavy_thresholds", hs}};
+                        {"graph", graph}, {"reps", reps}, {"warmup", 1}, {"heavy_thresholds", hs},
+                        {"profile", {{"name", prof.name}, {"id", prof.id()}}}};
 
   blz::BlzgView g(graph);
   auto t0 = Clock::now();
@@ -792,19 +859,19 @@ int bench_cuda(const std::string& graph, const std::string& config, int reps, co
   blz::CudaMiner miner;
   const std::uint64_t m = g.m();
   nlohmann::json runs = nlohmann::json::object();
-  for (blz::Block b : blocks) {
-    const blz::BlockParams& p = *cfg[b];
-    const std::string bname(blz::block_name(b));
+  for (const blz::ProfileBlock* pb : blocks) {
+    const blz::BlockParams& p = pb->params;
+    const std::string bname(blz::block_name(pb->block));
     const std::uint64_t cells = m * p.bins.size();
     blz::PinnedBuffer buf(cells);
     std::vector<std::uint32_t> ref;
     nlohmann::json jb = {{"patterns", nlohmann::json::array()}, {"window", p.window}, {"bins", p.bins}};
-    for (const blz::PatternInfo* pi : blz::patterns_for(b)) jb["patterns"].push_back(pi->name);
+    for (const blz::PatternInfo* pi : pb->patterns) jb["patterns"].push_back(pi->name);
     for (std::uint32_t h : thresholds) {
       std::vector<double> kernel, d2h, total, bucket, light, heavy, wall;
       blz::CudaBlockTiming tm;
       for (int r = 0; r <= reps; ++r) {  // r == 0 is the warm-up
-        tm = miner.mine(dg, b, p, 0, m, h, buf.data());
+        tm = miner.mine(dg, pb->patterns, p, 0, m, h, buf.data());
         const std::span<const std::uint32_t> got(buf.data(), cells);
         if (ref.empty()) {
           ref.assign(got.begin(), got.end());
@@ -840,9 +907,7 @@ int bench_cuda(const std::string& graph, const std::string& config, int reps, co
     runs[bname] = jb;
   }
   res["blocks"] = runs;
-  rusage ru{};
-  getrusage(RUSAGE_SELF, &ru);
-  res["peak_rss_mb"] = double(ru.ru_maxrss) / 1024.0;
+  res["peak_rss_mb"] = peak_rss_mb();
 
   nlohmann::json doc = nlohmann::json::object();
   if (std::filesystem::exists(out)) doc = nlohmann::json::parse(std::ifstream(out));
@@ -853,21 +918,48 @@ int bench_cuda(const std::string& graph, const std::string& config, int reps, co
   return 0;
 }
 
+// The JSON that names a profile in a results file.
+nlohmann::json profile_ref(const blz::Profile& prof) {
+  return {{"name", prof.name}, {"file", prof.file}, {"id", prof.id()}};
+}
+
+// The bins of fuzz-diff and metamorphic: --bins if given; else, with a profile, each block's own
+// (an empty list); else 2..33, the v1 default.
+std::vector<std::uint32_t> fuzz_bins(const std::string& bins_opt, bool have_profile) {
+  if (!bins_opt.empty()) return parse_bins(bins_opt);
+  return have_profile ? std::vector<std::uint32_t>{} : parse_bins("2..33");
+}
+
+void merge_report(const std::string& report, const std::string& name, const nlohmann::json& res) {
+  if (report.empty()) return;
+  nlohmann::json doc = nlohmann::json::object();
+  if (std::filesystem::exists(report)) doc = nlohmann::json::parse(std::ifstream(report));
+  doc[nlohmann::json::json_pointer("/" + name)] = res;
+  ensure_parent(report);
+  std::ofstream(report) << doc.dump(1) << '\n';
+}
+
 // AC1 on fuzz graphs (SPEC §13.3): a generated backend vs the oracle. Exit code 0 if equal, 2 if
-// not. cuda runs every graph once per light/heavy threshold.
+// not. cuda runs every graph once per light/heavy threshold. With --profile (SPEC v2 §10), the
+// profile's blocks, patterns and k_max; without, every registered pattern (v1).
 int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::string& backend,
-              const std::string& heavy_opt, const std::string& report, const std::string& name) {
+              const std::string& heavy_opt, const std::string& profile_path, const std::string& report,
+              const std::string& name) {
   const auto [s0, s1] = parse_range(seeds);
-  const auto bins = parse_bins(bins_opt);
   const bool gpu = backend == "cuda";
+  const blz::Profile prof = profile_path.empty() ? blz::registry_profile() : blz::load_profile(profile_path);
+  blz::check_profile_backend(prof, blz::Backend::oracle);
+  blz::check_profile_backend(prof, blz::parse_backend(backend));
+  const auto bins = fuzz_bins(bins_opt, !profile_path.empty());
   const std::vector<std::uint32_t> thresholds = parse_thresholds(heavy_opt);
   auto t0 = Clock::now();
-  const blz::FuzzDiff d = gpu ? blz::fuzz_diff_cuda(s0, s1, bins, thresholds) : blz::fuzz_diff_cpu(s0, s1, bins);
+  const blz::FuzzDiff d =
+      gpu ? blz::fuzz_diff_cuda(prof, s0, s1, bins, thresholds) : blz::fuzz_diff_cpu(prof, s0, s1, bins);
   nlohmann::json per_block = nlohmann::json::object();
   std::uint64_t bad = 0;
-  for (blz::Block b : blz::kAllBlocks) {
-    per_block[std::string(blz::block_name(b))] = d.mismatched_rows[int(b)];
-    bad += d.mismatched_rows[int(b)];
+  for (const blz::ProfileBlock& pb : prof.blocks) {
+    per_block[std::string(blz::block_name(pb.block))] = d.mismatched_rows[int(pb.block)];
+    bad += d.mismatched_rows[int(pb.block)];
   }
   std::vector<std::uint64_t> first_bad(d.bad_seeds.begin(),
                                        d.bad_seeds.begin() + std::ptrdiff_t(std::min<std::size_t>(20, d.bad_seeds.size())));
@@ -875,13 +967,14 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
                         {"seeds", seeds},
                         {"graphs", d.graphs},
                         {"edges", d.edges},
-                        {"bins", bins},
-                        {"k_max", blz::compiled_k_max()},
+                        {"bins", bins.empty() ? nlohmann::json("profile") : nlohmann::json(bins)},
+                        {"k_max", prof.k_max},
                         {"mismatched_rows_by_block", per_block},
                         {"mismatched_seeds", d.bad_seeds.size()},
                         {"first_mismatched_seeds", first_bad},
                         {"seconds", secs(t0)},
                         {"git", git_info()}};
+  if (!profile_path.empty()) res["profile"] = profile_ref(prof);
   if (gpu) {
     nlohmann::json hs = nlohmann::json::array();
     for (std::uint32_t h : thresholds) hs.push_back(threshold_name(h));
@@ -894,14 +987,92 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
               backend.c_str(), seeds.c_str(), (unsigned long long)d.graphs, (unsigned long long)d.edges,
               (unsigned long long)bad, secs(t0));
   if (bad) std::printf("%s\n", res.dump(1).c_str());
-  if (!report.empty()) {
-    nlohmann::json doc = nlohmann::json::object();
-    if (std::filesystem::exists(report)) doc = nlohmann::json::parse(std::ifstream(report));
-    doc[nlohmann::json::json_pointer("/" + name)] = res;
-    ensure_parent(report);
-    std::ofstream(report) << doc.dump(1) << '\n';
-  }
+  merge_report(report, name, res);
   return bad == 0 ? 0 : 2;
+}
+
+// SPEC v2 §3.4: the metamorphic tests on fuzz graphs, for one backend. Exit code 0 if every row
+// is unchanged, 2 if not.
+int metamorphic(const std::string& seeds, const std::string& bins_opt, const std::string& backend,
+                const std::string& heavy_opt, const std::string& profile_path, const std::string& report,
+                const std::string& name) {
+  const auto [s0, s1] = parse_range(seeds);
+  const blz::Backend be = blz::parse_backend(backend);
+  const blz::Profile prof = profile_path.empty() ? blz::registry_profile() : blz::load_profile(profile_path);
+  const auto bins = fuzz_bins(bins_opt, !profile_path.empty());
+  const std::vector<std::uint32_t> thresholds = parse_thresholds(heavy_opt);
+  auto t0 = Clock::now();
+  const blz::MetamorphicResult r = blz::metamorphic(prof, be, s0, s1, bins, thresholds);
+  std::uint64_t bad = 0;
+  nlohmann::json tests = nlohmann::json::object();
+  for (blz::MetaTest t : blz::kMetaTests) {
+    nlohmann::json per_block = nlohmann::json::object();
+    std::uint64_t tb = 0;
+    for (const blz::ProfileBlock& pb : prof.blocks) {
+      per_block[std::string(blz::block_name(pb.block))] = r.mismatched_rows[int(t)][int(pb.block)];
+      tb += r.mismatched_rows[int(t)][int(pb.block)];
+    }
+    bad += tb;
+    tests[blz::meta_test_name(t)] = {{"rows_compared", r.rows_compared[int(t)]},
+                                     {"mismatched_rows", tb},
+                                     {"mismatched_rows_by_block", per_block}};
+  }
+  std::vector<std::uint64_t> first_bad(r.bad_seeds.begin(),
+                                       r.bad_seeds.begin() + std::ptrdiff_t(std::min<std::size_t>(20, r.bad_seeds.size())));
+  nlohmann::json res = {{"backend", backend},
+                        {"profile", profile_path.empty() ? nlohmann::json(nullptr) : profile_ref(prof)},
+                        {"seeds", seeds},
+                        {"graphs", r.graphs},
+                        {"edges", r.edges},
+                        {"bins", bins.empty() ? nlohmann::json("profile") : nlohmann::json(bins)},
+                        {"k_max", prof.k_max},
+                        {"tests", tests},
+                        {"mismatched_seeds", r.bad_seeds.size()},
+                        {"first_mismatched_seeds", first_bad},
+                        {"seconds", secs(t0)},
+                        {"git", git_info()}};
+  if (be == blz::Backend::cuda) {
+    nlohmann::json hs = nlohmann::json::array();
+    for (std::uint32_t h : thresholds) hs.push_back(threshold_name(h));
+    res["heavy_thresholds"] = hs;
+    res["cuda"] = cuda_json();
+  }
+  std::printf("metamorphic %s, %s, seeds %s: %llu graphs, %llu edges, %llu mismatching rows (%.1f s)\n",
+              backend.c_str(), prof.name.c_str(), seeds.c_str(), (unsigned long long)r.graphs,
+              (unsigned long long)r.edges, (unsigned long long)bad, secs(t0));
+  if (bad) std::printf("%s\n", res.dump(1).c_str());
+  merge_report(report, name, res);
+  return bad == 0 ? 0 : 2;
+}
+
+// SPEC v2 §3.5: the ground-truth join, written as results/gt_join.json.
+int gt_join(const std::string& graph, const std::string& csv, const std::string& patterns, const std::string& out) {
+  auto t0 = Clock::now();
+  const blz::BlzgView g(graph);
+  const blz::MappedFile csv_file(csv);
+  const blz::Sha256Digest csv_sha = blz::sha256(csv_file.data(), csv_file.size());
+  if (csv_sha != g.csv_sha256())
+    throw std::runtime_error(csv + " is not the CSV " + graph + " was prepared from (SHA-256 differs)");
+  const std::string pat_text = read_file(patterns);
+  nlohmann::ordered_json j = blz::gt_join(std::string_view(csv_file.data(), csv_file.size()), pat_text,
+                                          {g.file_row, g.ts, g.label});
+  nlohmann::ordered_json head = {
+      {"inputs",
+       {{"graph", graph},
+        {"csv", csv},
+        {"csv_sha256", blz::to_hex(csv_sha)},
+        {"patterns", patterns},
+        {"patterns_sha256", blz::to_hex(blz::sha256(pat_text.data(), pat_text.size()))},
+        {"m", g.m()}}},
+      {"git", git_info()}};
+  for (auto it = j.begin(); it != j.end(); ++it) head[it.key()] = it.value();
+  ensure_parent(out);
+  std::ofstream(out) << blz::gt_join_dump(head);
+  const auto& sm = head["summary"];
+  std::fprintf(stderr, "gt-join: %s attempts, %s rows; rows %s; attempts %s; %s unlisted positives (%.1f s) -> %s\n",
+               sm["attempts"].dump().c_str(), sm["listed_rows"].dump().c_str(), sm["rows_by_status"].dump().c_str(),
+               sm["attempts_by_status"].dump().c_str(), sm["unlisted_positives"].dump().c_str(), secs(t0), out.c_str());
+  return 0;
 }
 
 }  // namespace
@@ -923,18 +1094,20 @@ int main(int argc, char** argv) {
   st->add_option("--graph", graph)->required();
   st->add_option("--out", out)->required();
 
-  std::string config, backend = "oracle", blocks, triggers = "all", schedule = "dynamic";
+  std::string config, profile, backend = "oracle", blocks, triggers = "all", schedule = "dynamic";
   int threads = 0;
   std::uint32_t heavy = blz::kDefaultHeavyThreshold;
-  auto* mn = app.add_subcommand("mine", "Mine feature blocks -> <out>/<block>.npy + features.json");
+  auto* mn = app.add_subcommand("mine", "Mine feature blocks -> <out>/<block>.npy + features.json (the manifest)");
   mn->add_option("--graph", graph)->required();
-  mn->add_option("--config", config)->required();
+  auto* mn_prof = mn->add_option("--profile", profile, "semantic profile (configs/profiles/*.yaml, SPEC v2 §3.1)");
+  auto* mn_cfg = mn->add_option("--config", config, "a v1 feature config (or a profile)");
+  mn_prof->excludes(mn_cfg);
   mn->add_option("--backend", backend)->check(CLI::IsMember({"oracle", "cpu", "cuda"}));
   mn->add_option("--threads", threads);
   mn->add_option("--schedule", schedule, "cpu backend: dynamic | sorted")->check(CLI::IsMember({"dynamic", "sorted"}));
   mn->add_option("--heavy-threshold", heavy, "cuda backend: work estimate from which a trigger is heavy");
-  mn->add_option("--blocks", blocks, "comma-separated; default: every block in the config");
-  mn->add_option("--triggers", triggers, "all | train | test | range:a:b");
+  mn->add_option("--blocks", blocks, "comma-separated; default: every block of the profile");
+  mn->add_option("--triggers", triggers, "all | train | test | fit | val | range:a:b | sample:<pct>:<seed>");
   mn->add_option("--out", out)->required();
 
   std::string a_npy, b_npy, report, name;
@@ -972,7 +1145,9 @@ int main(int argc, char** argv) {
   int reps = 5;
   auto* bn = app.add_subcommand("bench", "E4/E5: time the CPU or CUDA backend per block (SPEC §12)");
   bn->add_option("--graph", graph)->required();
-  bn->add_option("--config", config)->required();
+  auto* bn_prof = bn->add_option("--profile", profile, "semantic profile (SPEC v2 §3.1)");
+  auto* bn_cfg = bn->add_option("--config", config, "a v1 feature config (or a profile)");
+  bn_prof->excludes(bn_cfg);
   bn->add_option("--backend", backend)->check(CLI::IsMember({"cpu", "cuda"}))->required();
   bn->add_option("--threads", threads_list, "comma-separated thread counts");
   bn->add_option("--reps", reps, "timed runs after one warm-up");
@@ -983,35 +1158,62 @@ int main(int argc, char** argv) {
   bn->add_option("--out", out, "merge the result into this JSON file")->required();
   bn->add_option("--name", bench_name, "key (JSON pointer path) in --out; default: the backend");
 
-  std::string fd_backend = "cpu", fd_heavy = "0,4,all";
+  std::string fd_backend = "cpu", fd_heavy = "0,4,all", fd_bins;
   auto* fd = app.add_subcommand("fuzz-diff", "AC1: a generated backend vs the oracle on fuzz graphs (SPEC §13.3)");
   fd->add_option("--seeds", seeds, "a:b")->required();
-  fd->add_option("--bins", bins);
+  fd->add_option("--bins", fd_bins, "default: the profile's bins per block, or 2..33 without --profile");
   fd->add_option("--backend", fd_backend)->check(CLI::IsMember({"cpu", "cuda"}));
   fd->add_option("--heavy", fd_heavy, "cuda: light/heavy thresholds, each run on every graph");
+  fd->add_option("--profile", profile, "blocks, patterns and k_max (SPEC v2 §10); windows come from the graphs");
   fd->add_option("--report", report, "merge the summary into this JSON file");
   fd->add_option("--name", name, "key (JSON pointer path) in --report")->needs("--report");
+
+  std::string mt_backend = "cpu";
+  auto* mt = app.add_subcommand("metamorphic", "SPEC v2 §3.4: prefix closure, relabeling, time shift on fuzz graphs");
+  mt->add_option("--seeds", seeds, "a:b")->required();
+  mt->add_option("--bins", fd_bins, "default: the profile's bins per block, or 2..33 without --profile");
+  mt->add_option("--backend", mt_backend)->check(CLI::IsMember({"oracle", "cpu", "cuda"}));
+  mt->add_option("--heavy", fd_heavy, "cuda: light/heavy thresholds, each run on every graph");
+  mt->add_option("--profile", profile, "default: every registered pattern (v1)");
+  mt->add_option("--report", report, "merge the summary into this JSON file");
+  mt->add_option("--name", name, "key (JSON pointer path) in --report")->needs("--report");
+
+  std::string gt_csv, gt_patterns;
+  auto* gj = app.add_subcommand("gt-join", "SPEC v2 §3.5: join Patterns.txt to the stream's eids");
+  gj->add_option("--graph", graph)->required();
+  gj->add_option("--csv", gt_csv)->required();
+  gj->add_option("--patterns", gt_patterns)->required();
+  gj->add_option("--out", out)->required();
 
   CLI11_PARSE(app, argc, argv);
   try {
     if (*prep) return prepare(csv, out);
     if (*exp) return export_edges(graph, out);
     if (*st) return stats(graph, out);
-    if (*mn) return mine(graph, config, backend, threads, schedule, heavy, blocks, triggers, out);
+    if (*mn || *bn) {
+      if (profile.empty() == config.empty()) throw std::runtime_error("give one of --profile and --config");
+      if (profile.empty()) profile = config;
+    }
+    if (*mn) return mine(graph, profile, backend, threads, schedule, heavy, blocks, triggers, out);
     if (*bn) {
       if (bench_name.empty()) bench_name = backend;
       if (backend == "cuda") {
         if (*bn->get_option("--threads") || *bn->get_option("--schedule"))
           throw std::runtime_error("bench --backend cuda takes --heavy, not --threads or --schedule");
-        return bench_cuda(graph, config, reps, heavy_list.empty() ? std::to_string(blz::kDefaultHeavyThreshold) : heavy_list, blocks, out, bench_name);
+        return bench_cuda(graph, profile, reps, heavy_list.empty() ? std::to_string(blz::kDefaultHeavyThreshold) : heavy_list, blocks, out, bench_name);
       }
       if (!heavy_list.empty()) throw std::runtime_error("--heavy is for --backend cuda");
-      return bench(graph, config, backend, threads_list, reps, schedules, blocks, out, bench_name);
+      return bench(graph, profile, backend, threads_list, reps, schedules, blocks, out, bench_name);
     }
     if (*fd) {
       if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");
-      return fuzz_diff(seeds, bins, fd_backend, fd_heavy, report, name);
+      return fuzz_diff(seeds, fd_bins, fd_backend, fd_heavy, profile, report, name);
     }
+    if (*mt) {
+      if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");
+      return metamorphic(seeds, fd_bins, mt_backend, fd_heavy, profile, report, name);
+    }
+    if (*gj) return gt_join(graph, gt_csv, gt_patterns, out);
     if (*cmp) {
       if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");
       return compare(a_npy, b_npy, graph, tw, first_eid, report, name);

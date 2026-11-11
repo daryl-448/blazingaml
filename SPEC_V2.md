@@ -158,11 +158,53 @@ blocks:                      # output order = listed order
   backend cannot run (for example `credit: participants` on CUDA) fails with **E404** naming the
   backend. Both report the profile file and key.
 
+As implemented (P7):
+
+- The loader is `src/runtime/profile.{hpp,cpp}`. `blz mine` and `blz bench` take exactly one of
+  `--profile` and `--config`; each loads either format. A profile requires `version: 2`,
+  `profile` (an identifier), `visibility`, `credit`, `k_max` (≥ 2) and a non-empty `blocks` map,
+  each block with `patterns`, `window` and `bins` (strictly increasing). An unknown or duplicate
+  key, block or listed pattern is an error at `<file>:<line>:<col>`. Window lower bounds still
+  come from each pattern's spec (fan and degree open, sg and tcyc closed).
+- The canonical JSON is `{visibility, credit, k_max, blocks: {<block>: {patterns: [<spec
+  SHA-256>…], window, bins}}, block_order}`. Patterns keep their listed order. Ids: `v1_default` =
+  `features_default.yaml` = **b21580d6e129821a**, `v1_parity` = `features_parity.yaml` =
+  **8c8237bf05998d07**. The SHA is taken over the spec's text, so any edit of a library spec,
+  even a comment, changes every id that uses it. This is deliberately conservative.
+- `PatternInfo` (§7.6 of v1) gains `spec_sha256`, `visibility` and `visibility_loc`. No library
+  spec has a `visibility:` key yet, so every pin is empty and the E403 visibility check fires only
+  for specs that add one (P10).
+- E403 also covers a pattern listed under a block it does not emit into.
+- E404, at start-up, against the profile key:
+  - `credit: participants` on every backend (until S1);
+  - `visibility: timestamp` on the oracle (until P8) and the generated backends (until P10);
+  - on the oracle, a block whose pattern list is not the set that §9 of v1 computes for it
+    (`sg` = `sg_gather` + `sg_scatter`);
+  - on cpu and cuda, a `k_max` other than the compiled `K_MAX` of a listed pattern that declares
+    one (today only `tcyc`).
+- A v1 config on cpu or cuda keeps the v1 start-up checks (E402, the K_MAX message), so it
+  behaves as in v1. **P10 must revisit this:** once `sg_ordered` is registered with a block of its
+  own, a v1 config that does not define that block fails E402 on the generated backends.
+
 ### 3.2 Feature manifest
 
 `features.json` (§8 of v1) gains: `profile`, `profile_id`, the resolved profile, each pattern's
 spec SHA-256, the backend and its plan options (§7.2), the trigger selection, and the `.blzg` SHA.
 Every results JSON that consumes features records the profile ids it used.
+
+As implemented (P7): `features.json` has `manifest_version: 2` and these keys:
+
+- `profile`: name, file, format, id, `causal`, `row_sees` (what a row may see, §3.3), and the
+  resolved profile;
+- `patterns`: each listed pattern's block, spec, spec SHA-256 and visibility pin;
+- `backend`: name, threads, `disabled_optimizations` (empty until P11), and the schedule or the
+  heavy threshold;
+- `triggers`, `blzg_sha256`, `csv_sha256`, `peak_rss_mb`, and `output_fnv1a` per block.
+
+The `run` key, which decides whether earlier blocks in the directory are kept, now includes
+`blzg_sha256`, `profile_id` and the trigger selection. `blz train` records the features' profile
+and profile id and rejects sampled features. `blz bench`, `fuzz-diff` and `metamorphic` record
+the profile name and id.
 
 ### 3.3 Splits [D-17]
 
@@ -183,6 +225,11 @@ row depends only on earlier edges, so the split needs no special handling. A non
 (timestamp visibility, GFP batch mode, participants credit) can let a row see later edges. Its
 manifest MUST say so, and §4.4 states, per rung, which later edges a row may see.
 
+As implemented (P7): `fit_val_boundary()` (`include/blz/edges.hpp`) and `--triggers fit|val`.
+`blz prepare` asserts five new invariants: `b_fv`, the 1,015,460 validation edges, the fit and
+validation positives, and R1's 515,088 bank+account keys. It also runs the `file_row` check of
+§3.5. All of them hold on HI-Small.
+
 ### 3.4 Metamorphic tests
 
 These catch semantic mistakes that backend parity cannot, because all backends would share them.
@@ -195,6 +242,18 @@ They run on fuzz graphs (§13.3) for the oracle and the CPU backend, and on CUDA
 | Time shift | Adding a constant to every timestamp leaves every row unchanged. | all |
 | Visibility invariance of tcyc | tcyc rows are equal under stream and timestamp visibility (§6.1). | tcyc |
 | Order relaxation | For every row, the number of `sg_ordered` instances (the sum over its bins) is ≤ the number of `sg_gather` instances when `sg_gather` is mined alone at the same window and bins. Ordering only removes sources and intermediates. Bins are not compared, because an instance can move to a lower bin. | `sg_ordered` |
+
+As implemented (P7): `src/runtime/metamorphic.{hpp,cpp}` and
+`blz metamorphic --seeds a:b [--backend oracle|cpu|cuda] [--profile p] [--bins …] [--heavy …]`.
+
+- Prefix closure uses two cuts per graph, k drawn from [1, m) by a seeded generator. It applies
+  to trigger credit only.
+- Relabeling applies a seeded permutation of all node ids.
+- Time shift adds a seeded constant in [1, 2^30].
+- CUDA runs every graph at each heavy threshold (default 0, 4, `all`).
+- Visibility invariance joins in P8 (the oracle) and P10; order relaxation joins in P10.
+- Fast suite: 200 graphs on the oracle and cpu, 60 graphs of `v1_parity` on cpu, and 200 on CUDA.
+  Slow suite: `metamorphic_<profile>_<backend>_2k` for both frozen profiles.
 
 ### 3.5 Ground-truth join
 
@@ -219,6 +278,25 @@ They run on fuzz graphs (§13.3) for the oracle and the CPU backend, and on CUDA
 `blz prepare` re-creates the cache. Invariants: `file_row` is a permutation of 0..m−1, and the
 stable sort is reproduced from it.
 
+As implemented (P7): `src/graph/gt_join.{hpp,cpp}`.
+
+- `blz gt-join` refuses a CSV whose SHA-256 differs from the one the graph was prepared from.
+- The field rule is tried only against CSV rows that match no listed line as text.
+- An attempt's span and account count cover all its listed rows. Its split is `null` when no
+  row maps.
+- The file has one line per attempt and per row, so diffs stay readable.
+- `file_row` is stored after `format`, so the offsets of the first nine `.blzg` arrays, which
+  the Python tools read, do not change. The file grows from 178.6 to 198.9 MB.
+
+**HI-Small (`results/gt_join.json`):**
+
+- All 3,209 listed rows match exactly one CSV row by text: no duplicates, no field-rule matches,
+  no ambiguity. All 370 attempts are `complete`.
+- Every mapped eid is a positive, and 1,968 of the 5,177 positives are unlisted.
+- Attempt splits: fit 104, val 16, test 95, straddles 155. The median attempt spans 74 h and the
+  longest 202 h.
+- R4's W-C therefore draws on only 26 fan, 9 SG and 19 cycle attempts that lie wholly in fit.
+
 ### 3.6 Experiment ledger
 
 `results/dg2_ledger.json` holds one entry per fit and per feature pass:
@@ -234,6 +312,18 @@ stable sort is reproduced from it.
 `bench/dg2/ledger.py` renders `results/dg2_ledger.md`.
 
 ---
+
+As implemented (P7): `bench/dg2/ledger.py`.
+
+- Commands: `init` (the §4.4 ladder with every candidate `pending`), `add <entry.json>`,
+  `skip <rung> <candidate> budget|limit`, `render` and `selftest`. The selftest is a fast ctest.
+- `add_entry()` is the API for P8's `ladder.py`:
+  - it validates an entry's fields (§3.6), including exactly one of `profile_id` and
+    `gfp_recipe`;
+  - it recomputes the running totals;
+  - it refuses a pass beyond the pass cap and any entry after the fit or time cap.
+- R8's seven grid points are named X1–X7; P8 binds them to grid values before R8 runs.
+- `results/dg2_ledger.{json,md}` is committed as the skeleton.
 
 ## 4. DG-2 identification ladder (P8)
 
@@ -825,6 +915,16 @@ tools/gfp/dg2_features.py --recipe G1|G2|G3|F1|F2 --out features/<run>/
 
 ---
 
+As implemented (P7):
+
+- `--triggers sample:<pct>:<seed>` selects each eid independently, with probability pct/100,
+  from a hash of (seed, eid). The selection does not depend on m.
+- Output row r belongs to eid `triggers.npy[r]` (u32[k, 1], written next to the blocks). The
+  manifest records `extrapolated_mine_seconds` per block.
+- Sampling runs on the oracle and cpu only. On cuda, `blz mine` rejects a sample, because the
+  generated bucket launchers take an eid range; the preflight of §2.5 and §4.4 uses cpu.
+- `blz fuzz-diff --profile` defaults the bins to each block's own.
+
 ## 12. Milestones
 
 v1's numbering continues. Each phase lists its exit criterion and a rough cost (engineering days,
@@ -842,6 +942,31 @@ then machine time).
 
 **Exit:** AC-V2-0 and AC-V2-1; `results/gt_join.json` committed. About 3 days; under 1 h of machine
 time.
+
+**Outcome (2026-11-11).** Rules this phase pinned down are in §3.1–§3.6 and §11 ("As
+implemented"). `bench/p7_contracts.py` runs the exit checks into `results/p7_contracts.json` on
+`local`, in about 5 minutes.
+
+- **AC-V2-0 holds.** `ctest -L fast` passes on `rel`, `rel-cuda` and `dev` (sanitizers).
+  `blz mine --profile configs/profiles/v1_default.yaml` gives the six pinned `output_fnv1a` on
+  the oracle (79 s), cpu (5.8 s) and CUDA on the 1650S (5.3 s, including start-up).
+- **AC-V2-1 holds.**
+  - Every `features.json` of those runs carries the full manifest with profile id
+    b21580d6e129821a.
+  - The metamorphic tests find 0 changed rows on 2,000 fuzz graphs (403,557 edges) for each
+    frozen profile on the oracle, cpu and CUDA (CUDA at H = 0, 4 and `all`).
+  - `blz fuzz-diff --profile` finds 0 mismatches on 2,000 graphs per profile, for cpu and CUDA.
+- **Sampling.** `--triggers sample:1:7` (50,395 rows) gives the full runs' rows on the oracle
+  and cpu.
+  - On the oracle, the extrapolated times are within 4% of the full run for the two blocks that
+    take over 30 s.
+  - On cpu, the extrapolations overestimate by 1.1× (fan_out) to 3× (fan_in). Fixed costs
+    dominate runs of a few milliseconds, so the estimate errs on the safe side of the preflight
+    limit.
+- **`.blzg` v2.** `blz prepare` re-created `data/hi_small.blzg` in 5.6 s, and every v1 and v2
+  invariant holds.
+- **`results/gt_join.json`** is committed (§3.5).
+- **The ledger skeleton** is `results/dg2_ledger.{json,md}` (§3.6).
 
 ### P8 — DG-2 ladder
 

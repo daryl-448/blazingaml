@@ -56,8 +56,12 @@ GeneratedFile emit_registry(const std::vector<ir::Pattern>& patterns, const std:
   w.open("constexpr PatternInfo kPatterns[] = {");
   for (const ir::Pattern& p : patterns) {
     const std::string consts = p.consts.empty() ? "{}" : "kConsts_" + p.name;
+    const bool pinned = p.visibility_loc.line > 0;
+    const std::string vis = !pinned ? "" : p.visibility == dsl::Visibility::stream ? "stream" : "timestamp";
     w.line("{" + quoted(p.name) + ", " + quoted(p.block) + ", " + quoted(dsl::format_loc(p.block_loc)) + ", " +
-           quoted(p.file) + ", " + quoted(p.span_param) + ", " + consts + ", &gen::" + p.name + "_cpu, &gen::" +
+           quoted(p.file) + ", " + quoted(p.spec_sha256) + ", " + quoted(vis) + ", " +
+           quoted(pinned ? dsl::format_loc(p.visibility_loc) : "") + ", " + quoted(p.span_param) + ", " + consts +
+           ", &gen::" + p.name + "_cpu, &gen::" +
            p.name + "_work, BLZ_CUDA_FN(gen::" + p.name + "_cuda_bucket), BLZ_CUDA_FN(gen::" + p.name + "_cuda)},");
   }
   w.close("};");

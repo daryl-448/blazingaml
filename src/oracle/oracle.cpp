@@ -152,6 +152,24 @@ void Oracle::tcyc(const Trigger& tr, int k_max, std::vector<std::uint64_t>& size
   dfs(dfs, {std::numeric_limits<Ts>::min()});
 }
 
+std::uint64_t Oracle::mine_one(Block b, const BlockParams& p, int k_max, std::uint64_t e, std::uint32_t* row) const {
+  const Trigger tr{std::uint32_t(e), s_.src[e], s_.dst[e], s_.ts[e], std::int64_t(s_.ts[e]) - p.window,
+                   closed_lower_bound(b)};
+  if (tr.u == tr.v) return 0;  // self-loop triggers emit nothing (§4.1)
+  std::vector<std::uint64_t> sizes;
+  switch (b) {
+    case Block::sg: sg(tr, sizes); break;
+    case Block::tcyc: tcyc(tr, k_max, sizes); break;
+    default: fan_or_degree(b, tr, sizes);
+  }
+  std::uint64_t saturated = 0;
+  for (std::uint64_t sz : sizes) {
+    const int i = bin_index(p.bins, sz);
+    if (i >= 0 && add_saturating(row[i])) ++saturated;
+  }
+  return saturated;
+}
+
 std::uint64_t Oracle::mine(Block b, const BlockParams& p, int k_max, std::uint64_t first,
                            std::uint64_t last, std::uint32_t* out) const {
   if (first > last || last > s_.src.size()) throw std::invalid_argument("oracle: bad trigger range");
@@ -159,22 +177,19 @@ std::uint64_t Oracle::mine(Block b, const BlockParams& p, int k_max, std::uint64
   const std::size_t nb = p.bins.size();
   std::uint64_t saturated = 0;
 #pragma omp parallel for schedule(dynamic, 256) reduction(+ : saturated)
-  for (std::uint64_t e = first; e < last; ++e) {
-    const Trigger tr{std::uint32_t(e), s_.src[e], s_.dst[e], s_.ts[e],
-                     std::int64_t(s_.ts[e]) - p.window, closed_lower_bound(b)};
-    if (tr.u == tr.v) continue;  // self-loop triggers emit nothing (§4.1)
-    std::vector<std::uint64_t> sizes;
-    switch (b) {
-      case Block::sg: sg(tr, sizes); break;
-      case Block::tcyc: tcyc(tr, k_max, sizes); break;
-      default: fan_or_degree(b, tr, sizes);
-    }
-    std::uint32_t* row = out + (e - first) * nb;
-    for (std::uint64_t sz : sizes) {
-      const int i = bin_index(p.bins, sz);
-      if (i >= 0 && add_saturating(row[i])) ++saturated;
-    }
-  }
+  for (std::uint64_t e = first; e < last; ++e) saturated += mine_one(b, p, k_max, e, out + (e - first) * nb);
+  return saturated;
+}
+
+std::uint64_t Oracle::mine(Block b, const BlockParams& p, int k_max, std::span<const std::uint32_t> eids,
+                           std::uint32_t* out) const {
+  if (k_max < 2) throw std::invalid_argument("oracle: k_max < 2");
+  for (std::uint32_t e : eids)
+    if (e >= s_.src.size()) throw std::invalid_argument("oracle: trigger eid >= m");
+  const std::size_t nb = p.bins.size();
+  std::uint64_t saturated = 0;
+#pragma omp parallel for schedule(dynamic, 256) reduction(+ : saturated)
+  for (std::size_t r = 0; r < eids.size(); ++r) saturated += mine_one(b, p, k_max, eids[r], out + r * nb);
   return saturated;
 }
 

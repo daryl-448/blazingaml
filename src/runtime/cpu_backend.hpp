@@ -6,6 +6,7 @@
 
 #include "blz/registry.hpp"
 #include "runtime/features.hpp"
+#include "runtime/triggers.hpp"
 
 namespace blz {
 
@@ -36,9 +37,14 @@ struct CpuBlockTiming {
   std::uint64_t saturated = 0;
 };
 
-// Mines block b for the triggers [first, last) with every pattern of the block, adding into
-// `out` (last - first rows of p.bins.size() columns, zeroed by the caller). Uses the current
-// OpenMP thread count. Throws if no pattern emits into b.
+// Mines one block with the patterns `pats` (a profile's list for the block, SPEC v2 §3.1; their
+// emits are summed) for the triggers `sel`, adding into `out` (sel.rows() rows of p.bins.size()
+// columns, zeroed by the caller; row r belongs to sel.eid(r)). Uses the current OpenMP thread
+// count. Throws if `pats` is empty.
+CpuBlockTiming mine_cpu(const GraphView& g, std::span<const PatternInfo* const> pats, const BlockParams& p,
+                        const TriggerSel& sel, Schedule schedule, std::uint32_t* out);
+
+// The v1 form: block b with every registered pattern of the block, triggers [first, last).
 CpuBlockTiming mine_cpu(const GraphView& g, Block b, const BlockParams& p, std::uint64_t first,
                         std::uint64_t last, Schedule schedule, std::uint32_t* out);
 

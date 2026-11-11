@@ -95,7 +95,8 @@ struct Plan {
 
 struct Pattern {
   std::string name, block, file;
-  Loc name_loc, block_loc, visibility_loc;
+  std::string spec_sha256;     // hex SHA-256 of the spec file's text (registry, SPEC v2 §3.1)
+  Loc name_loc, block_loc, visibility_loc;  // visibility_loc.line == 0: the spec has no `visibility:`
   std::string span_param;      // runtime int parameter: the window span (the block's window)
   bool lower_open = false;
   Visibility visibility = Visibility::stream;

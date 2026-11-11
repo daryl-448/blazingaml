@@ -27,6 +27,9 @@ class Oracle {
   // triggers with OpenMP. Returns the number of saturated increments (SPEC §4.2).
   std::uint64_t mine(Block b, const BlockParams& p, int k_max, std::uint64_t first,
                      std::uint64_t last, std::uint32_t* out) const;
+  // The same for the triggers `eids` (a sample, SPEC v2 §11): row r of `out` gets eids[r].
+  std::uint64_t mine(Block b, const BlockParams& p, int k_max, std::span<const std::uint32_t> eids,
+                     std::uint32_t* out) const;
 
  private:
   struct Window {
@@ -40,6 +43,8 @@ class Oracle {
     bool closed;
   };
 
+  // Trigger e's histogram into `row`; returns the number of saturated increments.
+  std::uint64_t mine_one(Block b, const BlockParams& p, int k_max, std::uint64_t e, std::uint32_t* row) const;
   Window window(const std::vector<std::uint32_t>& list, const Trigger& tr) const;
   bool has_edge(std::uint32_t x, std::uint32_t y, const Trigger& tr) const;
 

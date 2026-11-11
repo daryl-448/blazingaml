@@ -205,11 +205,18 @@ CudaMiner::~CudaMiner() = default;
 
 CudaBlockTiming CudaMiner::mine(const DeviceGraph& g, Block b, const BlockParams& p, std::uint64_t first,
                                 std::uint64_t last, std::uint32_t heavy_threshold, std::uint32_t* host_out) {
+  const auto pats = patterns_for(b);
+  if (pats.empty()) throw std::runtime_error("no registered pattern emits into block " + std::string(block_name(b)));
+  return mine(g, pats, p, first, last, heavy_threshold, host_out);
+}
+
+CudaBlockTiming CudaMiner::mine(const DeviceGraph& g, std::span<const PatternInfo* const> pats, const BlockParams& p,
+                                std::uint64_t first, std::uint64_t last, std::uint32_t heavy_threshold,
+                                std::uint32_t* host_out) {
   const auto t0 = Clock::now();
   Impl& s = *impl_;
   const GraphView& dg = g.view();
-  const auto pats = patterns_for(b);
-  if (pats.empty()) throw std::runtime_error("no registered pattern emits into block " + std::string(block_name(b)));
+  if (pats.empty()) throw std::runtime_error("CudaMiner::mine: no pattern to run");
   for (const PatternInfo* pi : pats)
     if (!pi->cuda || !pi->cuda_bucket) throw std::runtime_error(std::string("pattern '") + pi->name + "' has no CUDA launcher");
   if (first > last || last > dg.m) throw std::invalid_argument("CudaMiner::mine: bad trigger range");

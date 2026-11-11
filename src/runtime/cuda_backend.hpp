@@ -4,9 +4,11 @@
 // BLZ_ENABLE_CUDA links cuda_backend_stub.cpp, whose functions throw.
 #include <cstdint>
 #include <memory>
+#include <span>
 #include <string>
 
 #include "blz/primitives.hpp"
+#include "blz/registry.hpp"
 #include "runtime/features.hpp"
 
 namespace blz {
@@ -88,6 +90,10 @@ class CudaMiner {
   // into b or the build has no CUDA launchers.
   CudaBlockTiming mine(const DeviceGraph& g, Block b, const BlockParams& p, std::uint64_t first,
                        std::uint64_t last, std::uint32_t heavy_threshold, std::uint32_t* host_out);
+  // The same with the patterns `pats` (a profile's list for the block, SPEC v2 §3.1).
+  CudaBlockTiming mine(const DeviceGraph& g, std::span<const PatternInfo* const> pats, const BlockParams& p,
+                       std::uint64_t first, std::uint64_t last, std::uint32_t heavy_threshold,
+                       std::uint32_t* host_out);
 
  private:
   struct Impl;

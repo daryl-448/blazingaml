@@ -36,6 +36,12 @@ if(BLZ_SANITIZE)
   target_link_options(blz_flags INTERFACE -fsanitize=address,undefined)
 endif()
 
+# Code shared by the compiler and the runtime: SHA-256 (spec hashes in the registry, SPEC v2 §3.1;
+# the CSV and .blzg hashes).
+add_library(blz_common src/common/sha256.cpp)
+target_include_directories(blz_common PUBLIC src)
+target_link_libraries(blz_common PUBLIC blz_flags)
+
 # The pattern compiler's front end (SPEC §7.1): YAML -> AST -> planned IR. A host tool library;
 # it does not depend on the runtime.
 add_library(blz_dsl
@@ -48,7 +54,7 @@ add_library(blz_dsl
   src/ir/dump.cpp
   src/ir/compile.cpp)
 target_include_directories(blz_dsl PUBLIC src)
-target_link_libraries(blz_dsl PUBLIC blz_flags PRIVATE yaml-cpp::yaml-cpp)
+target_link_libraries(blz_dsl PUBLIC blz_flags PRIVATE blz_common yaml-cpp::yaml-cpp)
 
 # Code generation (SPEC §7.1 steps 8-9): planned IR -> C++ sources.
 add_library(blz_codegen
@@ -96,7 +102,6 @@ if(BLZ_ENABLE_CUDA)
 endif()
 
 add_library(blz_core
-  src/common/sha256.cpp
   src/common/npy.cpp
   src/common/mmap_file.cpp
   src/io/csv.cpp
@@ -105,10 +110,14 @@ add_library(blz_core
   src/graph/stats.cpp
   src/graph/fuzz_gen.cpp
   src/graph/index.cpp
+  src/graph/gt_join.cpp
   src/runtime/features.cpp
+  src/runtime/profile.cpp
+  src/runtime/triggers.cpp
   src/runtime/registration.cpp
   src/runtime/cpu_backend.cpp
   src/runtime/fuzz_diff.cpp
+  src/runtime/metamorphic.cpp
   src/oracle/oracle.cpp
   src/ml/metrics.cpp)
 if(BLZ_ENABLE_CUDA)
@@ -117,7 +126,7 @@ else()
   target_sources(blz_core PRIVATE src/runtime/cuda_backend_stub.cpp)
 endif()
 target_include_directories(blz_core PUBLIC include src)
-target_link_libraries(blz_core PUBLIC blz_flags blz_patterns nlohmann_json::nlohmann_json OpenMP::OpenMP_CXX
+target_link_libraries(blz_core PUBLIC blz_flags blz_common blz_patterns nlohmann_json::nlohmann_json OpenMP::OpenMP_CXX
   PRIVATE yaml-cpp::yaml-cpp)
 if(BLZ_WITH_XGBOOST)
   target_sources(blz_core PRIVATE src/ml/xgb.cpp)

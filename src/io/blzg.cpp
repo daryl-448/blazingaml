@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <vector>
 
+#include "graph/prepare.hpp"
+
 namespace blz {
 namespace {
 
@@ -96,7 +98,7 @@ void write_blzg(const std::string& path, const EdgeTable& t) {
   const std::uint64_t m = t.m(), n = t.n();
   for (std::size_t len : {t.dst.size(), t.ts.size(), t.label.size(), t.amount_paid.size(),
                           t.amount_received.size(), t.pay_ccy.size(), t.recv_ccy.size(),
-                          t.format.size()})
+                          t.format.size(), t.file_row.size()})
     if (len != m) throw std::invalid_argument("write_blzg: edge arrays differ in length");
   if (t.node_account.size() != n) throw std::invalid_argument("write_blzg: node tables differ");
 
@@ -118,6 +120,7 @@ void write_blzg(const std::string& path, const EdgeTable& t) {
   w.array(t.pay_ccy);
   w.array(t.recv_ccy);
   w.array(t.format);
+  w.array(t.file_row);
   w.strings(t.ccy_dict);
   w.strings(t.format_dict);
   w.strings(t.node_bank);
@@ -133,7 +136,11 @@ BlzgView::BlzgView(const std::string& path) : file_(path) {
   std::uint64_t file_size;
   if (size < kHeader || std::memcmp(p, "BLZG", 4) != 0) throw std::runtime_error(path + ": not a .blzg file");
   std::memcpy(&version, p + 4, 4);
-  if (version != kBlzgVersion) throw std::runtime_error(path + ": unsupported .blzg version");
+  if (version == 1)
+    throw std::runtime_error(path + ": .blzg version 1 (v1, no file_row); this build reads version " +
+                             std::to_string(kBlzgVersion) + ": re-run `blz prepare` to rebuild the cache");
+  if (version != kBlzgVersion)
+    throw std::runtime_error(path + ": unsupported .blzg version " + std::to_string(version));
   std::memcpy(&m_, p + 8, 8);
   std::memcpy(&n_, p + 16, 8);
   std::memcpy(sha_.data(), p + 24, 32);
@@ -150,6 +157,7 @@ BlzgView::BlzgView(const std::string& path) : file_(path) {
   pay_ccy = r.array<std::uint8_t>(m_, "pay_ccy");
   recv_ccy = r.array<std::uint8_t>(m_, "recv_ccy");
   format = r.array<std::uint8_t>(m_, "format");
+  file_row = r.array<std::uint32_t>(m_, "file_row");
   ccy_dict = r.strings("ccy_dict");
   format_dict = r.strings("format_dict");
   node_bank = r.strings("node_bank");
@@ -159,6 +167,7 @@ BlzgView::BlzgView(const std::string& path) : file_(path) {
   if (r.pos() != size) throw std::runtime_error(path + ": trailing bytes");
   for (std::uint64_t e = 0; e < m_; ++e)
     if (src[e] >= n_ || dst[e] >= n_) throw std::runtime_error(path + ": node id out of range");
+  if (const std::string err = check_file_row(file_row, ts); !err.empty()) throw std::runtime_error(path + ": " + err);
 }
 
 }  // namespace blz

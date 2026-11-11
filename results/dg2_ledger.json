@@ -1,0 +1,241 @@
+{
+ "ledger_version": 1,
+ "spec": "SPEC_V2.md \u00a73.6, \u00a74",
+ "budget": {
+  "fits": 40,
+  "passes": 8,
+  "machine_hours": 4.0
+ },
+ "selection": {
+  "metric": "validation F1 x100 of the laundering class at threshold 0.5",
+  "min_gain": 2.0,
+  "tie": 0.1,
+  "tie_break": [
+   "fewer columns",
+   "listed first in SPEC v2 \u00a74.4"
+  ]
+ },
+ "pass_limits": {
+  "wall_minutes": 60,
+  "peak_rss_gb": 3.0
+ },
+ "rungs": [
+  {
+   "rung": "R0",
+   "hypothesis": "the v1 baseline (incumbent)",
+   "sets_fitted": [
+    "xgb_only",
+    "all"
+   ],
+   "selection_set": null,
+   "planned_fits": 2,
+   "planned_passes": 0,
+   "candidates": [
+    {
+     "id": "v1",
+     "status": "pending"
+    }
+   ],
+   "carried": null
+  },
+  {
+   "rung": "R1",
+   "hypothesis": "input encoding (F3, F9)",
+   "sets_fitted": [
+    "xgb_only",
+    "all"
+   ],
+   "selection_set": "xgb_only",
+   "planned_fits": 6,
+   "planned_passes": 0,
+   "candidates": [
+    {
+     "id": "I1",
+     "status": "pending"
+    },
+    {
+     "id": "I2",
+     "status": "pending"
+    },
+    {
+     "id": "I3",
+     "status": "pending"
+    }
+   ],
+   "carried": null
+  },
+  {
+   "rung": "R2",
+   "hypothesis": "classifier contract",
+   "sets_fitted": [
+    "xgb_only",
+    "all"
+   ],
+   "selection_set": "all",
+   "planned_fits": 2,
+   "planned_passes": 0,
+   "candidates": [
+    {
+     "id": "C1",
+     "status": "pending"
+    }
+   ],
+   "carried": null
+  },
+  {
+   "rung": "R3",
+   "hypothesis": "raw schema",
+   "sets_fitted": [
+    "xgb_only",
+    "all"
+   ],
+   "selection_set": "all",
+   "planned_fits": 4,
+   "planned_passes": 0,
+   "candidates": [
+    {
+     "id": "S1",
+     "status": "pending"
+    },
+    {
+     "id": "S2",
+     "status": "pending"
+    }
+   ],
+   "carried": null
+  },
+  {
+   "rung": "R4",
+   "hypothesis": "windows (F5-F8)",
+   "sets_fitted": [
+    "all"
+   ],
+   "selection_set": "all",
+   "planned_fits": 2,
+   "planned_passes": 2,
+   "candidates": [
+    {
+     "id": "W-B",
+     "status": "pending"
+    },
+    {
+     "id": "W-C",
+     "status": "pending"
+    }
+   ],
+   "carried": null
+  },
+  {
+   "rung": "R5",
+   "hypothesis": "visibility (Fig. 5 literal)",
+   "sets_fitted": [
+    "all"
+   ],
+   "selection_set": "all",
+   "planned_fits": 1,
+   "planned_passes": 1,
+   "candidates": [
+    {
+     "id": "V1",
+     "status": "pending"
+    }
+   ],
+   "carried": null
+  },
+  {
+   "rung": "R6",
+   "hypothesis": "GFP call semantics (F8, A28, A29)",
+   "sets_fitted": [
+    "all"
+   ],
+   "selection_set": "all",
+   "planned_fits": 3,
+   "planned_passes": 3,
+   "candidates": [
+    {
+     "id": "G1",
+     "status": "pending"
+    },
+    {
+     "id": "G2",
+     "status": "pending"
+    },
+    {
+     "id": "G3",
+     "status": "pending"
+    }
+   ],
+   "carried": null
+  },
+  {
+   "rung": "R7",
+   "hypothesis": "feature families (F7, F8)",
+   "sets_fitted": [
+    "all"
+   ],
+   "selection_set": "all",
+   "planned_fits": 2,
+   "planned_passes": 2,
+   "candidates": [
+    {
+     "id": "F1",
+     "status": "pending"
+    },
+    {
+     "id": "F2",
+     "status": "pending"
+    }
+   ],
+   "carried": null
+  },
+  {
+   "rung": "R8",
+   "hypothesis": "XGBoost grid (the v1 E6 grid)",
+   "sets_fitted": [
+    "all"
+   ],
+   "selection_set": "all",
+   "planned_fits": 7,
+   "planned_passes": 0,
+   "candidates": [
+    {
+     "id": "X1",
+     "status": "pending"
+    },
+    {
+     "id": "X2",
+     "status": "pending"
+    },
+    {
+     "id": "X3",
+     "status": "pending"
+    },
+    {
+     "id": "X4",
+     "status": "pending"
+    },
+    {
+     "id": "X5",
+     "status": "pending"
+    },
+    {
+     "id": "X6",
+     "status": "pending"
+    },
+    {
+     "id": "X7",
+     "status": "pending"
+    }
+   ],
+   "carried": null
+  }
+ ],
+ "incumbent": null,
+ "entries": [],
+ "totals": {
+  "fits": 0,
+  "passes": 0,
+  "machine_hours": 0.0
+ },
+ "stopped": null
+}

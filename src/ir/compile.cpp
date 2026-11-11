@@ -3,6 +3,7 @@
 #include <sstream>
 #include <stdexcept>
 
+#include "common/sha256.hpp"
 #include "ir/ir.hpp"
 
 namespace blz::ir {
@@ -23,6 +24,7 @@ Pattern compile_text(std::string_view text, const std::string& file, const IntEn
   const dsl::Spec spec = dsl::parse_spec(expand_text(text, file, overrides), file);
   Pattern p = lower(spec);
   plan(p);
+  p.spec_sha256 = to_hex(sha256(text.data(), text.size()));
   return p;
 }
 

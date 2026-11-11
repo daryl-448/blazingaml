@@ -25,15 +25,28 @@ struct RowSink {
   }
 };
 
-// A block's output rows: row r belongs to trigger eid first + r.
+// A block's output rows: row r belongs to trigger eid first + r or, when `rows` is set (a trigger
+// sample, SPEC v2 §11), to rows[r], the r-th eid of an ascending list of `nrows` eids.
 struct BlockOut {
   std::uint32_t* data = nullptr;
   std::uint64_t first = 0;
   const std::uint32_t* bins = nullptr;
   std::uint32_t nbins = 0;
   std::uint64_t saturated = 0;  // summed by the drivers
+  const std::uint32_t* rows = nullptr;
+  std::uint64_t nrows = 0;
 
-  RowSink sink(std::uint32_t e) const { return {data + (e - first) * nbins, bins, nbins, 0}; }
+  RowSink sink(std::uint32_t e) const { return {data + row_of(e) * nbins, bins, nbins, 0}; }
+  std::uint64_t row_of(std::uint32_t e) const {
+    if (!rows) return e - first;
+    std::uint64_t a = 0, b = nrows;  // the first position with rows[pos] >= e
+    while (a < b) {
+      const std::uint64_t mid = a + (b - a) / 2;
+      if (rows[mid] < e) a = mid + 1;
+      else b = mid;
+    }
+    return a;
+  }
 };
 
 // <pattern>_cpu: runs <pattern>_trigger for every eid in `triggers`, in that order, with
@@ -77,6 +90,9 @@ struct PatternInfo {
   const char* block;
   const char* block_loc;   // "<spec>:line:col" of its `block:` value, for E402
   const char* file;        // the spec it was generated from
+  const char* spec_sha256; // hex SHA-256 of that spec's text; profile ids use it (SPEC v2 §3.1)
+  const char* visibility;  // "stream" or "timestamp" if the spec pins it (§6.1 of v2), else ""
+  const char* visibility_loc;  // "<spec>:line:col" of its `visibility:` value, or ""
   const char* span_param;  // the window span parameter; its value is the block's window
   std::span<const ConstInfo> consts;  // compile-time consts, after any --const override
   CpuFn cpu;

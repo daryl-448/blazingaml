@@ -1,7 +1,7 @@
 // The generated CUDA backend (SPEC §7.5): golden probes (§13.2) and AC1 on fuzz graphs (§13.3,
 // the fast share; `blz fuzz-diff --backend cuda --seeds 0:10000` is the slow test), each with
 // every trigger on the heavy kernel, mixed, and every trigger on the light kernel; trigger
-// ranges and determinism (§8). Built only with BLZ_ENABLE_CUDA; needs a GPU.
+// ranges and determinism (§8); the metamorphic tests (SPEC v2 §3.4) on 200 graphs. Built only with BLZ_ENABLE_CUDA; needs a GPU.
 #include <catch2/catch_test_macros.hpp>
 #include <fstream>
 #include <string>
@@ -14,6 +14,7 @@
 #include "runtime/cpu_backend.hpp"
 #include "runtime/cuda_backend.hpp"
 #include "runtime/fuzz_diff.hpp"
+#include "runtime/metamorphic.hpp"
 
 using namespace blz;
 
@@ -85,6 +86,18 @@ TEST_CASE("cuda backend equals the oracle on fuzz graphs (seeds 0..499)") {
   }
   INFO("first bad seed " << (d.bad_seeds.empty() ? -1 : std::int64_t(d.bad_seeds[0])));
   CHECK(d.bad_seeds.empty());
+}
+
+TEST_CASE("cuda: metamorphic tests on 200 fuzz graphs, every threshold (SPEC v2 §3.4)") {
+  const std::vector<std::uint32_t> bins = {2, 3, 4, 5, 6, 8, 10};
+  const MetamorphicResult r = metamorphic(registry_profile(), Backend::cuda, 0, 200, bins, kThresholds);
+  CHECK(r.graphs == 200);
+  for (MetaTest t : kMetaTests) {
+    INFO(meta_test_name(t));
+    CHECK(r.rows_compared[int(t)] > 0);
+    for (std::uint64_t n : r.mismatched_rows[int(t)]) CHECK(n == 0);
+  }
+  CHECK(r.bad_seeds.empty());
 }
 
 // SPEC §8: CUDA rows equal the CPU's, for any trigger range and threshold, and repeat exactly.

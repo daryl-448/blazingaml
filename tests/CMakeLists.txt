@@ -18,7 +18,11 @@ add_executable(blz_unit_tests
   unit/test_dsl_specs.cpp
   unit/test_index.cpp
   unit/test_cpu_backend.cpp
-  unit/test_codegen.cpp)
+  unit/test_codegen.cpp
+  unit/test_profile.cpp
+  unit/test_triggers.cpp
+  unit/test_metamorphic.cpp
+  unit/test_gt_join.cpp)
 if(BLZ_WITH_XGBOOST)
   target_sources(blz_unit_tests PRIVATE unit/test_xgb.cpp)
 endif()
@@ -50,6 +54,24 @@ if(BLZ_ENABLE_CUDA)
   add_test(NAME fuzz_diff_cuda_10k COMMAND blz fuzz-diff --backend cuda --seeds 0:10000)
   set_tests_properties(fuzz_diff_cuda_10k PROPERTIES LABELS slow)
 endif()
+
+# SPEC v2 §3.6: the DG-2 ledger's budget, stop rule and entry checks.
+add_test(NAME dg2_ledger_selftest COMMAND python3 ${PROJECT_SOURCE_DIR}/bench/dg2/ledger.py selftest)
+set_tests_properties(dg2_ledger_selftest PROPERTIES LABELS fast)
+
+# SPEC v2 §3.4, §10: the metamorphic tests on 2,000 fuzz graphs per frozen profile and backend.
+foreach(prof v1_default v1_parity)
+  foreach(be oracle cpu)
+    add_test(NAME metamorphic_${prof}_${be}_2k
+      COMMAND blz metamorphic --seeds 0:2000 --backend ${be} --profile ${PROJECT_SOURCE_DIR}/configs/profiles/${prof}.yaml)
+    set_tests_properties(metamorphic_${prof}_${be}_2k PROPERTIES LABELS slow)
+  endforeach()
+  if(BLZ_ENABLE_CUDA)
+    add_test(NAME metamorphic_${prof}_cuda_2k
+      COMMAND blz metamorphic --seeds 0:2000 --backend cuda --profile ${PROJECT_SOURCE_DIR}/configs/profiles/${prof}.yaml)
+    set_tests_properties(metamorphic_${prof}_cuda_2k PROPERTIES LABELS slow)
+  endif()
+endforeach()
 
 # HI-Small checks (SPEC §13.5): run manually with `ctest -L slow`.
 set(BLZ_HI_SMALL_CSV "${PROJECT_SOURCE_DIR}/dataset/HI-Small_Trans.csv")

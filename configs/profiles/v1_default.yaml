@@ -1,0 +1,16 @@
+# Semantic profile (SPEC v2 §3.1). FROZEN (D-23): AC-V2-0 pins its outputs; a new semantic choice
+# is a new profile. Same semantics, and the same profile id, as configs/features_default.yaml:
+# D-7 (k_max), D-8 (windows), D-9 (bins), stream visibility, trigger credit. 67 columns.
+# Window lower bounds come from each pattern's spec (fan and degree open, sg and tcyc closed).
+version: 2
+profile: v1_default
+visibility: stream
+credit: trigger
+k_max: 10
+blocks:                      # output order = listed order
+  fan_in:  {patterns: [fan_in],  window: 86400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50]}
+  fan_out: {patterns: [fan_out], window: 86400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50]}
+  deg_in:  {patterns: [deg_in],  window: 86400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50]}
+  deg_out: {patterns: [deg_out], window: 86400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50]}
+  sg:      {patterns: [sg_gather, sg_scatter], window: 21600, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20]}
+  tcyc:    {patterns: [tcyc], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}
