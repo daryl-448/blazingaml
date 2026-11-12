@@ -1082,8 +1082,9 @@ implemented"). `bench/p7_contracts.py` runs the exit checks into `results/p7_con
 
 **Exit:** AC-V2-2. About 3–5 days; about 5 machine-hours on `local`.
 
-**Outcome so far (2026-11-12): R0–R8 ran. The freeze, DG-3, DG-4, E8 and the verdict have not
-run.** Test rows were not scored. The tooling notes are in §3.4, §4.4, §6.1 and §11 ("As
+**Outcome (2026-11-12): done. R0–R8, the freeze, DG-3, DG-4 and E8 ran. The verdict is GAP,
+because the frozen recipe overshoots the paper (E8 below). DG-2 is closed (SPEC §17, AC-V2-2).**
+The tooling notes are in §3.4, §4.4, §6.1 and §11 ("As
 implemented (P8)"), Appendix A′ (A34–A38) and D-32. The ladder is
 `results/dg2_ledger.{json,md}`. Its budget totals: 28 of 40 fits, 8 of 8 passes, 0.80 of 4
 machine-hours; the ladder never stopped.
@@ -1149,6 +1150,66 @@ Validation F1 ×100 on each rung's selection set (§4.3):
   was 5 (E0). The share is below DG-1's 0.1 %. The frozen tcyc block is G1's, and GFP counts every
   length, so `K_MAX` cuts nothing in E8. The share applies only when the recipe is compiled
   (DG-3).
+
+**E8 (2026-11-12).**
+- **The run.** `bench/dg2/e8.py` ran once, at the clean commit abd37a6, in 34.5 min, and wrote
+  `results/e8_table2_v2.{json,md}`.
+  - Train: 4,062,676 rows, 3,380 positives.
+  - Test: 1,015,669 rows, 1,797 positives.
+  - Before the run, `--dry-run` (fit → validation) reproduced the ledger's R0, R7/F1 and R8 X1–X7
+    confusion counts exactly.
+
+Table 2 (F1 ×100):
+
+| | XGB Only | Fan | Fan+Degree | Fan+Degree+Cycle | Fan+Degree+Cycle+SG |
+|---|---:|---:|---:|---:|---:|
+| Paper | 11.1 | 23.2 | 38.4 | 42.6 | 46.6 |
+| `v1_default` (`blz train` = Python) | 0.0 | 0.9 | 6.1 | 6.6 | 6.4 |
+| Frozen recipe | 58.0 | 60.6 | 63.5 | 63.9 | 63.1 |
+| Frozen minus paper | +46.9 | +37.4 | +25.1 | +21.3 | +16.5 |
+| Frozen columns | 59 | 83 | 107 | 116 | 126 |
+
+Table 3 (`all`), with the paper's counts in brackets:
+
+| | Predicted laundering | Predicted non-laundering |
+|---|---:|---:|
+| Actual laundering | TP 993 (558) | FN 804 (1,239) |
+| Actual non-laundering | FP 360 (31) | TN 1,013,512 (1,013,841) |
+
+- **Table 3 metrics.**
+  - Precision: 0.734 against the paper's 0.947 (−0.213).
+  - Recall: 0.553 against 0.311 (+0.242).
+  - PR-AUC: 0.616.
+- **Verdict (D-21): GAP.** Every cell is above the paper, `all` by 16.5 points. Precision is
+  lower and recall higher than the paper's. `v1_default` would also be GAP, from below: `all`
+  is −40.2.
+- **R11.** `v1_default` reproduces E2's confusion counts on all five sets, through both
+  `blz train` and Python.
+- **The Table 2 columns do not compare cell by cell.** Every set holds the base columns: ids,
+  S2 raw columns and 52 vertex statistics (§4.5 step 3). So XGB Only is already 58.0, and it is
+  not the paper's raw-attribute XGBoost (11.1).
+  - Share of total gain in `all`: vertex statistics 0.61, raw columns 0.23, ids 0.05, all six
+    pattern blocks together 0.10. The vertex statistics carry 0.60–0.68 in every set.
+  - The pattern blocks add 5.9 points from XGB Only to Fan+Degree+Cycle; SG then costs 0.9.
+- **Validation to test.** `all` goes from 53.0 to 63.1. Precision falls from 0.866 to 0.734 and
+  recall rises from 0.382 to 0.553.
+  - The positive rate grows from 0.075 % (fit) and 0.106 % (validation) to 0.177 % (test).
+  - The final model also trains on the validation period.
+- **Sensitivity: the R8 grid on test, `all`, never used to select.** The frozen point (63.1) is
+  the highest of the eight. With `scale_pos_weight` 5 the points give 49.3–63.1. With 1 they give
+  5.7–22.5, against 22.6–38.4 on validation.
+  - The weight-1 points lose precision on test, with 5,165 to 41,965 FP.
+  - The worst point is (1, 6, 500): FP 41,965 and recall 0.716.
+- **Not explained, not tested** (§4.5 step 4: no recipe change after E8). The overshoot says the
+  frozen recipe is not the paper's pipeline. Candidates:
+  - G1's look-ahead within a batch of 128 (A28, A35). No batch mixes splits, and labels are never
+    features, but a row's pattern counts see later edges of its batch.
+  - Vertex statistics stronger than whatever the paper fed XGBoost.
+  - The shift in positive rate between the splits.
+  - Leads still open: A38's bin rule on D-9 bins, G3 with a leaner tool, `credit: participants`
+    in `blz` (S1).
+- **DG-3, after E8.** The user decides whether to pull S1, S2 or S3 forward. The verdict stands
+  either way.
 
 ### P9 — Coverage
 
