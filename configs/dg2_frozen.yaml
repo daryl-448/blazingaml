@@ -1,0 +1,35 @@
+# DG-2 frozen recipe (SPEC v2 §4.5 step 1): the carried recipe after R8, the last rung reached.
+# Written from results/dg2_ledger.json (incumbent R8/X7, validation `all` F1 x100 53.02) before
+# any test row is scored. No recipe change after E8 (§4.5 step 4).
+frozen: 2026-11-12
+source: R8/X7
+ledger: results/dg2_ledger.json  # committed in 27f0b75
+validation_f1_x100: {all: 53.0167}
+
+# The recipe as bench/dg2/ladder.py reads it (bench/dg2/e8.py loads this key).
+recipe: {"ids": "v1", "base_score": null, "raw": "S2", "features": {"dir": "features/dg2_R6_G1", "source": "gfp", "gfp_recipe": "G1"}, "family": {"id": "F1", "dir": "features/dg2_R7_F1"}, "xgb": {"scale_pos_weight": 5, "max_depth": 10, "num_boost_round": 500}}
+
+input_encoding: v1  # src_id, dst_id: stream-order dense ids (R0; R1 kept it)
+classifier: {base_score: estimated, xgboost: '3.4.x Python, QuantileDMatrix batches of 262,144'}  # R2 kept it
+raw_schema: S2  # Amount Sent, Sent Currency, Amount Received, Received Currency, Payment Format (R3)
+windows: W-C  # configs/profiles/dg2_wc.yaml, profile 64747da4a40c0d70 (R4); R5 kept stream visibility
+gfp_recipe:  # R6: GFP-produced pattern blocks (D-24; DG-3)
+  id: G1
+  call: {"mode": "batches", "batch": 128, "cuts": [3047216, 4062676], "transform_calls": 39676}
+  dir: features/dg2_R6_G1
+  bins: gfp_bins() of D-9 (D-32)
+  blocks:
+    fan_in: {window: 320400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50], output_sha256: c31b0c9ca3e82f90a4b333584f9d1cf6be7813b3ab0064c09326871f9daaad32}
+    fan_out: {window: 320400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50], output_sha256: e4459348b8ac7c005aafad08f764e55fe000ce49a5b960d395635d37d2f806d5}
+    deg_in: {window: 320400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50], output_sha256: 73883a1c5b1f221c389871c2a1a62c1b91be5df8fce3f67e103f40f2958e0433}
+    deg_out: {window: 320400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50], output_sha256: d672b01285d93d062c1b21d51e93e581fc6d144ecf6a5bea428ec73cb1d37667}
+    sg: {window: 342000, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20], output_sha256: 75851fdf1adfb48d678b199455ab12dc2091f8d3c15e76a6fffc39a1fec3d6dc}
+    tcyc: {window: 320400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10], output_sha256: 60e34ee0eef0173230efa7064c62a3851db53482cd43f78ef8d265a306356575}
+families:  # R7
+  F1:
+    dir: features/dg2_R7_F1
+    call: {"mode": "stream (one transform() per edge)", "companion": "temp-cycle, window 86,400, bins [2]: GFP needs one pattern; its column is dropped"}
+    vstats: {window: 86400, columns: 52, clipped_to_float32: 6, output_sha256: f62e158eb927ed778e190b337ac6e5a8b11cf28d8d7a8cddea5d44d0a488e3d0}
+xgboost: {"scale_pos_weight": 5, "max_depth": 10, "num_boost_round": 500}  # R8 X7; every other parameter from configs/xgb_default.yaml
+blzg_sha256: 9ac57fd28ffab886fde92191f8672a83f4da9ea6d0c2a0b93d54498fa04002c1
+columns: 126  # ids 2 + raw 5 + vstats 52 + blocks 67 (the `all` set)

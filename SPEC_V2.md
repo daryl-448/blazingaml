@@ -1135,8 +1135,12 @@ Validation F1 ×100 on each rung's selection set (§4.3):
   - GFP's own bin rule on D-9 bins (A38, D-32);
   - G3 with a leaner tool;
   - `credit: participants` in `blz` (S1).
-- **Next.** The freeze (`configs/dg2_frozen.yaml`), DG-3, DG-4, then E8 and the verdict (§4.5,
-  §4.6). E8 scores the test split exactly once, so it waits for the user's go-ahead.
+- **Freeze (2026-11-12, with the user's go-ahead).** The carried recipe is in
+  `configs/dg2_frozen.yaml`. It records each feature block's `output_sha256`, and it was
+  committed before any test row was scored.
+- **DG-3.** The frozen recipe is identified with GFP-produced features (the G1 pattern blocks and
+  the F1 vertex statistics) and is not yet compiled. After E8, the user decides whether to pull
+  S1, S2 or S3 forward (§13).
 
 ### P9 — Coverage
 
