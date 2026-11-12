@@ -1141,6 +1141,14 @@ Validation F1 ×100 on each rung's selection set (§4.3):
 - **DG-3.** The frozen recipe is identified with GFP-produced features (the G1 pattern blocks and
   the F1 vertex statistics) and is not yet compiled. After E8, the user decides whether to pull
   S1, S2 or S3 forward (§13).
+- **DG-4.** E0's method at the frozen tcyc window of 320,400 (`parity.py --block tcyc --bins
+  2..33`, stream mode; 95 s, peak RSS 1.6 GB; `results/dg4_tcyc.json`). 3,187 of 5,078,345
+  triggers close a cycle, and 5 of them (9.8 × 10⁻⁷ of all triggers) have a longest cycle longer
+  than `K_MAX = 10`, all of length 11. By length, the cycle instances are: 2: 3,109; 3: 190;
+  4: 54; 5: 22; 6: 6; 7: 3; 8: 9; 10: 4; 11: 5; none from 12 to 33+. At D-8's 86,400 the longest
+  was 5 (E0). The share is below DG-1's 0.1 %. The frozen tcyc block is G1's, and GFP counts every
+  length, so `K_MAX` cuts nothing in E8. The share applies only when the recipe is compiled
+  (DG-3).
 
 ### P9 — Coverage
 
