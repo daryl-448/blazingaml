@@ -227,7 +227,44 @@
      "status": "pending"
     }
    ],
-   "carried": null
+   "carried": null,
+   "grid": {
+    "X1": {
+     "scale_pos_weight": 1,
+     "max_depth": 6,
+     "num_boost_round": 500
+    },
+    "X2": {
+     "scale_pos_weight": 1,
+     "max_depth": 10,
+     "num_boost_round": 100
+    },
+    "X3": {
+     "scale_pos_weight": 1,
+     "max_depth": 10,
+     "num_boost_round": 500
+    },
+    "X4": {
+     "scale_pos_weight": 5,
+     "max_depth": 6,
+     "num_boost_round": 100
+    },
+    "X5": {
+     "scale_pos_weight": 5,
+     "max_depth": 6,
+     "num_boost_round": 500
+    },
+    "X6": {
+     "scale_pos_weight": 5,
+     "max_depth": 10,
+     "num_boost_round": 100
+    },
+    "X7": {
+     "scale_pos_weight": 5,
+     "max_depth": 10,
+     "num_boost_round": 500
+    }
+   }
   }
  ],
  "incumbent": null,

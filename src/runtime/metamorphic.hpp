@@ -11,13 +11,16 @@
 
 namespace blz {
 
-// The tests that apply to the v1 semantics. "Visibility invariance of tcyc" needs timestamp
-// visibility (P8 oracle, P10 generated code) and "order relaxation" needs sg_ordered (P10); they
-// join this list in those phases.
-enum class MetaTest { prefix_closure, relabeling, time_shift };
-inline constexpr std::array<MetaTest, 3> kMetaTests = {MetaTest::prefix_closure, MetaTest::relabeling,
-                                                       MetaTest::time_shift};
+// The tests of §3.4. "Order relaxation" needs sg_ordered and joins in P10.
+enum class MetaTest { prefix_closure, relabeling, time_shift, visibility_invariance };
+inline constexpr std::array<MetaTest, 4> kMetaTests = {MetaTest::prefix_closure, MetaTest::relabeling,
+                                                       MetaTest::time_shift, MetaTest::visibility_invariance};
 const char* meta_test_name(MetaTest t);
+
+// Whether test `t` runs for `prof` on `backend`: prefix closure needs trigger credit;
+// visibility invariance needs a tcyc block and a backend that runs both visibilities (the
+// oracle; the generated backends from P10).
+bool meta_test_applies(MetaTest t, const Profile& prof, Backend backend);
 
 struct MetamorphicResult {
   std::uint64_t graphs = 0, edges = 0;
@@ -39,7 +42,9 @@ struct MetamorphicResult {
 //     causal);
 //   - relabeling: a seeded permutation of the node ids leaves every row unchanged;
 //   - time shift: adding a seeded constant in [1, 2^30] to every timestamp leaves every row
-//     unchanged.
+//     unchanged;
+//   - visibility invariance: tcyc mined under the other visibility (stream <-> timestamp) gives
+//     the same rows (SPEC v2 §6.1).
 // check_profile_backend(prof, backend) must hold; this throws otherwise.
 MetamorphicResult metamorphic(const Profile& prof, Backend backend, std::uint64_t s0, std::uint64_t s1,
                               std::span<const std::uint32_t> bins, std::span<const std::uint32_t> thresholds);

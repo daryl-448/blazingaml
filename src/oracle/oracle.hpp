@@ -18,9 +18,12 @@ struct EdgeStream {
 // per-node edge-id lists and std::set/std::map. It deliberately shares no index structure with
 // the generated backends (no T-CSR, P-CSR or prev_same), and its tcyc search is exhaustive over
 // parallel edges instead of relying on the earliest-witness rule.
+//
+// `vis` selects the visible edges (SPEC v2 §6.1): stream (eid' <= e, v1) or timestamp (t' <= t).
+// Only the window's upper end changes; everything else in §4 of v1 is the same.
 class Oracle {
  public:
-  explicit Oracle(const EdgeStream& s);
+  explicit Oracle(const EdgeStream& s, Visibility vis = Visibility::stream);
 
   // Mines block `b` for triggers [first, last): row (e - first) of `out` (bins.size() columns,
   // zeroed by the caller) gets trigger e's histogram. `k_max` caps tcyc lengths. Parallel over
@@ -53,6 +56,7 @@ class Oracle {
   void tcyc(const Trigger& tr, int k_max, std::vector<std::uint64_t>& sizes) const;
 
   EdgeStream s_;
+  Visibility vis_;
   std::vector<std::vector<std::uint32_t>> out_, in_;  // per node: incident edge ids, eid order
 };
 

@@ -94,7 +94,7 @@ TEST_CASE("cuda: metamorphic tests on 200 fuzz graphs, every threshold (SPEC v2 
   CHECK(r.graphs == 200);
   for (MetaTest t : kMetaTests) {
     INFO(meta_test_name(t));
-    CHECK(r.rows_compared[int(t)] > 0);
+    CHECK((r.rows_compared[int(t)] > 0) == meta_test_applies(t, registry_profile(), Backend::cuda));
     for (std::uint64_t n : r.mismatched_rows[int(t)]) CHECK(n == 0);
   }
   CHECK(r.bad_seeds.empty());

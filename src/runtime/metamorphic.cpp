@@ -45,7 +45,7 @@ Rows mine_all(const Graph& g, const Profile& prof, Backend be, std::int32_t wind
   const std::size_t nt = be == Backend::cuda ? thresholds.size() : 1;
   Rows rows(nt);
   if (be == Backend::oracle) {
-    const Oracle o({g.src, g.dst, g.ts, g.n});
+    const Oracle o({g.src, g.dst, g.ts, g.n}, prof.visibility);
     for (const ProfileBlock& pb : prof.blocks) {
       const BlockParams p{window, bins[int(pb.block)]};
       auto& r = rows[0][int(pb.block)];
@@ -84,15 +84,31 @@ const char* meta_test_name(MetaTest t) {
     case MetaTest::prefix_closure: return "prefix_closure";
     case MetaTest::relabeling: return "relabeling";
     case MetaTest::time_shift: return "time_shift";
+    case MetaTest::visibility_invariance: return "visibility_invariance";
   }
   return "?";
+}
+
+bool meta_test_applies(MetaTest t, const Profile& prof, Backend be) {
+  switch (t) {
+    case MetaTest::prefix_closure: return prof.credit == Credit::trigger;
+    case MetaTest::visibility_invariance: return be == Backend::oracle && prof.find(Block::tcyc) != nullptr;
+    default: return true;
+  }
 }
 
 MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0, std::uint64_t s1,
                               std::span<const std::uint32_t> bins, std::span<const std::uint32_t> thresholds) {
   check_profile_backend(prof, be);
   if (be == Backend::cuda && thresholds.empty()) throw std::invalid_argument("metamorphic: cuda needs thresholds");
-  const bool prefix_applies = prof.credit == Credit::trigger;
+  const bool prefix_applies = meta_test_applies(MetaTest::prefix_closure, prof, be);
+  std::optional<Profile> flipped;  // tcyc alone, under the other visibility
+  if (meta_test_applies(MetaTest::visibility_invariance, prof, be)) {
+    flipped = prof;
+    flipped->visibility = prof.visibility == Visibility::stream ? Visibility::timestamp : Visibility::stream;
+    flipped->blocks = {*prof.find(Block::tcyc)};
+    check_profile_backend(*flipped, be);
+  }
   BlockBins block_bins;
   for (const ProfileBlock& pb : prof.blocks) {
     auto& v = block_bins[int(pb.block)];
@@ -111,10 +127,11 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
     const Rows want = mine_all(base, prof, be, fg.window, block_bins, thresholds, mp);
     Rng rng{seed ^ 0x6d657461ULL};  // "meta"
     bool bad = false;
-    // Rows of `got` (a graph whose eid e is the base's eid e, for e < rows) vs the base.
-    auto compare = [&](MetaTest test, const Rows& got, std::uint64_t rows) {
+    // Rows of `got` (a graph whose eid e is the base's eid e, for e < rows) vs the base, for the
+    // blocks of `which` (by default, every block of the profile).
+    auto compare = [&](MetaTest test, const Rows& got, std::uint64_t rows, const Profile* which = nullptr) {
       for (std::size_t t = 0; t < want.size(); ++t)
-        for (const ProfileBlock& pb : prof.blocks) {
+        for (const ProfileBlock& pb : (which ? which : &prof)->blocks) {
           const auto& w = want[t][int(pb.block)];
           const auto& g = got[t][int(pb.block)];
           const std::size_t nb = block_bins[int(pb.block)].size();
@@ -154,6 +171,10 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
     Graph sh = base;
     for (auto& t : sh.ts) t += shift;
     compare(MetaTest::time_shift, mine_all(sh, prof, be, fg.window, block_bins, thresholds, mp), m);
+
+    if (flipped)
+      compare(MetaTest::visibility_invariance, mine_all(base, *flipped, be, fg.window, block_bins, thresholds, mp), m,
+              &*flipped);
 
     ++out.graphs;
     out.edges += m;

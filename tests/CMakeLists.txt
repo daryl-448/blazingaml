@@ -73,6 +73,11 @@ foreach(prof v1_default v1_parity)
   endif()
 endforeach()
 
+# SPEC v2 §6.1 (P8): the oracle under timestamp visibility, including tcyc's visibility invariance.
+add_test(NAME metamorphic_tsvis_oracle_2k
+  COMMAND blz metamorphic --seeds 0:2000 --backend oracle --profile ${CMAKE_CURRENT_SOURCE_DIR}/profiles/tsvis.yaml)
+set_tests_properties(metamorphic_tsvis_oracle_2k PROPERTIES LABELS slow)
+
 # HI-Small checks (SPEC §13.5): run manually with `ctest -L slow`.
 set(BLZ_HI_SMALL_CSV "${PROJECT_SOURCE_DIR}/dataset/HI-Small_Trans.csv")
 add_test(NAME hi_small_prepare

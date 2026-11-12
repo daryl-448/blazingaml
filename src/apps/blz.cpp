@@ -264,7 +264,7 @@ std::string threshold_name(std::uint32_t h) { return h == blz::kAllLight ? "all"
 
 int mine(const std::string& graph, const std::string& profile_path, const std::string& backend, int threads,
          const std::string& schedule_opt, std::uint32_t heavy, const std::string& blocks_opt,
-         const std::string& triggers, const std::string& out) {
+         const std::string& triggers, std::uint64_t edges, const std::string& out) {
   const blz::Backend be = blz::parse_backend(backend);
   const bool cpu = be == blz::Backend::cpu, gpu = be == blz::Backend::cuda;
   if (gpu && !blz::cuda_built()) blz::cuda_device();  // throws: no CUDA backend in this build
@@ -275,18 +275,26 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
 
   auto t0 = Clock::now();
   blz::BlzgView g(graph);
-  const blz::TriggerSel sel = blz::select_triggers(triggers, g.ts);
+  // --edges k: the graph is the stream prefix [0, k); later edges do not exist for this run, under
+  // either visibility (SPEC v2 §4.4 R5). The named splits are defined on the whole stream.
+  if (edges > g.m()) throw std::runtime_error("--edges " + std::to_string(edges) + " > m = " + std::to_string(g.m()));
+  if (edges && !(triggers == "all" || triggers.rfind("range:", 0) == 0 || triggers.rfind("sample:", 0) == 0))
+    throw std::runtime_error("--edges: --triggers must be all, range:a:b or sample:<pct>:<seed>");
+  const std::uint64_t m = edges ? edges : g.m();
+  const auto src = g.src.first(m), dst = g.dst.first(m);
+  const auto ts = g.ts.first(m);
+  const blz::TriggerSel sel = blz::select_triggers(triggers, ts);
   if (gpu && sel.sampled)
     throw std::runtime_error("--triggers sample: runs on the oracle and cpu backends (the preflight of SPEC v2 §2.5 "
                              "uses cpu); the CUDA kernels take an eid range");
   if (threads > 0) omp_set_num_threads(threads);
   std::optional<blz::Oracle> oracle;
   std::optional<blz::GraphIndex> index;
-  if (cpu || gpu) index.emplace(g.src, g.dst, g.ts, g.n());
-  else oracle.emplace(blz::EdgeStream{g.src, g.dst, g.ts, g.n()});
+  if (cpu || gpu) index.emplace(src, dst, ts, g.n());
+  else oracle.emplace(blz::EdgeStream{src, dst, ts, g.n()}, prof.visibility);
   const double build_s = secs(t0);
   std::fprintf(stderr, "%s index built in %.1f s (m=%llu, n=%llu); profile %s (%s); triggers %s: %llu rows\n",
-               backend.c_str(), build_s, (unsigned long long)g.m(), (unsigned long long)g.n(), prof.name.c_str(),
+               backend.c_str(), build_s, (unsigned long long)m, (unsigned long long)g.n(), prof.name.c_str(),
                prof.id().c_str(), sel.spec.c_str(), (unsigned long long)sel.rows());
   std::optional<blz::DeviceGraph> dgraph;
   std::optional<blz::CudaMiner> miner;
@@ -303,7 +311,8 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
   // can be mined one invocation at a time into one directory.
   const nlohmann::json run_key = {{"backend", backend},     {"csv_sha256", csv_sha},
                                   {"blzg_sha256", blzg_sha}, {"profile_id", prof.id()},
-                                  {"k_max", prof.k_max},     {"triggers", sel.json()}};
+                                  {"k_max", prof.k_max},     {"triggers", sel.json()},
+                                  {"edges", m}};
   nlohmann::json meta = nlohmann::json::object();
   if (std::filesystem::exists(meta_path)) {
     auto old = nlohmann::json::parse(std::ifstream(meta_path));
@@ -321,6 +330,7 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
   meta["backend"] = jbe;
   meta["triggers"] = sel.json();
   meta["graph"] = graph;
+  meta["edges"] = m;  // the graph is eids [0, edges) (--edges; m otherwise)
   meta["blzg_sha256"] = blzg_sha;
   meta["csv_sha256"] = csv_sha;
   meta["config"] = profile_path;
@@ -373,7 +383,7 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
     j["file"] = file;
     j["columns"] = blz::column_names(b, p.bins);
     j["mine_seconds"] = mine_s;
-    if (sel.sampled && rows > 0) j["extrapolated_mine_seconds"] = mine_s * double(g.m()) / double(rows);
+    if (sel.sampled && rows > 0) j["extrapolated_mine_seconds"] = mine_s * double(m) / double(rows);
     if (cpu) {
       j["schedule_seconds"] = tm.schedule_seconds;
       j["loop_seconds"] = tm.loop_seconds;
@@ -1013,7 +1023,8 @@ int metamorphic(const std::string& seeds, const std::string& bins_opt, const std
       tb += r.mismatched_rows[int(t)][int(pb.block)];
     }
     bad += tb;
-    tests[blz::meta_test_name(t)] = {{"rows_compared", r.rows_compared[int(t)]},
+    tests[blz::meta_test_name(t)] = {{"applies", blz::meta_test_applies(t, prof, be)},
+                                     {"rows_compared", r.rows_compared[int(t)]},
                                      {"mismatched_rows", tb},
                                      {"mismatched_rows_by_block", per_block}};
   }
@@ -1096,6 +1107,7 @@ int main(int argc, char** argv) {
 
   std::string config, profile, backend = "oracle", blocks, triggers = "all", schedule = "dynamic";
   int threads = 0;
+  std::uint64_t edges = 0;  // mine --edges (0: every edge)
   std::uint32_t heavy = blz::kDefaultHeavyThreshold;
   auto* mn = app.add_subcommand("mine", "Mine feature blocks -> <out>/<block>.npy + features.json (the manifest)");
   mn->add_option("--graph", graph)->required();
@@ -1108,6 +1120,7 @@ int main(int argc, char** argv) {
   mn->add_option("--heavy-threshold", heavy, "cuda backend: work estimate from which a trigger is heavy");
   mn->add_option("--blocks", blocks, "comma-separated; default: every block of the profile");
   mn->add_option("--triggers", triggers, "all | train | test | fit | val | range:a:b | sample:<pct>:<seed>");
+  mn->add_option("--edges", edges, "mine on the stream prefix [0, k) only: later edges do not exist (SPEC v2 §4.4 R5)");
   mn->add_option("--out", out)->required();
 
   std::string a_npy, b_npy, report, name;
@@ -1169,7 +1182,7 @@ int main(int argc, char** argv) {
   fd->add_option("--name", name, "key (JSON pointer path) in --report")->needs("--report");
 
   std::string mt_backend = "cpu";
-  auto* mt = app.add_subcommand("metamorphic", "SPEC v2 §3.4: prefix closure, relabeling, time shift on fuzz graphs");
+  auto* mt = app.add_subcommand("metamorphic", "SPEC v2 §3.4: prefix closure, relabeling, time shift, tcyc visibility invariance on fuzz graphs");
   mt->add_option("--seeds", seeds, "a:b")->required();
   mt->add_option("--bins", fd_bins, "default: the profile's bins per block, or 2..33 without --profile");
   mt->add_option("--backend", mt_backend)->check(CLI::IsMember({"oracle", "cpu", "cuda"}));
@@ -1194,7 +1207,7 @@ int main(int argc, char** argv) {
       if (profile.empty() == config.empty()) throw std::runtime_error("give one of --profile and --config");
       if (profile.empty()) profile = config;
     }
-    if (*mn) return mine(graph, profile, backend, threads, schedule, heavy, blocks, triggers, out);
+    if (*mn) return mine(graph, profile, backend, threads, schedule, heavy, blocks, triggers, edges, out);
     if (*bn) {
       if (bench_name.empty()) bench_name = backend;
       if (backend == "cuda") {

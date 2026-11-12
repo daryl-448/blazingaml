@@ -42,7 +42,7 @@ FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, 
   for (std::int64_t si = std::int64_t(s0); si < std::int64_t(s1); ++si) {
     const FuzzGraph fg = fuzz_graph(std::uint64_t(si));
     const std::uint64_t m = fg.src.size();
-    const Oracle oracle({fg.src, fg.dst, fg.ts, fg.n});
+    const Oracle oracle({fg.src, fg.dst, fg.ts, fg.n}, prof.visibility);
     const GraphIndex index(fg.src, fg.dst, fg.ts, fg.n);
     std::array<std::uint64_t, kAllBlocks.size()> bad{};
     TriggerSel all;
@@ -98,7 +98,7 @@ FuzzDiff fuzz_diff_cuda(const Profile& prof, std::uint64_t s0, std::uint64_t s1,
       Item& it = items[std::size_t(i)];
       it.fg = fuzz_graph(b0 + std::uint64_t(i));
       const std::uint64_t m = it.fg.src.size();
-      const Oracle oracle({it.fg.src, it.fg.dst, it.fg.ts, it.fg.n});
+      const Oracle oracle({it.fg.src, it.fg.dst, it.fg.ts, it.fg.n}, prof.visibility);
       it.index = std::make_unique<GraphIndex>(it.fg.src, it.fg.dst, it.fg.ts, it.fg.n);
       for (const ProfileBlock& pb : prof.blocks) {
         const auto& bb = block_bins[int(pb.block)];

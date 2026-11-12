@@ -10,7 +10,7 @@
 
 namespace blz {
 
-Oracle::Oracle(const EdgeStream& s) : s_(s), out_(s.n), in_(s.n) {
+Oracle::Oracle(const EdgeStream& s, Visibility vis) : s_(s), vis_(vis), out_(s.n), in_(s.n) {
   if (s.dst.size() != s.src.size() || s.ts.size() != s.src.size())
     throw std::invalid_argument("oracle: src/dst/ts sizes differ");
   if (s.src.size() > std::numeric_limits<std::uint32_t>::max())
@@ -23,12 +23,15 @@ Oracle::Oracle(const EdgeStream& s) : s_(s), out_(s.n), in_(s.n) {
   }
 }
 
-// The part of a node's list inside W_P(e) (SPEC §4.1): eid <= e, and ts > t - delta (open) or
+// The part of a node's list inside W_P(e) (SPEC §4.1): visible (eid <= e under stream
+// visibility, ts <= t under timestamp visibility, SPEC v2 §6.1), and ts > t - delta (open) or
 // ts >= t - delta (closed). Lists are in eid order, hence also in ts order (§3.3).
 Oracle::Window Oracle::window(const std::vector<std::uint32_t>& list, const Trigger& tr) const {
   const std::uint32_t* b = list.data();
   const std::uint32_t* e = b + list.size();
-  const std::uint32_t* hi = std::upper_bound(b, e, tr.e);
+  const std::uint32_t* hi = vis_ == Visibility::stream
+                                ? std::upper_bound(b, e, tr.e)
+                                : std::partition_point(b, e, [&](std::uint32_t x) { return s_.ts[x] <= tr.t; });
   const std::uint32_t* lo = std::partition_point(b, hi, [&](std::uint32_t x) {
     return tr.closed ? s_.ts[x] < tr.lo_ts : s_.ts[x] <= tr.lo_ts;
   });
@@ -98,6 +101,9 @@ void Oracle::sg(const Trigger& tr, std::vector<std::uint64_t>& sizes) const {
 // The search is pruned, without changing the result, by ld[y]: the latest time a temporal walk
 // inside the window can leave y and still reach u before t. A prefix ending at y with arrival
 // times F can only be extended to u if some f in F has f < ld[y].
+//
+// Every hop other than the trigger needs ts < t, so timestamp visibility, which only adds edges
+// at ts = t, cannot change the result (SPEC v2 §6.1); the metamorphic test checks it.
 void Oracle::tcyc(const Trigger& tr, int k_max, std::vector<std::uint64_t>& sizes) const {
   using Ts = std::int64_t;
   std::map<std::uint32_t, Ts> ld;

@@ -21,6 +21,12 @@ std::optional<Block> parse_block(std::string_view name);
 // (t' >= t - delta). Fixed by the semantics, not by the config.
 inline bool closed_lower_bound(Block b) { return b == Block::sg || b == Block::tcyc; }
 
+// Which edges a trigger e = (u -> v, t) may see (SPEC §4.1 of v1, §6.1 of v2): stream = eid' <=
+// eid (the default, GFP stream mode); timestamp = t' <= t, so later edges of the same timestamp
+// too. The window lower bound, the self-loop rule and min size 2 do not depend on it.
+enum class Visibility { stream, timestamp };
+const char* visibility_name(Visibility v);  // defined in runtime/profile.cpp
+
 struct BlockParams {
   std::int32_t window = 0;           // delta, seconds (> 0)
   std::vector<std::uint32_t> bins;   // strictly increasing, last bin open-ended

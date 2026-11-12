@@ -1,0 +1,21 @@
+# DG-2 rung R4, candidate W-C (SPEC v2 §4.4, D-25): v1_default with each GFP pattern group's
+# window set to the 90th percentile (numpy's default linear interpolation) of the span (max ts -
+# min ts) of the complete attempts of the matching typologies that lie wholly in the fit split
+# (results/gt_join.json), rounded up to a whole hour, capped at 1,728,000:
+#   fan and degree <- FAN-IN + FAN-OUT, 26 attempts: p90 318,180 s -> 320,400 (89 h);
+#   sg <- SCATTER-GATHER, 9 attempts: p90 340,500 s -> 342,000 (95 h);
+#   tcyc <- CYCLE, 19 attempts: p90 319,404 s -> 320,400 (89 h).
+# bench/dg2/ladder.py recomputes these from gt_join.json and refuses to run if they differ.
+# Bins stay D-9; visibility, credit and k_max as v1_default.
+version: 2
+profile: dg2_wc
+visibility: stream
+credit: trigger
+k_max: 10
+blocks:
+  fan_in:  {patterns: [fan_in],  window: 320400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50]}
+  fan_out: {patterns: [fan_out], window: 320400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50]}
+  deg_in:  {patterns: [deg_in],  window: 320400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50]}
+  deg_out: {patterns: [deg_out], window: 320400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50]}
+  sg:      {patterns: [sg_gather, sg_scatter], window: 342000, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20]}
+  tcyc:    {patterns: [tcyc], window: 320400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}

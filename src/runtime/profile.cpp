@@ -311,10 +311,9 @@ void check_profile_backend(const Profile& p, Backend b) {
   if (p.credit == Credit::participants)
     fail_code(p.credit_loc, "E404",
               "the " + be + " backend cannot run credit: participants (stretch item S1 of SPEC v2 implements it)");
-  if (p.visibility == Visibility::timestamp)
+  if (p.visibility == Visibility::timestamp && b != Backend::oracle)
     fail_code(p.visibility_loc, "E404",
-              "the " + be + " backend cannot run visibility: timestamp yet (SPEC v2 " +
-                  (b == Backend::oracle ? "P8" : "P10") + ")");
+              "the " + be + " backend cannot run visibility: timestamp yet (SPEC v2 P10; the oracle runs it)");
   if (b == Backend::oracle) {
     for (const ProfileBlock& pb : p.blocks) {
       std::vector<std::string> got, want = oracle_patterns(pb.block);

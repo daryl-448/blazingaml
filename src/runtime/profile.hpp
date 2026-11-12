@@ -15,9 +15,8 @@
 
 namespace blz {
 
-enum class Visibility { stream, timestamp };  // §4.1 of v1; timestamp: §6.1 of v2
+// Visibility (and visibility_name) is in runtime/features.hpp, so the oracle can take it.
 enum class Credit { trigger, participants };  // participants: stretch item S1
-const char* visibility_name(Visibility v);
 const char* credit_name(Credit c);
 
 // The backends a profile can be run on (E404 names them).
@@ -77,7 +76,7 @@ Profile registry_profile(std::span<const PatternInfo> registry = registered_patt
 // The start-up check of a profile against a backend (§3.1, §6.4 of v2). Throws
 // "<file>:<line>:<col>: error E404: ..." when the backend cannot run the profile:
 //   - credit: participants (no backend before S1);
-//   - visibility: timestamp (the oracle before P8, the generated backends before P10);
+//   - visibility: timestamp on the generated backends (until P10; the oracle has it since P8);
 //   - oracle: a block whose patterns are not the set the oracle implements for it (§9 of v1
 //     computes each block's definition directly);
 //   - cpu, cuda: a k_max other than the compiled K_MAX of a listed pattern that declares it.

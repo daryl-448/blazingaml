@@ -8,9 +8,9 @@
   python3 bench/dg2/ledger.py selftest
 
 P7 builds the skeleton: the ladder of §4.4 with every candidate `pending`, the budget of §4.2 and
-the selection rule of §4.3. P8's bench/dg2/ladder.py appends entries through add_entry(). Entries
-are never edited or removed; the running totals and the stop rule are recomputed from them.
-Python standard library only.
+the selection rule of §4.3. P8's bench/dg2/ladder.py appends entries through add_entry() and closes
+each rung with decide(). Entries are never edited or removed; the running totals and the stop rule
+are recomputed from them. Python standard library only.
 """
 import argparse
 import copy
@@ -37,6 +37,11 @@ RUNGS = [
     ("R7", "feature families (F7, F8)", ["F1", "F2"], ["all"], "all", 2, 2),
     ("R8", "XGBoost grid (the v1 E6 grid)", [f"X{i}" for i in range(1, 8)], ["all"], "all", 7, 0),
 ]
+# R8's seven points (SPEC v2 §4.4, bound in P8 before R8 runs): the v1 E6 grid scale_pos_weight x
+# max_depth x num_boost_round in that nesting order, minus the incumbent point (1, 6, 100).
+GRID = {f"X{i + 1}": {"scale_pos_weight": w, "max_depth": d, "num_boost_round": r}
+        for i, (w, d, r) in enumerate((w, d, r) for w in (1, 5) for d in (6, 10) for r in (100, 500)
+                                      if (w, d, r) != (1, 6, 100))}
 KINDS = ("fit", "pass")
 METRICS = ("f1_x100", "precision", "recall", "pr_auc", "tp", "fp", "fn", "tn")
 
@@ -48,6 +53,8 @@ def init_ledger():
                       "planned_fits": fits, "planned_passes": passes,
                       "candidates": [{"id": c, "status": "pending"} for c in cands],
                       "carried": None})
+        if rid == "R8":
+            rungs[-1]["grid"] = GRID
     return {"ledger_version": 1, "spec": "SPEC_V2.md §3.6, §4", "budget": BUDGET, "selection": SELECTION,
             "pass_limits": PASS_LIMITS, "rungs": rungs, "incumbent": None, "entries": [],
             "totals": {"fits": 0, "passes": 0, "machine_hours": 0.0}, "stopped": None}
@@ -127,11 +134,92 @@ def add_entry(ledger, entry):
     return led
 
 
-def skip(ledger, rid, cid, why):
-    if why not in ("budget", "limit"):
-        raise ValueError("a skip is 'budget' or 'limit' (SPEC v2 §4.2, §4.4)")
+def _fit(ledger, rid, cid, set_name):
+    fits = [e for e in ledger["entries"] if e["rung"] == rid and e["candidate"] == cid and e["kind"] == "fit"
+            and e["set"] == set_name]
+    if len(fits) > 1:
+        raise ValueError(f"{rid}/{cid} has {len(fits)} {set_name} fits")
+    return fits[0] if fits else None
+
+
+def decide(ledger, rid):
+    """Closes rung `rid` with the selection rule of §4.3 [D-19] and returns the new ledger.
+
+    R0 makes its candidate the incumbent. Every other rung compares, on its selection set, each
+    run candidate's validation F1 x100 with the incumbent's: a candidate qualifies when it is at
+    least 2.0 points higher; the highest qualifier wins, and qualifiers within 0.1 of it go to
+    the one with fewer columns, then to the one listed first. Otherwise the incumbent is kept.
+    The carried candidate's fits (with their `recipe`) become the incumbent; a set the rung did
+    not fit keeps no score. Every candidate must be run or skipped, and every earlier rung decided.
+    """
     led = copy.deepcopy(ledger)
-    _candidate(led, rid, cid)["status"] = f"skipped: {why}"
+    order = [r["rung"] for r in led["rungs"]]
+    for r in led["rungs"][:order.index(rid)]:
+        if r["carried"] is None:
+            raise ValueError(f"{r['rung']} is not decided yet")
+    r = _rung(led, rid)
+    if r["carried"] is not None:
+        raise ValueError(f"{rid} is already decided ({r['carried']})")
+    if any(c["status"] == "pending" for c in r["candidates"]):
+        raise ValueError(f"{rid} has pending candidates")
+    eps = 1e-9
+
+    def incumbent_from(cid):
+        fits = {s: _fit(led, rid, cid, s) for s in r["sets_fitted"]}
+        if any(f is None for f in fits.values()):
+            raise ValueError(f"{rid}/{cid} lacks a fit of {r['sets_fitted']}")
+        recipes = {json.dumps(f["recipe"], sort_keys=True) for f in fits.values()}
+        if len(recipes) != 1:
+            raise ValueError(f"{rid}/{cid}: its fits disagree on the recipe")
+        return {"source": f"{rid}/{cid}", "recipe": next(iter(fits.values()))["recipe"],
+                "scores": {s: (fits[s]["validation"]["f1_x100"] if s in fits else None) for s in ("xgb_only", "all")},
+                "columns": {s: (fits[s]["columns"]["count"] if s in fits else None) for s in ("xgb_only", "all")}}
+
+    if r["selection_set"] is None:  # R0
+        (cand,) = [c["id"] for c in r["candidates"]]
+        if _candidate(led, rid, cand)["status"] != "run":
+            raise ValueError("R0 must be run")
+        led["incumbent"] = incumbent_from(cand)
+        r["carried"] = cand
+        r["decision"] = {"rule": "R0 is the incumbent"}
+        return led
+    sel = r["selection_set"]
+    base = led["incumbent"]["scores"][sel]
+    if base is None:
+        raise ValueError(f"the incumbent has no {sel} score")
+    rows = []
+    for idx, c in enumerate(r["candidates"]):
+        # Selectable: run, with a fit of every set the rung fits (a stop can cut a candidate short).
+        ok = c["status"] == "run" and all(_fit(led, rid, c["id"], s) for s in r["sets_fitted"])
+        f = _fit(led, rid, c["id"], sel) if ok else None
+        if f is not None:
+            rows.append({"candidate": c["id"], "f1_x100": f["validation"]["f1_x100"],
+                         "gain": round(f["validation"]["f1_x100"] - base, 6), "columns": f["columns"]["count"],
+                         "listed": idx})
+    qual = [x for x in rows if x["f1_x100"] - base >= SELECTION["min_gain"] - eps]
+    if qual:
+        best = max(x["f1_x100"] for x in qual)
+        near = [x for x in qual if best - x["f1_x100"] <= SELECTION["tie"] + eps]
+        win = min(near, key=lambda x: (x["columns"], x["listed"]))["candidate"]
+        led["incumbent"] = incumbent_from(win)
+        r["carried"] = win
+    else:
+        r["carried"] = "incumbent"
+    r["decision"] = {"selection_set": sel, "incumbent_f1_x100": base, "candidates": rows,
+                     "qualified": [x["candidate"] for x in qual], "carried": r["carried"]}
+    return led
+
+
+def skip(ledger, rid, cid, why):
+    if why not in ("budget", "limit", "memory"):
+        raise ValueError("a skip is 'budget', 'limit' or 'memory' (SPEC v2 §4.2, §4.4, R12)")
+    led = copy.deepcopy(ledger)
+    c = _candidate(led, rid, cid)
+    # budget: a candidate not started, or one whose pass was killed at the time cap (no fit)
+    fitted = any(e["rung"] == rid and e["candidate"] == cid and e["kind"] == "fit" for e in led["entries"])
+    if why == "budget" and (c["status"] not in ("pending", "run") or fitted):
+        raise ValueError(f"{rid}/{cid} is {c['status']}{' with fits' if fitted else ''}: not skippable for budget")
+    c["status"] = f"skipped: {why}"
     return led
 
 
@@ -153,6 +241,15 @@ def render(ledger):
         cands = ", ".join(f"{c['id']} ({c['status']})" for c in r["candidates"])
         out.append(f"| {r['rung']} | {r['hypothesis']} | {cands} | {r['selection_set'] or '-'} | "
                    f"{r['planned_fits']} | {r['planned_passes']} | {r['carried'] or '-'} |")
+    decided = [r for r in ledger["rungs"] if r.get("decision") and r["selection_set"]]
+    if decided:
+        out += ["", "## Decisions (SPEC v2 §4.3)", "",
+                "| rung | set | incumbent F1 | candidate: F1 (gain, columns) | carried |", "|---|---|---:|---|---|"]
+        for r in decided:
+            d = r["decision"]
+            cs = "; ".join(f"{x['candidate']}: {x['f1_x100']:.2f} ({x['gain']:+.2f}, {x['columns']})"
+                           for x in d["candidates"]) or "none run"
+            out.append(f"| {r['rung']} | {d['selection_set']} | {d['incumbent_f1_x100']:.2f} | {cs} | {d['carried']} |")
     out += ["", "## Entries", ""]
     if not ledger["entries"]:
         out.append("None yet: P8 runs the ladder.")
@@ -214,9 +311,49 @@ def selftest():
         raise AssertionError("a ninth pass was accepted")
     except ValueError:
         pass
+    assert list(GRID) == [f"X{i}" for i in range(1, 8)] and GRID["X1"] == {
+        "scale_pos_weight": 1, "max_depth": 6, "num_boost_round": 500} and GRID["X7"]["max_depth"] == 10
+    # decide(): R0 becomes the incumbent; R1 selects on xgb_only with the 2.0 / 0.1 rule.
+    d = led
+    rec = {"ids": "v1"}
+    for st, f1 in (("xgb_only", 1.0), ("all", 30.0)):
+        d = add_entry(d, dict(fit, set=st, recipe=rec, validation=dict(fit["validation"], f1_x100=f1)))
+    d = decide(d, "R0")
+    assert d["incumbent"]["scores"] == {"xgb_only": 1.0, "all": 30.0} and _rung(d, "R0")["carried"] == "v1"
+    cols3 = {"names": ["a", "b", "c"], "count": 3}
+    for cid, f1, cols in (("I1", 3.05, fit["columns"]), ("I2", 3.1, cols3), ("I3", 2.9, fit["columns"])):
+        for st in ("xgb_only", "all"):
+            d = add_entry(d, dict(fit, rung="R1", candidate=cid, set=st, columns=cols, recipe={"ids": cid},
+                                  validation=dict(fit["validation"], f1_x100=f1 if st == "xgb_only" else 9.0)))
+    try:
+        decide(d, "R2")
+        raise AssertionError("R2 decided before R1")
+    except ValueError:
+        pass
+    d1 = decide(d, "R1")  # I1 and I2 qualify (>= 3.0); within 0.1 of 3.1: I1 has fewer columns
+    assert _rung(d1, "R1")["carried"] == "I1" and d1["incumbent"]["recipe"] == {"ids": "I1"}, _rung(d1, "R1")
+    assert d1["incumbent"]["scores"] == {"xgb_only": 3.05, "all": 9.0}
+    d2 = copy.deepcopy(d)
+    for e in d2["entries"]:
+        if e["candidate"] == "I1":
+            e["validation"]["f1_x100"] = 2.95  # now short of incumbent + 2.0, so only I2 qualifies
+    d2 = decide(d2, "R1")
+    assert _rung(d2, "R1")["carried"] == "I2", _rung(d2, "R1")
+    assert "| R1 | xgb_only |" in render(d2)
     led2 = add_entry(led2, dict(fit, wall_seconds=3600 * 2.2))  # 0.5 + 8/6 + 2.2 > 4 hours
     assert led2["stopped"] == "time cap"
     led2 = skip(led2, "R8", "X7", "budget")
+    # A pass killed at the time cap: its candidate is run (the pass) and becomes skipped: budget,
+    # unlike a candidate that has a fit.
+    g1 = {k: v for k, v in p.items() if k != "profile_id"}
+    cut = add_entry(led, dict(g1, rung="R6", candidate="G1", gfp_recipe="G1", outcome="aborted: time cap"))
+    assert _candidate(cut, "R6", "G1")["status"] == "run"
+    assert _candidate(skip(cut, "R6", "G1", "budget"), "R6", "G1")["status"] == "skipped: budget"
+    try:
+        skip(d, "R1", "I1", "budget")
+        raise AssertionError("a fitted candidate was skipped for budget")
+    except ValueError:
+        pass
     md = render(led2)
     assert "skipped: budget" in md and "| machine-hours | 4.03 | 4 |" in md, md
     with tempfile.TemporaryDirectory() as d:
