@@ -1,0 +1,15 @@
+[
+ {"fact": "[R] XGBoost >= 2.0 estimates the intercept (base_score) from the labels, and earlier versions used 0.5 (SPEC v2 §4.4 R2, citing https://xgboost.readthedocs.io/en/stable/parameter.html)",
+  "check": "the XGBoost documentation, read on 2026-11-12",
+  "sources": [
+   {"url": "https://xgboost.readthedocs.io/en/stable/parameter.html",
+    "says": "base_score: 'The initial prediction score of all instances, also known as the global bias, or the intercept.' 'The parameter is automatically estimated for selected objectives before training.' 'To disable the estimation, specify a real number argument, e.g. base_score = 0.5.' No numeric default and no version of the change."},
+   {"url": "https://github.com/dmlc/xgboost/releases/tag/v2.0.0",
+    "says": "Release notes, section 'Automatically estimated intercept': 'In the previous version, base_score was a constant that could be set as a training parameter.' 'In the new version, XGBoost can automatically estimate this parameter based on input labels for optimal accuracy.'"},
+   {"url": "https://xgboost.readthedocs.io/en/release_1.6.0/parameter.html",
+    "says": "'base_score [default=0.5]'"},
+   {"url": "https://xgboost.readthedocs.io/en/release_1.7.0/parameter.html",
+    "says": "base_score: 'The parameter is automatically estimated for selected objectives before training.' (already in the 1.7 documentation)"}
+  ],
+  "result": "confirmed with a qualification: 0.5 was the default up to 1.6 and estimation from the labels is announced in the 2.0.0 release notes, but the 1.7 parameter page already describes the estimation, so the change is 1.7/2.0 rather than exactly 2.0. Either way the paper's XGBoost era (2022-2023 code) may have used either default, which is what C1 tests."}
+]

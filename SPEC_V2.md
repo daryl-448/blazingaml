@@ -1082,6 +1082,62 @@ implemented"). `bench/p7_contracts.py` runs the exit checks into `results/p7_con
 
 **Exit:** AC-V2-2. About 3–5 days; about 5 machine-hours on `local`.
 
+**Outcome so far (2026-11-12): R0–R8 ran. The freeze, DG-3, DG-4, E8 and the verdict have not
+run.** Test rows were not scored. The tooling notes are in §3.4, §4.4, §6.1 and §11 ("As
+implemented (P8)"), Appendix A′ (A34–A38) and D-32. The ladder is
+`results/dg2_ledger.{json,md}`. Its budget totals: 28 of 40 fits, 8 of 8 passes, 0.80 of 4
+machine-hours; the ladder never stopped.
+
+Validation F1 ×100 on each rung's selection set (§4.3):
+
+| Rung | Incumbent | Candidates | Carried |
+|---|---:|---|---|
+| R0 | — | v1: `xgb_only` 0.00, `all` 4.82 (P 0.69, R 0.025) | v1 |
+| R1 (`xgb_only`) | 0.00 | I1 0.74; I2 1.83; I3 0.18 | v1 |
+| R2 | 4.82 | C1 5.51 | v1 |
+| R3 | 4.82 | S1 10.32; **S2 13.14** | S2 |
+| R4 | 13.14 | W-B 14.98; **W-C 18.54** | W-C |
+| R5 | 18.54 | V1 16.29 | W-C |
+| R6 | 18.54 | **G1 25.08**; G2 24.42; G3 `skipped: limit` | G1 |
+| R7 | 25.08 | **F1 38.22**; F2 24.96 | F1 |
+| R8 | 38.22 | X1 38.41; X2 22.61; X3 30.44; X4 31.37; X5 43.73; X6 51.29; **X7 53.02** | X7 |
+
+- **Carried recipe.**
+  - Ids: `src_id`, `dst_id` (R0).
+  - Raw columns: S2, the Multi-GNN columns without Timestamp.
+  - Pattern blocks: GFP G1 (fresh preprocessor, `transform()` on batches of 128, cut at the split
+    boundaries) at W-C windows and D-9 bins.
+  - F1 vertex statistics (52 columns).
+  - XGBoost with `scale_pos_weight` 5, `max_depth` 10 and 500 rounds; `base_score` estimated.
+  - 126 columns in all.
+  - Validation: P 0.866, R 0.382, TP 413, FP 64, FN 668; PR-AUC 0.494.
+  - The most gain goes to Payment Format, then `vs_src_out_fan`, `vs_dst_out_fan`, `fan_out[2,3)`
+    and `tcyc[2,3)`.
+- **The recipe is not causal.** In G1 a row sees the later edges of its own batch of 128, and
+  instances credit every participant in the batch (A28, A35). No batch mixes splits. The pattern
+  blocks and the vertex statistics are GFP-produced, so DG-3 applies before E8 (§13).
+- **R2's [R] fact.** XGBoost 3.4.1 resolves `base_score` to 0.000754 on the fit rows, the positive
+  rate. The documentation confirms estimation from the labels, which the 2.0.0 release notes
+  announce and which replaced 1.6's default of 0.5. The 1.7 parameter page already describes the
+  estimation (`bench/dg2/r2_facts.json`).
+- **G3 was aborted** at 3,269 MB after 9 s, so it is `skipped: limit`. Its single
+  `fit_transform` call on 3,047,216 rows returns a float64 array of about 1.7 GB on top of GFP's
+  graph. About 0.37 GB of the peak was `dg2_features.py`'s own copies of the input, so a leaner
+  tool would have landed near 2.9–3.0 GB. There is no pass budget left to retry it; this is
+  reported as is.
+- **Pass costs on `local`, idle.**
+  - W-B and W-C on cpu: 8–9 s each.
+  - V1 on the oracle: 149 s.
+  - G1: 711 s. G2: 364 s.
+  - F1: 115 s. F2: 134 s.
+  - Fits: 6–227 s, peak RSS ≤ 2.1 GB.
+- **Leads not tested** (the pass cap is spent):
+  - GFP's own bin rule on D-9 bins (A38, D-32);
+  - G3 with a leaner tool;
+  - `credit: participants` in `blz` (S1).
+- **Next.** The freeze (`configs/dg2_frozen.yaml`), DG-3, DG-4, then E8 and the verdict (§4.5,
+  §4.6). E8 scores the test split exactly once, so it waits for the user's go-ahead.
+
 ### P9 — Coverage
 
 `blz coverage` and E9.
