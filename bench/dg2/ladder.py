@@ -437,11 +437,13 @@ def resolved_base_score(config_json):
     return float(v.strip("[]").split(",")[0]) if isinstance(v, str) else float(v)
 
 
-def fit(data, recipe, set_name):
-    cols = recipe_columns(data, recipe, set_name)
+def fit(data, recipe, set_name, cols=None):
+    """Trains on data.splits["fit"] and scores data.splits["val"]. cols: the (name, getter)
+    columns, for sets other than xgb_only and all (bench/dg2/e8.py); default recipe_columns()."""
+    cols = recipe_columns(data, recipe, set_name) if cols is None else cols
     params, rounds, threshold, batch_rows = xgb_setup(recipe)
     (fa, fb), (va, vb) = data.splits["fit"], data.splits["val"]
-    dirs = ([recipe["features"]["dir"]] if set_name == "all" else []) + \
+    dirs = ([recipe["features"]["dir"]] if set_name != "xgb_only" else []) + \
         ([recipe["family"]["dir"]] if recipe.get("family") else [])
     for d in dirs:
         f = Features(data, d)
@@ -461,12 +463,13 @@ def fit(data, recipe, set_name):
     gain = bst.get_score(importance_type="gain")
     names = [c for c, _ in cols]
     top = sorted(((v, names[int(k[1:])]) for k, v in gain.items()), reverse=True)[:10]
+    total_gain = {names[int(k[1:])]: v for k, v in bst.get_score(importance_type="total_gain").items()}
     return {"columns": {"names": names, "count": len(names)}, "validation": met,
             "rows": {"fit": [fa, fb], "val": [va, vb], "fit_positives": int(yf.sum()), "val_positives": int(yv.sum())},
             "xgb": {"version": xgb.__version__, "params": params, "num_boost_round": rounds, "threshold": threshold,
                     "batch_rows": batch_rows, "base_score_resolved": resolved_base_score(cfg_json),
                     "config": cfg_json},
-            "top_gain": [[n, round(v, 3)] for v, n in top],
+            "top_gain": [[n, round(v, 3)] for v, n in top], "total_gain": total_gain,
             **({"raw_amounts_changed_by_%f": data.mgnn()["amounts_changed_by_%f"]} if recipe["raw"] else {}),
             "seconds": {"matrices": round(t_mat, 2), "train": round(t_train, 2)}}
 
