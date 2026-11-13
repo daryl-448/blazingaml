@@ -38,13 +38,14 @@ struct CpuBlockTiming {
 };
 
 // Mines one block with the patterns `pats` (a profile's list for the block, SPEC v2 §3.1; their
-// emits are summed) for the triggers `sel`, adding into `out` (sel.rows() rows of p.bins.size()
-// columns, zeroed by the caller; row r belongs to sel.eid(r)). Uses the current OpenMP thread
-// count. Throws if `pats` is empty.
+// emits are summed) under visibility `vis` (the profile's, SPEC v2 §6.1) for the triggers `sel`,
+// adding into `out` (sel.rows() rows of p.bins.size() columns, zeroed by the caller; row r
+// belongs to sel.eid(r)). Uses the current OpenMP thread count. Throws if `pats` is empty.
 CpuBlockTiming mine_cpu(const GraphView& g, std::span<const PatternInfo* const> pats, const BlockParams& p,
-                        const TriggerSel& sel, Schedule schedule, std::uint32_t* out);
+                        Visibility vis, const TriggerSel& sel, Schedule schedule, std::uint32_t* out);
 
-// The v1 form: block b with every registered pattern of the block, triggers [first, last).
+// The v1 form: block b with every registered pattern of the block, triggers [first, last),
+// stream visibility.
 CpuBlockTiming mine_cpu(const GraphView& g, Block b, const BlockParams& p, std::uint64_t first,
                         std::uint64_t last, Schedule schedule, std::uint32_t* out);
 

@@ -62,7 +62,7 @@ Rows mine_all(const Graph& g, const Profile& prof, Backend be, std::int32_t wind
       const BlockParams p{window, bins[int(pb.block)]};
       auto& r = rows[0][int(pb.block)];
       r.assign(m * p.bins.size(), 0);
-      mine_cpu(index.view(), pb.patterns, p, all, Schedule::dynamic, r.data());
+      mine_cpu(index.view(), pb.patterns, p, prof.visibility, all, Schedule::dynamic, r.data());
     }
     return rows;
   }
@@ -72,7 +72,7 @@ Rows mine_all(const Graph& g, const Profile& prof, Backend be, std::int32_t wind
       const BlockParams p{window, bins[int(pb.block)]};
       auto& r = rows[t][int(pb.block)];
       r.assign(m * p.bins.size(), 0);
-      miner->mine(dg, pb.patterns, p, 0, m, thresholds[t], r.data());
+      miner->mine(dg, pb.patterns, p, prof.visibility, 0, m, thresholds[t], r.data());
     }
   return rows;
 }
@@ -89,10 +89,10 @@ const char* meta_test_name(MetaTest t) {
   return "?";
 }
 
-bool meta_test_applies(MetaTest t, const Profile& prof, Backend be) {
+bool meta_test_applies(MetaTest t, const Profile& prof, [[maybe_unused]] Backend be) {
   switch (t) {
     case MetaTest::prefix_closure: return prof.credit == Credit::trigger;
-    case MetaTest::visibility_invariance: return be == Backend::oracle && prof.find(Block::tcyc) != nullptr;
+    case MetaTest::visibility_invariance: return prof.find(Block::tcyc) != nullptr;
     default: return true;
   }
 }
@@ -102,12 +102,13 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
   check_profile_backend(prof, be);
   if (be == Backend::cuda && thresholds.empty()) throw std::invalid_argument("metamorphic: cuda needs thresholds");
   const bool prefix_applies = meta_test_applies(MetaTest::prefix_closure, prof, be);
-  std::optional<Profile> flipped;  // tcyc alone, under the other visibility
+  // tcyc alone, under the other visibility. Every backend runs both visibilities (P10), so the
+  // check of `prof` covers it; checking the one-block profile itself would fail a v1 config's E402.
+  std::optional<Profile> flipped;
   if (meta_test_applies(MetaTest::visibility_invariance, prof, be)) {
     flipped = prof;
     flipped->visibility = prof.visibility == Visibility::stream ? Visibility::timestamp : Visibility::stream;
     flipped->blocks = {*prof.find(Block::tcyc)};
-    check_profile_backend(*flipped, be);
   }
   BlockBins block_bins;
   for (const ProfileBlock& pb : prof.blocks) {

@@ -16,6 +16,8 @@ namespace blz {
 inline constexpr std::int64_t kNoTs = INT64_MIN;
 // range / pair_exists: no upper time bound.
 inline constexpr std::int64_t kNoUpper = INT64_MAX;
+// range / pair_exists: no eid bound (timestamp visibility, SPEC v2 §6.1). Edge ids are < m <= 2^32 - 1.
+inline constexpr std::uint32_t kAnyEid = UINT32_MAX;
 
 BLZ_HD inline std::int64_t max_ts(std::int64_t a, std::int64_t b) { return a < b ? b : a; }
 BLZ_HD inline std::int64_t min_ts(std::int64_t a, std::int64_t b) { return b < a ? b : a; }
@@ -117,9 +119,12 @@ struct GraphView {
   PCsrView pout, pin;
 };
 
-// A pattern's runtime parameters: its window span (seconds), taken from its block's config.
+// A pattern's runtime parameters: its window span (seconds), taken from its block's config, and
+// the profile's visibility (SPEC v2 §6.1, D-22). Generated code turns the visibility into the
+// upper end of every range and probe once per trigger: eid <= e (stream) or ts <= t (timestamp).
 struct Params {
   std::int64_t span = 0;
+  bool ts_visibility = false;  // false: stream visibility (v1); true: timestamp visibility
 };
 
 // count_distinct / count_edges (SPEC §5.3): the number of distinct neighbours, or of edges, in

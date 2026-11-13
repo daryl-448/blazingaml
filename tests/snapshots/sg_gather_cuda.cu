@@ -13,11 +13,14 @@ __device__ inline void sg_gather_trigger_warp(const GraphView& g, const Params& 
   const std::uint32_t v_W = g.dst[e];
   const std::int64_t t = g.ts[e];
   const std::int64_t p_delta_sg = p.span;
+  // visibility (SPEC v2 §6.1), once per trigger: stream sees eid <= e, timestamp sees ts <= t
+  const std::uint32_t vis_e = p.ts_visibility ? kAnyEid : e;
+  const std::int64_t vis_t = p.ts_visibility ? t : kNoUpper;
   if (v_X == v_W) return;
   // stage sources (for_all, distinct)
   // scan T-CSR X.in distinct-first: each S once, e1 = its earliest witness in range
-  // e1 in X.in: ts >= t - delta_sg, eid <= eid(e0) (stream visibility)
-  const Range r_e1 = g.in.range(v_X, t - p_delta_sg, kNoUpper, e);
+  // e1 in X.in: ts >= t - delta_sg, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+  const Range r_e1 = g.in.range(v_X, t - p_delta_sg, vis_t, vis_e);
   // heavy kernel: the lanes split this scan (stride 32); each lane owns its bindings
   for (std::uint32_t j_e1 = r_e1.lo + lane; j_e1 < r_e1.hi; j_e1 += cuda::kWarpSize) {
     if (!g.in.distinct_first(j_e1, r_e1.lo)) continue;
@@ -26,13 +29,13 @@ __device__ inline void sg_gather_trigger_warp(const GraphView& g, const Params& 
     // stage intermediates (intersection, check)
     // intersection S.out ∩ W.in over distinct nodes: per trigger, scan the side with the smaller window (T-CSR, distinct-first) and probe the other (P-CSR)
     // no materialization: I is used only through len(), so the common neighbours that pass the filters are counted
-    // e2 in S.out: ts >= t - delta_sg, eid <= eid(e0) (stream visibility)
-    // e3 in W.in: ts >= t - delta_sg, eid <= eid(e0) (stream visibility)
+    // e2 in S.out: ts >= t - delta_sg, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+    // e3 in W.in: ts >= t - delta_sg, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
     std::int64_t len_I = 0;
-    const std::int64_t lo_e2 = t - p_delta_sg, hi_e2 = kNoUpper;
-    const std::int64_t lo_e3 = t - p_delta_sg, hi_e3 = kNoUpper;
-    const Range r_e2 = g.out.range(v_S, lo_e2, hi_e2, e);
-    const Range r_e3 = g.in.range(v_W, lo_e3, hi_e3, e);
+    const std::int64_t lo_e2 = t - p_delta_sg, hi_e2 = vis_t;
+    const std::int64_t lo_e3 = t - p_delta_sg, hi_e3 = vis_t;
+    const Range r_e2 = g.out.range(v_S, lo_e2, hi_e2, vis_e);
+    const Range r_e3 = g.in.range(v_W, lo_e3, hi_e3, vis_e);
     const bool scan_intermediates = r_e2.size() <= r_e3.size();  // scan S.out, probe W.in; else the mirror
     const TCsrView& L_intermediates = scan_intermediates ? g.out : g.in;
     const PCsrView& P_intermediates = scan_intermediates ? g.pin : g.pout;
@@ -43,7 +46,7 @@ __device__ inline void sg_gather_trigger_warp(const GraphView& g, const Params& 
       if (!L_intermediates.distinct_first(jx_intermediates, R_intermediates.lo)) continue;
       const std::uint32_t v_Y = L_intermediates.nbr[jx_intermediates];
       if (v_Y == v_W) continue;
-      if (P_intermediates.pair_exists(px_intermediates, v_Y, plo_intermediates, phi_intermediates, e) == kNoTs) continue;
+      if (P_intermediates.pair_exists(px_intermediates, v_Y, plo_intermediates, phi_intermediates, vis_e) == kNoTs) continue;
       ++len_I;
     }
     const bool ok_intermediates = len_I != 0;

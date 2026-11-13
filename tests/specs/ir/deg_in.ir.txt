@@ -1,5 +1,5 @@
 pattern deg_in block deg_in
-window span delta_deg lower open visibility stream
+window span delta_deg lower open visibility runtime
 trigger e0: U -> V
   skip if U == V
 level 0 (root)
@@ -13,7 +13,7 @@ level 0 (root)
     emit n (min 2)
     exports n
     // scan T-CSR V.in, every edge; n = number of elements that pass the filters (count only)
-    // e1 in V.in: ts >= t - delta_deg + 1, eid <= eid(e0) (stream visibility)
+    // e1 in V.in: ts >= t - delta_deg + 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
 plan depth 0 work in_edges split in_edges (raw count)
   // work estimate (sorted schedule, CUDA bucketing): the window size of in_edges.e1 (V.in), two binary searches
   // CUDA heavy kernel: no binding stage; the lanes split the scan of in_edges, the raw count is summed across the warp and lane 0 emits once (partial counts are never binned)

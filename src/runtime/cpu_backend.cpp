@@ -61,12 +61,12 @@ int compiled_k_max() {
 }
 
 CpuBlockTiming mine_cpu(const GraphView& g, std::span<const PatternInfo* const> pats, const BlockParams& p,
-                        const TriggerSel& sel, Schedule schedule, std::uint32_t* out) {
+                        Visibility vis, const TriggerSel& sel, Schedule schedule, std::uint32_t* out) {
   if (pats.empty()) throw std::runtime_error("mine_cpu: no pattern to run");
   if (sel.first > sel.last || sel.last > g.m) throw std::invalid_argument("mine_cpu: bad trigger range");
   for (std::uint32_t e : sel.eids)
     if (e < sel.first || e >= sel.last) throw std::invalid_argument("mine_cpu: sample eid outside its range");
-  const Params params{p.window};
+  const Params params{p.window, vis == Visibility::timestamp};
   BlockOut bo{out, sel.first, p.bins.data(), std::uint32_t(p.bins.size()), 0,
               sel.sampled ? sel.eids.data() : nullptr, sel.sampled ? sel.eids.size() : 0};
   CpuBlockTiming timing;
@@ -112,7 +112,7 @@ CpuBlockTiming mine_cpu(const GraphView& g, Block b, const BlockParams& p, std::
   sel.spec = "range";
   sel.first = first;
   sel.last = last;
-  return mine_cpu(g, pats, p, sel, schedule, out);
+  return mine_cpu(g, pats, p, Visibility::stream, sel, schedule, out);
 }
 
 }  // namespace blz

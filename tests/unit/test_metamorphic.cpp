@@ -32,15 +32,17 @@ TEST_CASE("metamorphic: 200 fuzz graphs, oracle and cpu, the registry and v1_par
   check_clean(metamorphic(parity, Backend::cpu, 200, 260, {}, {}), 60, parity, Backend::cpu);
 }
 
-TEST_CASE("metamorphic: 200 fuzz graphs on the oracle under timestamp visibility (SPEC v2 §6.1)") {
+TEST_CASE("metamorphic: 200 fuzz graphs, oracle and cpu, under timestamp visibility (SPEC v2 §6.1)") {
   Profile ts = registry_profile();
   ts.visibility = Visibility::timestamp;
   const std::vector<std::uint32_t> bins = {2, 3, 4, 5, 6, 8, 10};
-  const MetamorphicResult r = metamorphic(ts, Backend::oracle, 0, 200, bins, {});
-  check_clean(r, 200, ts, Backend::oracle);
-  // Visibility invariance compares the tcyc rows only, once per graph.
-  CHECK(r.rows_compared[int(MetaTest::visibility_invariance)] == r.edges);
-  CHECK_THROWS(metamorphic(ts, Backend::cpu, 0, 1, {}, {}));  // E404 until P10
+  for (Backend b : {Backend::oracle, Backend::cpu}) {
+    INFO(backend_name(b));
+    const MetamorphicResult r = metamorphic(ts, b, 0, 200, bins, {});
+    check_clean(r, 200, ts, b);
+    // Visibility invariance compares the tcyc rows only, once per graph.
+    CHECK(r.rows_compared[int(MetaTest::visibility_invariance)] == r.edges);
+  }
 }
 
 TEST_CASE("metamorphic: every row of every block is compared") {

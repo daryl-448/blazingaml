@@ -84,7 +84,10 @@ std::string dump(const Pattern& p) {
   std::ostringstream o;
   o << "pattern " << p.name << " block " << p.block << "\n";
   o << "window span " << p.span_param << " lower " << (p.lower_open ? "open" : "closed")
-    << " visibility " << (p.visibility == Visibility::stream ? "stream" : "timestamp") << "\n";
+    << " visibility "
+    << (p.visibility_loc.line == 0 ? "runtime"
+                                   : p.visibility == Visibility::stream ? "pinned stream" : "pinned timestamp")
+    << "\n";
   for (const auto& [k, v] : p.consts) o << "const " << k << " = " << v << "\n";
   o << "trigger " << p.e0 << ": " << p.src_var << " -> " << p.dst_var << "\n";
   for (const Expr& f : p.trigger_filters) o << "  skip if " << to_string(f) << "\n";

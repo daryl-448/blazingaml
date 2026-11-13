@@ -13,11 +13,14 @@ __device__ inline void deg_in_trigger_warp(const GraphView& g, const Params& p, 
   const std::uint32_t v_V = g.dst[e];
   const std::int64_t t = g.ts[e];
   const std::int64_t p_delta_deg = p.span;
+  // visibility (SPEC v2 §6.1), once per trigger: stream sees eid <= e, timestamp sees ts <= t
+  const std::uint32_t vis_e = p.ts_visibility ? kAnyEid : e;
+  const std::int64_t vis_t = p.ts_visibility ? t : kNoUpper;
   if (v_U == v_V) return;
   // stage in_edges (count, edges)
   // scan T-CSR V.in, every edge; n = number of elements that pass the filters (count only)
-  // e1 in V.in: ts >= t - delta_deg + 1, eid <= eid(e0) (stream visibility)
-  const Range r_e1 = g.in.range(v_V, t - p_delta_deg + 1, kNoUpper, e);
+  // e1 in V.in: ts >= t - delta_deg + 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+  const Range r_e1 = g.in.range(v_V, t - p_delta_deg + 1, vis_t, vis_e);
   // heavy kernel: the lanes split this scan; the warp sums their raw counts before any use
   std::int64_t i_n = count_edges(g.in, r_e1, [&](std::uint32_t v_X) { return !(v_X == v_V); }, lane, cuda::kWarpSize);
   i_n = cuda::warp_sum(i_n);

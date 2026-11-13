@@ -100,6 +100,29 @@ TEST_CASE("cuda: metamorphic tests on 200 fuzz graphs, every threshold (SPEC v2 
   CHECK(r.bad_seeds.empty());
 }
 
+// SPEC v2 §6.1 (P10): oracle = CUDA and the metamorphic tests under timestamp visibility.
+TEST_CASE("cuda backend under timestamp visibility: oracle parity and metamorphic tests, every threshold") {
+  Profile ts = registry_profile();
+  ts.visibility = Visibility::timestamp;
+  const std::vector<std::uint32_t> bins = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
+  const FuzzDiff d = fuzz_diff_cuda(ts, 0, 300, bins, kThresholds);
+  CHECK(d.graphs == 300);
+  for (const ProfileBlock& pb : ts.blocks) {
+    INFO(block_name(pb.block));
+    CHECK(d.mismatched_rows[int(pb.block)] == 0);
+  }
+  CHECK(d.bad_seeds.empty());
+  const MetamorphicResult r = metamorphic(ts, Backend::cuda, 0, 100, std::vector<std::uint32_t>{2, 3, 4, 5, 6, 8, 10},
+                                          kThresholds);
+  CHECK(r.graphs == 100);
+  for (MetaTest t : kMetaTests) {
+    INFO(meta_test_name(t));
+    CHECK((r.rows_compared[int(t)] > 0) == meta_test_applies(t, ts, Backend::cuda));
+    for (std::uint64_t n : r.mismatched_rows[int(t)]) CHECK(n == 0);
+  }
+  CHECK(r.bad_seeds.empty());
+}
+
 // SPEC §8: CUDA rows equal the CPU's, for any trigger range and threshold, and repeat exactly.
 TEST_CASE("cuda backend rows equal the cpu backend's for any trigger range and threshold") {
   CudaMiner miner;

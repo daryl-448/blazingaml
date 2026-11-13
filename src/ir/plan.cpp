@@ -57,12 +57,13 @@ std::string list_of(const std::vector<Expr>& xs) {
   return s;
 }
 
-std::string range_note(const Operand& o, Visibility vis, const std::string& e0) {
+// Visibility is a runtime parameter (SPEC v2 §6.1, D-22): the range end is chosen once per trigger.
+std::string range_note(const Operand& o, const std::string& e0) {
   std::string s = o.edge + " in " + o.node + "." + dir_name(o.dir) + ": ts >= ";
   s += o.lo_incl.size() == 1 ? to_string(o.lo_incl[0]) : "max(" + list_of(o.lo_incl) + ")";
   if (!o.hi_incl.empty())
     s += ", ts <= " + (o.hi_incl.size() == 1 ? to_string(o.hi_incl[0]) : "min(" + list_of(o.hi_incl) + ")");
-  s += vis == Visibility::stream ? ", eid <= eid(" + e0 + ") (stream visibility)" : ", ts <= t (timestamp visibility)";
+  s += ", visible: eid <= eid(" + e0 + ") (stream) or ts <= t (timestamp), set once per trigger";
   if (!o.hi_incl.empty()) s += "; the upper bounds fold into the range end (no per-element break)";
   return s;
 }
@@ -117,7 +118,7 @@ void plan_stage(Stage& st, const Pattern& p) {
       break;
     }
   }
-  for (const Operand& o : st.operands) st.notes.push_back(range_note(o, p.visibility, p.e0));
+  for (const Operand& o : st.operands) st.notes.push_back(range_note(o, p.e0));
   if (st.gate) st.notes.push_back("gate: later stages run only when this check passes");
 }
 

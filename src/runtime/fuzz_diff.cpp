@@ -55,7 +55,7 @@ FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, 
       oracle.mine(b, p, k_max, 0, m, want.data());
       for (Schedule s : {Schedule::dynamic, Schedule::sorted}) {
         std::vector<std::uint32_t> got(m * nb, 0);
-        mine_cpu(index.view(), pb.patterns, p, all, s, got.data());
+        mine_cpu(index.view(), pb.patterns, p, prof.visibility, all, s, got.data());
         for (std::uint64_t e = 0; e < m; ++e)
           bad[int(b)] += !std::equal(got.begin() + e * nb, got.begin() + (e + 1) * nb, want.begin() + e * nb);
       }
@@ -117,7 +117,7 @@ FuzzDiff fuzz_diff_cuda(const Profile& prof, std::uint64_t s0, std::uint64_t s1,
           const BlockParams p{it.fg.window, block_bins[int(b)]};
           const std::size_t nb = p.bins.size();
           std::vector<std::uint32_t> got(m * nb);
-          miner.mine(dg, pb.patterns, p, 0, m, h, got.data());
+          miner.mine(dg, pb.patterns, p, prof.visibility, 0, m, h, got.data());
           const auto& want = it.want[int(b)];
           for (std::uint64_t e = 0; e < m; ++e)
             if (!std::equal(got.begin() + e * nb, got.begin() + (e + 1) * nb, want.begin() + e * nb)) {

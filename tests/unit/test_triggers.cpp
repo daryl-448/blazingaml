@@ -80,7 +80,7 @@ TEST_CASE("triggers: sampled rows equal the full run's rows at those eids (oracl
       std::vector<std::uint32_t> full(m * nb, 0), o(sel.rows() * nb, 0), c(sel.rows() * nb, 0);
       oracle.mine(pb.block, p, prof.k_max, 0, m, full.data());
       oracle.mine(pb.block, p, prof.k_max, sel.eids, o.data());
-      mine_cpu(index.view(), pb.patterns, p, sel, Schedule::dynamic, c.data());
+      mine_cpu(index.view(), pb.patterns, p, Visibility::stream, sel, Schedule::dynamic, c.data());
       std::vector<std::uint32_t> want;
       for (std::uint32_t e : sel.eids) want.insert(want.end(), full.begin() + e * nb, full.begin() + (e + 1) * nb);
       INFO("seed " << seed << " block " << block_name(pb.block));

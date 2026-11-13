@@ -76,7 +76,6 @@ Profile registry_profile(std::span<const PatternInfo> registry = registered_patt
 // The start-up check of a profile against a backend (§3.1, §6.4 of v2). Throws
 // "<file>:<line>:<col>: error E404: ..." when the backend cannot run the profile:
 //   - credit: participants (no backend before S1);
-//   - visibility: timestamp on the generated backends (until P10; the oracle has it since P8);
 //   - oracle: a block whose patterns are not the set the oracle implements for it (§9 of v1
 //     computes each block's definition directly);
 //   - cpu, cuda: a k_max other than the compiled K_MAX of a listed pattern that declares it.

@@ -84,15 +84,16 @@ class CudaMiner {
   CudaMiner(const CudaMiner&) = delete;
   CudaMiner& operator=(const CudaMiner&) = delete;
 
-  // Mines block b for the triggers [first, last) with every pattern of the block, bucketed at
-  // `heavy_threshold`, and copies the rows to host_out: (last - first) rows of p.bins.size()
-  // columns, overwritten. Pinned host memory makes the copy faster. Throws if no pattern emits
-  // into b or the build has no CUDA launchers.
+  // Mines block b for the triggers [first, last) with every pattern of the block, under stream
+  // visibility, bucketed at `heavy_threshold`, and copies the rows to host_out: (last - first)
+  // rows of p.bins.size() columns, overwritten. Pinned host memory makes the copy faster. Throws
+  // if no pattern emits into b or the build has no CUDA launchers.
   CudaBlockTiming mine(const DeviceGraph& g, Block b, const BlockParams& p, std::uint64_t first,
                        std::uint64_t last, std::uint32_t heavy_threshold, std::uint32_t* host_out);
-  // The same with the patterns `pats` (a profile's list for the block, SPEC v2 §3.1).
+  // The same with the patterns `pats` (a profile's list for the block, SPEC v2 §3.1) under
+  // visibility `vis` (the profile's, SPEC v2 §6.1).
   CudaBlockTiming mine(const DeviceGraph& g, std::span<const PatternInfo* const> pats, const BlockParams& p,
-                       std::uint64_t first, std::uint64_t last, std::uint32_t heavy_threshold,
+                       Visibility vis, std::uint64_t first, std::uint64_t last, std::uint32_t heavy_threshold,
                        std::uint32_t* host_out);
 
  private:

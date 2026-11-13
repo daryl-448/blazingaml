@@ -1,7 +1,8 @@
-// Code generation errors (SPEC §6.7): what the v1 emitter refuses (E501) and duplicate pattern
-// names across specs (E102). The generated text itself is covered by the blzc_snapshots test.
+// Code generation (SPEC §6.7): runtime visibility (SPEC v2 §6.1), and duplicate pattern names
+// across specs (E102). The generated text itself is covered by the blzc_snapshots test.
 #include <catch2/catch_test_macros.hpp>
 #include <string>
+#include <vector>
 
 #include "codegen/codegen.hpp"
 
@@ -25,17 +26,24 @@ std::string with(const std::string& vis) { return std::string(kFan).replace(kFan
 
 }  // namespace
 
-TEST_CASE("codegen: timestamp visibility is E501 at its value") {
-  const ir::Pattern p = ir::compile_text(with("visibility: timestamp\n"), "a.yaml");
-  try {
-    codegen::emit_cpu(p, "a");
-    FAIL("accepted");
-  } catch (const dsl::CompileError& e) {
-    CHECK(e.code() == "E501");
-    CHECK(e.loc().line == 5);
-    CHECK(e.loc().col == 13);
+TEST_CASE("codegen: visibility is a runtime parameter; a spec's visibility: key only pins it (SPEC v2 §6.1)") {
+  // The same text with or without the key: the generated code reads Params::ts_visibility.
+  const auto body = [](const std::vector<codegen::GeneratedFile>& fs) {
+    std::string h = fs[0].text;
+    return h.substr(h.find("#pragma once"));
+  };
+  const auto none = codegen::emit_cpu(ir::compile_text(with(""), "a.yaml"), "a");
+  for (const char* vis : {"visibility: stream\n", "visibility: timestamp\n"}) {
+    const auto pinned = codegen::emit_cpu(ir::compile_text(with(vis), "a.yaml"), "a");
+    CHECK(pinned.size() == 2);
+    CHECK(body(pinned) == body(none));
   }
-  CHECK(codegen::emit_cpu(ir::compile_text(with("visibility: stream\n"), "a.yaml"), "a").size() == 2);
+  CHECK(none[0].text.find("const std::uint32_t vis_e = p.ts_visibility ? kAnyEid : e;") != std::string::npos);
+  CHECK(none[0].text.find("const std::int64_t vis_t = p.ts_visibility ? t : kNoUpper;") != std::string::npos);
+  // The pin goes to the registry, which E403 checks against the profile (test_profile.cpp).
+  const ir::Pattern ts = ir::compile_text(with("visibility: timestamp\n"), "a.yaml");
+  const std::string reg = codegen::emit_registry({ts}, {"a"}).text;
+  CHECK(reg.find("\"timestamp\", \"a.yaml:5:13\"") != std::string::npos);
 }
 
 TEST_CASE("codegen: two specs defining one pattern name are E102") {

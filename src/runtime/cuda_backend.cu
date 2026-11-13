@@ -207,11 +207,11 @@ CudaBlockTiming CudaMiner::mine(const DeviceGraph& g, Block b, const BlockParams
                                 std::uint64_t last, std::uint32_t heavy_threshold, std::uint32_t* host_out) {
   const auto pats = patterns_for(b);
   if (pats.empty()) throw std::runtime_error("no registered pattern emits into block " + std::string(block_name(b)));
-  return mine(g, pats, p, first, last, heavy_threshold, host_out);
+  return mine(g, pats, p, Visibility::stream, first, last, heavy_threshold, host_out);
 }
 
 CudaBlockTiming CudaMiner::mine(const DeviceGraph& g, std::span<const PatternInfo* const> pats, const BlockParams& p,
-                                std::uint64_t first, std::uint64_t last, std::uint32_t heavy_threshold,
+                                Visibility vis, std::uint64_t first, std::uint64_t last, std::uint32_t heavy_threshold,
                                 std::uint32_t* host_out) {
   const auto t0 = Clock::now();
   Impl& s = *impl_;
@@ -240,7 +240,7 @@ CudaBlockTiming CudaMiner::mine(const DeviceGraph& g, std::span<const PatternInf
   s.temp.ensure(temp_bytes);
 
   const cudaStream_t st = s.stream;
-  const Params params{p.window};
+  const Params params{p.window, vis == Visibility::timestamp};
   BLZ_CUDA(cudaMemcpyAsync(s.bins.ptr, p.bins.data(), nbins * sizeof(std::uint32_t), cudaMemcpyHostToDevice, st));
   BLZ_CUDA(cudaEventRecord(s.ev[Impl::kStart], st));
   BLZ_CUDA(cudaMemsetAsync(s.out.ptr, 0, out_bytes, st));

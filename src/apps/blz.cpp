@@ -366,10 +366,10 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
     blz::CpuBlockTiming tm;
     blz::CudaBlockTiming ctm;
     if (cpu) {
-      tm = blz::mine_cpu(index->view(), pb->patterns, p, sel, schedule, feats.data());
+      tm = blz::mine_cpu(index->view(), pb->patterns, p, prof.visibility, sel, schedule, feats.data());
       sat = tm.saturated;
     } else if (gpu) {
-      ctm = miner->mine(*dgraph, pb->patterns, p, sel.first, sel.last, heavy, pinned->data());
+      ctm = miner->mine(*dgraph, pb->patterns, p, prof.visibility, sel.first, sel.last, heavy, pinned->data());
       sat = ctm.saturated;
     } else if (sel.sampled) {
       sat = oracle->mine(b, p, prof.k_max, sel.eids, feats.data());
@@ -778,7 +778,8 @@ int bench(const std::string& graph, const std::string& config, const std::string
         std::vector<double> total, sched_s, loop_s;
         for (int r = 0; r <= reps; ++r) {  // r == 0 is the warm-up
           std::fill(feats.begin(), feats.end(), 0u);
-          const blz::CpuBlockTiming tm = blz::mine_cpu(index.view(), pb->patterns, p, all, sched, feats.data());
+          const blz::CpuBlockTiming tm =
+              blz::mine_cpu(index.view(), pb->patterns, p, prof.visibility, all, sched, feats.data());
           if (ref.empty()) {
             ref = feats;
             jb["output_fnv1a"] = fnv1a(ref);
@@ -883,7 +884,7 @@ int bench_cuda(const std::string& graph, const std::string& config, int reps, co
       std::vector<double> kernel, d2h, total, bucket, light, heavy, wall;
       blz::CudaBlockTiming tm;
       for (int r = 0; r <= reps; ++r) {  // r == 0 is the warm-up
-        tm = miner.mine(dg, pb->patterns, p, 0, m, h, buf.data());
+        tm = miner.mine(dg, pb->patterns, p, prof.visibility, 0, m, h, buf.data());
         const std::span<const std::uint32_t> got(buf.data(), cells);
         if (ref.empty()) {
           ref.assign(got.begin(), got.end());

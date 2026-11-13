@@ -693,6 +693,23 @@ cpu and cuda reject `visibility: timestamp` with E404 until P10. A unit test che
 visibility equals stream visibility once the trigger is moved to the end of its timestamp group
 (200 fuzz graphs, against the cpu backend).
 
+As implemented (P10):
+
+- `Params` gains `ts_visibility`, and `blz_core` passes the profile's visibility to every run.
+- The generated prologue sets `vis_e` (e, or `kAnyEid`) and `vis_t` (`kNoUpper`, or t) once per
+  trigger. Every range and probe takes `min_ts(<own upper bounds>, vis_t)` as its upper time and
+  `vis_e` as its eid bound.
+- The work estimates use the same bounds. The CUDA bodies are the same text.
+- `mine_cpu` and `CudaMiner::mine` with a pattern list take the visibility as a required argument.
+  The v1 forms (a `Block`) stay stream.
+- E404 no longer covers `visibility: timestamp`, and neither does E501. A spec's `visibility:` key
+  only pins: the generated code is the same, and the registry records the pin for E403.
+- `blzc --dump-ir` prints `visibility runtime`, or `pinned <v>` for a spec with the key.
+- Visibility invariance of tcyc runs on every backend. Its tcyc-only profile is not re-checked: a
+  v1 config would fail E402.
+- The snapshots were regenerated in their own commit. `v1_default` keeps its id and its six
+  pinned hashes on cpu.
+
 ### 6.2 Cross-operand ordering in an intersection
 
 v1 rejects a predicate that compares the two scanned edges of one intersection (E203, "P6"). v2

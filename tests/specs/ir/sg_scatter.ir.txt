@@ -1,5 +1,5 @@
 pattern sg_scatter block sg
-window span delta_sg lower closed visibility stream
+window span delta_sg lower closed visibility runtime
 trigger e0: S -> X
   skip if S == X
 level 0 (root)
@@ -12,7 +12,7 @@ level 0 (root)
       skip if W in [S, X]
       exports W e1
       // scan T-CSR X.out distinct-first: each W once, e1 = its earliest witness in range
-      // e1 in X.out: ts >= t - delta_sg, eid <= eid(e0) (stream visibility)
+      // e1 in X.out: ts >= t - delta_sg, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
     check intersection intermediates -> I
       operand e2: S.out access intersect
         lo >= t - delta_sg [window]
@@ -28,8 +28,8 @@ level 0 (root)
       exports I
       // intersection S.out ∩ W.in over distinct nodes: per trigger, scan the side with the smaller window (T-CSR, distinct-first) and probe the other (P-CSR)
       // no materialization: I is used only through len(), so the common neighbours that pass the filters are counted
-      // e2 in S.out: ts >= t - delta_sg, eid <= eid(e0) (stream visibility)
-      // e3 in W.in: ts >= t - delta_sg, eid <= eid(e0) (stream visibility)
+      // e2 in S.out: ts >= t - delta_sg, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+      // e3 in W.in: ts >= t - delta_sg, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
 plan depth 1 work sinks split sinks
   // work estimate (sorted schedule, CUDA bucketing): the window size of sinks.e1 (X.out), two binary searches
   // CUDA heavy kernel: no root checks; the lanes stride over the scan of sinks and each runs every stage nested in its own bindings; lane bin counts are summed across the warp

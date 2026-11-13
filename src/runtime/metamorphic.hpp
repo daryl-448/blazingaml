@@ -18,8 +18,7 @@ inline constexpr std::array<MetaTest, 4> kMetaTests = {MetaTest::prefix_closure,
 const char* meta_test_name(MetaTest t);
 
 // Whether test `t` runs for `prof` on `backend`: prefix closure needs trigger credit;
-// visibility invariance needs a tcyc block and a backend that runs both visibilities (the
-// oracle; the generated backends from P10).
+// visibility invariance needs a tcyc block (every backend runs both visibilities since P10).
 bool meta_test_applies(MetaTest t, const Profile& prof, Backend backend);
 
 struct MetamorphicResult {

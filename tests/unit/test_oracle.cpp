@@ -157,7 +157,7 @@ TEST_CASE("timestamp visibility = stream visibility with the trigger last in its
           one.first = b - 1;
           one.last = b;
           std::vector<std::uint32_t> got(nb, 0);
-          mine_cpu(index.view(), pb.patterns, p, one, Schedule::dynamic, got.data());
+          mine_cpu(index.view(), pb.patterns, p, Visibility::stream, one, Schedule::dynamic, got.data());
           INFO("seed " << seed << " eid " << e << " " << block_name(pb.block));
           CHECK(std::equal(got.begin(), got.end(), want.begin() + std::ptrdiff_t(e * nb)));
           moved += e + 1 < b;

@@ -46,7 +46,8 @@ struct Operand {
   std::vector<TimeBound> lo, hi;  // as written plus the window bound
   // Planner: the same bounds normalized to inclusive form (strict lower x -> x + 1, strict upper
   // x -> x - 1, timestamps being integers) and deduplicated. The scan range is
-  // ts >= max(lo_incl), ts <= min(hi_incl), plus the visibility bound (Pattern::visibility).
+  // ts >= max(lo_incl), ts <= min(hi_incl), plus the visibility bound (a runtime parameter,
+  // SPEC v2 §6.1: eid <= e or ts <= t).
   std::vector<Expr> lo_incl, hi_incl;
   Access access = Access::scan_distinct;
 };
@@ -99,7 +100,7 @@ struct Pattern {
   Loc name_loc, block_loc, visibility_loc;  // visibility_loc.line == 0: the spec has no `visibility:`
   std::string span_param;      // runtime int parameter: the window span (the block's window)
   bool lower_open = false;
-  Visibility visibility = Visibility::stream;
+  Visibility visibility = Visibility::stream;  // the pin, when visibility_loc.line > 0 (SPEC v2 §6.1)
   std::string e0, src_var, dst_var;
   IntEnv consts;
   std::vector<Expr> trigger_filters;

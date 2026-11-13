@@ -157,10 +157,8 @@ TEST_CASE("profiles: E404 names the backend and the profile key") {
         "implements it)");
   const Profile ts = parse_profile(profile(fan, "visibility: timestamp\ncredit: trigger\nk_max: 10\n"), "p.yaml");
   CHECK_FALSE(ts.causal());
-  CHECK(backend_error(ts, Backend::oracle) == "ok");  // P8
-  for (Backend b : {Backend::cpu, Backend::cuda})
-    CHECK(backend_error(ts, b) == "p.yaml:3:13: error E404: the " + std::string(backend_name(b)) +
-                                      " backend cannot run visibility: timestamp yet (SPEC v2 P10; the oracle runs it)");
+  for (Backend b : {Backend::oracle, Backend::cpu, Backend::cuda})  // the oracle since P8, cpu and cuda since P10
+    CHECK(backend_error(ts, b) == "ok");
   // The oracle computes sg as sg_gather + sg_scatter; one of them alone is a different block.
   const Profile half = parse_profile(profile("  sg: {patterns: [sg_gather], window: 21600, bins: [2]}\n"), "p.yaml");
   CHECK(backend_error(half, Backend::oracle) ==

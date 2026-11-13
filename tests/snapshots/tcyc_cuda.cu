@@ -13,19 +13,22 @@ __device__ inline void tcyc_trigger_warp(const GraphView& g, const Params& p, st
   const std::uint32_t v_V = g.dst[e];
   const std::int64_t t = g.ts[e];
   const std::int64_t p_delta_cyc = p.span;
+  // visibility (SPEC v2 §6.1), once per trigger: stream sees eid <= e, timestamp sees ts <= t
+  const std::uint32_t vis_e = p.ts_visibility ? kAnyEid : e;
+  const std::int64_t vis_t = p.ts_visibility ? t : kNoUpper;
   if (v_U == v_V) return;
   if (lane == 0) {  // heavy kernel: nothing else reads this root check, so lane 0 runs it alone
     // stage close_2 (exists)
     // probe P-CSR V.out for U: two binary searches; c2 = the earliest witness in range
-    // c2 in V.out: ts >= t - delta_cyc, ts <= t - 1, eid <= eid(e0) (stream visibility); the upper bounds fold into the range end (no per-element break)
-    const std::int64_t ts_c2 = g.pout.pair_exists(v_V, v_U, t - p_delta_cyc, t - 1, e);
+    // c2 in V.out: ts >= t - delta_cyc, ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+    const std::int64_t ts_c2 = g.pout.pair_exists(v_V, v_U, t - p_delta_cyc, min_ts(t - 1, vis_t), vis_e);
     const bool ok_close_2 = ts_c2 != kNoTs;
     if (ok_close_2) out.emit(2);
   }
   // stage hop_1 (for_all, distinct)
   // scan T-CSR V.out distinct-first: each C1 once, h1 = its earliest witness in range
-  // h1 in V.out: ts >= t - delta_cyc, ts <= t - 1, eid <= eid(e0) (stream visibility); the upper bounds fold into the range end (no per-element break)
-  const Range r_h1 = g.out.range(v_V, t - p_delta_cyc, t - 1, e);
+  // h1 in V.out: ts >= t - delta_cyc, ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+  const Range r_h1 = g.out.range(v_V, t - p_delta_cyc, min_ts(t - 1, vis_t), vis_e);
   // heavy kernel: the lanes split this scan (stride 32); each lane owns its bindings
   for (std::uint32_t j_h1 = r_h1.lo + lane; j_h1 < r_h1.hi; j_h1 += cuda::kWarpSize) {
     if (!g.out.distinct_first(j_h1, r_h1.lo)) continue;
@@ -34,14 +37,14 @@ __device__ inline void tcyc_trigger_warp(const GraphView& g, const Params& p, st
     const std::int64_t ts_h1 = g.out.ts[j_h1];
     // stage close_3 (exists)
     // probe P-CSR C1.out for U: two binary searches; c3 = the earliest witness in range
-    // c3 in C1.out: ts >= max(t - delta_cyc, h1.t + 1), ts <= t - 1, eid <= eid(e0) (stream visibility); the upper bounds fold into the range end (no per-element break)
-    const std::int64_t ts_c3 = g.pout.pair_exists(v_C1, v_U, max_ts(t - p_delta_cyc, ts_h1 + 1), t - 1, e);
+    // c3 in C1.out: ts >= max(t - delta_cyc, h1.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+    const std::int64_t ts_c3 = g.pout.pair_exists(v_C1, v_U, max_ts(t - p_delta_cyc, ts_h1 + 1), min_ts(t - 1, vis_t), vis_e);
     const bool ok_close_3 = ts_c3 != kNoTs;
     if (ok_close_3) out.emit(3);
     // stage hop_2 (for_all, distinct)
     // scan T-CSR C1.out distinct-first: each C2 once, h2 = its earliest witness in range
-    // h2 in C1.out: ts >= max(t - delta_cyc, h1.t + 1), ts <= t - 1, eid <= eid(e0) (stream visibility); the upper bounds fold into the range end (no per-element break)
-    const Range r_h2 = g.out.range(v_C1, max_ts(t - p_delta_cyc, ts_h1 + 1), t - 1, e);
+    // h2 in C1.out: ts >= max(t - delta_cyc, h1.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+    const Range r_h2 = g.out.range(v_C1, max_ts(t - p_delta_cyc, ts_h1 + 1), min_ts(t - 1, vis_t), vis_e);
     for (std::uint32_t j_h2 = r_h2.lo; j_h2 < r_h2.hi; ++j_h2) {
       if (!g.out.distinct_first(j_h2, r_h2.lo)) continue;
       const std::uint32_t v_C2 = g.out.nbr[j_h2];
@@ -49,14 +52,14 @@ __device__ inline void tcyc_trigger_warp(const GraphView& g, const Params& p, st
       const std::int64_t ts_h2 = g.out.ts[j_h2];
       // stage close_4 (exists)
       // probe P-CSR C2.out for U: two binary searches; c4 = the earliest witness in range
-      // c4 in C2.out: ts >= max(t - delta_cyc, h2.t + 1), ts <= t - 1, eid <= eid(e0) (stream visibility); the upper bounds fold into the range end (no per-element break)
-      const std::int64_t ts_c4 = g.pout.pair_exists(v_C2, v_U, max_ts(t - p_delta_cyc, ts_h2 + 1), t - 1, e);
+      // c4 in C2.out: ts >= max(t - delta_cyc, h2.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+      const std::int64_t ts_c4 = g.pout.pair_exists(v_C2, v_U, max_ts(t - p_delta_cyc, ts_h2 + 1), min_ts(t - 1, vis_t), vis_e);
       const bool ok_close_4 = ts_c4 != kNoTs;
       if (ok_close_4) out.emit(4);
       // stage hop_3 (for_all, distinct)
       // scan T-CSR C2.out distinct-first: each C3 once, h3 = its earliest witness in range
-      // h3 in C2.out: ts >= max(t - delta_cyc, h2.t + 1), ts <= t - 1, eid <= eid(e0) (stream visibility); the upper bounds fold into the range end (no per-element break)
-      const Range r_h3 = g.out.range(v_C2, max_ts(t - p_delta_cyc, ts_h2 + 1), t - 1, e);
+      // h3 in C2.out: ts >= max(t - delta_cyc, h2.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+      const Range r_h3 = g.out.range(v_C2, max_ts(t - p_delta_cyc, ts_h2 + 1), min_ts(t - 1, vis_t), vis_e);
       for (std::uint32_t j_h3 = r_h3.lo; j_h3 < r_h3.hi; ++j_h3) {
         if (!g.out.distinct_first(j_h3, r_h3.lo)) continue;
         const std::uint32_t v_C3 = g.out.nbr[j_h3];
@@ -64,14 +67,14 @@ __device__ inline void tcyc_trigger_warp(const GraphView& g, const Params& p, st
         const std::int64_t ts_h3 = g.out.ts[j_h3];
         // stage close_5 (exists)
         // probe P-CSR C3.out for U: two binary searches; c5 = the earliest witness in range
-        // c5 in C3.out: ts >= max(t - delta_cyc, h3.t + 1), ts <= t - 1, eid <= eid(e0) (stream visibility); the upper bounds fold into the range end (no per-element break)
-        const std::int64_t ts_c5 = g.pout.pair_exists(v_C3, v_U, max_ts(t - p_delta_cyc, ts_h3 + 1), t - 1, e);
+        // c5 in C3.out: ts >= max(t - delta_cyc, h3.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+        const std::int64_t ts_c5 = g.pout.pair_exists(v_C3, v_U, max_ts(t - p_delta_cyc, ts_h3 + 1), min_ts(t - 1, vis_t), vis_e);
         const bool ok_close_5 = ts_c5 != kNoTs;
         if (ok_close_5) out.emit(5);
         // stage hop_4 (for_all, distinct)
         // scan T-CSR C3.out distinct-first: each C4 once, h4 = its earliest witness in range
-        // h4 in C3.out: ts >= max(t - delta_cyc, h3.t + 1), ts <= t - 1, eid <= eid(e0) (stream visibility); the upper bounds fold into the range end (no per-element break)
-        const Range r_h4 = g.out.range(v_C3, max_ts(t - p_delta_cyc, ts_h3 + 1), t - 1, e);
+        // h4 in C3.out: ts >= max(t - delta_cyc, h3.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+        const Range r_h4 = g.out.range(v_C3, max_ts(t - p_delta_cyc, ts_h3 + 1), min_ts(t - 1, vis_t), vis_e);
         for (std::uint32_t j_h4 = r_h4.lo; j_h4 < r_h4.hi; ++j_h4) {
           if (!g.out.distinct_first(j_h4, r_h4.lo)) continue;
           const std::uint32_t v_C4 = g.out.nbr[j_h4];
@@ -79,14 +82,14 @@ __device__ inline void tcyc_trigger_warp(const GraphView& g, const Params& p, st
           const std::int64_t ts_h4 = g.out.ts[j_h4];
           // stage close_6 (exists)
           // probe P-CSR C4.out for U: two binary searches; c6 = the earliest witness in range
-          // c6 in C4.out: ts >= max(t - delta_cyc, h4.t + 1), ts <= t - 1, eid <= eid(e0) (stream visibility); the upper bounds fold into the range end (no per-element break)
-          const std::int64_t ts_c6 = g.pout.pair_exists(v_C4, v_U, max_ts(t - p_delta_cyc, ts_h4 + 1), t - 1, e);
+          // c6 in C4.out: ts >= max(t - delta_cyc, h4.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+          const std::int64_t ts_c6 = g.pout.pair_exists(v_C4, v_U, max_ts(t - p_delta_cyc, ts_h4 + 1), min_ts(t - 1, vis_t), vis_e);
           const bool ok_close_6 = ts_c6 != kNoTs;
           if (ok_close_6) out.emit(6);
           // stage hop_5 (for_all, distinct)
           // scan T-CSR C4.out distinct-first: each C5 once, h5 = its earliest witness in range
-          // h5 in C4.out: ts >= max(t - delta_cyc, h4.t + 1), ts <= t - 1, eid <= eid(e0) (stream visibility); the upper bounds fold into the range end (no per-element break)
-          const Range r_h5 = g.out.range(v_C4, max_ts(t - p_delta_cyc, ts_h4 + 1), t - 1, e);
+          // h5 in C4.out: ts >= max(t - delta_cyc, h4.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+          const Range r_h5 = g.out.range(v_C4, max_ts(t - p_delta_cyc, ts_h4 + 1), min_ts(t - 1, vis_t), vis_e);
           for (std::uint32_t j_h5 = r_h5.lo; j_h5 < r_h5.hi; ++j_h5) {
             if (!g.out.distinct_first(j_h5, r_h5.lo)) continue;
             const std::uint32_t v_C5 = g.out.nbr[j_h5];
@@ -94,14 +97,14 @@ __device__ inline void tcyc_trigger_warp(const GraphView& g, const Params& p, st
             const std::int64_t ts_h5 = g.out.ts[j_h5];
             // stage close_7 (exists)
             // probe P-CSR C5.out for U: two binary searches; c7 = the earliest witness in range
-            // c7 in C5.out: ts >= max(t - delta_cyc, h5.t + 1), ts <= t - 1, eid <= eid(e0) (stream visibility); the upper bounds fold into the range end (no per-element break)
-            const std::int64_t ts_c7 = g.pout.pair_exists(v_C5, v_U, max_ts(t - p_delta_cyc, ts_h5 + 1), t - 1, e);
+            // c7 in C5.out: ts >= max(t - delta_cyc, h5.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+            const std::int64_t ts_c7 = g.pout.pair_exists(v_C5, v_U, max_ts(t - p_delta_cyc, ts_h5 + 1), min_ts(t - 1, vis_t), vis_e);
             const bool ok_close_7 = ts_c7 != kNoTs;
             if (ok_close_7) out.emit(7);
             // stage hop_6 (for_all, distinct)
             // scan T-CSR C5.out distinct-first: each C6 once, h6 = its earliest witness in range
-            // h6 in C5.out: ts >= max(t - delta_cyc, h5.t + 1), ts <= t - 1, eid <= eid(e0) (stream visibility); the upper bounds fold into the range end (no per-element break)
-            const Range r_h6 = g.out.range(v_C5, max_ts(t - p_delta_cyc, ts_h5 + 1), t - 1, e);
+            // h6 in C5.out: ts >= max(t - delta_cyc, h5.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+            const Range r_h6 = g.out.range(v_C5, max_ts(t - p_delta_cyc, ts_h5 + 1), min_ts(t - 1, vis_t), vis_e);
             for (std::uint32_t j_h6 = r_h6.lo; j_h6 < r_h6.hi; ++j_h6) {
               if (!g.out.distinct_first(j_h6, r_h6.lo)) continue;
               const std::uint32_t v_C6 = g.out.nbr[j_h6];
@@ -109,14 +112,14 @@ __device__ inline void tcyc_trigger_warp(const GraphView& g, const Params& p, st
               const std::int64_t ts_h6 = g.out.ts[j_h6];
               // stage close_8 (exists)
               // probe P-CSR C6.out for U: two binary searches; c8 = the earliest witness in range
-              // c8 in C6.out: ts >= max(t - delta_cyc, h6.t + 1), ts <= t - 1, eid <= eid(e0) (stream visibility); the upper bounds fold into the range end (no per-element break)
-              const std::int64_t ts_c8 = g.pout.pair_exists(v_C6, v_U, max_ts(t - p_delta_cyc, ts_h6 + 1), t - 1, e);
+              // c8 in C6.out: ts >= max(t - delta_cyc, h6.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+              const std::int64_t ts_c8 = g.pout.pair_exists(v_C6, v_U, max_ts(t - p_delta_cyc, ts_h6 + 1), min_ts(t - 1, vis_t), vis_e);
               const bool ok_close_8 = ts_c8 != kNoTs;
               if (ok_close_8) out.emit(8);
               // stage hop_7 (for_all, distinct)
               // scan T-CSR C6.out distinct-first: each C7 once, h7 = its earliest witness in range
-              // h7 in C6.out: ts >= max(t - delta_cyc, h6.t + 1), ts <= t - 1, eid <= eid(e0) (stream visibility); the upper bounds fold into the range end (no per-element break)
-              const Range r_h7 = g.out.range(v_C6, max_ts(t - p_delta_cyc, ts_h6 + 1), t - 1, e);
+              // h7 in C6.out: ts >= max(t - delta_cyc, h6.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+              const Range r_h7 = g.out.range(v_C6, max_ts(t - p_delta_cyc, ts_h6 + 1), min_ts(t - 1, vis_t), vis_e);
               for (std::uint32_t j_h7 = r_h7.lo; j_h7 < r_h7.hi; ++j_h7) {
                 if (!g.out.distinct_first(j_h7, r_h7.lo)) continue;
                 const std::uint32_t v_C7 = g.out.nbr[j_h7];
@@ -124,14 +127,14 @@ __device__ inline void tcyc_trigger_warp(const GraphView& g, const Params& p, st
                 const std::int64_t ts_h7 = g.out.ts[j_h7];
                 // stage close_9 (exists)
                 // probe P-CSR C7.out for U: two binary searches; c9 = the earliest witness in range
-                // c9 in C7.out: ts >= max(t - delta_cyc, h7.t + 1), ts <= t - 1, eid <= eid(e0) (stream visibility); the upper bounds fold into the range end (no per-element break)
-                const std::int64_t ts_c9 = g.pout.pair_exists(v_C7, v_U, max_ts(t - p_delta_cyc, ts_h7 + 1), t - 1, e);
+                // c9 in C7.out: ts >= max(t - delta_cyc, h7.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+                const std::int64_t ts_c9 = g.pout.pair_exists(v_C7, v_U, max_ts(t - p_delta_cyc, ts_h7 + 1), min_ts(t - 1, vis_t), vis_e);
                 const bool ok_close_9 = ts_c9 != kNoTs;
                 if (ok_close_9) out.emit(9);
                 // stage hop_8 (for_all, distinct)
                 // scan T-CSR C7.out distinct-first: each C8 once, h8 = its earliest witness in range
-                // h8 in C7.out: ts >= max(t - delta_cyc, h7.t + 1), ts <= t - 1, eid <= eid(e0) (stream visibility); the upper bounds fold into the range end (no per-element break)
-                const Range r_h8 = g.out.range(v_C7, max_ts(t - p_delta_cyc, ts_h7 + 1), t - 1, e);
+                // h8 in C7.out: ts >= max(t - delta_cyc, h7.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+                const Range r_h8 = g.out.range(v_C7, max_ts(t - p_delta_cyc, ts_h7 + 1), min_ts(t - 1, vis_t), vis_e);
                 for (std::uint32_t j_h8 = r_h8.lo; j_h8 < r_h8.hi; ++j_h8) {
                   if (!g.out.distinct_first(j_h8, r_h8.lo)) continue;
                   const std::uint32_t v_C8 = g.out.nbr[j_h8];
@@ -139,8 +142,8 @@ __device__ inline void tcyc_trigger_warp(const GraphView& g, const Params& p, st
                   const std::int64_t ts_h8 = g.out.ts[j_h8];
                   // stage close_10 (exists)
                   // probe P-CSR C8.out for U: two binary searches; c10 = the earliest witness in range
-                  // c10 in C8.out: ts >= max(t - delta_cyc, h8.t + 1), ts <= t - 1, eid <= eid(e0) (stream visibility); the upper bounds fold into the range end (no per-element break)
-                  const std::int64_t ts_c10 = g.pout.pair_exists(v_C8, v_U, max_ts(t - p_delta_cyc, ts_h8 + 1), t - 1, e);
+                  // c10 in C8.out: ts >= max(t - delta_cyc, h8.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+                  const std::int64_t ts_c10 = g.pout.pair_exists(v_C8, v_U, max_ts(t - p_delta_cyc, ts_h8 + 1), min_ts(t - 1, vis_t), vis_e);
                   const bool ok_close_10 = ts_c10 != kNoTs;
                   if (ok_close_10) out.emit(10);
                 }

@@ -106,6 +106,21 @@ TEST_CASE("cpu backend equals the oracle on fuzz graphs (seeds 0..999)") {
   CHECK(d.bad_seeds.empty());
 }
 
+// SPEC v2 §6.1 (P10): the same under timestamp visibility, 500 graphs.
+TEST_CASE("cpu backend equals the oracle on fuzz graphs under timestamp visibility (seeds 0..499)") {
+  Profile ts = registry_profile();
+  ts.visibility = Visibility::timestamp;
+  const std::vector<std::uint32_t> bins = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
+  const FuzzDiff d = fuzz_diff_cpu(ts, 0, 500, bins);
+  CHECK(d.graphs == 500);
+  for (const ProfileBlock& pb : ts.blocks) {
+    INFO(block_name(pb.block));
+    CHECK(d.mismatched_rows[int(pb.block)] == 0);
+  }
+  INFO("first bad seed " << (d.bad_seeds.empty() ? -1 : std::int64_t(d.bad_seeds[0])));
+  CHECK(d.bad_seeds.empty());
+}
+
 // SPEC §8: rows do not depend on the trigger range, the thread count or the schedule.
 TEST_CASE("cpu backend rows do not depend on the trigger range, threads or schedule") {
   for (std::uint64_t seed = 0; seed < 40; ++seed) {
