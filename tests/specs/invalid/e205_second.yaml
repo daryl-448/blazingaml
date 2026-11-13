@@ -1,4 +1,4 @@
-# expect: E203 20:30 -- ordering across intersection operands
+# expect: E205 20:57 -- a second order constraint in one intersection
 version: 1
 pattern: p
 block: fan_in
@@ -17,4 +17,4 @@ stages:
     edges: [e2, e3]
     output: I
     element: Y
-    constraints: [{skip_if: "e2.t >= e3.t"}]
+    constraints: [{skip_if: "e2.t >= e3.t"}, {skip_if: "e2.t > e3.t"}]

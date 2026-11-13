@@ -58,6 +58,19 @@ struct Emit {
   Loc loc;
 };
 
+// An order constraint between the two scanned edges of an intersection (SPEC v2 §6.2, D-27):
+// `skip_if: a.t <skip> b.t`, with a the src operand's edge and b the dst operand's (a constraint
+// written the other way round is flipped). It is existential: element y is kept when some pair
+// of witnesses (one on each operand, each within its own bounds) does not satisfy it, which is
+// `ext_a(a) <keep> ext_b(b)` over the earliest (min) or latest (max) witness of each operand.
+struct Order {
+  std::string a, b;               // the edge variables of operands[0] and operands[1]
+  Expr::Cmp skip = Expr::Cmp::ge;  // lt, le, gt or ge
+  bool a_latest = false, b_latest = false;  // which witness: latest (max) or earliest (min)
+  Expr::Cmp keep = Expr::Cmp::lt;
+  Loc loc;
+};
+
 struct Stage {
   std::string id;
   Op op = Op::for_all;
@@ -70,6 +83,7 @@ struct Stage {
   std::string probe_node;          // exists: the node looked for
   Mult multiplicity = Mult::distinct;  // for_all, count
   std::vector<Expr> filters;       // node filters (§6.4): skip the element / binding if any holds
+  std::optional<Order> order;      // intersection: at most one order constraint (SPEC v2 §6.2)
   bool gate = false;               // check stages: later stages run only if the check passed
   std::optional<Emit> emit;
   std::vector<std::string> exports;  // names later stages may use

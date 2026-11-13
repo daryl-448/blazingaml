@@ -1,0 +1,28 @@
+# sg_ordered (SPEC v2 §6.3, D-28): the gather role of sg, with intermediates that forward after
+# they receive (the paper's Fig. 3 option 1). A new feature: GFP has no counterpart.
+version: 1
+pattern: sg_ordered
+block: sg_ord
+window: {span: delta_sg, lower: closed}
+trigger: {edge: e0, src: X, dst: W}
+constraints: [{skip_if: "X == W"}]
+stages:
+  - id: sources
+    op: for_all
+    src: X.in
+    edge: e1
+    dst_var: S
+    constraints:
+      - break_if: "e1.t >= t"          # x received from s strictly before it forwarded
+      - skip_if: "S in [X, W]"
+  - id: intermediates
+    op: intersection
+    src: S.out
+    dst: W.in
+    edges: [e2, e3]
+    output: I
+    element: Y
+    constraints:
+      - skip_if: "Y == W"
+      - skip_if: "e2.t >= e3.t"        # order constraint (SPEC v2 §6.2): some s -> y precedes some y -> w
+    emit: {size: "len(I)"}

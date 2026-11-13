@@ -1,0 +1,16 @@
+# Semantic profile (SPEC v2 §6.3, E10): v1_default (D-7, D-8 windows, D-9 bins, stream visibility,
+# trigger credit) plus the sg_ord block: sg_ordered at the sg window and bins. Its six v1 blocks
+# are v1_default's. 77 columns.
+version: 2
+profile: sg_ordered_v1w
+visibility: stream
+credit: trigger
+k_max: 10
+blocks:                      # output order = listed order
+  fan_in:  {patterns: [fan_in],  window: 86400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50]}
+  fan_out: {patterns: [fan_out], window: 86400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50]}
+  deg_in:  {patterns: [deg_in],  window: 86400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50]}
+  deg_out: {patterns: [deg_out], window: 86400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50]}
+  sg:      {patterns: [sg_gather, sg_scatter], window: 21600, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20]}
+  tcyc:    {patterns: [tcyc], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}
+  sg_ord:  {patterns: [sg_ordered], window: 21600, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20]}

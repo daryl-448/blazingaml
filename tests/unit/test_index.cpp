@@ -94,7 +94,7 @@ TEST_CASE("index: P-CSR holds each node's distinct neighbours by id, each with i
   }
 }
 
-TEST_CASE("primitives: range, distinct_first, pair_exists and the counts equal naive scans") {
+TEST_CASE("primitives: range, distinct_first, pair_exists, pair_latest and the counts equal naive scans") {
   Lcg r{7};
   for (std::uint64_t seed = 0; seed < 300; ++seed) {
     const FuzzGraph fg = fuzz_graph(seed);
@@ -108,7 +108,8 @@ TEST_CASE("primitives: range, distinct_first, pair_exists and the counts equal n
       const std::uint32_t x = r.below(fg.n);
       const std::int64_t lo = std::int64_t(r.below(std::uint32_t(T) + 4)) - 2;
       const std::int64_t hi = r.below(4) == 0 ? kNoUpper : lo + std::int64_t(r.below(std::uint32_t(T) + 2)) - 1;
-      const std::uint32_t max_eid = r.below(std::uint32_t(fg.src.size()) + 1);
+      // kAnyEid: no eid bound (timestamp visibility, SPEC v2 §6.1).
+      const std::uint32_t max_eid = r.below(5) == 0 ? kAnyEid : r.below(std::uint32_t(fg.src.size()) + 1);
       INFO("seed " << seed << " out " << out << " x " << x << " lo " << lo << " hi " << hi << " eid<= " << max_eid);
       const auto list = naive_list(fg, x, out);
 
@@ -155,6 +156,11 @@ TEST_CASE("primitives: range, distinct_first, pair_exists and the counts equal n
             break;
           }
         CHECK(pc.pair_exists(x, y, lo, hi, max_eid) == want);
+        // pair_latest (SPEC v2 §6.2): the latest in-bounds edge.
+        std::int64_t latest = kNoTs;
+        for (const Entry& en : list)
+          if (en.nbr == y && in_bounds(en, lo, hi, max_eid)) latest = en.ts;
+        CHECK(pc.pair_latest(x, y, lo, hi, max_eid) == latest);
       }
     }
   }

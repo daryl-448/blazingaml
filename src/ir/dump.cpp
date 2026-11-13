@@ -69,6 +69,12 @@ void stage(std::ostringstream& o, const Stage& s, const std::string& ind) {
   if (!s.probe_node.empty()) o << ind << "  probe for " << s.probe_node << "\n";
   if (!s.element_var.empty()) o << ind << "  element " << s.element_var << "\n";
   for (const Expr& f : s.filters) o << ind << "  skip if " << to_string(f) << "\n";
+  if (s.order) {
+    const Order& r = *s.order;
+    o << ind << "  order skip if " << r.a << ".t " << dsl::cmp_text(r.skip) << " " << r.b << ".t: keep if "
+      << (r.a_latest ? "max(" : "min(") << r.a << ") " << dsl::cmp_text(r.keep) << " " << (r.b_latest ? "max(" : "min(")
+      << r.b << ")\n";
+  }
   if (s.emit) o << ind << "  emit " << to_string(s.emit->size) << " (min " << s.emit->min_size << ")\n";
   if (!s.exports.empty()) {
     o << ind << "  exports";

@@ -39,8 +39,11 @@ std::vector<const PatternInfo*> patterns_for(Block b) {
 }
 
 void check_backend_config(const FeatureConfig& cfg, const std::string& config_name) {
+  // A v1 config covers the v1 blocks. A pattern of a v2 block (sg_ordered, SPEC v2 §6.3) runs
+  // only from a profile that lists it, so a v1 config that leaves its block out is not E402.
   std::vector<PatternRef> refs;
-  for (const PatternInfo& p : registered_patterns()) refs.push_back({p.name, p.block, p.block_loc});
+  for (const PatternInfo& p : registered_patterns())
+    if (const auto b = parse_block(p.block); !b || is_v1_block(*b)) refs.push_back({p.name, p.block, p.block_loc});
   check_registration(refs, cfg, config_name);
   for (const PatternInfo& p : registered_patterns())
     if (const ConstInfo* k = find_const(p, "K_MAX"); k && k->value != cfg.k_max)

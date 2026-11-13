@@ -23,9 +23,9 @@ Schedule parse_schedule(const std::string& s);
 // The registered patterns that emit into block b, in registry order.
 std::vector<const PatternInfo*> patterns_for(Block b);
 
-// The start-up checks of the generated backends (SPEC §7.6): E402 for every registered pattern
-// (check_registration), and the config's k_max must equal the K_MAX const of every pattern that
-// declares one, since K_MAX is compiled in. Throws std::runtime_error.
+// The start-up checks of the generated backends (SPEC §7.6): E402 for every registered pattern of
+// a v1 block (check_registration), and the config's k_max must equal the K_MAX const of every
+// pattern that declares one, since K_MAX is compiled in. Throws std::runtime_error.
 void check_backend_config(const FeatureConfig& cfg, const std::string& config_name);
 
 // The K_MAX the library was compiled with (the const of the patterns that declare it).

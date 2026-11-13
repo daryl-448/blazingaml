@@ -14,7 +14,8 @@ namespace blz {
 // `bins`, and the compiled K_MAX for the oracle's tcyc cap. Both schedules are checked.
 // The profile forms (SPEC v2 §10) take the blocks, their patterns and k_max from `prof`; the
 // windows still come from each graph, and the bins from `bins`, or from each profile block when
-// `bins` is empty. The forms without a profile use registry_profile(), which is the v1 behaviour.
+// `bins` is empty. The forms without a profile use registry_profile(): every registered block (v1's
+// six, and sg_ord from P10).
 struct FuzzDiff {
   std::uint64_t graphs = 0, edges = 0;
   std::array<std::uint64_t, kAllBlocks.size()> mismatched_rows{};  // per block, both schedules

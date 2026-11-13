@@ -10,7 +10,7 @@ namespace blz {
 
 std::string_view block_name(Block b) {
   static constexpr std::array<std::string_view, kAllBlocks.size()> names = {
-      "fan_in", "fan_out", "deg_in", "deg_out", "sg", "tcyc"};
+      "fan_in", "fan_out", "deg_in", "deg_out", "sg", "tcyc", "sg_ord"};
   return names[int(b)];
 }
 

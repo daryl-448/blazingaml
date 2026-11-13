@@ -48,6 +48,7 @@ std::vector<std::string> oracle_patterns(Block b) {
     case Block::deg_out: return {"deg_out"};
     case Block::sg: return {"sg_gather", "sg_scatter"};
     case Block::tcyc: return {"tcyc"};
+    case Block::sg_ord: return {"sg_ordered"};
   }
   return {};
 }

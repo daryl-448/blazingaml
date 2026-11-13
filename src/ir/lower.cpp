@@ -267,10 +267,74 @@ class Lowerer {
     }
   }
 
-  // Classifies one constraint of a stage (§6.4) into time bounds on its operands or node filters.
+  static bool mentions_scanned(const Expr& e, const Scope& sc) {
+    std::vector<const Expr*> r;
+    edge_refs(e, r);
+    for (const Expr* x : r)
+      if (sc.at(x->name).role == EdgeRole::scanned) return true;
+    return false;
+  }
+
+  // The comparisons in `e` whose two sides both read an edge the stage scans (SPEC v2 §6.2), each
+  // with whether it sits inside an `or`.
+  static void cross_cmps(const Expr& e, const Scope& sc, bool in_or, std::vector<std::pair<const Expr*, bool>>& out) {
+    if (e.k == Expr::K::Cmp && mentions_scanned(e.kids[0], sc) && mentions_scanned(e.kids[1], sc))
+      out.emplace_back(&e, in_or);
+    for (const Expr& k : e.kids) cross_cmps(k, sc, in_or || e.k == Expr::K::Or, out);
+  }
+
+  // `ea.t OP eb.t` between the two scanned edges of an intersection (SPEC v2 §6.2): the stage's
+  // order constraint, lowered through the earliest and latest witnesses (D-27). E205 otherwise.
+  static void order_constraint(const Expr& d, Stage& st) {
+    const std::string what = "'" + to_string(d) + "' compares the times of edges this stage scans";
+    if (d.cmp == Expr::Cmp::eq || d.cmp == Expr::Cmp::ne)
+      fail("E205", d.loc,
+           what + " with " + dsl::cmp_text(d.cmp) + "; an order constraint uses <, <=, > or >=");
+    const Expr& l = d.kids[0];
+    const Expr& r = d.kids[1];
+    if (l.k != Expr::K::EdgeT || r.k != Expr::K::EdgeT)
+      fail("E205", d.loc, what + " with an offset; an order constraint compares the bare times: ea.t OP eb.t");
+    if (st.op != Op::intersection || l.name == r.name)
+      fail("E205", d.loc,
+           what + "; an order constraint compares the two scanned edges of an intersection with each other");
+    if (st.order)
+      fail("E205", d.loc,
+           what + "; stage '" + st.id + "' already has the order constraint at " + format_loc(st.order->loc) +
+               ", and an intersection takes at most one");
+    Order o;
+    o.a = st.operands[0].edge;
+    o.b = st.operands[1].edge;
+    o.skip = l.name == o.a ? d.cmp : dsl::flip(d.cmp);  // now: a.t skip b.t
+    // Keep y when some witness pair fails the skip (SPEC v2 §6.2, the lowering table).
+    switch (o.skip) {
+      case Expr::Cmp::ge: o.keep = Expr::Cmp::lt; o.b_latest = true; break;  // min(a) < max(b)
+      case Expr::Cmp::gt: o.keep = Expr::Cmp::le; o.b_latest = true; break;  // min(a) <= max(b)
+      case Expr::Cmp::le: o.keep = Expr::Cmp::gt; o.a_latest = true; break;  // max(a) > min(b)
+      case Expr::Cmp::lt: o.keep = Expr::Cmp::ge; o.a_latest = true; break;  // max(a) >= min(b)
+      default: break;
+    }
+    o.loc = d.loc;
+    st.order = std::move(o);
+  }
+
+  // Classifies one constraint of a stage (§6.4) into time bounds on its operands, node filters
+  // or the order constraint of an intersection (SPEC v2 §6.2).
   void classify(const dsl::Constraint& c, const Scope& sc, Stage& st) const {
     Expr pred = c.pred;
     expect_ty(pred, sc, Ty::bool_, "a constraint");
+    // An order constraint must be a skip_if of its own: not in a break_if, not inside `or`.
+    std::vector<std::pair<const Expr*, bool>> cross;
+    cross_cmps(pred, sc, false, cross);
+    for (const auto& [x, in_or] : cross) {
+      if (c.is_break)
+        fail("E205", x->loc,
+             "break_if '" + to_string(*x) + "' compares the times of edges this stage scans; an order "
+             "constraint is a skip_if");
+      if (in_or)
+        fail("E205", x->loc,
+             "'" + to_string(*x) + "' compares the times of edges this stage scans inside 'or'; an order "
+             "constraint must be a skip_if of its own");
+    }
     // skip_if (a or b) == skip_if a; skip_if b (and the same for break_if).
     std::vector<Expr> parts;
     split_or(pred, parts);
@@ -282,6 +346,11 @@ class Lowerer {
         const EdgeRole role = sc.at(r->name).role;
         if (role == EdgeRole::scanned) scanned.push_back(r);
         if (role == EdgeRole::witness) witness.push_back(r);
+      }
+      if (!scanned.empty() && d.k == Expr::K::Cmp && mentions_scanned(d.kids[0], sc) &&
+          mentions_scanned(d.kids[1], sc)) {
+        order_constraint(d, st);
+        continue;
       }
       if (scanned.empty()) {
         if (c.is_break)
@@ -301,20 +370,9 @@ class Lowerer {
         fail("E203", d.loc,
              "'" + to_string(d) + "' mixes the scanned edge '" + scanned[0]->name +
                  "' with other tests; a constraint on a scanned edge must be one comparison ex.t OP τ");
-      auto mentions_scanned = [&](const Expr& side) {
-        std::vector<const Expr*> r;
-        edge_refs(side, r);
-        for (const Expr* x : r)
-          if (sc.at(x->name).role == EdgeRole::scanned) return true;
-        return false;
-      };
       const Expr& lhs = d.kids[0];
       const Expr& rhs = d.kids[1];
-      const bool l = mentions_scanned(lhs), r = mentions_scanned(rhs);
-      if (l && r)
-        fail("E203", d.loc,
-             "'" + to_string(d) + "' compares edges that this stage scans with each other "
-             "(cross-operand ordering inside an intersection is P6)");
+      const bool l = mentions_scanned(lhs, sc);  // only one side does: both is an order constraint
       const Expr& ex = l ? lhs : rhs;
       const Expr& tau = l ? rhs : lhs;
       if (ex.k != Expr::K::EdgeT)
@@ -475,8 +533,11 @@ class Lowerer {
     };
     if (out.binding) {
       export_name(out.bind_var, local.at(out.bind_var));
-      for (const Operand& o : out.operands)
-        export_name(o.edge, symbol(Sym::edge, Ty::edge, local.at(o.edge).loc, EdgeRole::witness, st.id.s));
+      // An ordered intersection's edges have no single witness, so they stay local (SPEC v2 §6.2;
+      // a later use is E102).
+      if (!out.order)
+        for (const Operand& o : out.operands)
+          export_name(o.edge, symbol(Sym::edge, Ty::edge, local.at(o.edge).loc, EdgeRole::witness, st.id.s));
     } else if (st.op == Op::exists) {
       // The witness exists only when the probe found one, i.e. only behind a gate.
       if (out.gate)

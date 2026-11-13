@@ -37,10 +37,10 @@ std::string error_of(const FeatureConfig& cfg) {
 
 }  // namespace
 
-TEST_CASE("registry: the library's seven patterns, one block each, sg from two") {
+TEST_CASE("registry: the library's eight patterns, one block each, sg from two") {
   std::set<std::string> names;
   for (const PatternInfo& p : registered_patterns()) names.insert(p.name);
-  CHECK(names == std::set<std::string>{"deg_in", "deg_out", "fan_in", "fan_out", "sg_gather", "sg_scatter", "tcyc"});
+  CHECK(names == std::set<std::string>{"deg_in", "deg_out", "fan_in", "fan_out", "sg_gather", "sg_ordered", "sg_scatter", "tcyc"});
   for (Block b : kAllBlocks) CHECK(!patterns_for(b).empty());
   CHECK(patterns_for(Block::sg).size() == 2);
   CHECK(compiled_k_max() == 10);
@@ -80,7 +80,7 @@ TEST_CASE("cpu backend matches the GFP golden probes") {
     }
     const GraphIndex idx(src, dst, ts, n);
     const std::uint64_t m = src.size();
-    for (Block b : kAllBlocks) {
+    for (Block b : kV1Blocks) {  // GFP has no sg_ord
       const auto got = mine(idx, b, {c["tw"].get<std::int32_t>(), bins}, 0, m);
       for (std::uint64_t e = 0; e < m; ++e) {
         const auto want = c["output"][e][std::string(block_name(b))].get<std::vector<std::uint32_t>>();

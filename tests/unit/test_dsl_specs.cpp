@@ -58,14 +58,14 @@ TEST_CASE("invalid-spec suite: every file fails with its declared code and posit
       covered.insert(code);
     }
   }
-  // AC5: E101–E401 (E402 needs the feature config: test_registration.cpp).
-  for (const char* c : {"E101", "E102", "E103", "E201", "E202", "E203", "E204", "E301", "E401"})
+  // AC5: E101–E401 (E402 needs the feature config: test_registration.cpp), and E205 (SPEC v2 §6.2).
+  for (const char* c : {"E101", "E102", "E103", "E201", "E202", "E203", "E204", "E205", "E301", "E401"})
     CHECK(covered.count(c) == 1);
 }
 
 TEST_CASE("library: every pattern compiles, and its IR equals the snapshot") {
   const auto files = yaml_files("patterns");
-  REQUIRE(files.size() == 7);
+  REQUIRE(files.size() == 8);
   for (const fs::path& f : files) {
     INFO(f.filename().string() << " (regenerate with: blzc --dump-ir --out tests/specs/ir patterns/*.yaml)");
     const ir::Pattern p = ir::compile_file(f.string());

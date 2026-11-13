@@ -108,8 +108,26 @@ void plan_stage(Stage& st, const Pattern& p) {
                          dir_name(b.dir) +
                          " over distinct nodes: per trigger, scan the side with the smaller window "
                          "(T-CSR, distinct-first) and probe the other (P-CSR)");
+      if (st.order) {
+        // Which witness each side needs, and where it comes from (SPEC v2 §6.2).
+        const Order& r = *st.order;
+        auto ext = [](bool latest, const std::string& e) { return std::string(latest ? "max(" : "min(") + e + ")"; };
+        auto from = [&](bool latest, bool scanned) {
+          return std::string(latest ? "P-CSR pair_latest" : scanned ? "the scanned entry (distinct-first)" : "the probe (pair_exists)") +
+                 (latest && scanned ? " on the scanned side" : latest ? " (the probe)" : "");
+        };
+        st.notes.push_back("order constraint: skip_if " + r.a + ".t " + dsl::cmp_text(r.skip) + " " + r.b +
+                           ".t (existential over witness pairs), so an element is kept when " + ext(r.a_latest, r.a) +
+                           " " + dsl::cmp_text(r.keep) + " " + ext(r.b_latest, r.b));
+        st.notes.push_back("order witnesses: scanning " + a.node + "." + dir_name(a.dir) + ", " + ext(r.a_latest, r.a) +
+                           " = " + from(r.a_latest, true) + " and " + ext(r.b_latest, r.b) + " = " +
+                           from(r.b_latest, false) + "; scanning " + b.node + "." + dir_name(b.dir) + ", " +
+                           ext(r.b_latest, r.b) + " = " + from(r.b_latest, true) + " and " + ext(r.a_latest, r.a) +
+                           " = " + from(r.a_latest, false));
+      }
       if (st.binding) {
-        st.notes.push_back("binds " + st.bind_var + " once per common neighbour");
+        st.notes.push_back("binds " + st.bind_var + " once per common neighbour" +
+                           (st.order ? std::string("; its edges are not exported (no single witness)") : ""));
       } else {
         st.materialize = false;  // the type system only lets a set appear inside len()
         st.notes.push_back("no materialization: " + st.output_var + " is used only through len(), so " +

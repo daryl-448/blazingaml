@@ -11,14 +11,16 @@
 
 namespace blz {
 
-// The tests of §3.4. "Order relaxation" needs sg_ordered and joins in P10.
-enum class MetaTest { prefix_closure, relabeling, time_shift, visibility_invariance };
-inline constexpr std::array<MetaTest, 4> kMetaTests = {MetaTest::prefix_closure, MetaTest::relabeling,
-                                                       MetaTest::time_shift, MetaTest::visibility_invariance};
+// The tests of §3.4.
+enum class MetaTest { prefix_closure, relabeling, time_shift, visibility_invariance, order_relaxation };
+inline constexpr std::array<MetaTest, 5> kMetaTests = {MetaTest::prefix_closure, MetaTest::relabeling,
+                                                       MetaTest::time_shift, MetaTest::visibility_invariance,
+                                                       MetaTest::order_relaxation};
 const char* meta_test_name(MetaTest t);
 
 // Whether test `t` runs for `prof` on `backend`: prefix closure needs trigger credit;
-// visibility invariance needs a tcyc block (every backend runs both visibilities since P10).
+// visibility invariance needs a tcyc block (every backend runs both visibilities since P10);
+// order relaxation needs an sg_ord block.
 bool meta_test_applies(MetaTest t, const Profile& prof, Backend backend);
 
 struct MetamorphicResult {
@@ -43,7 +45,9 @@ struct MetamorphicResult {
 //   - time shift: adding a seeded constant in [1, 2^30] to every timestamp leaves every row
 //     unchanged;
 //   - visibility invariance: tcyc mined under the other visibility (stream <-> timestamp) gives
-//     the same rows (SPEC v2 §6.1).
+//     the same rows (SPEC v2 §6.1);
+//   - order relaxation: per row, sg_ord's instance count (the sum over its bins) is at most that
+//     of sg_gather mined alone at sg_ord's window and bins, by the same backend (SPEC v2 §6.3).
 // check_profile_backend(prof, backend) must hold; this throws otherwise.
 MetamorphicResult metamorphic(const Profile& prof, Backend backend, std::uint64_t s0, std::uint64_t s1,
                               std::span<const std::uint32_t> bins, std::span<const std::uint32_t> thresholds);

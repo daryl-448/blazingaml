@@ -259,6 +259,13 @@ As implemented (P7): `src/runtime/metamorphic.{hpp,cpp}` and
 - Fast suite: 200 graphs on the oracle and cpu, 60 graphs of `v1_parity` on cpu, and 200 on CUDA.
   Slow suite: `metamorphic_<profile>_<backend>_2k` for both frozen profiles.
 
+As implemented (P10): order relaxation mines `sg_gather` alone, with the same backend, at
+`sg_ord`'s window and bins, and compares the per-row sums. The sum is sound because the last bin is
+open-ended: it counts every instance of size ≥ max(2, b₀). The oracle mines `sg_gather` alone
+through `Oracle::mine_sg_gather`, because its sg block is both roles. `registry_profile()` now
+includes `sg_ord`, so the fast suite runs order relaxation on every backend. The slow suite adds
+`metamorphic_sg_ordered_{v1w,tsvis}_<backend>_2k`.
+
 ### 3.5 Ground-truth join
 
 `blz gt-join --graph data/hi_small.blzg --csv dataset/HI-Small_Trans.csv --patterns dataset/HI-Small_Patterns.txt --out results/gt_join.json`
@@ -742,6 +749,26 @@ allows exactly one such predicate per intersection stage, as an **order constrai
   `break_if`, with `==` / `!=`, with an offset, or between edges that are not the stage's two
   scanned edges is **E205**. Other mixed predicates stay E203.
 
+As implemented (P10):
+
+- `lower.cpp` classifies the parts of a stage's `skip_if` after `split_or`. Before splitting, a
+  comparison between the two scanned edges inside `or`, or in a `break_if`, is E205. A part that
+  compares two scanned edges goes to the order constraint. Its checks run in this order: `==`/`!=`,
+  an offset (an operand that is not a bare `e.t`), an edge that is not one of the stage's two
+  (including the same edge on both sides), then a second constraint. All are E205.
+- A constraint written in reverse (`eb.t OP ea.t`) is flipped first. The IR's `Order` holds `a`,
+  `b`, the normalized `skip`, `keep`, and whether each side needs its latest witness
+  (`a_latest`, `b_latest`). `blzc --dump-ir` prints `order skip if … : keep if min(e2) < max(e3)`.
+- In the generated loop, the probed side's witness comes from the existence probe itself:
+  `pair_latest` or `pair_exists`, according to the side the runtime scans. The scanned side's
+  earliest witness is its distinct-first entry. Its latest witness costs one more `pair_latest`
+  call, on the scanned side's own P-CSR. Every call takes the visibility bounds (`vis_t`, `vis_e`).
+- A unit test checks every operator, in both writing orders, against brute force over random
+  witness lists with ties and duplicates.
+- A binding intersection with an order constraint exports no edges, so a later use is E102 (case
+  `e102_ordered_edge_scope.yaml`). The P6 case `e203_cross_operand.yaml` is replaced by six E205
+  cases. A same-edge comparison in a count stage (`e1.t <= e1.t`) is E205 now.
+
 ### 6.3 `sg_ordered` [D-28]
 
 Fig. 3 option 1 [P §2.1]: each intermediate forwards after it receives. Under backward windows the
@@ -795,6 +822,19 @@ stages:
   E10 reports their instance counts and their F1 effect: on validation, and after the freeze on test
   as sensitivity only.
 
+As implemented (P10):
+
+- `patterns/sg_ordered.yaml` is the spec above. Block `sg_ord` is the seventh block (`kAllBlocks`).
+  `kV1Blocks` holds the six v1 blocks; GFP probes and v1 feature configs use those.
+- A v1 feature config does not define `sg_ord`, so the E402 check of v1 configs skips registered
+  patterns of known non-v1 blocks. A profile must still list every block it mines.
+- The oracle's `sg_ordered` enumerates every witness pair. For each source s and each y it
+  collects the times of `s→y` and of `y→w` in the window, and keeps y when some `a < b`.
+- Each profile is v1_default's six blocks plus `sg_ord: {patterns: [sg_ordered], window: 21600,
+  bins: sg's}`, 77 columns. They differ only in `visibility`.
+- `blz fuzz` (the GFP comparison) runs the six v1 blocks.
+- Slow tests: `fuzz_diff_sg_ordered_{v1w,tsvis}_{cpu,cuda}_10k` and the metamorphic tests above.
+
 ### 6.4 Compiler changes
 
 | Item | Change |
@@ -806,6 +846,10 @@ stages:
 | IR | `Stage` gains `order?: {a: edge_var, b: edge_var, keep_if: (min\|max, cmp, min\|max)}`. `blzc --dump-ir` prints it. |
 | Snapshots | The library specs lose `visibility:`; every snapshot is regenerated once, in its own commit, before any other P10 change. |
 | Invalid-spec suite | At least one case per E205 form and one per E403/E404 registration case, each with its exact `file:line:col`. |
+
+As implemented (P10): the IR's `order` is `{a, b, skip, keep, a_latest, b_latest}`. `keep_if` is
+`(a_latest ? max : min, keep, b_latest ? max : min)`. The E205 cases are `e205_second`,
+`e205_in_or`, `e205_break_if`, `e205_equality`, `e205_offset` and `e205_same_edge`.
 
 ### 6.5 Cost
 

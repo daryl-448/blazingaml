@@ -62,7 +62,7 @@ TEST_CASE("cuda backend matches the GFP golden probes") {
     const DeviceGraph dg(idx.view());
     const std::uint64_t m = src.size();
     for (std::uint32_t h : kThresholds)
-      for (Block b : kAllBlocks) {
+      for (Block b : kV1Blocks) {  // GFP has no sg_ord
         const auto got = mine_gpu(miner, dg, b, {c["tw"].get<std::int32_t>(), bins}, 0, m, h);
         for (std::uint64_t e = 0; e < m; ++e) {
           const auto want = c["output"][e][std::string(block_name(b))].get<std::vector<std::uint32_t>>();

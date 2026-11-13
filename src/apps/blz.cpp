@@ -513,7 +513,7 @@ int fuzz(const std::string& seeds, const std::string& bins_opt, int k_max, const
       rows.insert(rows.end(), {std::int64_t(seed), std::int64_t(e), fg.src[e], fg.dst[e],
                                fg.ts[e], fg.window});
     const blz::Oracle oracle({fg.src, fg.dst, fg.ts, fg.n});
-    for (blz::Block b : blz::kAllBlocks) {
+    for (blz::Block b : blz::kV1Blocks) {  // GFP's blocks: sg_ord has no GFP counterpart
       auto& f = feats[b];
       const std::size_t at = f.size();
       f.resize(at + m * bins.size(), 0);

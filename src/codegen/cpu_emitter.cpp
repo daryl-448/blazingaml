@@ -415,7 +415,27 @@ class CpuEmitter {
     w.line("const std::uint32_t " + elem + " = " + L + ".nbr[" + j + "];");
     for (const Expr& f : s.filters) w.line("if (" + cx(f) + ") continue;");
     const bool witnesses = s.binding && (used(a.edge) || used(b.edge));
-    if (witnesses) {
+    if (s.order) {
+      // The order constraint (SPEC v2 §6.2, see the planner notes): the probe tests membership
+      // and gives the probed side's witness; the scanned side's earliest witness is the scanned
+      // entry, its latest comes from its own P-CSR. Ordered edges are never exported (lowering).
+      const ir::Order& r = *s.order;
+      const auto fn = [](bool latest) { return std::string(latest ? ".pair_latest(" : ".pair_exists("); };
+      const std::string args = px + ", " + elem + ", " + plo + ", " + phi + ", vis_e)";
+      const auto scanned_w = [&](const Operand& o, bool latest, const std::string& lo, const std::string& hi) {
+        return latest ? pcsr(o.dir) + ".pair_latest(" + node(o.node) + ", " + elem + ", " + lo + ", " + hi + ", vis_e)"
+                      : "std::int64_t(" + L + ".ts[" + j + "])";
+      };
+      const std::string pw = id("pw_", sid), sw = id("sw_", sid), keep = dsl::cmp_text(r.keep);
+      w.line("const std::int64_t " + pw + " = " + sa + " ? " + P + fn(r.b_latest) + args + " : " + P + fn(r.a_latest) +
+             args + ";  // the probed side's witness");
+      w.line("if (" + pw + " == kNoTs) continue;");
+      w.line("const std::int64_t " + sw + " = " + sa + " ? " + scanned_w(a, r.a_latest, la, ha) + " : " +
+             scanned_w(b, r.b_latest, lb, hb) + ";  // the scanned side's witness");
+      w.line("if (!(" + sa + " ? " + sw + " " + keep + " " + pw + " : " + pw + " " + keep + " " + sw +
+             ")) continue;  // keep when " + std::string(r.a_latest ? "max(" : "min(") + r.a + ") " + keep + " " +
+             (r.b_latest ? "max(" : "min(") + r.b + ")");
+    } else if (witnesses) {
       w.line("const std::int64_t " + id("w_", sid) + " = " + P + ".pair_exists(" + px + ", " + elem + ", " + plo +
              ", " + phi + ", vis_e);");
       w.line("if (" + id("w_", sid) + " == kNoTs) continue;");

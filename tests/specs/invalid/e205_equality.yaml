@@ -1,0 +1,20 @@
+# expect: E205 20:30 -- an order constraint with ==
+version: 1
+pattern: p
+block: fan_in
+window: {span: d, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+stages:
+  - id: sources
+    op: for_all
+    src: U.in
+    edge: e1
+    dst_var: S
+  - id: mid
+    op: intersection
+    src: S.out
+    dst: V.in
+    edges: [e2, e3]
+    output: I
+    element: Y
+    constraints: [{skip_if: "e2.t == e3.t"}]

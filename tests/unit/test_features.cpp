@@ -63,14 +63,14 @@ TEST_CASE("committed configs load (SPEC §4.8)") {
   const auto def = load_feature_config(dir + "features_default.yaml");
   CHECK(def.k_max == 10);
   std::size_t cols = 0;
-  for (Block b : kAllBlocks) {
+  for (Block b : kV1Blocks) {
     REQUIRE(def[b]);
     cols += def[b]->bins.size();
     CHECK(def[b]->window == (b == Block::sg ? 21600 : 86400));
   }
   CHECK(cols == 67);
   const auto par = load_feature_config(dir + "features_parity.yaml");
-  for (Block b : kAllBlocks) {
+  for (Block b : kV1Blocks) {
     REQUIRE(par[b]);
     CHECK(par[b]->window == def[b]->window);
     CHECK(par[b]->bins.size() == 32);

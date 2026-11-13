@@ -1,0 +1,26 @@
+# expect: E102 25:38 -- an ordered intersection's edges are not exported (SPEC v2 §6.2)
+version: 1
+pattern: p
+block: fan_in
+window: {span: d, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+stages:
+  - id: sources
+    op: for_all
+    src: U.in
+    edge: e1
+    dst_var: S
+  - id: mid
+    op: intersection
+    src: S.out
+    dst: V.in
+    edges: [e2, e3]
+    dst_var: Y
+    constraints: [{skip_if: "e2.t >= e3.t"}]
+  - id: back
+    op: exists
+    src: Y.out
+    node: U
+    edge: e4
+    constraints: [{skip_if: "e4.t <= e2.t"}]
+    emit: {size: 2}

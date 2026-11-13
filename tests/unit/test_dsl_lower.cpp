@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <algorithm>
 #include <string>
 
 #include "ir/ir.hpp"
@@ -143,9 +144,88 @@ TEST_CASE("lower: classification errors") {
   CHECK(code_of(count_with("break_if", "t > e0.t")) == "E202");
   CHECK(code_of(count_with("skip_if", "not e1.t > t")) == "E203");
   CHECK(code_of(count_with("skip_if", "e1.t != t")) == "E203");
-  CHECK(code_of(count_with("skip_if", "e1.t <= e1.t")) == "E203");
+  CHECK(code_of(count_with("skip_if", "e1.t <= e1.t")) == "E205");  // not two scanned edges of an intersection
   CHECK(code_of(count_with("skip_if", "e0.t > t")) == "ok");  // e0.t is the trigger's own time
   CHECK(code_of(count_with("skip_if", "X == n")) == "E102");  // the output is not visible yet
+}
+
+namespace {
+
+// An intersection check stage over S.out (e2) and V.in (e3), with one constraint.
+std::string intersection_with(const std::string& kw, const std::string& pred) {
+  return "stages:\n  - {id: src, op: for_all, src: U.in, edge: e1, dst_var: S}\n"
+         "  - id: mid\n    op: intersection\n    src: S.out\n    dst: V.in\n    edges: [e2, e3]\n"
+         "    output: I\n    element: Y\n    constraints: [{" + kw + ": \"" + pred + "\"}]\n";
+}
+
+bool holds(ir::Expr::Cmp c, std::int64_t a, std::int64_t b) {
+  switch (c) {
+    case ir::Expr::Cmp::lt: return a < b;
+    case ir::Expr::Cmp::le: return a <= b;
+    case ir::Expr::Cmp::gt: return a > b;
+    case ir::Expr::Cmp::ge: return a >= b;
+    case ir::Expr::Cmp::eq: return a == b;
+    case ir::Expr::Cmp::ne: return a != b;
+  }
+  return false;
+}
+
+}  // namespace
+
+// SPEC v2 §6.2 (D-27): the order constraint keeps an element exactly when some witness pair
+// fails the skip; the IR's earliest/latest lowering is checked against every pair.
+TEST_CASE("lower: order constraints, lowered through earliest and latest witnesses, equal brute force") {
+  std::uint64_t state = 11;
+  auto next = [&](std::uint64_t k) {
+    state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+    return (state >> 33) % k;
+  };
+  const std::pair<const char*, ir::Expr::Cmp> ops[] = {
+      {"<", ir::Expr::Cmp::lt}, {"<=", ir::Expr::Cmp::le}, {">", ir::Expr::Cmp::gt}, {">=", ir::Expr::Cmp::ge}};
+  for (const auto& [op, written] : ops)
+    for (bool reversed : {false, true}) {
+      const std::string pred = reversed ? std::string("e3.t ") + op + " e2.t" : std::string("e2.t ") + op + " e3.t";
+      INFO(pred);
+      const ir::Pattern p = compile(intersection_with("skip_if", pred));
+      const ir::Stage& mid = p.levels.at(1).checks.at(0);
+      REQUIRE(mid.order);
+      const ir::Order& o = *mid.order;
+      CHECK(o.a == "e2");
+      CHECK(o.b == "e3");
+      CHECK(mid.filters.empty());
+      CHECK(mid.operands[0].lo.size() == 1);  // the window bound only: no time bound came from it
+      CHECK(mid.operands[1].lo.size() == 1);
+      CHECK(mid.operands[0].hi.empty());
+      for (int trial = 0; trial < 2000; ++trial) {
+        std::vector<std::int64_t> A(1 + next(4)), B(1 + next(4));  // ties and duplicates: values in [0, 5)
+        for (auto& x : A) x = std::int64_t(next(5));
+        for (auto& x : B) x = std::int64_t(next(5));
+        bool want = false;  // some pair (a, b) for which the skip predicate is false
+        for (std::int64_t a : A)
+          for (std::int64_t b : B) want = want || !(reversed ? holds(written, b, a) : holds(written, a, b));
+        const std::int64_t ea = o.a_latest ? *std::max_element(A.begin(), A.end()) : *std::min_element(A.begin(), A.end());
+        const std::int64_t eb = o.b_latest ? *std::max_element(B.begin(), B.end()) : *std::min_element(B.begin(), B.end());
+        CHECK(holds(o.keep, ea, eb) == want);
+      }
+    }
+  // sg_ordered: skip_if e2.t >= e3.t keeps y when min(e2) < max(e3).
+  const ir::Pattern so = ir::compile_file(src("patterns/sg_ordered.yaml"));
+  const ir::Stage& mid = so.levels.at(1).checks.at(0);
+  REQUIRE(mid.order);
+  CHECK(mid.order->skip == ir::Expr::Cmp::ge);
+  CHECK_FALSE(mid.order->a_latest);
+  CHECK(mid.order->b_latest);
+  CHECK(mid.order->keep == ir::Expr::Cmp::lt);
+  CHECK(texts(mid.filters) == "Y == W");
+  CHECK(texts(so.levels.at(1).binding->operands[0].hi_incl) == "t - 1");  // sources: e1.t < t
+  // E205 and E203 around it.
+  CHECK(code_of(intersection_with("skip_if", "e2.t >= e3.t and Y == V")) == "E203");
+  CHECK(code_of(intersection_with("skip_if", "not e2.t >= e3.t")) == "E203");
+  CHECK(code_of(intersection_with("skip_if", "e2.t != e3.t")) == "E205");
+  CHECK(code_of(intersection_with("skip_if", "e2.t - 1 >= e3.t")) == "E205");
+  CHECK(code_of(intersection_with("break_if", "e2.t > e3.t")) == "E205");
+  CHECK(code_of(intersection_with("skip_if", "e2.t >= e3.t or e2.t <= t - 5")) == "E205");
+  CHECK(code_of(intersection_with("skip_if", "e2.t <= t - 5 or Y == V")) == "ok");  // no order constraint
 }
 
 TEST_CASE("library: fan, degree, sg and tcyc lower and plan as specified") {

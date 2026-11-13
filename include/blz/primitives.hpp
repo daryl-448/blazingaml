@@ -90,13 +90,8 @@ struct PCsrView {
   // entry with ts >= lo_ts has the smallest eid of all that do, so it alone decides visibility.
   BLZ_HD std::int64_t pair_exists(std::uint32_t x, std::uint32_t y, std::int64_t lo_ts, std::int64_t hi_ts,
                                   std::uint32_t max_eid) const {
-    std::uint32_t l = off[x], h = off[x + 1];
-    while (l < h) {
-      const std::uint32_t mid = l + (h - l) / 2;
-      if (nbr[mid] < y) l = mid + 1;
-      else h = mid;
-    }
-    if (l == off[x + 1] || nbr[l] != y) return kNoTs;
+    const std::uint32_t l = pair_index(x, y);
+    if (l == kNoPair) return kNoTs;
     std::uint32_t a = run[l], b = run[l + 1];
     while (a < b) {
       const std::uint32_t mid = a + (b - a) / 2;
@@ -105,6 +100,50 @@ struct PCsrView {
     }
     if (a == run[l + 1] || std::int64_t(run_ts[a]) > hi_ts || run_eid[a] > max_eid) return kNoTs;
     return run_ts[a];
+  }
+
+  // The latest ts of an edge between x and y in this direction with the same bounds, or kNoTs
+  // (SPEC v2 §6.2: the latest witness of an order constraint). The run is sorted by eid and so by
+  // ts, so the entries with eid <= max_eid and ts <= hi_ts are a prefix of it, and the last one
+  // decides. Two binary searches after the pair's, one per upper bound that is set.
+  BLZ_HD std::int64_t pair_latest(std::uint32_t x, std::uint32_t y, std::int64_t lo_ts, std::int64_t hi_ts,
+                                  std::uint32_t max_eid) const {
+    const std::uint32_t l = pair_index(x, y);
+    if (l == kNoPair) return kNoTs;
+    std::uint32_t a = run[l], b = run[l + 1];
+    if (max_eid != kAnyEid) {  // the first entry with eid > max_eid
+      while (a < b) {
+        const std::uint32_t mid = a + (b - a) / 2;
+        if (run_eid[mid] <= max_eid) a = mid + 1;
+        else b = mid;
+      }
+      b = a;
+      a = run[l];
+    }
+    if (hi_ts != kNoUpper) {  // the first entry with ts > hi_ts
+      while (a < b) {
+        const std::uint32_t mid = a + (b - a) / 2;
+        if (std::int64_t(run_ts[mid]) <= hi_ts) a = mid + 1;
+        else b = mid;
+      }
+      b = a;
+      a = run[l];
+    }
+    if (b == a || std::int64_t(run_ts[b - 1]) < lo_ts) return kNoTs;
+    return run_ts[b - 1];
+  }
+
+ private:
+  static constexpr std::uint32_t kNoPair = UINT32_MAX;
+  // The pair index of (x, y) (a position in nbr), or kNoPair: a binary search over x's neighbours.
+  BLZ_HD std::uint32_t pair_index(std::uint32_t x, std::uint32_t y) const {
+    std::uint32_t l = off[x], h = off[x + 1];
+    while (l < h) {
+      const std::uint32_t mid = l + (h - l) / 2;
+      if (nbr[mid] < y) l = mid + 1;
+      else h = mid;
+    }
+    return l == off[x + 1] || nbr[l] != y ? kNoPair : l;
   }
 };
 

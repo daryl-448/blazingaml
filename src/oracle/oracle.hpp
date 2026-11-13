@@ -33,6 +33,10 @@ class Oracle {
   // The same for the triggers `eids` (a sample, SPEC v2 §11): row r of `out` gets eids[r].
   std::uint64_t mine(Block b, const BlockParams& p, int k_max, std::span<const std::uint32_t> eids,
                      std::uint32_t* out) const;
+  // The pattern sg_gather alone (the gather role of §4.5) for triggers [first, last), as `mine`
+  // does it for block sg. The order-relaxation test (SPEC v2 §3.4) bounds sg_ord with it.
+  std::uint64_t mine_sg_gather(const BlockParams& p, std::uint64_t first, std::uint64_t last,
+                               std::uint32_t* out) const;
 
  private:
   struct Window {
@@ -46,13 +50,16 @@ class Oracle {
     bool closed;
   };
 
-  // Trigger e's histogram into `row`; returns the number of saturated increments.
-  std::uint64_t mine_one(Block b, const BlockParams& p, int k_max, std::uint64_t e, std::uint32_t* row) const;
+  // Trigger e's histogram into `row`; returns the number of saturated increments. `gather_only`
+  // (block sg): the gather role alone.
+  std::uint64_t mine_one(Block b, const BlockParams& p, int k_max, std::uint64_t e, std::uint32_t* row,
+                         bool gather_only = false) const;
   Window window(const std::vector<std::uint32_t>& list, const Trigger& tr) const;
   bool has_edge(std::uint32_t x, std::uint32_t y, const Trigger& tr) const;
 
   void fan_or_degree(Block b, const Trigger& tr, std::vector<std::uint64_t>& sizes) const;
-  void sg(const Trigger& tr, std::vector<std::uint64_t>& sizes) const;
+  void sg(const Trigger& tr, bool scatter, std::vector<std::uint64_t>& sizes) const;
+  void sg_ordered(const Trigger& tr, std::vector<std::uint64_t>& sizes) const;
   void tcyc(const Trigger& tr, int k_max, std::vector<std::uint64_t>& sizes) const;
 
   EdgeStream s_;

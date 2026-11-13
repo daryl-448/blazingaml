@@ -61,9 +61,9 @@ void Oracle::fan_or_degree(Block b, const Trigger& tr, std::vector<std::uint64_t
   sizes.push_back(b == Block::fan_in || b == Block::fan_out ? nbrs.size() : edges);
 }
 
-// SPEC §4.5: gather role (s in N_in(u) \ {u, v}, w = v, I excludes w) plus scatter role
-// (s = u, w in N_out(v) \ {u, v}, I excludes s).
-void Oracle::sg(const Trigger& tr, std::vector<std::uint64_t>& sizes) const {
+// SPEC §4.5: gather role (s in N_in(u) \ {u, v}, w = v, I excludes w) plus, with `scatter`,
+// the scatter role (s = u, w in N_out(v) \ {u, v}, I excludes s).
+void Oracle::sg(const Trigger& tr, bool scatter, std::vector<std::uint64_t>& sizes) const {
   auto in_nbrs = [&](std::uint32_t x) {
     std::set<std::uint32_t> r;
     const Window w = window(in_[x], tr);
@@ -84,8 +84,42 @@ void Oracle::sg(const Trigger& tr, std::vector<std::uint64_t>& sizes) const {
   };
   for (std::uint32_t s : in_nbrs(tr.u))
     if (s != tr.u && s != tr.v) emit(s, tr.v, tr.v);
+  if (!scatter) return;
   for (std::uint32_t w : out_nbrs(tr.v))
     if (w != tr.u && w != tr.v) emit(tr.u, w, tr.u);
+}
+
+// SPEC v2 §6.3 (sg_ordered): for each source s in N_in(u) \ {u, v} with a window edge s -> u at
+// ts < t, the instance (s, w = v) with
+//   I_ord = { y != w : some window edges (s -> y)@a and (y -> w)@b have a < b }.
+// Written from the definition: every witness pair is enumerated, so the earliest/latest-witness
+// lowering of order constraints (§6.2) is tested, not assumed.
+void Oracle::sg_ordered(const Trigger& tr, std::vector<std::uint64_t>& sizes) const {
+  const std::uint32_t w = tr.v;
+  std::map<std::uint32_t, std::vector<std::int64_t>> into_w;  // y -> the times of its edges y -> w
+  const Window ww = window(in_[w], tr);
+  for (auto f = ww.begin; f != ww.end; ++f) into_w[s_.src[*f]].push_back(s_.ts[*f]);
+  std::set<std::uint32_t> sources;
+  const Window wu = window(in_[tr.u], tr);
+  for (auto f = wu.begin; f != wu.end; ++f)
+    if (s_.ts[*f] < tr.t) sources.insert(s_.src[*f]);
+  for (std::uint32_t s : sources) {
+    if (s == tr.u || s == w) continue;
+    std::map<std::uint32_t, std::vector<std::int64_t>> from_s;  // y -> the times of its edges s -> y
+    const Window ws = window(out_[s], tr);
+    for (auto f = ws.begin; f != ws.end; ++f) from_s[s_.dst[*f]].push_back(s_.ts[*f]);
+    std::uint64_t n = 0;
+    for (const auto& [y, as] : from_s) {
+      if (y == w) continue;
+      auto it = into_w.find(y);
+      if (it == into_w.end()) continue;
+      bool ordered = false;
+      for (std::int64_t a : as)
+        for (std::int64_t b : it->second) ordered = ordered || a < b;
+      n += ordered;
+    }
+    sizes.push_back(n);
+  }
 }
 
 // SPEC §4.6: distinct simple node sequences v = c_0, ..., c_{k-1} = u (2 <= k <= k_max) with
@@ -158,14 +192,16 @@ void Oracle::tcyc(const Trigger& tr, int k_max, std::vector<std::uint64_t>& size
   dfs(dfs, {std::numeric_limits<Ts>::min()});
 }
 
-std::uint64_t Oracle::mine_one(Block b, const BlockParams& p, int k_max, std::uint64_t e, std::uint32_t* row) const {
+std::uint64_t Oracle::mine_one(Block b, const BlockParams& p, int k_max, std::uint64_t e, std::uint32_t* row,
+                               bool gather_only) const {
   const Trigger tr{std::uint32_t(e), s_.src[e], s_.dst[e], s_.ts[e], std::int64_t(s_.ts[e]) - p.window,
                    closed_lower_bound(b)};
   if (tr.u == tr.v) return 0;  // self-loop triggers emit nothing (§4.1)
   std::vector<std::uint64_t> sizes;
   switch (b) {
-    case Block::sg: sg(tr, sizes); break;
+    case Block::sg: sg(tr, !gather_only, sizes); break;
     case Block::tcyc: tcyc(tr, k_max, sizes); break;
+    case Block::sg_ord: sg_ordered(tr, sizes); break;
     default: fan_or_degree(b, tr, sizes);
   }
   std::uint64_t saturated = 0;
@@ -196,6 +232,17 @@ std::uint64_t Oracle::mine(Block b, const BlockParams& p, int k_max, std::span<c
   std::uint64_t saturated = 0;
 #pragma omp parallel for schedule(dynamic, 256) reduction(+ : saturated)
   for (std::size_t r = 0; r < eids.size(); ++r) saturated += mine_one(b, p, k_max, eids[r], out + r * nb);
+  return saturated;
+}
+
+std::uint64_t Oracle::mine_sg_gather(const BlockParams& p, std::uint64_t first, std::uint64_t last,
+                                     std::uint32_t* out) const {
+  if (first > last || last > s_.src.size()) throw std::invalid_argument("oracle: bad trigger range");
+  const std::size_t nb = p.bins.size();
+  std::uint64_t saturated = 0;
+#pragma omp parallel for schedule(dynamic, 256) reduction(+ : saturated)
+  for (std::uint64_t e = first; e < last; ++e)
+    saturated += mine_one(Block::sg, p, 2, e, out + (e - first) * nb, true);
   return saturated;
 }
 

@@ -9,17 +9,22 @@
 
 namespace blz {
 
-// Output blocks in GFP column order (SPEC §4.2).
-enum class Block { fan_in, fan_out, deg_in, deg_out, sg, tcyc };
-inline constexpr std::array<Block, 6> kAllBlocks = {Block::fan_in, Block::fan_out, Block::deg_in,
-                                                    Block::deg_out, Block::sg,     Block::tcyc};
+// Output blocks: the six v1 blocks in GFP column order (SPEC §4.2), then sg_ord (SPEC v2 §6.3),
+// which GFP does not have.
+enum class Block { fan_in, fan_out, deg_in, deg_out, sg, tcyc, sg_ord };
+inline constexpr std::array<Block, 7> kAllBlocks = {Block::fan_in,  Block::fan_out, Block::deg_in, Block::deg_out,
+                                                    Block::sg,      Block::tcyc,    Block::sg_ord};
+// The v1 blocks: what a v1 feature config covers (E402) and what GFP computes.
+inline constexpr std::array<Block, 6> kV1Blocks = {Block::fan_in,  Block::fan_out, Block::deg_in,
+                                                   Block::deg_out, Block::sg,      Block::tcyc};
+inline bool is_v1_block(Block b) { return b != Block::sg_ord; }
 
 std::string_view block_name(Block b);
 std::optional<Block> parse_block(std::string_view name);
 
-// Window lower bound (SPEC §4.1): fan and degree are open (t' > t - delta), SG and tcyc closed
-// (t' >= t - delta). Fixed by the semantics, not by the config.
-inline bool closed_lower_bound(Block b) { return b == Block::sg || b == Block::tcyc; }
+// Window lower bound (SPEC §4.1): fan and degree are open (t' > t - delta), SG, tcyc and sg_ord
+// closed (t' >= t - delta). Fixed by the semantics, not by the config.
+inline bool closed_lower_bound(Block b) { return b == Block::sg || b == Block::tcyc || b == Block::sg_ord; }
 
 // Which edges a trigger e = (u -> v, t) may see (SPEC §4.1 of v1, §6.1 of v2): stream = eid' <=
 // eid (the default, GFP stream mode); timestamp = t' <= t, so later edges of the same timestamp

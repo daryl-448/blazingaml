@@ -61,7 +61,7 @@ add_test(NAME dg2_ledger_selftest COMMAND python3 ${PROJECT_SOURCE_DIR}/bench/dg
 set_tests_properties(dg2_ledger_selftest PROPERTIES LABELS fast)
 
 # SPEC v2 §3.4, §10: the metamorphic tests on 2,000 fuzz graphs per frozen profile and backend.
-foreach(prof v1_default v1_parity)
+foreach(prof v1_default v1_parity sg_ordered_v1w sg_ordered_tsvis)
   foreach(be oracle cpu)
     add_test(NAME metamorphic_${prof}_${be}_2k
       COMMAND blz metamorphic --seeds 0:2000 --backend ${be} --profile ${PROJECT_SOURCE_DIR}/configs/profiles/${prof}.yaml)
@@ -71,6 +71,19 @@ foreach(prof v1_default v1_parity)
     add_test(NAME metamorphic_${prof}_cuda_2k
       COMMAND blz metamorphic --seeds 0:2000 --backend cuda --profile ${PROJECT_SOURCE_DIR}/configs/profiles/${prof}.yaml)
     set_tests_properties(metamorphic_${prof}_cuda_2k PROPERTIES LABELS slow)
+  endif()
+endforeach()
+
+# AC-V2-4 (SPEC v2 §6, P10): AC1 per sg_ordered profile, i.e. sg_ord under both visibilities and
+# the six v1 blocks under timestamp visibility. CUDA runs H = 0, 4 and all.
+foreach(prof sg_ordered_v1w sg_ordered_tsvis)
+  add_test(NAME fuzz_diff_${prof}_cpu_10k
+    COMMAND blz fuzz-diff --seeds 0:10000 --profile ${PROJECT_SOURCE_DIR}/configs/profiles/${prof}.yaml)
+  set_tests_properties(fuzz_diff_${prof}_cpu_10k PROPERTIES LABELS slow)
+  if(BLZ_ENABLE_CUDA)
+    add_test(NAME fuzz_diff_${prof}_cuda_10k
+      COMMAND blz fuzz-diff --backend cuda --seeds 0:10000 --profile ${PROJECT_SOURCE_DIR}/configs/profiles/${prof}.yaml)
+    set_tests_properties(fuzz_diff_${prof}_cuda_10k PROPERTIES LABELS slow)
   endif()
 endforeach()
 

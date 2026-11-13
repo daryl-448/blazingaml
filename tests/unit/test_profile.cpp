@@ -185,7 +185,9 @@ TEST_CASE("profiles: E404 names the backend and the profile key") {
 TEST_CASE("profiles: registry_profile is every registered block with the compiled K_MAX") {
   const Profile r = registry_profile();
   CHECK(r.k_max == 10);
-  CHECK(r.blocks.size() == 6);
+  CHECK(r.blocks.size() == 7);
+  REQUIRE(r.find(Block::sg_ord) != nullptr);
+  CHECK(std::string(r.find(Block::sg_ord)->patterns.at(0)->name) == "sg_ordered");
   CHECK(r.find(Block::sg)->patterns.size() == 2);
   CHECK(r.find(Block::fan_in)->params.bins.empty());
 }
