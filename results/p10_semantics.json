@@ -1,0 +1,1064 @@
+{
+ "ac_v2_4": {
+  "fuzz_diff": {
+   "sg_ordered_tsvis": {
+    "cpu": {
+     "backend": "cpu",
+     "bins": "profile",
+     "edges": 2053897,
+     "first_mismatched_seeds": [],
+     "git": {
+      "dirty": true,
+      "sha": "4c4259e834f07472affbac9c5453fa63bea21a85"
+     },
+     "graphs": 10000,
+     "k_max": 10,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_out": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tcyc": 0
+     },
+     "mismatched_seeds": 0,
+     "profile": {
+      "file": "configs/profiles/sg_ordered_tsvis.yaml",
+      "id": "9a14d14adfad34e0",
+      "name": "sg_ordered_tsvis"
+     },
+     "schedules": [
+      "dynamic",
+      "sorted"
+     ],
+     "seconds": 8.063662733,
+     "seeds": "0:10000"
+    },
+    "cuda": {
+     "backend": "cuda",
+     "bins": "profile",
+     "cuda": {
+      "build": "nvcc 13.4.92, sm 75,80, -O3 -DNDEBUG",
+      "compute_capability": "7.5",
+      "device": "NVIDIA GeForce GTX 1650 SUPER",
+      "driver_version": 13040,
+      "memory_mb": {
+       "free": 2941,
+       "total": 3728
+      },
+      "runtime_version": 13040,
+      "sm_count": 20
+     },
+     "edges": 2053897,
+     "first_mismatched_seeds": [],
+     "git": {
+      "dirty": true,
+      "sha": "4c4259e834f07472affbac9c5453fa63bea21a85"
+     },
+     "graphs": 10000,
+     "heavy_thresholds": [
+      "0",
+      "4",
+      "all"
+     ],
+     "k_max": 10,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_out": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tcyc": 0
+     },
+     "mismatched_seeds": 0,
+     "profile": {
+      "file": "configs/profiles/sg_ordered_tsvis.yaml",
+      "id": "9a14d14adfad34e0",
+      "name": "sg_ordered_tsvis"
+     },
+     "seconds": 64.377550714,
+     "seeds": "0:10000"
+    }
+   },
+   "sg_ordered_v1w": {
+    "cpu": {
+     "backend": "cpu",
+     "bins": "profile",
+     "edges": 2053897,
+     "first_mismatched_seeds": [],
+     "git": {
+      "dirty": true,
+      "sha": "4c4259e834f07472affbac9c5453fa63bea21a85"
+     },
+     "graphs": 10000,
+     "k_max": 10,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_out": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tcyc": 0
+     },
+     "mismatched_seeds": 0,
+     "profile": {
+      "file": "configs/profiles/sg_ordered_v1w.yaml",
+      "id": "7db0767a1f9ec6fc",
+      "name": "sg_ordered_v1w"
+     },
+     "schedules": [
+      "dynamic",
+      "sorted"
+     ],
+     "seconds": 7.846355561,
+     "seeds": "0:10000"
+    },
+    "cuda": {
+     "backend": "cuda",
+     "bins": "profile",
+     "cuda": {
+      "build": "nvcc 13.4.92, sm 75,80, -O3 -DNDEBUG",
+      "compute_capability": "7.5",
+      "device": "NVIDIA GeForce GTX 1650 SUPER",
+      "driver_version": 13040,
+      "memory_mb": {
+       "free": 2795,
+       "total": 3728
+      },
+      "runtime_version": 13040,
+      "sm_count": 20
+     },
+     "edges": 2053897,
+     "first_mismatched_seeds": [],
+     "git": {
+      "dirty": true,
+      "sha": "4c4259e834f07472affbac9c5453fa63bea21a85"
+     },
+     "graphs": 10000,
+     "heavy_thresholds": [
+      "0",
+      "4",
+      "all"
+     ],
+     "k_max": 10,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_out": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tcyc": 0
+     },
+     "mismatched_seeds": 0,
+     "profile": {
+      "file": "configs/profiles/sg_ordered_v1w.yaml",
+      "id": "7db0767a1f9ec6fc",
+      "name": "sg_ordered_v1w"
+     },
+     "seconds": 65.526473176,
+     "seeds": "0:10000"
+    }
+   }
+  },
+  "metamorphic": {
+   "sg_ordered_tsvis": {
+    "cpu": {
+     "backend": "cpu",
+     "bins": "profile",
+     "edges": 403557,
+     "first_mismatched_seeds": [],
+     "git": {
+      "dirty": true,
+      "sha": "4c4259e834f07472affbac9c5453fa63bea21a85"
+     },
+     "graphs": 2000,
+     "k_max": 10,
+     "mismatched_seeds": 0,
+     "profile": {
+      "file": "configs/profiles/sg_ordered_tsvis.yaml",
+      "id": "9a14d14adfad34e0",
+      "name": "sg_ordered_tsvis"
+     },
+     "seconds": 1.227954218,
+     "seeds": "0:2000",
+     "tests": {
+      "order_relaxation": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 403557
+      },
+      "prefix_closure": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 3043719
+      },
+      "relabeling": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 2824899
+      },
+      "time_shift": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 2824899
+      },
+      "visibility_invariance": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 403557
+      }
+     }
+    },
+    "cuda": {
+     "backend": "cuda",
+     "bins": "profile",
+     "cuda": {
+      "build": "nvcc 13.4.92, sm 75,80, -O3 -DNDEBUG",
+      "compute_capability": "7.5",
+      "device": "NVIDIA GeForce GTX 1650 SUPER",
+      "driver_version": 13040,
+      "memory_mb": {
+       "free": 2925,
+       "total": 3728
+      },
+      "runtime_version": 13040,
+      "sm_count": 20
+     },
+     "edges": 403557,
+     "first_mismatched_seeds": [],
+     "git": {
+      "dirty": true,
+      "sha": "4c4259e834f07472affbac9c5453fa63bea21a85"
+     },
+     "graphs": 2000,
+     "heavy_thresholds": [
+      "0",
+      "4",
+      "all"
+     ],
+     "k_max": 10,
+     "mismatched_seeds": 0,
+     "profile": {
+      "file": "configs/profiles/sg_ordered_tsvis.yaml",
+      "id": "9a14d14adfad34e0",
+      "name": "sg_ordered_tsvis"
+     },
+     "seconds": 54.202459415,
+     "seeds": "0:2000",
+     "tests": {
+      "order_relaxation": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 1210671
+      },
+      "prefix_closure": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 9131157
+      },
+      "relabeling": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 8474697
+      },
+      "time_shift": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 8474697
+      },
+      "visibility_invariance": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 1210671
+      }
+     }
+    },
+    "oracle": {
+     "backend": "oracle",
+     "bins": "profile",
+     "edges": 403557,
+     "first_mismatched_seeds": [],
+     "git": {
+      "dirty": true,
+      "sha": "4c4259e834f07472affbac9c5453fa63bea21a85"
+     },
+     "graphs": 2000,
+     "k_max": 10,
+     "mismatched_seeds": 0,
+     "profile": {
+      "file": "configs/profiles/sg_ordered_tsvis.yaml",
+      "id": "9a14d14adfad34e0",
+      "name": "sg_ordered_tsvis"
+     },
+     "seconds": 4.214551819,
+     "seeds": "0:2000",
+     "tests": {
+      "order_relaxation": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 403557
+      },
+      "prefix_closure": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 3043719
+      },
+      "relabeling": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 2824899
+      },
+      "time_shift": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 2824899
+      },
+      "visibility_invariance": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 403557
+      }
+     }
+    }
+   },
+   "sg_ordered_v1w": {
+    "cpu": {
+     "backend": "cpu",
+     "bins": "profile",
+     "edges": 403557,
+     "first_mismatched_seeds": [],
+     "git": {
+      "dirty": true,
+      "sha": "4c4259e834f07472affbac9c5453fa63bea21a85"
+     },
+     "graphs": 2000,
+     "k_max": 10,
+     "mismatched_seeds": 0,
+     "profile": {
+      "file": "configs/profiles/sg_ordered_v1w.yaml",
+      "id": "7db0767a1f9ec6fc",
+      "name": "sg_ordered_v1w"
+     },
+     "seconds": 1.462395435,
+     "seeds": "0:2000",
+     "tests": {
+      "order_relaxation": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 403557
+      },
+      "prefix_closure": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 2860361
+      },
+      "relabeling": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 2824899
+      },
+      "time_shift": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 2824899
+      },
+      "visibility_invariance": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 403557
+      }
+     }
+    },
+    "cuda": {
+     "backend": "cuda",
+     "bins": "profile",
+     "cuda": {
+      "build": "nvcc 13.4.92, sm 75,80, -O3 -DNDEBUG",
+      "compute_capability": "7.5",
+      "device": "NVIDIA GeForce GTX 1650 SUPER",
+      "driver_version": 13040,
+      "memory_mb": {
+       "free": 2820,
+       "total": 3728
+      },
+      "runtime_version": 13040,
+      "sm_count": 20
+     },
+     "edges": 403557,
+     "first_mismatched_seeds": [],
+     "git": {
+      "dirty": true,
+      "sha": "4c4259e834f07472affbac9c5453fa63bea21a85"
+     },
+     "graphs": 2000,
+     "heavy_thresholds": [
+      "0",
+      "4",
+      "all"
+     ],
+     "k_max": 10,
+     "mismatched_seeds": 0,
+     "profile": {
+      "file": "configs/profiles/sg_ordered_v1w.yaml",
+      "id": "7db0767a1f9ec6fc",
+      "name": "sg_ordered_v1w"
+     },
+     "seconds": 233.410247259,
+     "seeds": "0:2000",
+     "tests": {
+      "order_relaxation": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 1210671
+      },
+      "prefix_closure": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 8581083
+      },
+      "relabeling": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 8474697
+      },
+      "time_shift": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 8474697
+      },
+      "visibility_invariance": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 1210671
+      }
+     }
+    },
+    "oracle": {
+     "backend": "oracle",
+     "bins": "profile",
+     "edges": 403557,
+     "first_mismatched_seeds": [],
+     "git": {
+      "dirty": true,
+      "sha": "4c4259e834f07472affbac9c5453fa63bea21a85"
+     },
+     "graphs": 2000,
+     "k_max": 10,
+     "mismatched_seeds": 0,
+     "profile": {
+      "file": "configs/profiles/sg_ordered_v1w.yaml",
+      "id": "7db0767a1f9ec6fc",
+      "name": "sg_ordered_v1w"
+     },
+     "seconds": 4.555746423,
+     "seeds": "0:2000",
+     "tests": {
+      "order_relaxation": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 403557
+      },
+      "prefix_closure": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 2860361
+      },
+      "relabeling": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 2824899
+      },
+      "time_shift": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 2824899
+      },
+      "visibility_invariance": {
+       "applies": true,
+       "mismatched_rows": 0,
+       "mismatched_rows_by_block": {
+        "deg_in": 0,
+        "deg_out": 0,
+        "fan_in": 0,
+        "fan_out": 0,
+        "sg": 0,
+        "sg_ord": 0,
+        "tcyc": 0
+       },
+       "rows_compared": 403557
+      }
+     }
+    }
+   }
+  },
+  "hi_small": {
+   "v1_default": {
+    "oracle": {
+     "profile_id": "b21580d6e129821a",
+     "output_fnv1a": {
+      "deg_in": 3321375241280117763,
+      "deg_out": 3341707662053112211,
+      "fan_in": 10768036772042710147,
+      "fan_out": 904878896487262018,
+      "sg": 18124683238158106329,
+      "tcyc": 7737672036140136160
+     },
+     "mine_seconds": {
+      "deg_in": 0.157,
+      "deg_out": 37.318,
+      "fan_in": 0.218,
+      "fan_out": 37.106,
+      "sg": 0.657,
+      "tcyc": 1.058
+     },
+     "wall_seconds": 80.0,
+     "peak_rss_mb": 438.171875
+    },
+    "cpu": {
+     "profile_id": "b21580d6e129821a",
+     "output_fnv1a": {
+      "deg_in": 3321375241280117763,
+      "deg_out": 3341707662053112211,
+      "fan_in": 10768036772042710147,
+      "fan_out": 904878896487262018,
+      "sg": 18124683238158106329,
+      "tcyc": 7737672036140136160
+     },
+     "mine_seconds": {
+      "deg_in": 0.092,
+      "deg_out": 0.116,
+      "fan_in": 0.104,
+      "fan_out": 1.276,
+      "sg": 0.341,
+      "tcyc": 0.428
+     },
+     "wall_seconds": 5.7,
+     "peak_rss_mb": 604.36328125
+    },
+    "cuda": {
+     "profile_id": "b21580d6e129821a",
+     "output_fnv1a": {
+      "deg_in": 3321375241280117763,
+      "deg_out": 3341707662053112211,
+      "fan_in": 10768036772042710147,
+      "fan_out": 904878896487262018,
+      "sg": 18124683238158106329,
+      "tcyc": 7737672036140136160
+     },
+     "mine_seconds": {
+      "deg_in": 0.071,
+      "deg_out": 0.081,
+      "fan_in": 0.078,
+      "fan_out": 0.151,
+      "sg": 0.132,
+      "tcyc": 0.229
+     },
+     "wall_seconds": 5.4,
+     "peak_rss_mb": 770.4921875
+    }
+   },
+   "sg_ordered_v1w": {
+    "oracle": {
+     "profile_id": "7db0767a1f9ec6fc",
+     "output_fnv1a": {
+      "deg_in": 3321375241280117763,
+      "deg_out": 3341707662053112211,
+      "fan_in": 10768036772042710147,
+      "fan_out": 904878896487262018,
+      "sg": 18124683238158106329,
+      "sg_ord": 8993330698308699435,
+      "tcyc": 7737672036140136160
+     },
+     "mine_seconds": {
+      "deg_in": 0.158,
+      "deg_out": 37.155,
+      "fan_in": 0.158,
+      "fan_out": 37.204,
+      "sg": 0.646,
+      "sg_ord": 5.212,
+      "tcyc": 1.121
+     },
+     "wall_seconds": 85.3,
+     "peak_rss_mb": 437.66015625
+    },
+    "cpu": {
+     "profile_id": "7db0767a1f9ec6fc",
+     "output_fnv1a": {
+      "deg_in": 3321375241280117763,
+      "deg_out": 3341707662053112211,
+      "fan_in": 10768036772042710147,
+      "fan_out": 904878896487262018,
+      "sg": 18124683238158106329,
+      "sg_ord": 8993330698308699435,
+      "tcyc": 7737672036140136160
+     },
+     "mine_seconds": {
+      "deg_in": 0.088,
+      "deg_out": 0.118,
+      "fan_in": 0.103,
+      "fan_out": 1.357,
+      "sg": 0.316,
+      "sg_ord": 0.17,
+      "tcyc": 0.432
+     },
+     "wall_seconds": 6.6,
+     "peak_rss_mb": 604.10546875
+    },
+    "cuda": {
+     "profile_id": "7db0767a1f9ec6fc",
+     "output_fnv1a": {
+      "deg_in": 3321375241280117763,
+      "deg_out": 3341707662053112211,
+      "fan_in": 10768036772042710147,
+      "fan_out": 904878896487262018,
+      "sg": 18124683238158106329,
+      "sg_ord": 8993330698308699435,
+      "tcyc": 7737672036140136160
+     },
+     "mine_seconds": {
+      "deg_in": 0.073,
+      "deg_out": 0.08,
+      "fan_in": 0.079,
+      "fan_out": 0.153,
+      "sg": 0.131,
+      "sg_ord": 0.071,
+      "tcyc": 0.229
+     },
+     "wall_seconds": 5.6,
+     "peak_rss_mb": 770.6015625
+    }
+   },
+   "sg_ordered_tsvis": {
+    "oracle": {
+     "profile_id": "9a14d14adfad34e0",
+     "output_fnv1a": {
+      "deg_in": 14097460695540745779,
+      "deg_out": 1782235892802320130,
+      "fan_in": 13428913011139905234,
+      "fan_out": 10334345576759292274,
+      "sg": 3533400663430248281,
+      "sg_ord": 17123065869350774155,
+      "tcyc": 7737672036140136160
+     },
+     "mine_seconds": {
+      "deg_in": 0.186,
+      "deg_out": 41.972,
+      "fan_in": 0.177,
+      "fan_out": 37.549,
+      "sg": 0.783,
+      "sg_ord": 5.337,
+      "tcyc": 1.109
+     },
+     "wall_seconds": 90.7,
+     "peak_rss_mb": 437.1640625
+    },
+    "cpu": {
+     "profile_id": "9a14d14adfad34e0",
+     "output_fnv1a": {
+      "deg_in": 14097460695540745779,
+      "deg_out": 1782235892802320130,
+      "fan_in": 13428913011139905234,
+      "fan_out": 10334345576759292274,
+      "sg": 3533400663430248281,
+      "sg_ord": 17123065869350774155,
+      "tcyc": 7737672036140136160
+     },
+     "mine_seconds": {
+      "deg_in": 0.1,
+      "deg_out": 0.131,
+      "fan_in": 0.121,
+      "fan_out": 1.3,
+      "sg": 0.364,
+      "sg_ord": 0.179,
+      "tcyc": 0.463
+     },
+     "wall_seconds": 6.3,
+     "peak_rss_mb": 603.8828125
+    },
+    "cuda": {
+     "profile_id": "9a14d14adfad34e0",
+     "output_fnv1a": {
+      "deg_in": 14097460695540745779,
+      "deg_out": 1782235892802320130,
+      "fan_in": 13428913011139905234,
+      "fan_out": 10334345576759292274,
+      "sg": 3533400663430248281,
+      "sg_ord": 17123065869350774155,
+      "tcyc": 7737672036140136160
+     },
+     "mine_seconds": {
+      "deg_in": 0.093,
+      "deg_out": 0.098,
+      "fan_in": 0.098,
+      "fan_out": 0.159,
+      "sg": 0.154,
+      "sg_ord": 0.076,
+      "tcyc": 0.241
+     },
+     "wall_seconds": 5.8,
+     "peak_rss_mb": 771.61328125
+    }
+   }
+  }
+ },
+ "ac_v2_0": {
+  "mine_v1_default": {
+   "oracle": {
+    "profile_id": "b21580d6e129821a",
+    "output_fnv1a": {
+     "deg_in": 3321375241280117763,
+     "deg_out": 3341707662053112211,
+     "fan_in": 10768036772042710147,
+     "fan_out": 904878896487262018,
+     "sg": 18124683238158106329,
+     "tcyc": 7737672036140136160
+    },
+    "mine_seconds": {
+     "deg_in": 0.157,
+     "deg_out": 37.318,
+     "fan_in": 0.218,
+     "fan_out": 37.106,
+     "sg": 0.657,
+     "tcyc": 1.058
+    },
+    "wall_seconds": 80.0,
+    "peak_rss_mb": 438.171875
+   },
+   "cpu": {
+    "profile_id": "b21580d6e129821a",
+    "output_fnv1a": {
+     "deg_in": 3321375241280117763,
+     "deg_out": 3341707662053112211,
+     "fan_in": 10768036772042710147,
+     "fan_out": 904878896487262018,
+     "sg": 18124683238158106329,
+     "tcyc": 7737672036140136160
+    },
+    "mine_seconds": {
+     "deg_in": 0.092,
+     "deg_out": 0.116,
+     "fan_in": 0.104,
+     "fan_out": 1.276,
+     "sg": 0.341,
+     "tcyc": 0.428
+    },
+    "wall_seconds": 5.7,
+    "peak_rss_mb": 604.36328125
+   },
+   "cuda": {
+    "profile_id": "b21580d6e129821a",
+    "output_fnv1a": {
+     "deg_in": 3321375241280117763,
+     "deg_out": 3341707662053112211,
+     "fan_in": 10768036772042710147,
+     "fan_out": 904878896487262018,
+     "sg": 18124683238158106329,
+     "tcyc": 7737672036140136160
+    },
+    "mine_seconds": {
+     "deg_in": 0.071,
+     "deg_out": 0.081,
+     "fan_in": 0.078,
+     "fan_out": 0.151,
+     "sg": 0.132,
+     "tcyc": 0.229
+    },
+    "wall_seconds": 5.4,
+    "peak_rss_mb": 770.4921875
+   }
+  }
+ },
+ "checks": {
+  "v1_default: oracle = cpu = cuda": true,
+  "sg_ordered_v1w: oracle = cpu = cuda": true,
+  "sg_ordered_tsvis: oracle = cpu = cuda": true,
+  "v1_default: the six v1 blocks keep the AC-V2-0 hashes": true,
+  "sg_ordered_v1w: the six v1 blocks keep the AC-V2-0 hashes": true,
+  "sg_ordered_tsvis: tcyc keeps the AC-V2-0 hash": true,
+  "tcyc rows equal under both visibilities (tcyc.npy, cpu)": true,
+  "invalid-spec suite": true
+ },
+ "expected_output_fnv1a": {
+  "fan_in": 10768036772042710147,
+  "fan_out": 904878896487262018,
+  "deg_in": 3321375241280117763,
+  "deg_out": 3341707662053112211,
+  "sg": 18124683238158106329,
+  "tcyc": 7737672036140136160
+ },
+ "machine": {
+  "host": "archlinux",
+  "loadavg_at_start": [
+   0.34,
+   2.36,
+   3.22
+  ],
+  "cuda_binary": "build/rel-cuda/blz"
+ },
+ "pass": true
+}
