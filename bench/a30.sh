@@ -12,7 +12,8 @@
 # Then render the report: bench/e12_report.py results/e12_gpu_a30.json.
 #
 # Usage: bench/a30.sh [--id MACHINE_ID] [--keep] [--destroy]
-# Needs: jl (logged in, an SSH key added) and data/hi_small.blzg.
+# Needs: jl (logged in, an SSH key added) and data/hi_small.blzg. MAX_WAIT_MIN (default 120)
+# bounds the wait for the remote run; past it the run counts as failed and the instance is paused.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 ID="" KEEP=0 DESTROY=0
@@ -28,7 +29,23 @@ done
 W=/home/blz
 TMP=$(mktemp -d)
 LOG=results/a30_p11_run.log
+MAX_WAIT_MIN=${MAX_WAIT_MIN:-120}
 json() { python3 -c "import json,sys; d=json.load(sys.stdin); print(d$1)"; }
+
+# Whether `jl run` $1 has ended (AGENTS.md): `jl run status --json` has exit_code null while it
+# runs, and any state other than "running" (succeeded, failed, instance-paused, instance-missing,
+# unknown) also ends the wait. Sets code: the exit code, or that state. A failed status call
+# counts as not ended.
+run_ended() {
+  local st state
+  st=$(jl run status "$1" --json 2>/dev/null) || return 1
+  code=$(json '.get("exit_code")' <<< "$st")
+  [ "$code" != None ] && return 0
+  state=$(json '.get("state")' <<< "$st")
+  [ "$state" = running ] && return 1
+  echo "run $1: state $state" >&2
+  code=$state
+}
 
 stop_instance() {
   [ -n "$ID" ] || return 0
@@ -61,17 +78,12 @@ RUN=$(jl run bench/a30_remote.sh --on "$ID" --no-follow --yes --json | json '["r
 echo "run $RUN started on $ID"
 sleep 20
 jl run logs "$RUN" --tail 20 || true
-# `jl run status --json`: exit_code is null while the run goes on; state "instance-paused" (or
-# another instance-*) means the instance stopped under the run. A failed status call is retried.
-while :; do
-  if st=$(jl run status "$RUN" --json); then
-    code=$(json '.get("exit_code")' <<< "$st")
-    [ "$code" != None ] && break
-    state=$(json '.get("state")' <<< "$st")
-    case $state in
-      running|unknown) ;;
-      *) echo "run $RUN: state $state" >&2; code=$state; break ;;
-    esac
+deadline=$(( $(date +%s) + MAX_WAIT_MIN * 60 ))
+until run_ended "$RUN"; do
+  if [ "$(date +%s)" -gt "$deadline" ]; then
+    echo "run $RUN: not ended after $MAX_WAIT_MIN min" >&2
+    code=timeout
+    break
   fi
   sleep 60
   jl run logs "$RUN" --tail 3 2>/dev/null | tail -3 || true
