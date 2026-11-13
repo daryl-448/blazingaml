@@ -1,17 +1,18 @@
 #!/bin/bash
-# P5 runbook for the JarvisLabs A30 (SPEC §16 P5). From the repo root on `local`:
+# The P11 A30 campaign (SPEC v2 §7.3; v1's P5 runbook is in git history). From the repo root on
+# `local`:
 #   1. creates an on-demand A30 container (or uses --id);
 #   2. uploads the working tree (tracked and untracked non-ignored files, without .git), the
-#      binary cache and edges.npy, and the commit it was taken from (BLZ_GIT_SHA, BLZ_GIT_DIRTY);
+#      binary cache, and the commit it was taken from (BLZ_GIT_SHA, BLZ_GIT_DIRTY);
 #   3. runs bench/a30_remote.sh there with `jl run` and waits for it, checking every minute;
-#   4. downloads results/{e5_gpu_a30,e4_cpu_a30}.json and the A30 fuzz check (merged into
-#      results/e1_parity.json as fuzz_cuda_vs_oracle_a30), plus a30_env.txt and the run log;
+#   4. downloads results/{p11_a30,e12_gpu_a30,e11_ablation_a30}.json, the E11 report (or why E11
+#      was skipped), a30_p11_env.txt, and the run log (results/a30_p11_run.log);
 #   5. stops the instance: pause (default) or destroy (--destroy). On a failure it pauses too,
 #      unless --keep, so a broken run does not keep billing the GPU.
-# Then render the reports: bench/e5_report.py results/e5_gpu_a30.json (and e4_report.py).
+# Then render the report: bench/e12_report.py results/e12_gpu_a30.json.
 #
 # Usage: bench/a30.sh [--id MACHINE_ID] [--keep] [--destroy]
-# Needs: jl (logged in, an SSH key added), data/hi_small.blzg and data/edges.npy.
+# Needs: jl (logged in, an SSH key added) and data/hi_small.blzg.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 ID="" KEEP=0 DESTROY=0
@@ -23,12 +24,10 @@ while [ $# -gt 0 ]; do
     *) echo "usage: $0 [--id MACHINE_ID] [--keep] [--destroy]" >&2; exit 2 ;;
   esac
 done
-for f in data/hi_small.blzg data/edges.npy; do
-  [ -f "$f" ] || { echo "missing $f (blz prepare / blz export-edges)" >&2; exit 1; }
-done
+[ -f data/hi_small.blzg ] || { echo "missing data/hi_small.blzg (blz prepare)" >&2; exit 1; }
 W=/home/blz
 TMP=$(mktemp -d)
-LOG=results/a30_run.log
+LOG=results/a30_p11_run.log
 json() { python3 -c "import json,sys; d=json.load(sys.stdin); print(d$1)"; }
 
 stop_instance() {
@@ -44,7 +43,7 @@ stop_instance() {
 trap 'rc=$?; if [ $rc -ne 0 ]; then echo "a30.sh failed ($rc)" >&2; stop_instance; fi; rm -rf "$TMP"' EXIT
 
 if [ -z "$ID" ]; then
-  ID=$(jl create --gpu A30 --storage 50 --name blz-e5 --yes --json | json '["machine_id"]')
+  ID=$(jl create --gpu A30 --storage 50 --name blz-p11 --yes --json | json '["machine_id"]')
   echo "created A30 instance $ID"
 fi
 jl exec "$ID" -- mkdir -p "$W"
@@ -57,7 +56,6 @@ printf 'BLZ_GIT_SHA=%s\nBLZ_GIT_DIRTY=%s\n' "$(git rev-parse HEAD)" "$dirty" > "
 jl upload "$ID" "$TMP/repo.tgz" "$W/repo.tgz"
 jl upload "$ID" "$TMP/source.env" "$W/source.env"
 jl upload "$ID" data/hi_small.blzg "$W/hi_small.blzg"
-jl upload "$ID" data/edges.npy "$W/edges.npy"
 
 RUN=$(jl run bench/a30_remote.sh --on "$ID" --no-follow --yes --json | json '["run_id"]')
 echo "run $RUN started on $ID"
@@ -82,22 +80,15 @@ jl run logs "$RUN" --tail 400 > "$LOG" 2>&1 || true
 echo "run $RUN exited with $code (log: $LOG)"
 
 mkdir -p "$TMP/out"
-for f in e5_gpu_a30.json e4_cpu_a30.json e1_parity_a30.json a30_env.txt; do
-  jl download "$ID" "$W/repo/results/$f" "$TMP/out/$f" 2>/dev/null || echo "not produced: $f"
+for f in p11_a30.json e12_gpu_a30.json e11_ablation_a30.json e11_ablation_a30.md e11_a30_skipped.txt \
+  a30_p11_env.txt; do
+  if jl download "$ID" "$W/repo/results/$f" "$TMP/out/$f" 2>/dev/null; then
+    cp "$TMP/out/$f" results/
+  else
+    echo "not produced: $f"
+  fi
 done
-[ -f "$TMP/out/e5_gpu_a30.json" ] && cp "$TMP/out/e5_gpu_a30.json" results/
-[ -f "$TMP/out/e4_cpu_a30.json" ] && cp "$TMP/out/e4_cpu_a30.json" results/
-[ -f "$TMP/out/a30_env.txt" ] && cp "$TMP/out/a30_env.txt" results/
-if [ -f "$TMP/out/e1_parity_a30.json" ]; then
-  python3 - "$TMP/out/e1_parity_a30.json" <<'EOF'
-import json, sys
-src = json.load(open(sys.argv[1]))["fuzz_cuda_vs_oracle"]
-doc = json.load(open("results/e1_parity.json"))
-doc["fuzz_cuda_vs_oracle_a30"] = src
-open("results/e1_parity.json", "w").write(json.dumps(doc, indent=1) + "\n")
-EOF
-fi
 [ "$code" = 0 ] || exit 1
 stop_instance ok
 trap 'rm -rf "$TMP"' EXIT
-echo "done; render with bench/e5_report.py results/e5_gpu_a30.json"
+echo "done; render with bench/e12_report.py results/e12_gpu_a30.json"

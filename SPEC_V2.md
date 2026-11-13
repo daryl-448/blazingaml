@@ -902,6 +902,39 @@ only the selected triggers.
 - The plan is recorded in the generated code's plan comment, and `--disable sweep` (§7.2) restores
   the v1 plan.
 
+As implemented (P11):
+- **Recognition** (`sweep_stage()`, `src/ir/plan.cpp`) also requires exactly one stage. Every
+  library spec has one, and a second count would need a second running state.
+  - The scan's lower bound must be the window bound alone, with no upper bound beyond visibility.
+  - Element filters may reference only the element, N and constants.
+  - The emit may use only the count output and constants.
+  - The plan comment and `blzc --dump-ir` name the sweep: `cpu sweep <stage>`.
+- **Driver.** `blz::sweep_count<Distinct>` (`include/blz/sweep.hpp`) gets three lambdas from the
+  generated code:
+  - `lower(t)`: the window's inclusive lower bound;
+  - `keep(N, element)`: the element filters;
+  - `emit(e, count, sink)`: the trigger's variables, its filters and the emit.
+
+  Nodes are sorted by a stable counting sort, longest list first, and run in dynamic chunks of
+  `kSweepChunk` = 16 nodes. At 12 threads, chunks of 1 and of 64 nodes measured 0.075 s and
+  0.068 s on fan_out.
+- **Triggers.** A trigger subset is a `BlockOut::selects(e)` test. Range selection now carries its
+  end (`BlockOut::last`), and the sweep ignores the schedule and chunk arguments.
+- **Manifests.** The manifest records each block's per-pattern CPU plan (`cpu_plans`:
+  `sweep` or `per_trigger`). The registry records it as `PatternInfo::cpu_sweep`.
+  - `blz mine --triggers sample:…` extrapolates only the per-trigger part of a block from the
+    sample. The sweep's time is the same for any subset.
+- **CUDA** is unchanged (D-29).
+- **Generated code.** With every optimization on, only the four fan and degree specs' generated
+  code changed, and `tests/snapshots` was regenerated for them.
+- **Tests.**
+  - `tests/unit/test_sweep.cpp` checks the generated sweep drivers against each pattern's
+    per-trigger function on 300 dense, tie-heavy and fuzz graphs. It covers spans 0, 1, 3, the
+    window and 2⁴⁰, both visibilities, every selection kind, and 1 and 3 threads.
+  - It also checks `sweep_count` against `count_distinct`/`count_edges` with a closed bound and
+    an element filter.
+  - `tests/unit/test_dsl_lower.cpp` covers recognition, including its negative cases.
+
 ### 7.2 Optimization ablation (E11)
 
 The paper lists optimizations qualitatively and gives no ablation [P §5.4]. `blzc --disable
@@ -924,6 +957,38 @@ disables it).
 compiled. Every variant's `output_fnv1a` MUST equal the fully optimized build's. The table reports
 slowdowns relative to the full build, and the sweep's speedup. Timing hygiene as in §2.5.
 
+As implemented (P11):
+- **Parsing.** `ir::parse_disable()` rejects unknown or empty names. `blzc` exits with 2 on them.
+- **What each option changes** (`src/codegen/cpu_emitter.cpp`):
+  - `find_start`: `TCsrView::head_range`, plus a per-entry `ts` skip.
+  - `distinct_first`: a `thread_local` `blz::DistinctSet` per scan site
+    (`include/blz/ablation.hpp`, open addressing, cleared in O(size)).
+  - With `find_start` off, the `distinct_first` test also checks the previous same-neighbour
+    entry's ts against the lower bound (`distinct_first_ts`), because the scan no longer starts at
+    the bound.
+  - `degree_order`: `scan_x = true`.
+  - `count_only`: `thread_local std::vector` sets.
+- **CPU only.** A variant's `.cu` is an `#error` stub, and CMake rejects `BLZ_DISABLE_OPTS` with
+  `BLZ_ENABLE_CUDA` or `BLZ_WITH_XGBOOST`.
+- **Recording.** The registry lists the disabled options (`blz::disabled_optimizations()`), and the
+  manifest and bench JSON record them (`disabled_optimizations`). Profile ids do not change, since
+  they hash the specs.
+- **Snapshot tests.** `blzc_snapshots_disable_<opt>` (`tests/snapshots_disable/<opt>`) pin one
+  representative spec per option: sg_gather for the first four, fan_out for `sweep`.
+- **E11 tool** (`bench/e11.py`):
+  - builds each variant in `build/e11/<variant>`, reusing the dependency sources of an existing
+    build;
+  - gates each variant with `blz fuzz-diff` on 1,000 graphs;
+  - waits for an idle machine;
+  - per block, thread count and variant, runs a preflight on a 1 % trigger sample and skips a cell
+    estimated over 900 s, recording it as aborted;
+  - then runs `blz bench` with the dynamic schedule and `OMP_PROC_BIND=close`.
+
+  It logs the top CPU consumers every 10 s into the JSON. It records whether a variant's generated
+  code for the block is the same as the full build's (comments aside), so an unchanged variant is
+  told apart from noise.
+- **Profile.** E11 runs `v1_default` only: the frozen DG-2 recipe is not compiled (DG-3).
+
 ### 7.3 A30 campaign (one session)
 
 One instance session after P11, using v1's runbook (`bench/a30.sh`; D-15: `rel-cuda`,
@@ -937,6 +1002,26 @@ One instance session after P11, using v1's runbook (`bench/a30.sh`; D-15: `rel-c
 - GFP is not timed. A new instance is not the same machine as v1's, so E12 reports no new speedup
   over GFP: only GPU times, their change against v1's E5, and the ratio to the CPU backend measured
   on the same instance.
+
+As implemented (P11):
+- **Remote script** (`bench/a30_remote.sh`). It builds `rel-cuda` for sm_80 without XGBoost, then:
+  - runs the fast tests;
+  - runs `blz fuzz-diff --backend cuda` (H = 0, 4, `all`) on 10,000 graphs for `v1_default`,
+    `sg_ordered_v1w` and `sg_ordered_tsvis`, and HI-Small `blz mine` on CUDA under each, into
+    `results/p11_a30.json`;
+  - runs E12, `blz bench` on CUDA (H = 0, 8, 16, 32, 64, 128, 256, 1024, `all`; 5 runs) and on
+    the CPU at `nproc` threads, for every block of `v1_default`, `sg_ordered_v1w`,
+    `sg_ordered_tsvis` and the three DG-2 window profiles, into `results/e12_gpu_a30.json`;
+  - runs E11 at 1 and `nproc` threads, if the instance has more than 12 vCPUs and the run is at
+    most 30 minutes in.
+- **Local driver** (`bench/a30.sh`) uploads the working tree and the binary cache and downloads the
+  results.
+- **Report** (`bench/e12_report.py`) checks:
+  - the CUDA hashes against P10's oracle hashes;
+  - cuda = cpu for every E12 block;
+  - `v1_default`'s rows against v1's E5.
+
+  It tunes H per profile as E5 does.
 
 ---
 
