@@ -185,6 +185,8 @@ As implemented (P7):
 - A v1 config on cpu or cuda keeps the v1 start-up checks (E402, the K_MAX message), so it
   behaves as in v1. **P10 must revisit this:** once `sg_ordered` is registered with a block of its
   own, a v1 config that does not define that block fails E402 on the generated backends.
+  Resolved in P10: the v1 check skips registered patterns of known non-v1 blocks (§6.3, "As
+  implemented (P10)").
 
 ### 3.2 Feature manifest
 
@@ -1379,6 +1381,47 @@ Table 3 (`all`), with the paper's counts in brackets:
 
 **Exit:** AC-V2-4 on the 1650S (the sm_80 part completes in P11's campaign). About 4–6 days; about
 1 h of machine time.
+
+**Outcome (2026-11-13): done. AC-V2-4 holds on the 1650S; its sm_80 part is P11's (§7.3).**
+- The commits:
+  - 32b4f14: runtime visibility, snapshots regenerated;
+  - 4c4259e: order constraints, `pair_latest`, E205, `sg_ordered`, its oracle;
+  - f63e42d: the exit checks and the E10 tool.
+- Before the long runs, a gpt-6.1-sol review (xhigh, 1 round) of the whole P10 diff approved it
+  with no findings.
+- The tooling notes are in §3.1, §3.4 and §6.1–§6.4 ("As implemented (P10)").
+- **AC-V2-4** (`bench/p10_semantics.py` → `results/p10_semantics.json`; 13 min on `local`):
+  - `blz fuzz-diff` on 10,000 graphs per profile, `sg_ordered_v1w` and `sg_ordered_tsvis`: 0 rows
+    differ on cpu (both schedules) or CUDA (H = 0, 4, `all`).
+  - The metamorphic tests on 2,000 graphs per profile, including order relaxation: 0 rows differ
+    on the oracle, cpu or CUDA.
+  - HI-Small: oracle = cpu = CUDA for every block of `v1_default`, `sg_ordered_v1w` and
+    `sg_ordered_tsvis`.
+  - The six v1 blocks of `v1_default` and `sg_ordered_v1w` keep the AC-V2-0 hashes.
+  - tcyc under timestamp visibility keeps its hash, and its `tcyc.npy` is byte-identical to
+    `v1_default`'s.
+  - The invalid-spec suite passes with exact positions.
+  - The oracle takes 85–91 s per profile on HI-Small; cpu and CUDA take about 6 s. `sg_ord` alone
+    takes 5.3 s on the oracle, 0.17 s on cpu and 0.07 s on CUDA.
+- **E10** (`bench/e10.py` → `results/e10_semantics.{json,md}`, at f63e42d):
+  - **Instances.** On HI-Small, `sg_ord` has 212 instances (195 rows) against sg's 808 (both
+    roles). That is 26 % of sg: 157 in the fit split, 31 in validation, 24 in test.
+  - Timestamp visibility adds 0.1–0.7 % instances to fan, degree and sg, and none to tcyc.
+  - **F1 on validation** (fit → val, set `all`, F1 ×100):
+
+    | Classifier | `v1_default` | `sg_ordered_v1w` | `sg_ordered_tsvis` |
+    |---|---:|---:|---:|
+    | R0 | 4.82 | 4.82 | 5.51 |
+    | R3/S2 | 13.14 | 13.14 | 12.53 |
+
+  - `sg_ord` has a gain share of 0.0000 in every fit, so `sg_ordered_v1w`'s confusion counts are
+    exactly `v1_default`'s. At v1's sg window (21,600 s) the block is too sparse to matter.
+  - Timestamp visibility moves F1 by less than a point on validation.
+  - **Test sensitivity** (after the freeze; never used to select): R0 6.40 / 6.40 / 6.79, R3/S2
+    21.67 / 21.67 / 19.96.
+  - `v1_default` reproduces the ledger's R0 and R3/S2 counts and E8's test counts exactly.
+- **Not run:** `sg_ordered` at wider windows (e.g. W-C's 342,000 s for sg). E10 did not
+  pre-register it. Reported, not chased (§2.5).
 
 ### P11 — Compiler performance and the A30 campaign
 
