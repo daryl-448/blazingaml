@@ -1401,7 +1401,7 @@ Table 3 (`all`), with the paper's counts in brackets:
   - tcyc under timestamp visibility keeps its hash, and its `tcyc.npy` is byte-identical to
     `v1_default`'s.
   - The invalid-spec suite passes with exact positions.
-  - The oracle takes 85–91 s per profile on HI-Small; cpu and CUDA take about 6 s. `sg_ord` alone
+  - On HI-Small the oracle takes 80–91 s per profile; cpu and CUDA take about 6 s. `sg_ord` alone
     takes 5.3 s on the oracle, 0.17 s on cpu and 0.07 s on CUDA.
 - **E10** (`bench/e10.py` → `results/e10_semantics.{json,md}`, at f63e42d):
   - **Instances.** On HI-Small, `sg_ord` has 212 instances (195 rows) against sg's 808 (both
