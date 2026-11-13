@@ -1517,6 +1517,50 @@ Table 3 (`all`), with the paper's counts in brackets:
 **Exit:** AC-V2-5. **v2 core is done.** About 4–6 days; 1–2 h of `local` timing in idle windows, plus
 ≤ 60 min of A30 time.
 
+**Status (2026-11-13): open. The A30 campaign and E11 are done; the local exit checks are not run yet.**
+- The commits:
+  - d9307a3: the sweep and `blzc --disable`;
+  - 7cbae02: E11, the exit checks, the A30 scripts and the E12 report;
+  - 4739bc4: `bench/a30.sh`'s `jl run` wait ends on any state other than `running` (AGENTS.md);
+  - 81e7839: the campaign's results.
+- Before the long runs, a gpt-6.1-sol review (xhigh) took 2 rounds and approved. It found two bugs
+  in the bench scripts, both fixed:
+  - E11 left every process named `blz` out of the foreign load;
+  - E12 measured only `sg_ord` for `sg_ordered_v1w`.
+- The tooling notes are in §7.1–§7.3 ("As implemented (P11)").
+- **The A30 campaign** (24 min, $0.18; at 7cbae02, whose dirty flag is only the untracked
+  AGENTS.md and CLAUDE.md; `results/p11_a30.json`, `results/e12_gpu_a30.{json,md}`):
+  - **AC-V2-4 on sm_80.** On 10,000 fuzz graphs per profile, at H = 0, 4 and `all`, 0 rows differ
+    for `v1_default`, `sg_ordered_v1w` or `sg_ordered_tsvis`. Their HI-Small CUDA hashes equal
+    P10's oracle hashes.
+  - **E12.** For every block of the six compiled profiles, the CUDA rows equal the CPU rows.
+    `v1_default`'s kernels are within 2 % of v1's E5, with H = 64 tuned again. Tuned H per profile:
+    32 (`sg_ordered_tsvis`), 64 (`v1_default`, `sg_ordered_v1w`), 128 (`dg2_v1`, `dg2_wc`) and
+    256 (`dg2_wb`). The DG-2 windows move the optimum.
+  - **GPU vs CPU on the instance** (CUDA at the tuned H, against the CPU backend at 16 threads):
+    - 3.5–4.6× per profile;
+    - sg 9–13×, tcyc 2.8–5.9×;
+    - fan and degree 0.6–2.4× only, because the CPU sweep takes about 30 ms per block.
+- **E11** (`results/e11_ablation_a30.{json,md}`, D-35):
+  - Every variant passed its fuzz gate on 1,000 graphs, and its hashes equal the full build's.
+    No cell was noisy, and none was skipped.
+  - **The sweep**, against `--disable sweep`, at 1 and 16 threads:
+    - fan_out 32.8× and 24.3×;
+    - deg_out 2.4× and 2.1×;
+    - fan_in 1.7× and 1.8×;
+    - deg_in 1.5× and 1.6×.
+  - **The other options, at 1 thread:**
+    - `degree_order` 2.63× on sg;
+    - `find_start` 1.19× and `distinct_first` 1.15× on tcyc, and 1.16× on sg for `distinct_first`;
+    - `count_only` at most 1.02×.
+  - With the sweep on, `find_start` and `distinct_first` do not reach fan and degree. Each
+    variant switches off one option, so their effect on the per-trigger fan plan is not
+    measured. Reported, not chased (§2.5).
+- **Not run yet** (deferred by the user on 2026-11-13). These are needed for the exit:
+  - `bench/p11_checks.py`: AC-V2-5's sweep = oracle on HI-Small for every profile and on 10,000
+    CPU fuzz graphs, plus AC-V2-0's hashes and AC-V2-1's metamorphic tests on the new CPU code;
+  - `bench/ac1_cpu.sh` and `bench/ac1_cuda.sh`, after a `rel-cuda` rebuild (AC-V2-0).
+
 ### Stretch
 
 S1–S9 in the order of §8, each after its gate and the user's approval.
@@ -1586,3 +1630,4 @@ S3 adds its lc-cycle probes (A39 onwards) when it starts.
 | D-32 | GFP-produced passes (R6, R7) give GFP `gfp_bins(bins)`, so that their blocks are binned as §4.2 bins `blz`'s (A38). R6 and R7 then change only the call semantics or the family, not the binning. GFP's own rule applied to D-9's bins is a separate hypothesis. It is not tested, because the pass cap is fully allocated; E8 lists it as an open lead. F1 runs temp-cycle (window 86,400, one bin `[2]`) alongside, because GFP rejects `vertex_stats` with no pattern enabled. That column is dropped. The vertex statistics are the same with degree or fan as the companion (30,000 edges). F1 stores float32. GFP's float64 values beyond the float32 range are clipped to ±3.4028235·10³⁸ and counted in the manifest. These come from the kurtosis of near-constant inputs: 3 values in the first 3,000,000 rows, in `vs_dst_in_amount_received_kurtosis`. GFP emits each input column's statistics in input-column order, whatever the order of `vertex_stats_cols`; `dg2_features.py` names the columns in that order and checks it on one edge before every F1 pass. XGBoost works in float32 and rejects `inf`; NaN is kept and is missing to XGBoost. |
 | D-33 | E9's GFP eligibility of a batch recipe (G1) sends each attempt edge in the batch it had in the full stream (G1's layout: 128 eids from each cut, cuts at `b_fv` and 4,062,676), in eid order, to a fresh preprocessor. The alternative, fresh batches of 128 over the isolated stream, would put nearly every attempt in a single batch, where every edge sees and credits every other edge. That is not what the full pass did. With the full-stream layout, the isolated and full runs differ only in which edges exist. |
 | D-34 | E9's detection uses refits of the recorded models (the ladder and E8 kept neither models nor predictions). A refit is used only when its confusion counts equal the ledger's (validation) or E8's (test) exactly. Nothing is selected and nothing feeds back (§4.5 step 4). Vertex statistics are not a pattern block and get no eligibility or activation. |
+| D-35 | E11 is the A30 run of the P11 campaign (`results/e11_ablation_a30.{json,md}`: the instance's EPYC 7542 CPU, at 1 and 16 threads), not a run on `local` at 1 and 12 threads as §7.2 states. It is complete: no cell skipped or noisy, and every hash check passed. The user accepted it on 2026-11-13, which saves 30–60 min of idle-window timing on `local`. |
