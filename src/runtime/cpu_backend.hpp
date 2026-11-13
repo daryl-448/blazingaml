@@ -34,13 +34,16 @@ int compiled_k_max();
 struct CpuBlockTiming {
   double schedule_seconds = 0;  // trigger list, plus the work estimates and sort for `sorted`
   double loop_seconds = 0;      // the drivers' trigger loops
+  double sweep_seconds = 0;     // the part of loop_seconds spent in sweep drivers (SPEC v2 §7.1)
   std::uint64_t saturated = 0;
 };
 
 // Mines one block with the patterns `pats` (a profile's list for the block, SPEC v2 §3.1; their
 // emits are summed) under visibility `vis` (the profile's, SPEC v2 §6.1) for the triggers `sel`,
 // adding into `out` (sel.rows() rows of p.bins.size() columns, zeroed by the caller; row r
-// belongs to sel.eid(r)). Uses the current OpenMP thread count. Throws if `pats` is empty.
+// belongs to sel.eid(r)). Uses the current OpenMP thread count. Throws if `pats` is empty. A
+// pattern planned as a sweep (SPEC v2 §7.1) ignores `schedule`: it walks every list entry, so its
+// cost does not shrink with a trigger sample.
 CpuBlockTiming mine_cpu(const GraphView& g, std::span<const PatternInfo* const> pats, const BlockParams& p,
                         Visibility vis, const TriggerSel& sel, Schedule schedule, std::uint32_t* out);
 

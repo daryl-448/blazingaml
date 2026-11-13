@@ -239,6 +239,20 @@ nlohmann::json patterns_json(const blz::Profile& prof) {
   return j;
 }
 
+// The optimizations this build's generated code was compiled without (blzc --disable, SPEC v2 §7.2).
+nlohmann::json disabled_json() {
+  nlohmann::json j = nlohmann::json::array();
+  for (const char* d : blz::disabled_optimizations()) j.push_back(d);
+  return j;
+}
+
+// The CPU plan of each pattern of a block: "sweep" (SPEC v2 §7.1) or "per_trigger".
+nlohmann::json cpu_plans_json(const blz::ProfileBlock& pb) {
+  nlohmann::json j = nlohmann::json::object();
+  for (const blz::PatternInfo* pi : pb.patterns) j[pi->name] = pi->cpu_sweep ? "sweep" : "per_trigger";
+  return j;
+}
+
 // The CUDA device and build, for results files (SPEC §12.1).
 nlohmann::json cuda_json() {
   const blz::CudaDevice d = blz::cuda_device();
@@ -325,8 +339,9 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
   meta["run"] = run_key;
   meta["profile"] = profile_json(prof);
   meta["patterns"] = patterns_json(prof);
+  // blzc --disable (SPEC v2 §7.2) changes only the generated CPU code.
   nlohmann::json jbe = {{"name", backend}, {"threads", omp_get_max_threads()},
-                        {"disabled_optimizations", nlohmann::json::array()}};  // blzc --disable: SPEC v2 §7.2 (P11)
+                        {"disabled_optimizations", cpu ? disabled_json() : nlohmann::json::array()}};
   if (cpu) jbe["schedule"] = blz::schedule_name(schedule);
   if (gpu) jbe["heavy_threshold"] = threshold_name(heavy);
   meta["backend"] = jbe;
@@ -385,10 +400,13 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
     j["file"] = file;
     j["columns"] = blz::column_names(b, p.bins);
     j["mine_seconds"] = mine_s;
-    if (sel.sampled && rows > 0) j["extrapolated_mine_seconds"] = mine_s * double(m) / double(rows);
+    // A sweep (SPEC v2 §7.1) walks every list entry whatever the sample, so its time is not scaled.
+    if (sel.sampled && rows > 0)
+      j["extrapolated_mine_seconds"] = tm.sweep_seconds + (mine_s - tm.sweep_seconds) * double(m) / double(rows);
     if (cpu) {
       j["schedule_seconds"] = tm.schedule_seconds;
       j["loop_seconds"] = tm.loop_seconds;
+      j["cpu_plans"] = cpu_plans_json(*pb);
     }
     if (gpu)
       j["cuda"] = {{"kernel_seconds", ctm.kernel_seconds}, {"bucket_seconds", ctm.bucket_seconds},
@@ -750,7 +768,8 @@ int bench(const std::string& graph, const std::string& config, const std::string
   }
   nlohmann::json res = {{"env", environment(config)}, {"backend", backend}, {"graph", graph},
                         {"reps", reps}, {"warmup", 1}, {"threads", threads},
-                        {"profile", {{"name", prof.name}, {"id", prof.id()}}}};
+                        {"profile", {{"name", prof.name}, {"id", prof.id()}}},
+                        {"disabled_optimizations", disabled_json()}};
 
   blz::BlzgView g(graph);
   auto t0 = Clock::now();
@@ -769,7 +788,7 @@ int bench(const std::string& graph, const std::string& config, const std::string
     const blz::BlockParams& p = pb->params;
     const std::string bname(blz::block_name(pb->block));
     std::vector<std::uint32_t> feats(m * p.bins.size()), ref;
-    nlohmann::json jb = {{"patterns", nlohmann::json::array()}};
+    nlohmann::json jb = {{"patterns", nlohmann::json::array()}, {"cpu_plans", cpu_plans_json(*pb)}};
     for (const blz::PatternInfo* pi : pb->patterns) jb["patterns"].push_back(pi->name);
     for (blz::Schedule sched : schedules) {
       nlohmann::json js = nlohmann::json::object();

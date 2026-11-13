@@ -2,6 +2,7 @@
 // pattern fan_in, block fan_in, window delta_fan (open lower bound), visibility from the profile at runtime (Params::ts_visibility)
 // planner: work estimate (sorted schedule, CUDA bucketing): the window size of in_nbrs.e1 (V.in), two binary searches
 // planner: CUDA heavy kernel: no binding stage; the lanes split the scan of in_nbrs, the raw count is summed across the warp and lane 0 emits once (partial counts are never binned)
+// planner: CPU sweep (SPEC v2 §7.1, D-29): the entries of V.in are the triggers whose V is that node, so one forward pass per node keeps the window of in_nbrs as a running distinct count (per-neighbour counts in a per-thread dense array); each trigger emits once; parallel over nodes, longest list first; O(m), independent of the window
 #pragma once
 #include <cstdint>
 #include <span>

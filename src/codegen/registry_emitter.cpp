@@ -1,6 +1,7 @@
 // The registry emitter (SPEC §7.6): registry.cpp, the table blz checks against the feature config
 // at start-up (E402) and dispatches through.
 #include <map>
+#include <stdexcept>
 
 #include "codegen/codegen.hpp"
 #include "codegen/writer.hpp"
@@ -62,13 +63,28 @@ GeneratedFile emit_registry(const std::vector<ir::Pattern>& patterns, const std:
            quoted(p.file) + ", " + quoted(p.spec_sha256) + ", " + quoted(vis) + ", " +
            quoted(pinned ? dsl::format_loc(p.visibility_loc) : "") + ", " + quoted(p.span_param) + ", " + consts +
            ", &gen::" + p.name + "_cpu, &gen::" +
-           p.name + "_work, BLZ_CUDA_FN(gen::" + p.name + "_cuda_bucket), BLZ_CUDA_FN(gen::" + p.name + "_cuda)},");
+           p.name + "_work, BLZ_CUDA_FN(gen::" + p.name + "_cuda_bucket), BLZ_CUDA_FN(gen::" + p.name + "_cuda), " +
+           (p.plan.sweep ? "true" : "false") + "},");
   }
   w.close("};");
+  // blzc --disable applies to the whole library (SPEC v2 §7.2).
+  const std::vector<std::string> off = patterns.empty() ? std::vector<std::string>{} : ir::disabled_names(patterns[0].plan.opts);
+  for (const ir::Pattern& p : patterns)
+    if (ir::disabled_names(p.plan.opts) != off)
+      throw std::runtime_error("the patterns of one registry were planned with different --disable lists");
+  if (!off.empty()) {
+    std::string list;
+    for (const std::string& n : off) list += (list.empty() ? "" : ", ") + quoted(n);
+    w.line();
+    w.line("constexpr const char* kDisabled[] = {" + list + "};");
+  }
   w.line();
   w.line("}  // namespace");
   w.line();
   w.line("std::span<const PatternInfo> registered_patterns() { return kPatterns; }");
+  w.line();
+  w.line(off.empty() ? "std::span<const char* const> disabled_optimizations() { return {}; }"
+                     : "std::span<const char* const> disabled_optimizations() { return kDisabled; }");
   w.line();
   w.line("}  // namespace blz");
   return {"registry.cpp", w.str()};

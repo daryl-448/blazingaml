@@ -24,18 +24,20 @@ namespace {
 constexpr ConstInfo kConsts_tcyc[] = {{"K_MAX", 10}};
 
 constexpr PatternInfo kPatterns[] = {
-  {"deg_in", "deg_in", "patterns/deg_in.yaml:4:8", "patterns/deg_in.yaml", "38353df89520f27b172f7f77a3876db9a430f46ae3e7cb2d89ccbca2f2613268", "", "", "delta_deg", {}, &gen::deg_in_cpu, &gen::deg_in_work, BLZ_CUDA_FN(gen::deg_in_cuda_bucket), BLZ_CUDA_FN(gen::deg_in_cuda)},
-  {"deg_out", "deg_out", "patterns/deg_out.yaml:4:8", "patterns/deg_out.yaml", "5782f09b1206fe0d3b3109164e154eac3d218d170e63c31343ebc8d523682ecf", "", "", "delta_deg", {}, &gen::deg_out_cpu, &gen::deg_out_work, BLZ_CUDA_FN(gen::deg_out_cuda_bucket), BLZ_CUDA_FN(gen::deg_out_cuda)},
-  {"fan_in", "fan_in", "patterns/fan_in.yaml:4:8", "patterns/fan_in.yaml", "b862454a68c177f03bfa1a116068116c0c11ea8804be56cea31c23452500ea8e", "", "", "delta_fan", {}, &gen::fan_in_cpu, &gen::fan_in_work, BLZ_CUDA_FN(gen::fan_in_cuda_bucket), BLZ_CUDA_FN(gen::fan_in_cuda)},
-  {"fan_out", "fan_out", "patterns/fan_out.yaml:4:8", "patterns/fan_out.yaml", "e7e7bf2d050b766bddb75dd845cbdda020ef551a668259579697c833d4a39dd2", "", "", "delta_fan", {}, &gen::fan_out_cpu, &gen::fan_out_work, BLZ_CUDA_FN(gen::fan_out_cuda_bucket), BLZ_CUDA_FN(gen::fan_out_cuda)},
-  {"sg_gather", "sg", "patterns/sg_gather.yaml:4:8", "patterns/sg_gather.yaml", "2f4c6613be4ef4b2f10134183fa264de4f5629b544a82ec49e7633f0f6edb87b", "", "", "delta_sg", {}, &gen::sg_gather_cpu, &gen::sg_gather_work, BLZ_CUDA_FN(gen::sg_gather_cuda_bucket), BLZ_CUDA_FN(gen::sg_gather_cuda)},
-  {"sg_ordered", "sg_ord", "patterns/sg_ordered.yaml:5:8", "patterns/sg_ordered.yaml", "d2bab20a96375df097642e6ac39b2edba8ea2bde5efff0f4234562f5a03e4c66", "", "", "delta_sg", {}, &gen::sg_ordered_cpu, &gen::sg_ordered_work, BLZ_CUDA_FN(gen::sg_ordered_cuda_bucket), BLZ_CUDA_FN(gen::sg_ordered_cuda)},
-  {"sg_scatter", "sg", "patterns/sg_scatter.yaml:4:8", "patterns/sg_scatter.yaml", "d32060ea8d9b4018c288975eb3d0f93139bca993ac29d6ad2ac74186607bd6bd", "", "", "delta_sg", {}, &gen::sg_scatter_cpu, &gen::sg_scatter_work, BLZ_CUDA_FN(gen::sg_scatter_cuda_bucket), BLZ_CUDA_FN(gen::sg_scatter_cuda)},
-  {"tcyc", "tcyc", "patterns/tcyc.yaml:4:8", "patterns/tcyc.yaml", "358a52a3a2586bebe94c850db11132d84506aeed5a7d5021644023cb49a852b3", "", "", "delta_cyc", kConsts_tcyc, &gen::tcyc_cpu, &gen::tcyc_work, BLZ_CUDA_FN(gen::tcyc_cuda_bucket), BLZ_CUDA_FN(gen::tcyc_cuda)},
+  {"deg_in", "deg_in", "patterns/deg_in.yaml:4:8", "patterns/deg_in.yaml", "38353df89520f27b172f7f77a3876db9a430f46ae3e7cb2d89ccbca2f2613268", "", "", "delta_deg", {}, &gen::deg_in_cpu, &gen::deg_in_work, BLZ_CUDA_FN(gen::deg_in_cuda_bucket), BLZ_CUDA_FN(gen::deg_in_cuda), true},
+  {"deg_out", "deg_out", "patterns/deg_out.yaml:4:8", "patterns/deg_out.yaml", "5782f09b1206fe0d3b3109164e154eac3d218d170e63c31343ebc8d523682ecf", "", "", "delta_deg", {}, &gen::deg_out_cpu, &gen::deg_out_work, BLZ_CUDA_FN(gen::deg_out_cuda_bucket), BLZ_CUDA_FN(gen::deg_out_cuda), true},
+  {"fan_in", "fan_in", "patterns/fan_in.yaml:4:8", "patterns/fan_in.yaml", "b862454a68c177f03bfa1a116068116c0c11ea8804be56cea31c23452500ea8e", "", "", "delta_fan", {}, &gen::fan_in_cpu, &gen::fan_in_work, BLZ_CUDA_FN(gen::fan_in_cuda_bucket), BLZ_CUDA_FN(gen::fan_in_cuda), true},
+  {"fan_out", "fan_out", "patterns/fan_out.yaml:4:8", "patterns/fan_out.yaml", "e7e7bf2d050b766bddb75dd845cbdda020ef551a668259579697c833d4a39dd2", "", "", "delta_fan", {}, &gen::fan_out_cpu, &gen::fan_out_work, BLZ_CUDA_FN(gen::fan_out_cuda_bucket), BLZ_CUDA_FN(gen::fan_out_cuda), true},
+  {"sg_gather", "sg", "patterns/sg_gather.yaml:4:8", "patterns/sg_gather.yaml", "2f4c6613be4ef4b2f10134183fa264de4f5629b544a82ec49e7633f0f6edb87b", "", "", "delta_sg", {}, &gen::sg_gather_cpu, &gen::sg_gather_work, BLZ_CUDA_FN(gen::sg_gather_cuda_bucket), BLZ_CUDA_FN(gen::sg_gather_cuda), false},
+  {"sg_ordered", "sg_ord", "patterns/sg_ordered.yaml:5:8", "patterns/sg_ordered.yaml", "d2bab20a96375df097642e6ac39b2edba8ea2bde5efff0f4234562f5a03e4c66", "", "", "delta_sg", {}, &gen::sg_ordered_cpu, &gen::sg_ordered_work, BLZ_CUDA_FN(gen::sg_ordered_cuda_bucket), BLZ_CUDA_FN(gen::sg_ordered_cuda), false},
+  {"sg_scatter", "sg", "patterns/sg_scatter.yaml:4:8", "patterns/sg_scatter.yaml", "d32060ea8d9b4018c288975eb3d0f93139bca993ac29d6ad2ac74186607bd6bd", "", "", "delta_sg", {}, &gen::sg_scatter_cpu, &gen::sg_scatter_work, BLZ_CUDA_FN(gen::sg_scatter_cuda_bucket), BLZ_CUDA_FN(gen::sg_scatter_cuda), false},
+  {"tcyc", "tcyc", "patterns/tcyc.yaml:4:8", "patterns/tcyc.yaml", "358a52a3a2586bebe94c850db11132d84506aeed5a7d5021644023cb49a852b3", "", "", "delta_cyc", kConsts_tcyc, &gen::tcyc_cpu, &gen::tcyc_work, BLZ_CUDA_FN(gen::tcyc_cuda_bucket), BLZ_CUDA_FN(gen::tcyc_cuda), false},
 };
 
 }  // namespace
 
 std::span<const PatternInfo> registered_patterns() { return kPatterns; }
+
+std::span<const char* const> disabled_optimizations() { return {}; }
 
 }  // namespace blz

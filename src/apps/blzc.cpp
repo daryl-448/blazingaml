@@ -10,6 +10,8 @@
 //   blzc <spec.yaml>... --dump-ir [--out d]   the planned IR (stdout, or d/<pattern>.ir.txt)
 //   blzc <spec.yaml>    --expand  [--out d]   the spec after repeat expansion
 //   --const NAME=VALUE overrides a const of the spec (e.g. --const K_MAX=5).
+//   --disable OPT[,OPT...] plans and generates without these optimizations (SPEC v2 §7.2): find_start,
+//   distinct_first, degree_order, count_only, sweep. The E11 ablation variants; CPU code only.
 #include <charconv>
 #include <cstdio>
 #include <filesystem>
@@ -44,12 +46,15 @@ int main(int argc, char** argv) {
   std::vector<std::string> specs;
   std::string out_dir, snap_dir;
   std::vector<std::string> const_args;
+  std::string disable;
   bool check_only = false, dump_ir = false, expand = false, update = false;
   app.add_option("specs", specs, "pattern specs (patterns/*.yaml)")->required()->check(CLI::ExistingFile);
   app.add_option("--out", out_dir, "output directory");
   auto* s = app.add_option("--snapshots", snap_dir, "compare the generated code with this directory");
   app.add_flag("--update-snapshots", update, "with --snapshots: rewrite the snapshots")->needs(s);
   app.add_option("--const", const_args, "override a const: NAME=VALUE");
+  app.add_option("--disable", disable,
+                 "switch optimizations off (comma-separated): find_start, distinct_first, degree_order, count_only, sweep");
   auto* c = app.add_flag("--check-only", check_only, "run the front end and report diagnostics");
   auto* d = app.add_flag("--dump-ir", dump_ir, "write the planned IR");
   auto* e = app.add_flag("--expand", expand, "write the spec after repeat expansion");
@@ -70,6 +75,13 @@ int main(int argc, char** argv) {
     }
     overrides.emplace_back(a.substr(0, eq), v);
   }
+  blz::ir::Opts opts;
+  try {
+    opts = blz::ir::parse_disable(disable);
+  } catch (const std::invalid_argument& err) {
+    std::fprintf(stderr, "blzc: --disable: %s\n", err.what());
+    return 2;
+  }
   const bool codegen = !check_only && !dump_ir && !expand;
   if (codegen && out_dir.empty() == snap_dir.empty()) {
     std::fprintf(stderr, "blzc: code generation needs exactly one of --out and --snapshots\n");
@@ -88,7 +100,7 @@ int main(int argc, char** argv) {
         else write_file(out_dir + "/" + std::filesystem::path(path).stem().string() + ".expanded.yaml", text);
         continue;
       }
-      blz::ir::Pattern p = blz::ir::compile_file(path, overrides);
+      blz::ir::Pattern p = blz::ir::compile_file(path, overrides, opts);
       if (dump_ir) {
         const std::string text = blz::ir::dump(p);
         if (out_dir.empty()) std::cout << text;

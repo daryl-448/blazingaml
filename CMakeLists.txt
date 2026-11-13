@@ -6,6 +6,13 @@ option(BLZ_NATIVE "Compile with -march=native" ON)
 option(BLZ_SANITIZE "Build with ASan + UBSan" OFF)
 # blz train (SPEC §10). Off only where nothing trains, e.g. the temporary A30 (bench/a30.sh).
 option(BLZ_WITH_XGBOOST "Build blz train against XGBoost (C API)" ON)
+# An E11 ablation variant (SPEC v2 §7.2): blzc --disable <list> for the whole pattern library, in a
+# build directory of its own. Such code is CPU-only, and nothing trains in it.
+set(BLZ_DISABLE_OPTS "" CACHE STRING
+    "blzc --disable list (find_start,distinct_first,degree_order,count_only,sweep); empty = fully optimized")
+if(BLZ_DISABLE_OPTS AND (BLZ_ENABLE_CUDA OR BLZ_WITH_XGBOOST))
+  message(FATAL_ERROR "BLZ_DISABLE_OPTS (an E11 variant) needs -DBLZ_ENABLE_CUDA=OFF -DBLZ_WITH_XGBOOST=OFF")
+endif()
 include(CTest)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -86,8 +93,12 @@ foreach(spec IN LISTS BLZ_PATTERN_SPECS)
     list(APPEND BLZ_GEN_SOURCES ${BLZ_GEN_DIR}/${stem}_cuda.cu)
   endif()
 endforeach()
+set(BLZ_DISABLE_ARGS)
+if(BLZ_DISABLE_OPTS)
+  set(BLZ_DISABLE_ARGS --disable ${BLZ_DISABLE_OPTS})
+endif()
 add_custom_command(OUTPUT ${BLZ_GEN_OUTPUTS}
-  COMMAND blzc ${BLZ_PATTERN_SPECS_REL} --out ${BLZ_GEN_DIR}
+  COMMAND blzc ${BLZ_PATTERN_SPECS_REL} --out ${BLZ_GEN_DIR} ${BLZ_DISABLE_ARGS}
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
   DEPENDS blzc ${BLZ_PATTERN_SPECS}
   COMMENT "blzc: generating the pattern library"

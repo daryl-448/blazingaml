@@ -25,8 +25,9 @@ struct RowSink {
   }
 };
 
-// A block's output rows: row r belongs to trigger eid first + r or, when `rows` is set (a trigger
-// sample, SPEC v2 §11), to rows[r], the r-th eid of an ascending list of `nrows` eids.
+// A block's output rows: row r belongs to trigger eid first + r, for the eids [first, last), or,
+// when `rows` is set (a trigger sample, SPEC v2 §11), to rows[r], the r-th eid of an ascending list
+// of `nrows` eids.
 struct BlockOut {
   std::uint32_t* data = nullptr;
   std::uint64_t first = 0;
@@ -35,8 +36,15 @@ struct BlockOut {
   std::uint64_t saturated = 0;  // summed by the drivers
   const std::uint32_t* rows = nullptr;
   std::uint64_t nrows = 0;
+  std::uint64_t last = 0;  // without `rows`: the end of the eid range
 
   RowSink sink(std::uint32_t e) const { return {data + row_of(e) * nbins, bins, nbins, 0}; }
+  // Whether trigger e has a row (the sweep driver walks every list entry, SPEC v2 §7.1).
+  bool selects(std::uint32_t e) const {
+    if (!rows) return e >= first && e < last;
+    const std::uint64_t r = row_of(e);
+    return r < nrows && rows[r] == e;
+  }
   std::uint64_t row_of(std::uint32_t e) const {
     if (!rows) return e - first;
     std::uint64_t a = 0, b = nrows;  // the first position with rows[pos] >= e
@@ -50,7 +58,9 @@ struct BlockOut {
 };
 
 // <pattern>_cpu: runs <pattern>_trigger for every eid in `triggers`, in that order, with
-// `#pragma omp parallel for schedule(dynamic, chunk)`, adding into `out`.
+// `#pragma omp parallel for schedule(dynamic, chunk)`, adding into `out`. Under the sweep plan
+// (SPEC v2 §7.1) it walks every node's list instead and emits for the triggers `out` selects;
+// `triggers` and `chunk` are then unused.
 using CpuFn = void (*)(const GraphView&, const Params&, std::span<const std::uint32_t> triggers,
                        BlockOut& out, int chunk);
 // <pattern>_work: the trigger's work estimate, the window size of the pattern's first scan
@@ -99,9 +109,14 @@ struct PatternInfo {
   WorkFn work;
   CudaBucketFn cuda_bucket;  // null in a build without CUDA
   CudaFn cuda;               // null in a build without CUDA
+  bool cpu_sweep;            // the CPU driver is the sweep plan (SPEC v2 §7.1)
 };
 
 // Every pattern blzc compiled into this build, in the order of its spec arguments.
 std::span<const PatternInfo> registered_patterns();
+
+// The optimizations this build's patterns were compiled without (`blzc --disable`, SPEC v2 §7.2);
+// empty for the fully optimized build.
+std::span<const char* const> disabled_optimizations();
 
 }  // namespace blz

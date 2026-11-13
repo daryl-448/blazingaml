@@ -279,3 +279,60 @@ TEST_CASE("library: fan, degree, sg and tcyc lower and plan as specified") {
   CHECK(close10.operands[0].access == ir::Access::probe);
   CHECK(texts(close10.operands[0].lo_incl) == "t - delta_cyc | h8.t + 1");
 }
+
+namespace {
+
+// A count over `port` with element X, constraints `cons` (YAML list) and emit size `emit`.
+std::string count_stage(const std::string& port, const std::string& cons, const std::string& emit = "n",
+                        const std::string& extra = "") {
+  return "constraints: [{skip_if: \"U == V\"}]\nstages:\n  - id: s\n    op: count\n    src: " + port +
+         "\n    edge: e1\n    element: X\n    output: n\n    constraints: " + cons + "\n    emit: {size: \"" + emit +
+         "\"}\n" + extra;
+}
+
+bool sweeps(const std::string& body, const ir::Opts& opts = {}) {
+  return ir::compile_text(std::string(kHead) + body, "x.yaml", {}, opts).plan.sweep;
+}
+
+}  // namespace
+
+TEST_CASE("plan: the sweep lowering's recognition (SPEC v2 §7.1)") {
+  for (const char* f : {"fan_in", "fan_out", "deg_in", "deg_out"}) {
+    const ir::Pattern p = ir::compile_file(src(std::string("patterns/") + f + ".yaml"));
+    INFO(f);
+    CHECK(p.plan.sweep);
+    CHECK(p.plan.sweep_stage == root_check(p).id);
+  }
+  for (const char* f : {"sg_gather", "sg_scatter", "sg_ordered", "tcyc"})
+    CHECK_FALSE(ir::compile_file(src(std::string("patterns/") + f + ".yaml")).plan.sweep);
+
+  CHECK(sweeps(count_stage("V.in", "[{skip_if: \"X == V\"}]")));
+  CHECK(sweeps(count_stage("U.out", "[{skip_if: \"X == U\"}]", "n - 1")));
+  CHECK(sweeps(count_stage("V.in", "[]")));
+  // Condition 1: the trigger's own list, and a single stage.
+  CHECK_FALSE(sweeps(count_stage("V.out", "[]")));
+  CHECK_FALSE(sweeps(count_stage("U.in", "[]")));
+  CHECK_FALSE(sweeps(count_stage("V.in", "[]", "n",
+                                 "  - {id: s2, op: count, src: V.in, edge: e2, element: Y, output: k, emit: {size: k}}\n")));
+  // Condition 2: the element filters see only the element, the list's node and constants; no
+  // time bound but the window's.
+  CHECK_FALSE(sweeps(count_stage("V.in", "[{skip_if: \"X == U\"}]")));
+  CHECK_FALSE(sweeps(count_stage("V.in", "[{break_if: \"e1.t >= t\"}]")));
+  CHECK_FALSE(sweeps(count_stage("V.in", "[{skip_if: \"e1.t <= t - 5\"}]")));
+  // Condition 3: the emit sees only the count.
+  CHECK_FALSE(sweeps(count_stage("V.in", "[]", "d")));
+  // --disable sweep keeps the per-trigger plan.
+  CHECK_FALSE(sweeps(count_stage("V.in", "[]"), ir::parse_disable("sweep")));
+}
+
+TEST_CASE("plan: blzc --disable names (SPEC v2 §7.2)") {
+  CHECK(ir::disabled_names(ir::parse_disable("")).empty());
+  const ir::Opts all = ir::parse_disable("sweep,find_start,count_only,degree_order,distinct_first");
+  CHECK(ir::disabled_names(all) ==
+        std::vector<std::string>{"find_start", "distinct_first", "degree_order", "count_only", "sweep"});
+  CHECK_THROWS_AS(ir::parse_disable("find_start,bogus"), std::invalid_argument);
+  CHECK_THROWS_AS(ir::parse_disable("find_start,"), std::invalid_argument);
+  // count_only off materializes a check intersection's set.
+  const ir::Pattern sg = ir::compile_file(src("patterns/sg_gather.yaml"), {}, ir::parse_disable("count_only"));
+  CHECK(sg.levels.at(1).checks.at(0).materialize);
+}

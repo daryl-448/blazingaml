@@ -48,6 +48,15 @@ struct TCsrView {
     return {first_ts_at_least(a, b, lo_ts), b};
   }
 
+  // range() without the lower bound: x's entries from the list head (SPEC v2 §7.2, find_start
+  // disabled; the window's lower bound is then a per-entry skip).
+  BLZ_HD Range head_range(std::uint32_t x, std::int64_t hi_ts, std::uint32_t max_eid) const {
+    const std::uint32_t a = off[x];
+    std::uint32_t b = first_eid_after(a, off[x + 1], max_eid);
+    if (hi_ts != kNoUpper) b = first_ts_at_least(a, b, hi_ts + 1);
+    return {a, b};
+  }
+
   // The first position in [a, b) with ts >= v, or b.
   BLZ_HD std::uint32_t first_ts_at_least(std::uint32_t a, std::uint32_t b, std::int64_t v) const {
     while (a < b) {
@@ -72,6 +81,14 @@ struct TCsrView {
   // its neighbour, so each neighbour is visited once, at its earliest witness (SPEC §5.1).
   BLZ_HD bool distinct_first(std::uint32_t j, std::uint32_t lo) const {
     return prev_same[j] < std::int32_t(lo);
+  }
+
+  // The same test for a scan that starts at the list head (find_start disabled): the window
+  // starts at the first entry with ts >= lo_ts, so the previous entry of the same neighbour lies
+  // before it exactly when it is absent or has ts < lo_ts.
+  BLZ_HD bool distinct_first_ts(std::uint32_t j, std::int64_t lo_ts) const {
+    const std::int32_t k = prev_same[j];
+    return k < 0 || std::int64_t(ts[k]) < lo_ts;
   }
 };
 

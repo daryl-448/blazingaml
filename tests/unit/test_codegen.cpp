@@ -58,3 +58,16 @@ TEST_CASE("codegen: two specs defining one pattern name are E102") {
     CHECK(e.loc().line == 2);
   }
 }
+
+TEST_CASE("codegen: blzc --disable variants are CPU-only and listed in the registry (SPEC v2 §7.2)") {
+  const ir::Pattern full = ir::compile_text(with(""), "a.yaml");
+  const ir::Pattern off = ir::compile_text(with(""), "a.yaml", {}, ir::parse_disable("find_start,sweep"));
+  CHECK(codegen::emit_cuda(full, "a").text.find("#error") == std::string::npos);
+  CHECK(codegen::emit_cuda(off, "a").text.find("#error \"blzc --disable variants are CPU-only") != std::string::npos);
+  CHECK(codegen::emit_registry({full}, {"a"}).text.find("disabled_optimizations() { return {}; }") != std::string::npos);
+  const std::string reg = codegen::emit_registry({off}, {"a"}).text;
+  CHECK(reg.find("constexpr const char* kDisabled[] = {\"find_start\", \"sweep\"};") != std::string::npos);
+  // The sweep plan replaces the OpenMP driver; --disable sweep restores v1's.
+  CHECK(codegen::emit_cpu(full, "a")[1].text.find("sweep_count<true>(g, g.in, p.ts_visibility") != std::string::npos);
+  CHECK(codegen::emit_cpu(off, "a")[1].text.find("#pragma omp parallel for schedule(dynamic, chunk)") != std::string::npos);
+}

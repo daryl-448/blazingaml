@@ -23,7 +23,8 @@ add_executable(blz_unit_tests
   unit/test_triggers.cpp
   unit/test_metamorphic.cpp
   unit/test_gt_join.cpp
-  unit/test_coverage.cpp)
+  unit/test_coverage.cpp
+  unit/test_sweep.cpp)
 if(BLZ_WITH_XGBOOST)
   target_sources(blz_unit_tests PRIVATE unit/test_xgb.cpp)
 endif()
@@ -46,6 +47,20 @@ add_test(NAME blzc_snapshots
   COMMAND blzc ${BLZ_PATTERN_SPECS_REL} --snapshots tests/snapshots
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
 set_tests_properties(blzc_snapshots PROPERTIES LABELS fast)
+
+# SPEC v2 §10: each blzc --disable variant (§7.2) of a representative spec: sg_gather has scans,
+# distinct scans and a count-only intersection; fan_out is the sweep's (§7.1). Update with
+#   (cd <source> && blzc <spec> --disable <opt> --snapshots tests/snapshots_disable/<opt> --update-snapshots)
+foreach(opt find_start distinct_first degree_order count_only sweep)
+  set(spec patterns/sg_gather.yaml)
+  if(opt STREQUAL "sweep")
+    set(spec patterns/fan_out.yaml)
+  endif()
+  add_test(NAME blzc_snapshots_disable_${opt}
+    COMMAND blzc ${spec} --disable ${opt} --snapshots tests/snapshots_disable/${opt}
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+  set_tests_properties(blzc_snapshots_disable_${opt} PROPERTIES LABELS fast)
+endforeach()
 
 # AC1 (SPEC §13.3): generated CPU vs oracle on 10,000 fuzz graphs, both schedules.
 add_test(NAME fuzz_diff_cpu_10k COMMAND blz fuzz-diff --seeds 0:10000)

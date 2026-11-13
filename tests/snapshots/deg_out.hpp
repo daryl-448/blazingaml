@@ -2,6 +2,7 @@
 // pattern deg_out, block deg_out, window delta_deg (open lower bound), visibility from the profile at runtime (Params::ts_visibility)
 // planner: work estimate (sorted schedule, CUDA bucketing): the window size of out_edges.e1 (U.out), two binary searches
 // planner: CUDA heavy kernel: no binding stage; the lanes split the scan of out_edges, the raw count is summed across the warp and lane 0 emits once (partial counts are never binned)
+// planner: CPU sweep (SPEC v2 §7.1, D-29): the entries of U.out are the triggers whose U is that node, so one forward pass per node keeps the window of out_edges as a running edge count; each trigger emits once; parallel over nodes, longest list first; O(m), independent of the window
 #pragma once
 #include <cstdint>
 #include <span>

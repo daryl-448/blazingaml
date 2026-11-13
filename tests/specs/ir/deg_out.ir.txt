@@ -14,6 +14,7 @@ level 0 (root)
     exports n
     // scan T-CSR U.out, every edge; n = number of elements that pass the filters (count only)
     // e1 in U.out: ts >= t - delta_deg + 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
-plan depth 0 work out_edges split out_edges (raw count)
+plan depth 0 work out_edges split out_edges (raw count) cpu sweep out_edges
   // work estimate (sorted schedule, CUDA bucketing): the window size of out_edges.e1 (U.out), two binary searches
   // CUDA heavy kernel: no binding stage; the lanes split the scan of out_edges, the raw count is summed across the warp and lane 0 emits once (partial counts are never binned)
+  // CPU sweep (SPEC v2 §7.1, D-29): the entries of U.out are the triggers whose U is that node, so one forward pass per node keeps the window of out_edges as a running edge count; each trigger emits once; parallel over nodes, longest list first; O(m), independent of the window

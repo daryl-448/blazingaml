@@ -105,7 +105,8 @@ std::string dump(const Pattern& p) {
     for (const Stage& s : lv.checks) stage(o, s, ind + "  ");
   }
   o << "plan depth " << p.plan.depth << " work " << p.plan.work_stage << " split "
-    << p.plan.split_stage << (p.plan.split_raw_count ? " (raw count)" : "") << "\n";
+    << p.plan.split_stage << (p.plan.split_raw_count ? " (raw count)" : "")
+    << (p.plan.sweep ? " cpu sweep " + p.plan.sweep_stage : "") << "\n";
   for (const auto& n : p.plan.notes) o << "  // " << n << "\n";
   return o.str();
 }

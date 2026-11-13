@@ -71,17 +71,21 @@ CpuBlockTiming mine_cpu(const GraphView& g, std::span<const PatternInfo* const> 
     if (e < sel.first || e >= sel.last) throw std::invalid_argument("mine_cpu: sample eid outside its range");
   const Params params{p.window, vis == Visibility::timestamp};
   BlockOut bo{out, sel.first, p.bins.data(), std::uint32_t(p.bins.size()), 0,
-              sel.sampled ? sel.eids.data() : nullptr, sel.sampled ? sel.eids.size() : 0};
+              sel.sampled ? sel.eids.data() : nullptr, sel.sampled ? sel.eids.size() : 0, sel.last};
   CpuBlockTiming timing;
   const std::size_t count = sel.rows();
   std::vector<std::uint32_t> triggers(count);
   std::vector<std::uint32_t> work(schedule == Schedule::sorted ? count : 0);
+  bool listed = false;  // `triggers` holds the eid-order list
   for (const PatternInfo* pat : pats) {
     auto t0 = Clock::now();
-    if (schedule == Schedule::dynamic) {
-      if (pat == pats.front()) {
+    if (pat->cpu_sweep) {
+      // The sweep plan (SPEC v2 §7.1) walks every node's list in its own order: no trigger order.
+    } else if (schedule == Schedule::dynamic) {
+      if (!listed) {
         if (sel.sampled) std::copy(sel.eids.begin(), sel.eids.end(), triggers.begin());
         else std::iota(triggers.begin(), triggers.end(), std::uint32_t(sel.first));
+        listed = true;
       }
     } else {
       // Descending work, ties in eid order: a stable counting sort on the work estimate (a
@@ -101,6 +105,7 @@ CpuBlockTiming mine_cpu(const GraphView& g, std::span<const PatternInfo* const> 
     auto t1 = Clock::now();
     pat->cpu(g, params, triggers, bo, schedule == Schedule::sorted ? kSortedChunk : kDynamicChunk);
     timing.loop_seconds += since(t1);
+    if (pat->cpu_sweep) timing.sweep_seconds += since(t1);
   }
   timing.saturated = bo.saturated;
   return timing;

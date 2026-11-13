@@ -99,12 +99,30 @@ struct Level {
   std::vector<Stage> checks;
 };
 
+// The optimizations `blzc --disable` can switch off (SPEC v2 §7.2, E11). All on by default.
+struct Opts {
+  bool find_start = true;      // off: scans start at the list head, the window's lower bound is a per-entry skip
+  bool distinct_first = true;  // off: distinct neighbours come from a per-thread hash set cleared per scan
+  bool degree_order = true;    // off: an intersection always scans its src operand and probes dst
+  bool count_only = true;      // off: a set used only through len() is materialized, then counted
+  bool sweep = true;           // off: fan and degree keep the per-trigger plan (SPEC v2 §7.1)
+};
+// "find_start,sweep" -> Opts; an unknown name throws std::invalid_argument. "" disables nothing.
+Opts parse_disable(std::string_view list);
+// The disabled optimizations, in the order of the list above.
+std::vector<std::string> disabled_names(const Opts& o);
+
 struct Plan {
   int depth = 0;               // number of binding levels
   std::string work_stage;      // the first scan; its window size is the work estimate (§7.4)
   int work_operand = 0;
   std::string split_stage;     // CUDA heavy kernel: the scan split across the warp (§7.5)
   bool split_raw_count = false;  // no binding stage: lanes sum raw counts, lane 0 emits once
+  // CPU sweep plan (SPEC v2 §7.1, D-29): sweep_stage is the pattern's only stage, a root count
+  // over the trigger's src.out or dst.in. The OpenMP driver walks every node's list once.
+  bool sweep = false;
+  std::string sweep_stage;
+  Opts opts;                   // the optimizations this plan was made with
   std::vector<std::string> notes;
 };
 
@@ -127,16 +145,18 @@ struct Pattern {
 // Resolve, type-check and classify (§7.1 steps 3–5, 7): E102, E103, E201–E204, E301.
 Pattern lower(const dsl::Spec& spec);
 
-// Planner (§7.3): access paths, effective bounds, work estimate, warp split, notes.
-void plan(Pattern& p);
+// Planner (§7.3): access paths, effective bounds, work estimate, warp split, the CPU sweep plan
+// (SPEC v2 §7.1), notes. `opts` switches optimizations off (SPEC v2 §7.2).
+void plan(Pattern& p, const Opts& opts = {});
 
 // Human-readable IR, deterministic (tests/specs/ir/ and `blzc --dump-ir`).
 std::string dump(const Pattern& p);
 
 // The front end, steps 1–7: parse, expand (with const overrides), schema-check, lower, plan.
 dsl::YNode expand_text(std::string_view text, const std::string& file, const IntEnv& overrides = {});
-Pattern compile_text(std::string_view text, const std::string& file, const IntEnv& overrides = {});
-Pattern compile_file(const std::string& path, const IntEnv& overrides = {});
+Pattern compile_text(std::string_view text, const std::string& file, const IntEnv& overrides = {},
+                     const Opts& opts = {});
+Pattern compile_file(const std::string& path, const IntEnv& overrides = {}, const Opts& opts = {});
 std::string read_text_file(const std::string& path);
 
 }  // namespace blz::ir

@@ -1,6 +1,8 @@
 // Planner (SPEC §7.3). Every decision is also recorded as a note, which the backends emit as a
 // comment in the generated code.
+#include <algorithm>
 #include <set>
+#include <stdexcept>
 
 #include "ir/ir.hpp"
 
@@ -68,7 +70,7 @@ std::string range_note(const Operand& o, const std::string& e0) {
   return s;
 }
 
-void plan_stage(Stage& st, const Pattern& p) {
+void plan_stage(Stage& st, const Pattern& p, const Opts& opts) {
   for (Operand& o : st.operands) {
     o.lo_incl = inclusive(o.lo, true);
     o.hi_incl = inclusive(o.hi, false);
@@ -108,6 +110,9 @@ void plan_stage(Stage& st, const Pattern& p) {
                          dir_name(b.dir) +
                          " over distinct nodes: per trigger, scan the side with the smaller window "
                          "(T-CSR, distinct-first) and probe the other (P-CSR)");
+      if (!opts.degree_order)
+        st.notes.push_back("degree_order disabled (SPEC v2 §7.2): always scan " + a.node + "." + dir_name(a.dir) +
+                           " and probe " + b.node + "." + dir_name(b.dir));
       if (st.order) {
         // Which witness each side needs, and where it comes from (SPEC v2 §6.2).
         const Order& r = *st.order;
@@ -129,15 +134,76 @@ void plan_stage(Stage& st, const Pattern& p) {
         st.notes.push_back("binds " + st.bind_var + " once per common neighbour" +
                            (st.order ? std::string("; its edges are not exported (no single witness)") : ""));
       } else {
-        st.materialize = false;  // the type system only lets a set appear inside len()
-        st.notes.push_back("no materialization: " + st.output_var + " is used only through len(), so " +
-                           "the common neighbours that pass the filters are counted");
+        // The type system only lets a set appear inside len().
+        st.materialize = !opts.count_only;
+        st.notes.push_back(opts.count_only
+                               ? "no materialization: " + st.output_var + " is used only through len(), so " +
+                                     "the common neighbours that pass the filters are counted"
+                               : "count_only disabled (SPEC v2 §7.2): " + st.output_var +
+                                     " is materialized into a per-thread vector, then counted");
       }
       break;
     }
   }
   for (const Operand& o : st.operands) st.notes.push_back(range_note(o, p.e0));
+  const bool scans = st.op != Op::exists;
+  if (scans && !opts.find_start)
+    st.notes.push_back("find_start disabled (SPEC v2 §7.2): each scan starts at the list head; the window's "
+                       "lower bound is a per-entry skip");
+  const bool distinct = st.op == Op::intersection || st.multiplicity == Mult::distinct;
+  if (scans && distinct && !opts.distinct_first)
+    st.notes.push_back("distinct_first disabled (SPEC v2 §7.2): distinct neighbours come from a per-thread hash "
+                       "set, cleared per scan");
   if (st.gate) st.notes.push_back("gate: later stages run only when this check passes");
+}
+
+// Whether e mentions only literals, constants and the nodes in `nodes` (an element filter of
+// the sweep plan, SPEC v2 §7.1 condition 2).
+bool only_nodes(const Expr& e, const std::set<std::string>& nodes) {
+  switch (e.k) {
+    case Expr::K::Int: return true;
+    case Expr::K::Name:
+      return e.sym == Sym::constant || (e.sym == Sym::node && nodes.count(e.name) != 0);
+    case Expr::K::EdgeT:
+    case Expr::K::Len: return false;
+    default:
+      for (const Expr& k : e.kids)
+        if (!only_nodes(k, nodes)) return false;
+      return true;
+  }
+}
+
+// Whether e mentions only literals, constants and the count output `out` (§7.1 condition 3).
+bool only_output(const Expr& e, const std::string& out) {
+  switch (e.k) {
+    case Expr::K::Int: return true;
+    case Expr::K::Name: return e.sym == Sym::constant || (e.sym == Sym::int_var && e.name == out);
+    case Expr::K::EdgeT:
+    case Expr::K::Len: return false;
+    default:
+      for (const Expr& k : e.kids)
+        if (!only_output(k, out)) return false;
+      return true;
+  }
+}
+
+// The sweep plan's recognition (SPEC v2 §7.1): the pattern's only stage is a root count over the
+// trigger's src.out or dst.in (so that list's entries are exactly the triggers whose src, or
+// dst, is that node), bounded by the window alone, whose element filters see only the element,
+// that node and constants, and whose emit sees only the count. As implemented (P11): one stage.
+const Stage* sweep_stage(const Pattern& p) {
+  if (p.levels.size() != 1 || p.levels[0].checks.size() != 1) return nullptr;
+  const Stage& s = p.levels[0].checks[0];
+  if (s.op != Op::count) return nullptr;
+  const Operand& o = s.operands[0];
+  if (!((o.node == p.src_var && o.dir == Dir::out) || (o.node == p.dst_var && o.dir == Dir::in))) return nullptr;
+  if (!o.hi.empty() || o.lo.size() != 1 || !o.lo[0].from_window) return nullptr;
+  std::set<std::string> nodes = {o.node};
+  if (!s.element_var.empty()) nodes.insert(s.element_var);
+  for (const Expr& f : s.filters)
+    if (!only_nodes(f, nodes)) return nullptr;
+  if (s.emit && !only_output(s.emit->size, s.output_var)) return nullptr;
+  return &s;
 }
 
 template <class F>
@@ -150,12 +216,47 @@ void for_each_stage(Pattern& p, F&& f) {
 
 }  // namespace
 
-void plan(Pattern& p) {
-  for_each_stage(p, [&](Stage& s) { plan_stage(s, p); });
+Opts parse_disable(std::string_view list) {
+  Opts o;
+  for (std::size_t i = 0; !list.empty() && i <= list.size();) {
+    const std::size_t j = std::min(list.find(',', i), list.size());
+    const std::string_view name = list.substr(i, j - i);
+    if (name == "find_start") o.find_start = false;
+    else if (name == "distinct_first") o.distinct_first = false;
+    else if (name == "degree_order") o.degree_order = false;
+    else if (name == "count_only") o.count_only = false;
+    else if (name == "sweep") o.sweep = false;
+    else
+      throw std::invalid_argument("unknown optimization '" + std::string(name) +
+                                  "' (expected find_start, distinct_first, degree_order, count_only or sweep)");
+    i = j + 1;
+  }
+  return o;
+}
+
+std::vector<std::string> disabled_names(const Opts& o) {
+  std::vector<std::string> v;
+  if (!o.find_start) v.push_back("find_start");
+  if (!o.distinct_first) v.push_back("distinct_first");
+  if (!o.degree_order) v.push_back("degree_order");
+  if (!o.count_only) v.push_back("count_only");
+  if (!o.sweep) v.push_back("sweep");
+  return v;
+}
+
+void plan(Pattern& p, const Opts& opts) {
+  for_each_stage(p, [&](Stage& s) { plan_stage(s, p, opts); });
 
   Plan& pl = p.plan;
   pl = {};
+  pl.opts = opts;
   pl.depth = int(p.levels.size()) - 1;
+  if (const auto off = disabled_names(opts); !off.empty()) {
+    std::string list;
+    for (const std::string& n : off) list += (list.empty() ? "" : ", ") + n;
+    pl.notes.push_back("disabled optimizations (blzc --disable, SPEC v2 §7.2): " + list +
+                       "; the CPU code only (no CUDA launchers are generated)");
+  }
   const Level& root = p.levels[0];
   std::string root_ids;
   for (const Stage& s : root.checks) root_ids += (root_ids.empty() ? "" : ", ") + s.id;
@@ -194,6 +295,23 @@ void plan(Pattern& p) {
                          "(partial counts are never binned)");
     } else {
       pl.notes.push_back("CUDA heavy kernel: no binding stage and no root count; lane 0 runs every check");
+    }
+  }
+
+  if (const Stage* s = sweep_stage(p)) {
+    const Operand& o = s->operands[0];
+    const std::string list = o.node + "." + dir_name(o.dir);
+    if (opts.sweep) {
+      pl.sweep = true;
+      pl.sweep_stage = s->id;
+      pl.notes.push_back(
+          "CPU sweep (SPEC v2 §7.1, D-29): the entries of " + list + " are the triggers whose " + o.node +
+          " is that node, so one forward pass per node keeps the window of " + s->id + " as a running " +
+          (s->multiplicity == Mult::distinct ? "distinct count (per-neighbour counts in a per-thread dense array)"
+                                             : "edge count") +
+          "; each trigger emits once; parallel over nodes, longest list first; O(m), independent of the window");
+    } else {
+      pl.notes.push_back("sweep disabled (SPEC v2 §7.2): the per-trigger plan over " + list);
     }
   }
 }

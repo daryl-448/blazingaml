@@ -20,16 +20,16 @@ dsl::YNode expand_text(std::string_view text, const std::string& file, const Int
   return dsl::expand_spec(dsl::load_yaml(text, file), overrides);
 }
 
-Pattern compile_text(std::string_view text, const std::string& file, const IntEnv& overrides) {
+Pattern compile_text(std::string_view text, const std::string& file, const IntEnv& overrides, const Opts& opts) {
   const dsl::Spec spec = dsl::parse_spec(expand_text(text, file, overrides), file);
   Pattern p = lower(spec);
-  plan(p);
+  plan(p, opts);
   p.spec_sha256 = to_hex(sha256(text.data(), text.size()));
   return p;
 }
 
-Pattern compile_file(const std::string& path, const IntEnv& overrides) {
-  return compile_text(read_text_file(path), path, overrides);
+Pattern compile_file(const std::string& path, const IntEnv& overrides, const Opts& opts) {
+  return compile_text(read_text_file(path), path, overrides, opts);
 }
 
 }  // namespace blz::ir
