@@ -22,7 +22,8 @@ add_executable(blz_unit_tests
   unit/test_profile.cpp
   unit/test_triggers.cpp
   unit/test_metamorphic.cpp
-  unit/test_gt_join.cpp)
+  unit/test_gt_join.cpp
+  unit/test_coverage.cpp)
 if(BLZ_WITH_XGBOOST)
   target_sources(blz_unit_tests PRIVATE unit/test_xgb.cpp)
 endif()

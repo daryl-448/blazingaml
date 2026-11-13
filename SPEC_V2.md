@@ -630,6 +630,40 @@ E9 is descriptive. It is computed after the freeze and never feeds back into §4
 
 Cost: 370 tiny oracle runs plus two full minings already done; minutes.
 
+As implemented (P9): `blz coverage` (`src/runtime/coverage.{hpp,cpp}`), `tools/gfp/coverage_gfp.py`,
+`bench/e9/predict.py` and `bench/e9/report.py`, run in that order by `bench/e9.sh`.
+
+- **Isolated graph.** The attempt's mapped eids (unique and resolved rows), ascending, so stream
+  and ts order are kept, with nodes renumbered by first appearance. Every §4 rule is invariant
+  under the renumbering (§3.4 relabeling). The oracle mines it at the profile's windows, bins,
+  `k_max` and visibility.
+- **GFP blocks.** `blz coverage` refuses GFP-produced features without `--eligibility` from
+  `tools/gfp/coverage_gfp.py`. That tool reruns the pass's recipe: the manifest's
+  `gfp_recipe.params` verbatim, ts + 1, original eids and node ids. Each edge goes in the batch it
+  had in the full stream [D-33]. Every run first checks that the prefix [0, 4,096) (32 whole fit
+  batches) gives the pass's rows exactly. `blz coverage` still runs the oracle at the profile
+  (`dg2_wc` for the frozen recipe) and reports it as `eligible_oracle`.
+- **Activation** reads a full mining under the profile: a `blz` manifest with the same profile id
+  and every trigger, or a GFP pass with the same window and bins per block.
+- **Detection.** `--pred` is `u8[m]`: 0 and 1 = predicted negative and positive at the threshold
+  of `configs/xgb_default.yaml` (score > 0.5), 255 = not scored.
+  - Fit rows must be 255.
+  - A split is scored in full or not at all.
+  - Neither the ladder nor E8 kept a model or its predictions, so `bench/e9/predict.py` refits
+    the four models: R0 `all` and the frozen recipe's source (R8/X7) on fit → validation, and
+    E8's two `all` models on train → test.
+  - It writes nothing unless each refit reproduces its recorded confusion counts exactly [D-34].
+- **Conventions.**
+  - `any` = any block of the profile.
+  - A *listed* positive is an eid that some attempt row maps to.
+  - The frozen recipe's F1 vertex statistics are aggregates, not pattern blocks: they get no
+    eligibility or activation, but they are in its detection model [D-34].
+- **Also reported:**
+  - attempts eligible but not activated, expected 0: every pattern's count only grows when edges
+    are added;
+  - the base rate of non-zero rows per block among all edges and among positives;
+  - recall on listed and on unlisted positives.
+
 ---
 
 ## 6. Temporal semantics extensions (P10)
@@ -1029,6 +1063,11 @@ on the prefix, because the named splits are defined on the whole stream. The man
 `edges`. Under stream visibility, the rows of a prefix run equal the full run's first k rows
 (v1_default on cpu, k = 4,062,676, all six blocks).
 
+As implemented (P9): `blz coverage --graph g [--gt results/gt_join.json] --profile p --features
+<dir> [--pred <u8[m] npy>] [--eligibility <coverage_gfp.json>] --out <json>`. It checks the
+gt-join, the profile (E403, and E404 against the oracle), the features and the predictions against
+the graph, and writes one line per attempt (§5).
+
 ## 12. Milestones
 
 v1's numbering continues. Each phase lists its exit criterion and a rough cost (engineering days,
@@ -1217,6 +1256,59 @@ Table 3 (`all`), with the paper's counts in brackets:
 
 **Exit:** AC-V2-3. About 1–2 days; minutes of machine time.
 
+**Outcome (2026-11-13): done. AC-V2-3 holds.**
+- All 3,209 listed rows and all 370 attempts have a join status (§3.5; every attempt is
+  `complete`).
+- `bench/e9.sh` writes `results/e9_coverage.{json,md}`: per typology and per block, eligibility,
+  activation and detection for `v1_default` and the frozen recipe, plus the 1,968 unlisted
+  positives.
+- The tooling notes are in §5 and §11 ("As implemented (P9)"), D-33 and D-34.
+
+- **Cost on `local`.** The four refits take 9 min (peak RSS 2.4 GB). GFP eligibility takes 6 s.
+  Each `blz coverage` run takes about 1 s.
+- **The refits reproduce their originals exactly** (TP / FP / FN):
+
+  | Model | Reference | TP / FP / FN |
+  |---|---|---|
+  | `v1_default`, fit → val | R0 | 27 / 12 / 1,054 |
+  | frozen, fit → val | R8/X7 | 413 / 64 / 668 |
+  | `v1_default`, train → test | E8 | 60 / 18 / 1,737 |
+  | frozen, train → test | E8 | 993 / 360 / 804 |
+
+- **Eligibility** (any block, % of the 370 attempts): `v1_default` 42, frozen 60.
+  - The windows make the difference for sg and tcyc. sg on SCATTER-GATHER rises from 2 % to 70 %;
+    tcyc on CYCLE from 9 % to 78 %.
+  - BIPARTITE and RANDOM are eligible for no block under either profile.
+  - STACK is eligible only through tcyc (14 %, 33 %).
+  - GATHER-SCATTER is 88 % / 92 % eligible, through fan and degree.
+  - S5's gate (§8), first half: met for BIPARTITE and RANDOM, not for gather-scatter.
+- **Activation** is near universal and says little: 98–100 % of attempts (any block). 80 %
+  (`v1_default`) and 84 % (frozen) of all edges already have a non-zero row in some block, almost
+  all of them from fan and degree.
+  - sg and tcyc are selective. Under `v1_default`, each fires on 0.02 % of all edges.
+  - Under the frozen recipe, sg fires on 1.5 % of edges and tcyc on 0.06 %, against 9.5 % and
+    6.0 % of positives.
+  - No attempt is eligible without being activated, for any block.
+- **GFP against blz eligibility** at the frozen windows. 3 of 2,220 (attempt, block) pairs
+  differ, all on tcyc.
+  - They are the three "Max 11 hops" CYCLE attempts. Their 11-edge cycle is longer than
+    `K_MAX = 10`, so the oracle cannot count it; GFP counts every length (DG-4).
+  - Row counts are higher by one on 10 more attempts. Each has edges that shared a G1 batch,
+    where every participant is credited (A28).
+- **Detection** (mean of the per-attempt shares):
+  - `v1_default`: 0.07 on validation, 0.08 on test.
+  - Frozen: 0.63 on validation, 0.70 on test.
+  - Highest: FAN-OUT and SCATTER-GATHER (0.76–0.84). Lowest: BIPARTITE (0.38, 0.48).
+- **Unlisted positives are almost never detected.**
+  - `v1_default` detects none: 0 of 389 on validation, 0 of 458 on test.
+  - The frozen recipe detects 1 of 389 and 5 of 458.
+  - 988 of the frozen recipe's 993 test TPs are listed positives. On listed positives its recall
+    is 0.60 (validation) and 0.74 (test).
+  - Unlisted positives are 25 % of the test positives.
+- **Positives that no block activates:** 874 under `v1_default` (513 listed, 361 unlisted) and
+  395 under the frozen recipe (228, 167).
+- **Not explained, not tested:** why the unlisted positives are invisible. Reported, not chased (§2.5).
+
 ### P10 — Temporal semantics
 
 - Runtime visibility in the generated code.
@@ -1303,3 +1395,5 @@ S3 adds its lc-cycle probes (A39 onwards) when it starts.
 | D-30 | One A30 campaign for v2 core; stretch GPU work joins it only if finished before it, otherwise a new campaign needs the user's approval. |
 | D-31 | `.blzg` format version 2 adds `file_row`; the version 1 reader rejects it and `blz prepare` rebuilds the cache. |
 | D-32 | GFP-produced passes (R6, R7) give GFP `gfp_bins(bins)`, so that their blocks are binned as §4.2 bins `blz`'s (A38). R6 and R7 then change only the call semantics or the family, not the binning. GFP's own rule applied to D-9's bins is a separate hypothesis. It is not tested, because the pass cap is fully allocated; E8 lists it as an open lead. F1 runs temp-cycle (window 86,400, one bin `[2]`) alongside, because GFP rejects `vertex_stats` with no pattern enabled. That column is dropped. The vertex statistics are the same with degree or fan as the companion (30,000 edges). F1 stores float32. GFP's float64 values beyond the float32 range are clipped to ±3.4028235·10³⁸ and counted in the manifest. These come from the kurtosis of near-constant inputs: 3 values in the first 3,000,000 rows, in `vs_dst_in_amount_received_kurtosis`. GFP emits each input column's statistics in input-column order, whatever the order of `vertex_stats_cols`; `dg2_features.py` names the columns in that order and checks it on one edge before every F1 pass. XGBoost works in float32 and rejects `inf`; NaN is kept and is missing to XGBoost. |
+| D-33 | E9's GFP eligibility of a batch recipe (G1) sends each attempt edge in the batch it had in the full stream (G1's layout: 128 eids from each cut, cuts at `b_fv` and 4,062,676), in eid order, to a fresh preprocessor. The alternative, fresh batches of 128 over the isolated stream, would put nearly every attempt in a single batch, where every edge sees and credits every other edge. That is not what the full pass did. With the full-stream layout, the isolated and full runs differ only in which edges exist. |
+| D-34 | E9's detection uses refits of the recorded models (the ladder and E8 kept neither models nor predictions). A refit is used only when its confusion counts equal the ledger's (validation) or E8's (test) exactly. Nothing is selected and nothing feeds back (§4.5 step 4). Vertex statistics are not a pattern block and get no eligibility or activation. |

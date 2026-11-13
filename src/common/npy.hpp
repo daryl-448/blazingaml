@@ -16,8 +16,8 @@ void write_npy_u32(const std::string& path, std::span<const std::uint32_t> data,
 // The .npy v1.0 header (magic through the newline) for a C-order array.
 std::string npy_header(const std::string& descr, std::uint64_t rows, std::uint64_t cols);
 
-// Read-only, mmap-backed view of a 2-D C-order '<u4' .npy file (v1.0 or v2.0 header).
-// Throws std::runtime_error on any other layout.
+// Read-only, mmap-backed view of a C-order '<u4' .npy file (v1.0 or v2.0 header), 2-D, or 1-D
+// as one column. Throws std::runtime_error on any other layout.
 class NpyU32View {
  public:
   explicit NpyU32View(const std::string& path);
@@ -30,6 +30,20 @@ class NpyU32View {
   MappedFile file_;
   std::uint64_t rows_ = 0, cols_ = 0;
   std::span<const std::uint32_t> data_;
+};
+
+// The same for '|u1' (blz coverage --pred, SPEC v2 §5).
+class NpyU8View {
+ public:
+  explicit NpyU8View(const std::string& path);
+  std::uint64_t rows() const { return rows_; }
+  std::uint64_t cols() const { return cols_; }
+  std::span<const std::uint8_t> data() const { return data_; }
+
+ private:
+  MappedFile file_;
+  std::uint64_t rows_ = 0, cols_ = 0;
+  std::span<const std::uint8_t> data_;
 };
 
 }  // namespace blz

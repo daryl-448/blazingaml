@@ -1,10 +1,11 @@
 // blz — BlazingAML runtime CLI (SPEC §14). Commands so far: prepare, export-edges, stats (P0);
 // mine (oracle backend), compare, fuzz (P1); train (P2); mine --backend cpu, bench, fuzz-diff (P4);
 // the cuda backend of mine, bench and fuzz-diff (P5); profiles, manifests, trigger samples,
-// metamorphic and gt-join (SPEC v2 P7).
+// metamorphic and gt-join (SPEC v2 P7); coverage (SPEC v2 P9).
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
+#include <deque>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -36,6 +37,7 @@
 #include "ml/xgb.hpp"
 #endif
 #include "oracle/oracle.hpp"
+#include "runtime/coverage.hpp"
 #include "runtime/cpu_backend.hpp"
 #include "runtime/cuda_backend.hpp"
 #include "runtime/features.hpp"
@@ -1086,6 +1088,140 @@ int gt_join(const std::string& graph, const std::string& csv, const std::string&
   return 0;
 }
 
+// SPEC v2 §5 (E9): per listed attempt and profile block, structural eligibility (the oracle on the
+// attempt's edges alone, or --eligibility for GFP-produced features), activation (the full
+// mining in --features) and detection (--pred, u8[m] codes of runtime/coverage.hpp).
+int coverage(const std::string& graph, const std::string& gt_path, const std::string& profile_path,
+             const std::string& features, const std::string& pred_path, const std::string& elig_path,
+             const std::string& out) {
+  auto t0 = Clock::now();
+  const blz::BlzgView g(graph);
+  const std::uint64_t m = g.m();
+  const std::string blzg_sha = file_sha256(graph), csv_sha = blz::to_hex(g.csv_sha256());
+  const nlohmann::json gt = nlohmann::json::parse(std::ifstream(gt_path));
+  if (gt.at("inputs").at("csv_sha256") != csv_sha || gt.at("inputs").at("m") != m)
+    throw std::runtime_error(gt_path + " is not a gt-join of " + graph + " (CSV SHA-256 or m differs)");
+  const std::uint64_t b_fv = blz::fit_val_boundary(g.ts), b_test = blz::train_size(m);
+  const nlohmann::json want_splits = {{"fit", {0, b_fv}}, {"val", {b_fv, b_test}}, {"test", {b_test, m}}};
+  if (gt.at("splits") != want_splits) throw std::runtime_error(gt_path + ": its splits differ from SPEC v2 §3.3's");
+
+  const blz::Profile prof = blz::load_profile(profile_path);   // E403
+  blz::check_profile_backend(prof, blz::Backend::oracle);     // E404: eligibility runs the oracle
+
+  // The full mining (activation): a blz manifest of this profile over every edge, or a
+  // GFP-produced pass (tools/gfp/dg2_features.py) at this profile's windows and bins.
+  const nlohmann::json fm = nlohmann::json::parse(std::ifstream(features + "/features.json"));
+  if (fm.at("blzg_sha256") != blzg_sha) throw std::runtime_error(features + " was mined from another .blzg");
+  const bool gfp = fm.value("producer", "") == "tools/gfp/dg2_features.py";
+  nlohmann::ordered_json jfeat = {{"dir", features}, {"source", gfp ? "gfp" : "blz"}};
+  if (gfp) {
+    if (fm.at("rows").at("first") != 0 || fm.at("rows").at("last") != m)
+      throw std::runtime_error(features + ": not every edge's row");
+    for (const blz::ProfileBlock& pb : prof.blocks) {
+      const std::string b(blz::block_name(pb.block));
+      const auto& fb = fm.at("blocks").at(b);
+      if (fb.at("window") != pb.params.window || fb.at("bins") != nlohmann::json(pb.params.bins))
+        throw std::runtime_error(features + ": block " + b + " has another window or bins than " + profile_path);
+    }
+    if (elig_path.empty())
+      throw std::runtime_error(features + " is GFP-produced: its eligibility runs the same GFP recipe (SPEC v2 §5); "
+                               "give --eligibility from tools/gfp/coverage_gfp.py");
+    jfeat["gfp_recipe"] = fm.at("gfp_recipe").at("id");
+    jfeat["causal"] = fm.at("causal");
+    jfeat["row_sees"] = fm.at("row_sees");
+  } else {
+    if (fm.at("profile").at("id") != prof.id())
+      throw std::runtime_error(features + ": profile " + fm.at("profile").at("id").get<std::string>() + ", not " +
+                               prof.id() + " (" + profile_path + ")");
+    const auto& tr = fm.at("triggers");
+    if (tr.value("sampled", false) || tr.at("first") != 0 || tr.at("last") != m || fm.value("edges", m) != m)
+      throw std::runtime_error(features + ": not a mining of every edge");
+    if (!elig_path.empty())
+      throw std::runtime_error("--eligibility is for GFP-produced features; blz features use the oracle (SPEC v2 §5)");
+    jfeat["profile_id"] = prof.id();
+    jfeat["backend"] = fm.at("backend").at("name");
+  }
+  std::deque<blz::NpyU32View> views;  // not movable: a deque never relocates them
+  nlohmann::ordered_json jfiles;
+  for (const blz::ProfileBlock& pb : prof.blocks) {
+    const std::string b(blz::block_name(pb.block));
+    const auto& fb = fm.at("blocks").at(b);
+    views.emplace_back(features + "/" + fb.at("file").get<std::string>());
+    if (views.back().rows() != m || views.back().cols() != pb.params.bins.size())
+      throw std::runtime_error(features + ": block " + b + " is not m x bins");
+    jfiles[b] = fb.contains("output_fnv1a") ? fb.at("output_fnv1a") : fb.at("output_sha256");
+  }
+  jfeat["blocks"] = jfiles;
+
+  blz::CoverageInputs in;
+  in.graph = {g.src, g.dst, g.ts, g.label};
+  in.b_fv = b_fv;
+  in.b_test = b_test;
+  in.profile = &prof;
+  in.attempts = blz::coverage_attempts(gt, m);
+  for (const auto& v : views) in.blocks.push_back(v.data());
+
+  std::optional<blz::NpyU8View> pred;
+  nlohmann::ordered_json jpred;
+  if (!pred_path.empty()) {
+    pred.emplace(pred_path);
+    if (pred->cols() != 1 || pred->rows() != m) throw std::runtime_error(pred_path + ": not u8[m]");
+    in.pred = pred->data();
+    jpred = {{"file", pred_path}, {"sha256", file_sha256(pred_path)}};
+  }
+
+  nlohmann::ordered_json jelig = {{"source", gfp ? "external" : "oracle"}};
+  if (!elig_path.empty()) {
+    const nlohmann::json el = nlohmann::json::parse(std::ifstream(elig_path));
+    if (el.at("producer") != "tools/gfp/coverage_gfp.py") throw std::runtime_error(elig_path + ": not written by tools/gfp/coverage_gfp.py");
+    if (el.at("gfp_recipe") != fm.at("gfp_recipe"))
+      throw std::runtime_error(elig_path + ": its GFP recipe differs from " + features + "'s");
+    if (el.at("gt_join_sha256") != file_sha256(gt_path)) throw std::runtime_error(elig_path + ": computed from another gt-join");
+    std::vector<std::size_t> col;  // profile block -> column of the file's rows
+    const auto names = el.at("blocks").get<std::vector<std::string>>();
+    for (const blz::ProfileBlock& pb : prof.blocks) {
+      auto it = std::find(names.begin(), names.end(), std::string(blz::block_name(pb.block)));
+      if (it == names.end()) throw std::runtime_error(elig_path + ": no block " + std::string(blz::block_name(pb.block)));
+      col.push_back(std::size_t(it - names.begin()));
+    }
+    for (const auto& a : el.at("attempts")) {
+      const auto r = a.at("rows").get<std::vector<std::uint64_t>>();
+      if (r.size() != names.size()) throw std::runtime_error(elig_path + ": a row of the wrong width");
+      std::vector<std::uint64_t> v;
+      for (std::size_t c : col) v.push_back(r[c]);
+      in.external_eligible[a.at("id").get<std::int64_t>()] = v;
+    }
+    jelig = {{"source", "gfp"},
+             {"file", elig_path},
+             {"sha256", file_sha256(elig_path)},
+             {"gfp_recipe", el.at("gfp_recipe").at("id")},
+             {"call", el.at("call")}};
+  }
+
+  nlohmann::ordered_json res = blz::coverage(in);
+  nlohmann::ordered_json head = {
+      {"experiment", "E9"},
+      {"spec", "SPEC v2 §5"},
+      {"inputs",
+       {{"graph", graph}, {"blzg_sha256", blzg_sha}, {"gt_join", gt_path}, {"gt_join_sha256", file_sha256(gt_path)}}},
+      {"profile", profile_json(prof)},
+      {"features", jfeat},
+      {"eligibility_source", jelig},
+      {"pred", jpred},
+      {"git", git_info()},
+      {"threads", omp_get_max_threads()}};
+  for (auto it = res.begin(); it != res.end(); ++it) head[it.key()] = it.value();
+  head["seconds"] = secs(t0);
+  head["peak_rss_mb"] = peak_rss_mb();
+  ensure_parent(out);
+  std::ofstream(out) << blz::coverage_dump(head);
+  const auto& all = head["by_typology"]["ALL"];
+  std::fprintf(stderr, "coverage %s: %s complete attempts; eligible (any) %s, activated (any) %s; (%.1f s) -> %s\n",
+               prof.name.c_str(), all["complete"].dump().c_str(), all["eligible"]["any"].dump().c_str(),
+               all["activated"]["any"].dump().c_str(), secs(t0), out.c_str());
+  return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -1198,6 +1334,17 @@ int main(int argc, char** argv) {
   gj->add_option("--patterns", gt_patterns)->required();
   gj->add_option("--out", out)->required();
 
+  std::string gt_path = "results/gt_join.json", pred_path, elig_path;
+  auto* cv = app.add_subcommand("coverage", "SPEC v2 §5 (E9): eligibility, activation and detection per listed attempt");
+  cv->add_option("--graph", graph)->required();
+  cv->add_option("--gt", gt_path, "blz gt-join output");
+  cv->add_option("--profile", profile, "the profile whose blocks are covered")->required();
+  cv->add_option("--features", features, "the full mining under the profile (blz mine, or tools/gfp/dg2_features.py)")->required();
+  cv->add_option("--pred", pred_path, "u8[m] prediction codes: 0, 1, 255 = not scored");
+  cv->add_option("--eligibility", elig_path, "GFP-produced features: tools/gfp/coverage_gfp.py output");
+  cv->add_option("--threads", threads);
+  cv->add_option("--out", out)->required();
+
   CLI11_PARSE(app, argc, argv);
   try {
     if (*prep) return prepare(csv, out);
@@ -1227,6 +1374,10 @@ int main(int argc, char** argv) {
       return metamorphic(seeds, fd_bins, mt_backend, fd_heavy, profile, report, name);
     }
     if (*gj) return gt_join(graph, gt_csv, gt_patterns, out);
+    if (*cv) {
+      if (threads > 0) omp_set_num_threads(threads);
+      return coverage(graph, gt_path, profile, features, pred_path, elig_path, out);
+    }
     if (*cmp) {
       if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");
       return compare(a_npy, b_npy, graph, tw, first_eid, report, name);

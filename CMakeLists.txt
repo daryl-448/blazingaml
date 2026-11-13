@@ -118,6 +118,7 @@ add_library(blz_core
   src/runtime/cpu_backend.cpp
   src/runtime/fuzz_diff.cpp
   src/runtime/metamorphic.cpp
+  src/runtime/coverage.cpp
   src/oracle/oracle.cpp
   src/ml/metrics.cpp)
 if(BLZ_ENABLE_CUDA)

@@ -437,9 +437,10 @@ def resolved_base_score(config_json):
     return float(v.strip("[]").split(",")[0]) if isinstance(v, str) else float(v)
 
 
-def fit(data, recipe, set_name, cols=None):
+def fit(data, recipe, set_name, cols=None, keep_scores=False):
     """Trains on data.splits["fit"] and scores data.splits["val"]. cols: the (name, getter)
-    columns, for sets other than xgb_only and all (bench/dg2/e8.py); default recipe_columns()."""
+    columns, for sets other than xgb_only and all (bench/dg2/e8.py); default recipe_columns().
+    keep_scores: also return the scored rows' scores (bench/e9/predict.py)."""
     cols = recipe_columns(data, recipe, set_name) if cols is None else cols
     params, rounds, threshold, batch_rows = xgb_setup(recipe)
     (fa, fb), (va, vb) = data.splits["fit"], data.splits["val"]
@@ -471,6 +472,7 @@ def fit(data, recipe, set_name, cols=None):
                     "config": cfg_json},
             "top_gain": [[n, round(v, 3)] for v, n in top], "total_gain": total_gain,
             **({"raw_amounts_changed_by_%f": data.mgnn()["amounts_changed_by_%f"]} if recipe["raw"] else {}),
+            **({"scores": score} if keep_scores else {}),
             "seconds": {"matrices": round(t_mat, 2), "train": round(t_train, 2)}}
 
 

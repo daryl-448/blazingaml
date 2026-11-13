@@ -50,9 +50,18 @@ void write_npy_u32(const std::string& path, std::span<const std::uint32_t> data,
   write_npy(path, "<u4", data, rows, cols);
 }
 
-NpyU32View::NpyU32View(const std::string& path) : file_(path) {
-  const char* p = file_.data();
-  const std::size_t size = file_.size();
+namespace {
+
+struct NpyLayout {
+  std::uint64_t rows = 0, cols = 0;
+  std::size_t offset = 0;
+};
+
+// The header of a C-order .npy file of dtype `descr` and element size `elem`, 2-D or 1-D (one
+// column), checked against the file size.
+NpyLayout npy_layout(const MappedFile& file, const std::string& path, const char* descr, std::size_t elem) {
+  const char* p = file.data();
+  const std::size_t size = file.size();
   auto bad = [&](const std::string& why) { return std::runtime_error(path + ": " + why); };
   if (size < 10 || std::memcmp(p, "\x93NUMPY", 6) != 0) throw bad("not a .npy file");
   const int major = std::uint8_t(p[6]);
@@ -68,17 +77,40 @@ NpyU32View::NpyU32View(const std::string& path) : file_(path) {
   }
   if (hstart + hlen > size) throw bad("truncated header");
   const std::string dict(p + hstart, hlen);
-  if (dict.find("'descr': '<u4'") == std::string::npos) throw bad("dtype is not '<u4'");
+  if (dict.find(std::string("'descr': '") + descr + "'") == std::string::npos)
+    throw bad(std::string("dtype is not '") + descr + "'");
   if (dict.find("'fortran_order': False") == std::string::npos) throw bad("not C order");
+  NpyLayout l;
   std::smatch m;
-  if (!std::regex_search(dict, m, std::regex(R"('shape': \((\d+), (\d+)\))")))
-    throw bad("shape is not 2-D");
-  rows_ = std::stoull(m[1]);
-  cols_ = std::stoull(m[2]);
-  const std::size_t off = hstart + hlen;
-  if (off % alignof(std::uint32_t) != 0) throw bad("misaligned data");
-  if (size - off != rows_ * cols_ * sizeof(std::uint32_t)) throw bad("data size does not match shape");
-  data_ = {reinterpret_cast<const std::uint32_t*>(p + off), rows_ * cols_};
+  if (std::regex_search(dict, m, std::regex(R"('shape': \((\d+), (\d+)\))"))) {
+    l.rows = std::stoull(m[1]);
+    l.cols = std::stoull(m[2]);
+  } else if (std::regex_search(dict, m, std::regex(R"('shape': \((\d+),\))"))) {
+    l.rows = std::stoull(m[1]);
+    l.cols = 1;
+  } else {
+    throw bad("shape is not 1-D or 2-D");
+  }
+  l.offset = hstart + hlen;
+  if (l.offset % elem != 0) throw bad("misaligned data");
+  if (size - l.offset != l.rows * l.cols * elem) throw bad("data size does not match shape");
+  return l;
+}
+
+}  // namespace
+
+NpyU32View::NpyU32View(const std::string& path) : file_(path) {
+  const NpyLayout l = npy_layout(file_, path, "<u4", sizeof(std::uint32_t));
+  rows_ = l.rows;
+  cols_ = l.cols;
+  data_ = {reinterpret_cast<const std::uint32_t*>(file_.data() + l.offset), rows_ * cols_};
+}
+
+NpyU8View::NpyU8View(const std::string& path) : file_(path) {
+  const NpyLayout l = npy_layout(file_, path, "|u1", 1);
+  rows_ = l.rows;
+  cols_ = l.cols;
+  data_ = {reinterpret_cast<const std::uint8_t*>(file_.data() + l.offset), rows_ * cols_};
 }
 
 }  // namespace blz

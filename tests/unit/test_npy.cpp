@@ -39,3 +39,28 @@ TEST_CASE(".npy uint32 writer and reader round trip") {
   blz::write_npy_i64(path, std::vector<std::int64_t>{1, 2}, 1, 2);
   CHECK_THROWS(blz::NpyU32View(path));  // wrong dtype
 }
+
+TEST_CASE(".npy uint8 reader, 1-D and 2-D (blz coverage --pred)") {
+  // What numpy.save writes for a 1-D uint8 array.
+  auto write = [](const std::string& path, const std::string& shape, const std::vector<std::uint8_t>& data) {
+    std::string dict = "{'descr': '|u1', 'fortran_order': False, 'shape': " + shape + ", }";
+    dict.append((64 - (10 + dict.size() + 1) % 64) % 64, ' ');
+    dict += '\n';
+    std::string h = std::string("\x93NUMPY\x01\x00", 8) + char(dict.size() & 0xff) + char(dict.size() >> 8) + dict;
+    std::ofstream out(path, std::ios::binary);
+    out.write(h.data(), std::streamsize(h.size()));
+    out.write(reinterpret_cast<const char*>(data.data()), std::streamsize(data.size()));
+  };
+  const std::vector<std::uint8_t> data = {255, 0, 1, 1, 255};
+  const std::string path = test_tmp("p.npy");
+  write(path, "(5,)", data);
+  blz::NpyU8View v(path);
+  CHECK(v.rows() == 5);
+  CHECK(v.cols() == 1);
+  CHECK(std::vector<std::uint8_t>(v.data().begin(), v.data().end()) == data);
+  write(path, "(5, 1)", data);
+  CHECK(blz::NpyU8View(path).rows() == 5);
+  write(path, "(6,)", data);
+  CHECK_THROWS(blz::NpyU8View(path));  // data size does not match the shape
+  CHECK_THROWS(blz::NpyU32View(path));  // wrong dtype
+}
