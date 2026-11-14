@@ -1,0 +1,160 @@
++ build/rel/blz mine --graph data/hi_small.blzg --profile configs/profiles/dg2_v1.yaml --backend oracle --blocks fan_in,fan_out,deg_in,deg_out --threads 12 --out features/p11_dg2_v1_oracle
+oracle index built in 0.5 s (m=5078345, n=515088); profile dg2_v1 (3e6be44f9e0a3cc4); triggers all: 5078345 rows
+fan_in        0.2 s  saturated=0  fnv1a=12193368626723290610
+fan_out      93.8 s  saturated=0  fnv1a=3682622960135311890
+deg_in        0.2 s  saturated=0  fnv1a=11110317842879959378
+deg_out      94.0 s  saturated=0  fnv1a=5088042339859696690
++ build/rel/blz mine --graph data/hi_small.blzg --profile configs/profiles/dg2_v1.yaml --backend cpu --blocks fan_in,fan_out,deg_in,deg_out --threads 12 --out features/p11_dg2_v1_cpu
+cpu index built in 0.3 s (m=5078345, n=515088); profile dg2_v1 (3e6be44f9e0a3cc4); triggers all: 5078345 rows
+fan_in        0.1 s  saturated=0  fnv1a=12193368626723290610
+fan_out       0.1 s  saturated=0  fnv1a=3682622960135311890
+deg_in        0.1 s  saturated=0  fnv1a=11110317842879959378
+deg_out       0.1 s  saturated=0  fnv1a=5088042339859696690
++ build/rel/blz mine --graph data/hi_small.blzg --profile configs/profiles/dg2_wb.yaml --backend oracle --blocks fan_in,fan_out,deg_in,deg_out --threads 12 --out features/p11_dg2_wb_oracle
+oracle index built in 0.4 s (m=5078345, n=515088); profile dg2_wb (a04862978f42e397); triggers all: 5078345 rows
+fan_in        0.1 s  saturated=0  fnv1a=377320724899762371
+fan_out      17.9 s  saturated=0  fnv1a=18111910046199033171
+deg_in        0.1 s  saturated=0  fnv1a=2967257421194990130
+deg_out      18.0 s  saturated=0  fnv1a=8555433299608564691
++ build/rel/blz mine --graph data/hi_small.blzg --profile configs/profiles/dg2_wb.yaml --backend cpu --blocks fan_in,fan_out,deg_in,deg_out --threads 12 --out features/p11_dg2_wb_cpu
+cpu index built in 0.3 s (m=5078345, n=515088); profile dg2_wb (a04862978f42e397); triggers all: 5078345 rows
+fan_in        0.1 s  saturated=0  fnv1a=377320724899762371
+fan_out       0.1 s  saturated=0  fnv1a=18111910046199033171
+deg_in        0.1 s  saturated=0  fnv1a=2967257421194990130
+deg_out       0.1 s  saturated=0  fnv1a=8555433299608564691
++ build/rel/blz mine --graph data/hi_small.blzg --profile configs/profiles/dg2_wc.yaml --backend oracle --blocks fan_in,fan_out,deg_in,deg_out --threads 12 --out features/p11_dg2_wc_oracle
+oracle index built in 0.4 s (m=5078345, n=515088); profile dg2_wc (64747da4a40c0d70); triggers all: 5078345 rows
+fan_in        0.2 s  saturated=0  fnv1a=17413702464893741346
+fan_out      94.2 s  saturated=0  fnv1a=10218409337838241282
+deg_in        0.2 s  saturated=0  fnv1a=14812123353491005299
+deg_out      94.5 s  saturated=0  fnv1a=16411945474111186435
++ build/rel/blz mine --graph data/hi_small.blzg --profile configs/profiles/dg2_wc.yaml --backend cpu --blocks fan_in,fan_out,deg_in,deg_out --threads 12 --out features/p11_dg2_wc_cpu
+cpu index built in 0.3 s (m=5078345, n=515088); profile dg2_wc (64747da4a40c0d70); triggers all: 5078345 rows
+fan_in        0.1 s  saturated=0  fnv1a=17413702464893741346
+fan_out       0.1 s  saturated=0  fnv1a=10218409337838241282
+deg_in        0.1 s  saturated=0  fnv1a=14812123353491005299
+deg_out       0.1 s  saturated=0  fnv1a=16411945474111186435
++ build/rel/blz mine --graph data/hi_small.blzg --profile configs/profiles/sg_ordered_tsvis.yaml --backend oracle --blocks fan_in,fan_out,deg_in,deg_out --threads 12 --out features/p11_sg_ordered_tsvis_oracle
+oracle index built in 0.4 s (m=5078345, n=515088); profile sg_ordered_tsvis (9a14d14adfad34e0); triggers all: 5078345 rows
+fan_in        0.2 s  saturated=0  fnv1a=13428913011139905234
+fan_out      35.8 s  saturated=0  fnv1a=10334345576759292274
+deg_in        0.2 s  saturated=0  fnv1a=14097460695540745779
+deg_out      36.1 s  saturated=0  fnv1a=1782235892802320130
++ build/rel/blz mine --graph data/hi_small.blzg --profile configs/profiles/sg_ordered_tsvis.yaml --backend cpu --blocks fan_in,fan_out,deg_in,deg_out --threads 12 --out features/p11_sg_ordered_tsvis_cpu
+cpu index built in 0.3 s (m=5078345, n=515088); profile sg_ordered_tsvis (9a14d14adfad34e0); triggers all: 5078345 rows
+fan_in        0.1 s  saturated=0  fnv1a=13428913011139905234
+fan_out       0.1 s  saturated=0  fnv1a=10334345576759292274
+deg_in        0.1 s  saturated=0  fnv1a=14097460695540745779
+deg_out       0.1 s  saturated=0  fnv1a=1782235892802320130
++ build/rel/blz mine --graph data/hi_small.blzg --profile configs/profiles/sg_ordered_v1w.yaml --backend oracle --blocks fan_in,fan_out,deg_in,deg_out --threads 12 --out features/p11_sg_ordered_v1w_oracle
+oracle index built in 0.4 s (m=5078345, n=515088); profile sg_ordered_v1w (7db0767a1f9ec6fc); triggers all: 5078345 rows
+fan_in        0.2 s  saturated=0  fnv1a=10768036772042710147
+fan_out      36.0 s  saturated=0  fnv1a=904878896487262018
+deg_in        0.2 s  saturated=0  fnv1a=3321375241280117763
+deg_out      36.1 s  saturated=0  fnv1a=3341707662053112211
++ build/rel/blz mine --graph data/hi_small.blzg --profile configs/profiles/sg_ordered_v1w.yaml --backend cpu --blocks fan_in,fan_out,deg_in,deg_out --threads 12 --out features/p11_sg_ordered_v1w_cpu
+cpu index built in 0.3 s (m=5078345, n=515088); profile sg_ordered_v1w (7db0767a1f9ec6fc); triggers all: 5078345 rows
+fan_in        0.1 s  saturated=0  fnv1a=10768036772042710147
+fan_out       0.1 s  saturated=0  fnv1a=904878896487262018
+deg_in        0.1 s  saturated=0  fnv1a=3321375241280117763
+deg_out       0.1 s  saturated=0  fnv1a=3341707662053112211
++ build/rel/blz mine --graph data/hi_small.blzg --profile configs/profiles/v1_default.yaml --backend oracle --blocks fan_in,fan_out,deg_in,deg_out --threads 12 --out features/p11_v1_default_oracle
+oracle index built in 0.4 s (m=5078345, n=515088); profile v1_default (b21580d6e129821a); triggers all: 5078345 rows
+fan_in        0.2 s  saturated=0  fnv1a=10768036772042710147
+fan_out      36.3 s  saturated=0  fnv1a=904878896487262018
+deg_in        0.2 s  saturated=0  fnv1a=3321375241280117763
+deg_out      36.6 s  saturated=0  fnv1a=3341707662053112211
++ build/rel/blz mine --graph data/hi_small.blzg --profile configs/profiles/v1_default.yaml --backend cpu --blocks fan_in,fan_out,deg_in,deg_out --threads 12 --out features/p11_v1_default_cpu
+cpu index built in 0.4 s (m=5078345, n=515088); profile v1_default (b21580d6e129821a); triggers all: 5078345 rows
+fan_in        0.1 s  saturated=0  fnv1a=10768036772042710147
+fan_out       0.1 s  saturated=0  fnv1a=904878896487262018
+deg_in        0.1 s  saturated=0  fnv1a=3321375241280117763
+deg_out       0.1 s  saturated=0  fnv1a=3341707662053112211
++ build/rel/blz mine --graph data/hi_small.blzg --profile configs/profiles/v1_parity.yaml --backend oracle --blocks fan_in,fan_out,deg_in,deg_out --threads 12 --out features/p11_v1_parity_oracle
+oracle index built in 0.4 s (m=5078345, n=515088); profile v1_parity (8c8237bf05998d07); triggers all: 5078345 rows
+fan_in        0.2 s  saturated=0  fnv1a=231040277472725923
+fan_out      36.0 s  saturated=0  fnv1a=6330076044337963426
+deg_in        0.2 s  saturated=0  fnv1a=6366489652548864147
+deg_out      36.1 s  saturated=0  fnv1a=10227089942834718195
++ build/rel/blz mine --graph data/hi_small.blzg --profile configs/profiles/v1_parity.yaml --backend cpu --blocks fan_in,fan_out,deg_in,deg_out --threads 12 --out features/p11_v1_parity_cpu
+cpu index built in 0.3 s (m=5078345, n=515088); profile v1_parity (8c8237bf05998d07); triggers all: 5078345 rows
+fan_in        0.1 s  saturated=0  fnv1a=231040277472725923
+fan_out       0.1 s  saturated=0  fnv1a=6330076044337963426
+deg_in        0.1 s  saturated=0  fnv1a=6366489652548864147
+deg_out       0.1 s  saturated=0  fnv1a=10227089942834718195
++ build/rel/blz mine --graph data/hi_small.blzg --profile tests/profiles/tsvis.yaml --backend oracle --blocks fan_in,fan_out,deg_in,deg_out --threads 12 --out features/p11_tsvis_oracle
+oracle index built in 0.4 s (m=5078345, n=515088); profile tsvis_test (f0e8ae96fa64ed96); triggers all: 5078345 rows
+fan_in        0.2 s  saturated=0  fnv1a=13428913011139905234
+fan_out      36.3 s  saturated=0  fnv1a=10334345576759292274
+deg_in        0.2 s  saturated=0  fnv1a=14097460695540745779
+deg_out      36.4 s  saturated=0  fnv1a=1782235892802320130
++ build/rel/blz mine --graph data/hi_small.blzg --profile tests/profiles/tsvis.yaml --backend cpu --blocks fan_in,fan_out,deg_in,deg_out --threads 12 --out features/p11_tsvis_cpu
+cpu index built in 0.3 s (m=5078345, n=515088); profile tsvis_test (f0e8ae96fa64ed96); triggers all: 5078345 rows
+fan_in        0.1 s  saturated=0  fnv1a=13428913011139905234
+fan_out       0.1 s  saturated=0  fnv1a=10334345576759292274
+deg_in        0.1 s  saturated=0  fnv1a=14097460695540745779
+deg_out       0.1 s  saturated=0  fnv1a=1782235892802320130
++ build/rel/blz mine --graph data/hi_small.blzg --profile configs/profiles/v1_default.yaml --backend oracle --blocks fan_in,fan_out,deg_in,deg_out,sg,tcyc --threads 12 --out features/p11_v1_default_all_oracle
+oracle index built in 0.4 s (m=5078345, n=515088); profile v1_default (b21580d6e129821a); triggers all: 5078345 rows
+fan_in        0.2 s  saturated=0  fnv1a=10768036772042710147
+fan_out      36.3 s  saturated=0  fnv1a=904878896487262018
+deg_in        0.2 s  saturated=0  fnv1a=3321375241280117763
+deg_out      36.5 s  saturated=0  fnv1a=3341707662053112211
+sg            0.6 s  saturated=0  fnv1a=18124683238158106329
+tcyc          1.1 s  saturated=0  fnv1a=7737672036140136160
++ build/rel/blz mine --graph data/hi_small.blzg --profile configs/profiles/v1_default.yaml --backend cpu --blocks fan_in,fan_out,deg_in,deg_out,sg,tcyc --threads 12 --out features/p11_v1_default_all_cpu
+cpu index built in 0.3 s (m=5078345, n=515088); profile v1_default (b21580d6e129821a); triggers all: 5078345 rows
+fan_in        0.1 s  saturated=0  fnv1a=10768036772042710147
+fan_out       0.1 s  saturated=0  fnv1a=904878896487262018
+deg_in        0.1 s  saturated=0  fnv1a=3321375241280117763
+deg_out       0.1 s  saturated=0  fnv1a=3341707662053112211
+sg            0.3 s  saturated=0  fnv1a=18124683238158106329
+tcyc          0.4 s  saturated=0  fnv1a=7737672036140136160
++ build/rel-cuda/blz mine --graph data/hi_small.blzg --profile configs/profiles/v1_default.yaml --backend cuda --blocks fan_in,fan_out,deg_in,deg_out,sg,tcyc --threads 12 --out features/p11_v1_default_all_cuda
+cuda index built in 0.3 s (m=5078345, n=515088); profile v1_default (b21580d6e129821a); triggers all: 5078345 rows
+graph uploaded in 0.027 s (329 MB)
+fan_in        0.1 s  saturated=0  fnv1a=10768036772042710147
+fan_out       0.2 s  saturated=0  fnv1a=904878896487262018
+deg_in        0.1 s  saturated=0  fnv1a=3321375241280117763
+deg_out       0.1 s  saturated=0  fnv1a=3341707662053112211
+sg            0.1 s  saturated=0  fnv1a=18124683238158106329
+tcyc          0.2 s  saturated=0  fnv1a=7737672036140136160
++ build/rel/blz fuzz-diff --seeds 0:10000 --report results/p11_checks.json --name ac_v2_5/fuzz_diff/registry/cpu
+fuzz-diff cpu vs oracle, seeds 0:10000: 10000 graphs, 2053897 edges, 0 mismatching rows (8.0 s)
++ build/rel/blz fuzz-diff --seeds 0:10000 --report results/p11_checks.json --name ac_v2_5/fuzz_diff/sg_ordered_tsvis/cpu --profile configs/profiles/sg_ordered_tsvis.yaml
+fuzz-diff cpu vs oracle, seeds 0:10000: 10000 graphs, 2053897 edges, 0 mismatching rows (8.0 s)
++ build/rel/blz metamorphic --seeds 0:2000 --backend cpu --profile configs/profiles/v1_default.yaml --report results/p11_checks.json --name ac_v2_1/metamorphic/v1_default/cpu
+metamorphic cpu, v1_default, seeds 0:2000: 2000 graphs, 403557 edges, 0 mismatching rows (1.1 s)
++ build/rel/blz metamorphic --seeds 0:2000 --backend cpu --profile configs/profiles/v1_parity.yaml --report results/p11_checks.json --name ac_v2_1/metamorphic/v1_parity/cpu
+metamorphic cpu, v1_parity, seeds 0:2000: 2000 graphs, 403557 edges, 0 mismatching rows (1.2 s)
++ build/rel/blz metamorphic --seeds 0:2000 --backend cpu --profile configs/profiles/sg_ordered_v1w.yaml --report results/p11_checks.json --name ac_v2_1/metamorphic/sg_ordered_v1w/cpu
+metamorphic cpu, sg_ordered_v1w, seeds 0:2000: 2000 graphs, 403557 edges, 0 mismatching rows (1.2 s)
++ build/rel/blz metamorphic --seeds 0:2000 --backend cpu --profile configs/profiles/sg_ordered_tsvis.yaml --report results/p11_checks.json --name ac_v2_1/metamorphic/sg_ordered_tsvis/cpu
+metamorphic cpu, sg_ordered_tsvis, seeds 0:2000: 2000 graphs, 403557 edges, 0 mismatching rows (1.2 s)
+ok   dg2_v1: sweep blocks, oracle = cpu
+ok   dg2_v1: cpu plan is the sweep
+ok   dg2_wb: sweep blocks, oracle = cpu
+ok   dg2_wb: cpu plan is the sweep
+ok   dg2_wc: sweep blocks, oracle = cpu
+ok   dg2_wc: cpu plan is the sweep
+ok   sg_ordered_tsvis: sweep blocks, oracle = cpu
+ok   sg_ordered_tsvis: cpu plan is the sweep
+ok   sg_ordered_v1w: sweep blocks, oracle = cpu
+ok   sg_ordered_v1w: cpu plan is the sweep
+ok   v1_default: sweep blocks, oracle = cpu
+ok   v1_default: cpu plan is the sweep
+ok   v1_parity: sweep blocks, oracle = cpu
+ok   v1_parity: cpu plan is the sweep
+ok   tsvis: sweep blocks, oracle = cpu
+ok   tsvis: cpu plan is the sweep
+ok   v1_default: oracle keeps the AC-V2-0 hashes
+ok   v1_default: cpu keeps the AC-V2-0 hashes
+ok   v1_default: cuda keeps the AC-V2-0 hashes
+ok   v1_default: the cpu build disables nothing
+ok   fuzz-diff cpu 0:10000: registry
+ok   fuzz-diff cpu 0:10000: sg_ordered_tsvis
+ok   metamorphic cpu 0:2000: v1_default
+ok   metamorphic cpu 0:2000: v1_parity
+ok   metamorphic cpu 0:2000: sg_ordered_v1w
+ok   metamorphic cpu 0:2000: sg_ordered_tsvis
+P11 checks: pass -> results/p11_checks.json

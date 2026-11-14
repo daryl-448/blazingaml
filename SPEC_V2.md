@@ -1517,12 +1517,15 @@ Table 3 (`all`), with the paper's counts in brackets:
 **Exit:** AC-V2-5. **v2 core is done.** About 4–6 days; 1–2 h of `local` timing in idle windows, plus
 ≤ 60 min of A30 time.
 
-**Status (2026-11-13): open. The A30 campaign and E11 are done; the local exit checks are not run yet.**
+**Outcome (2026-11-14): done. AC-V2-5 holds, and AC-V2-0 holds again at the end of P11. v2 core
+(P7–P11) is done.**
 - The commits:
   - d9307a3: the sweep and `blzc --disable`;
   - 7cbae02: E11, the exit checks, the A30 scripts and the E12 report;
   - 4739bc4: `bench/a30.sh`'s `jl run` wait ends on any state other than `running` (AGENTS.md);
-  - 81e7839: the campaign's results.
+  - 81e7839: the campaign's results;
+  - 94ed217: the campaign's status and D-35;
+  - the local exit checks' results, committed with this outcome.
 - Before the long runs, a gpt-6.1-sol review (xhigh) took 2 rounds and approved. It found two bugs
   in the bench scripts, both fixed:
   - E11 left every process named `blz` out of the foreign load;
@@ -1556,10 +1559,28 @@ Table 3 (`all`), with the paper's counts in brackets:
   - With the sweep on, `find_start` and `distinct_first` do not reach fan and degree. Each
     variant switches off one option, so their effect on the per-trigger fan plan is not
     measured. Reported, not chased (§2.5).
-- **Not run yet** (deferred by the user on 2026-11-13). These are needed for the exit:
-  - `bench/p11_checks.py`: AC-V2-5's sweep = oracle on HI-Small for every profile and on 10,000
-    CPU fuzz graphs, plus AC-V2-0's hashes and AC-V2-1's metamorphic tests on the new CPU code;
-  - `bench/ac1_cpu.sh` and `bench/ac1_cuda.sh`, after a `rel-cuda` rebuild (AC-V2-0).
+- **The local exit checks** (2026-11-14, on `local` at 94ed217; `rel` and a rebuilt `rel-cuda`
+  for sm_75). The user deferred them on 2026-11-13 and approved them on 2026-11-14.
+  - `ctest --preset rel-cuda`: all 115 fast tests pass.
+  - `bench/p11_checks.py` → `results/p11_checks.json` (log `results/p11_checks_run.log`, 15 min).
+    All 26 checks pass:
+    - **AC-V2-5, HI-Small.** For each of the 8 profiles that use the sweep (the 7 in
+      `configs/profiles/` and `tests/profiles/tsvis.yaml`), fan_in, fan_out, deg_in and deg_out
+      hash the same on the oracle and on cpu. The cpu manifest names the sweep plan for each.
+    - **AC-V2-5, fuzz.** `blz fuzz-diff` on cpu (both schedules), 10,000 graphs: every
+      registered block under stream visibility, and `sg_ordered_tsvis`. 0 seeds differ.
+    - **AC-V2-1.** The metamorphic tests on cpu, 2,000 graphs for each frozen profile, pass.
+    - **AC-V2-0.** `v1_default` on the oracle, cpu and CUDA gives the pinned hashes for all six
+      blocks. The cpu build disables nothing.
+  - `bench/ac1_cpu.sh` (34 s) and `bench/ac1_cuda.sh` (1 min 48 s) → `results/e1_parity.json`
+    (logs `results/ac1_{cpu,cuda}_p11_run.log`). On HI-Small, 0 rows differ from the oracle for
+    any of the six blocks in any run:
+    - cpu: the default config at 12 threads with the dynamic schedule, and the parity config at
+      1 thread with the sorted schedule;
+    - CUDA: the default config at H = 32, and the parity config at H = 0 and at `all`.
+
+    `blz fuzz-diff` on 10,000 graphs finds 0 seeds that differ on cpu (both schedules) or on
+    CUDA (H = 0, 4 and `all`).
 
 ### Stretch
 
