@@ -106,6 +106,9 @@ bool meta_test_applies(MetaTest t, const Profile& prof, [[maybe_unused]] Backend
 MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0, std::uint64_t s1,
                               std::span<const std::uint32_t> bins, std::span<const std::uint32_t> thresholds) {
   check_profile_backend(prof, be);
+  // The relations are about stream and timestamp visibility; batch mode is checked by fuzz-diff
+  // against the batch oracle and by tools/gfp/fuzz_vs_gfp.py against GFP.
+  if (prof.batch) throw std::invalid_argument("metamorphic: GFP batch mode profiles are not supported (SPEC v2 §8 S1)");
   if (be == Backend::cuda && thresholds.empty()) throw std::invalid_argument("metamorphic: cuda needs thresholds");
   const bool prefix_applies = meta_test_applies(MetaTest::prefix_closure, prof, be);
   // tcyc alone, under the other visibility. Every backend runs both visibilities (P10), so the

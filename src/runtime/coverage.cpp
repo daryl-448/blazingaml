@@ -87,6 +87,7 @@ IsolatedGraph isolated_graph(const CoverageGraph& g, std::span<const std::uint32
 }
 
 std::vector<std::uint64_t> oracle_eligible_rows(const IsolatedGraph& ig, const Profile& prof) {
+  if (prof.batch) throw std::runtime_error("coverage: GFP batch mode profiles are not supported (SPEC v2 §8 S1)");
   const Oracle oracle(ig.stream(), prof.visibility);
   const std::uint64_t k = ig.eids.size();
   std::vector<std::uint64_t> out;

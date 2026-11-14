@@ -133,7 +133,7 @@ Profile parse_v1(const YAML::Node& root, std::string_view text, const std::strin
 }
 
 Profile parse_v2(const YAML::Node& root, const std::string& file, std::span<const PatternInfo> registry) {
-  check_keys(root, file, {"version", "profile", "visibility", "credit", "k_max", "blocks"}, "the profile");
+  check_keys(root, file, {"version", "profile", "visibility", "credit", "k_max", "batch", "blocks"}, "the profile");
   Profile p;
   p.file = file;
   p.format = 2;
@@ -144,9 +144,9 @@ Profile parse_v2(const YAML::Node& root, const std::string& file, std::span<cons
   const YAML::Node vis = required(root, "visibility", file, "the profile");
   p.visibility_loc = at(file, vis.Mark());
   const auto v = scalar_as<std::string>(vis, file, "'visibility'");
-  if (v == "stream") p.visibility = Visibility::stream;
+  if (v == "stream" || v == "batch") p.visibility = Visibility::stream;
   else if (v == "timestamp") p.visibility = Visibility::timestamp;
-  else fail(p.visibility_loc, "visibility must be stream or timestamp, found '" + v + "'");
+  else fail(p.visibility_loc, "visibility must be stream, timestamp or batch, found '" + v + "'");
 
   const YAML::Node cr = required(root, "credit", file, "the profile");
   p.credit_loc = at(file, cr.Mark());
@@ -154,6 +154,28 @@ Profile parse_v2(const YAML::Node& root, const std::string& file, std::span<cons
   if (c == "trigger") p.credit = Credit::trigger;
   else if (c == "participants") p.credit = Credit::participants;
   else fail(p.credit_loc, "credit must be trigger or participants, found '" + c + "'");
+
+  // GFP batch mode (SPEC v2 §8 S1): the three keys come together.
+  const YAML::Node bt = root["batch"];
+  if (bt) {
+    BatchSpec bs;
+    bs.loc = at(file, bt.Mark());
+    if (!bt.IsMap()) fail(bs.loc, "'batch' must be a map {size: B, cuts: none|splits}");
+    check_keys(bt, file, {"size", "cuts"}, "'batch'");
+    const YAML::Node sz = required(bt, "size", file, "'batch'");
+    const auto size = scalar_as<std::int64_t>(sz, file, "batch size");
+    if (size < 1) fail(at(file, sz.Mark()), "batch size must be >= 1");
+    bs.size = std::uint64_t(size);
+    const YAML::Node cu = required(bt, "cuts", file, "'batch'");
+    const auto cuts = scalar_as<std::string>(cu, file, "batch cuts");
+    if (cuts == "splits") bs.cut_at_splits = true;
+    else if (cuts != "none") fail(at(file, cu.Mark()), "batch cuts must be none or splits, found '" + cuts + "'");
+    p.batch = bs;
+  }
+  if ((v == "batch") != (p.credit == Credit::participants) || (v == "batch") != bool(bt))
+    fail(bt ? p.batch->loc : v == "batch" ? p.visibility_loc : p.credit_loc,
+         "GFP batch mode needs visibility: batch, credit: participants and batch: {size, cuts} together "
+         "(SPEC v2 §8 S1)");
 
   const YAML::Node km = required(root, "k_max", file, "the profile");
   p.k_max_loc = at(file, km.Mark());
@@ -215,14 +237,27 @@ const ProfileBlock* Profile::find(Block b) const {
   return nullptr;
 }
 
-bool Profile::causal() const { return visibility == Visibility::stream && credit == Credit::trigger; }
+const char* Profile::visibility_label() const { return batch ? "batch" : visibility_name(visibility); }
+
+std::int32_t Profile::batch_time_window() const {
+  std::int32_t w = 0;
+  for (const ProfileBlock& pb : blocks) w = std::max(w, pb.params.window);
+  return w;
+}
+
+bool Profile::causal() const { return !batch && visibility == Visibility::stream && credit == Credit::trigger; }
 
 std::string Profile::row_sees() const {
+  if (batch)
+    return "GFP batch mode (SPEC v2 §8 S1): the graph up to the end of the row's batch of " +
+           std::to_string(batch->size) + " edges" +
+           (batch->cut_at_splits ? " (a batch also starts at b_fv and at the train/test boundary)" : "") +
+           ", never a later batch; fan and degree instances see the edges with ts <= t, SG instances the later "
+           "edges of the batch; every instance credits each of its edges in the batch (participants credit)";
   std::string s = visibility == Visibility::stream
                       ? "the edges with eid <= the row's eid (stream visibility)"
                       : "the edges with ts <= the row's ts, including later edges of the same timestamp "
                         "(timestamp visibility)";
-  if (credit == Credit::participants) s += "; participants credit also adds instances completed by later edges";
   return s;
 }
 
@@ -243,9 +278,13 @@ nlohmann::json Profile::resolved() const {
       pats.push_back({{"name", pi->name}, {"spec", pi->file}, {"spec_sha256", pi->spec_sha256}});
     out[bname] = {{"patterns", pats}, {"window", pb.params.window}, {"bins", pb.params.bins}};
   }
-  return {{"version", 2},          {"profile", name},   {"visibility", visibility_name(visibility)},
-          {"credit", credit_name(credit)}, {"k_max", k_max}, {"block_order", order},
-          {"blocks", out}};
+  nlohmann::json r = {{"version", 2},          {"profile", name},   {"visibility", visibility_label()},
+                      {"credit", credit_name(credit)}, {"k_max", k_max}, {"block_order", order},
+                      {"blocks", out}};
+  if (batch)
+    r["batch"] = {{"size", batch->size}, {"cuts", batch->cut_at_splits ? "splits" : "none"},
+                  {"time_window", batch_time_window()}};
+  return r;
 }
 
 nlohmann::json Profile::canonical() const {
@@ -257,11 +296,14 @@ nlohmann::json Profile::canonical() const {
     for (const PatternInfo* pi : pb.patterns) pats.push_back(pi->spec_sha256);
     out[bname] = {{"patterns", pats}, {"window", pb.params.window}, {"bins", pb.params.bins}};
   }
-  return {{"visibility", visibility_name(visibility)},
-          {"credit", credit_name(credit)},
-          {"k_max", k_max},
-          {"blocks", out},
-          {"block_order", order}};
+  nlohmann::json c = {{"visibility", visibility_label()},
+                      {"credit", credit_name(credit)},
+                      {"k_max", k_max},
+                      {"blocks", out},
+                      {"block_order", order}};
+  // Only batch profiles carry the key, so every earlier profile keeps its id.
+  if (batch) c["batch"] = {{"size", batch->size}, {"cuts", batch->cut_at_splits ? "splits" : "none"}};
+  return c;
 }
 
 std::string Profile::id() const {
@@ -309,10 +351,18 @@ Profile registry_profile(std::span<const PatternInfo> registry) {
 
 void check_profile_backend(const Profile& p, Backend b) {
   const std::string be = backend_name(b);
-  if (p.credit == Credit::participants)
-    fail_code(p.credit_loc, "E404",
-              "the " + be + " backend cannot run credit: participants (stretch item S1 of SPEC v2 implements it)");
-  if (b == Backend::oracle) {
+  if (p.credit == Credit::participants) {
+    if (b == Backend::cuda)
+      fail_code(p.credit_loc, "E404",
+                "the cuda backend cannot run credit: participants (GFP batch mode runs on the oracle and cpu, "
+                "SPEC v2 §8 S1)");
+    for (const ProfileBlock& pb : p.blocks)
+      if (!is_v1_block(pb.block))
+        fail_code(pb.loc, "E404",
+                  "GFP batch mode covers GFP's blocks only; block " + std::string(block_name(pb.block)) +
+                      " has no batch semantics (SPEC v2 §8 S1)");
+  }
+  if (b == Backend::oracle || p.credit == Credit::participants) {
     for (const ProfileBlock& pb : p.blocks) {
       std::vector<std::string> got, want = oracle_patterns(pb.block);
       for (const PatternInfo* pi : pb.patterns) got.push_back(pi->name);
@@ -322,7 +372,8 @@ void check_profile_backend(const Profile& p, Backend b) {
         std::string w;
         for (const auto& s : want) w += (w.empty() ? "" : ", ") + s;
         fail_code(pb.loc, "E404",
-                  "the oracle computes block " + std::string(block_name(pb.block)) + " as the patterns [" + w +
+                  std::string(b == Backend::oracle ? "the oracle" : "GFP batch mode") + " computes block " +
+                      std::string(block_name(pb.block)) + " as the patterns [" + w +
                       "] together; it cannot run another pattern list");
       }
     }

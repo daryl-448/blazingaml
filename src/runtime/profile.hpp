@@ -3,6 +3,7 @@
 // A profile is `configs/profiles/<name>.yaml` (`version: 2`); a v1 feature config (no `version`)
 // loads as the profile it implies. The profile id is content-derived and identifies the
 // semantics, not the build.
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -31,17 +32,35 @@ struct ProfileBlock {
   std::string loc;  // "<file>:<line>:<col>" of the block's key
 };
 
+// GFP batch mode (SPEC v2 §8 S1): `visibility: batch`, `credit: participants` and
+// `batch: {size: B, cuts: none|splits}` always come together. The stream is cut into batches of B
+// edges (one GFP transform() call each); with `cuts: splits` a batch also starts at b_fv and at
+// the train/test boundary, so that no batch mixes splits (the R6 layout).
+struct BatchSpec {
+  std::uint64_t size = 0;      // >= 1
+  bool cut_at_splits = false;  // cuts: splits
+  std::string loc;             // "<file>:<line>:<col>" of the `batch:` value
+};
+
 struct Profile {
   std::string file;  // the file it was loaded from
   std::string name;  // `profile:`; for a v1 feature config, the file's stem
   int format = 2;    // 2: a profile; 1: a v1 feature config (SPEC v2 §3.1 "Compatibility")
+  // stream or timestamp; in batch mode (`batch` set) it is unused and left at stream, and the
+  // profile's visibility is "batch" (visibility_label()).
   Visibility visibility = Visibility::stream;
   Credit credit = Credit::trigger;
   int k_max = 10;
+  std::optional<BatchSpec> batch;  // set exactly in batch mode
   std::vector<ProfileBlock> blocks;  // output order = listed order
   std::string visibility_loc, credit_loc, k_max_loc;  // "<file>:<line>:<col>" of the values
 
   const ProfileBlock* find(Block b) const;
+  // "stream", "timestamp" or "batch".
+  const char* visibility_label() const;
+  // GFP's time_window in batch mode (SPEC v2 §8 S1): `time_window = -1` resolves to the largest
+  // pattern window, here the largest block window.
+  std::int32_t batch_time_window() const;
   // Stream visibility and trigger credit: a row depends only on the edges before it (§3.3).
   bool causal() const;
   // Which edges a row may see, for the manifest (§3.3: a non-causal profile MUST say so).
@@ -75,7 +94,9 @@ Profile registry_profile(std::span<const PatternInfo> registry = registered_patt
 
 // The start-up check of a profile against a backend (§3.1, §6.4 of v2). Throws
 // "<file>:<line>:<col>: error E404: ..." when the backend cannot run the profile:
-//   - credit: participants (no backend before S1);
+//   - batch mode (credit: participants, §8 S1) on cuda; on the oracle and cpu, a block outside
+//     GFP's six, or whose patterns are not the oracle's set for it (the batch module computes
+//     each block's definition directly, as the oracle does; k_max is a runtime cap there);
 //   - oracle: a block whose patterns are not the set the oracle implements for it (§9 of v1
 //     computes each block's definition directly);
 //   - cpu, cuda: a k_max other than the compiled K_MAX of a listed pattern that declares it.

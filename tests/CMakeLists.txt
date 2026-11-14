@@ -10,6 +10,7 @@ add_executable(blz_unit_tests
   unit/test_features.cpp
   unit/test_fuzz_gen.cpp
   unit/test_oracle.cpp
+  unit/test_batch.cpp
   unit/test_metrics.cpp
   unit/test_registration.cpp
   unit/test_dsl_expr.cpp
@@ -100,6 +101,14 @@ foreach(prof sg_ordered_v1w sg_ordered_tsvis)
       COMMAND blz fuzz-diff --backend cuda --seeds 0:10000 --profile ${PROJECT_SOURCE_DIR}/configs/profiles/${prof}.yaml)
     set_tests_properties(fuzz_diff_${prof}_cuda_10k PROPERTIES LABELS slow)
   endif()
+endforeach()
+
+# SPEC v2 §8 S1: the batch CPU module vs the batch oracle on 10,000 fuzz graphs, per batch
+# profile (GFP parity, 2,000 graphs at B = 4 and 32, is tools/gfp/fuzz_vs_gfp.py --batch).
+foreach(prof batch_b4 batch_b32 dg2_g1)
+  add_test(NAME fuzz_diff_${prof}_cpu_10k
+    COMMAND blz fuzz-diff --seeds 0:10000 --profile ${PROJECT_SOURCE_DIR}/configs/profiles/${prof}.yaml)
+  set_tests_properties(fuzz_diff_${prof}_cpu_10k PROPERTIES LABELS slow)
 endforeach()
 
 # SPEC v2 §6.1 (P8): the oracle under timestamp visibility, including tcyc's visibility invariance.

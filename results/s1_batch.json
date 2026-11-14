@@ -1,0 +1,344 @@
+{
+ "fuzz_diff_cpu_10k": {
+  "batch_b32": {
+   "backend": "cpu",
+   "batch": {
+    "cuts": "none",
+    "size": 32,
+    "time_window": "each graph's window"
+   },
+   "bins": "profile",
+   "edges": 2053897,
+   "first_mismatched_seeds": [],
+   "git": {
+    "dirty": true,
+    "sha": "2b0b9488dee4b9e721eae31bf2548c8e93ccbc28"
+   },
+   "graphs": 10000,
+   "k_max": 33,
+   "mismatched_rows_by_block": {
+    "deg_in": 0,
+    "deg_out": 0,
+    "fan_in": 0,
+    "fan_out": 0,
+    "sg": 0,
+    "tcyc": 0
+   },
+   "mismatched_seeds": 0,
+   "profile": {
+    "file": "configs/profiles/batch_b32.yaml",
+    "id": "46a9c318e76cb350",
+    "name": "batch_b32"
+   },
+   "seconds": 16.091484394,
+   "seeds": "0:10000"
+  },
+  "batch_b4": {
+   "backend": "cpu",
+   "batch": {
+    "cuts": "none",
+    "size": 4,
+    "time_window": "each graph's window"
+   },
+   "bins": "profile",
+   "edges": 2053897,
+   "first_mismatched_seeds": [],
+   "git": {
+    "dirty": true,
+    "sha": "2b0b9488dee4b9e721eae31bf2548c8e93ccbc28"
+   },
+   "graphs": 10000,
+   "k_max": 33,
+   "mismatched_rows_by_block": {
+    "deg_in": 0,
+    "deg_out": 0,
+    "fan_in": 0,
+    "fan_out": 0,
+    "sg": 0,
+    "tcyc": 0
+   },
+   "mismatched_seeds": 0,
+   "profile": {
+    "file": "configs/profiles/batch_b4.yaml",
+    "id": "740f101444ab3972",
+    "name": "batch_b4"
+   },
+   "seconds": 16.664838538,
+   "seeds": "0:10000"
+  },
+  "dg2_g1": {
+   "backend": "cpu",
+   "batch": {
+    "cuts": "splits",
+    "size": 128,
+    "time_window": "each graph's window"
+   },
+   "bins": "profile",
+   "edges": 2053897,
+   "first_mismatched_seeds": [],
+   "git": {
+    "dirty": true,
+    "sha": "2b0b9488dee4b9e721eae31bf2548c8e93ccbc28"
+   },
+   "graphs": 10000,
+   "k_max": 33,
+   "mismatched_rows_by_block": {
+    "deg_in": 0,
+    "deg_out": 0,
+    "fan_in": 0,
+    "fan_out": 0,
+    "sg": 0,
+    "tcyc": 0
+   },
+   "mismatched_seeds": 0,
+   "profile": {
+    "file": "configs/profiles/dg2_g1.yaml",
+    "id": "6ba8d2e9cfef8d33",
+    "name": "dg2_g1"
+   },
+   "seconds": 16.304925729,
+   "seeds": "0:10000"
+  }
+ },
+ "fuzz_vs_gfp_batch32": {
+  "edges": 403557,
+  "first_mismatches": [],
+  "generator": "blz fuzz (SPEC \u00a713.3), oracle bins 2..33, tcyc uncapped, batch oracle with batches of 32 (SPEC v2 \u00a78 S1)",
+  "gfp": "snapml==1.17.2, one transform() per batch of 32 edges, fresh instance per graph",
+  "gfp_ts_offset": 1,
+  "graphs": 2000,
+  "mismatched_rows_by_block": {
+   "deg_in": 0,
+   "deg_out": 0,
+   "fan_in": 0,
+   "fan_out": 0,
+   "sg": 0,
+   "tcyc": 0
+  },
+  "mismatched_seeds": [],
+  "seconds": {
+   "blz_fuzz": 8.5,
+   "gfp": 34.3
+  },
+  "seeds": "0:2000"
+ },
+ "fuzz_vs_gfp_batch4": {
+  "edges": 403557,
+  "first_mismatches": [],
+  "generator": "blz fuzz (SPEC \u00a713.3), oracle bins 2..33, tcyc uncapped, batch oracle with batches of 4 (SPEC v2 \u00a78 S1)",
+  "gfp": "snapml==1.17.2, one transform() per batch of 4 edges, fresh instance per graph",
+  "gfp_ts_offset": 1,
+  "graphs": 2000,
+  "mismatched_rows_by_block": {
+   "deg_in": 0,
+   "deg_out": 0,
+   "fan_in": 0,
+   "fan_out": 0,
+   "sg": 0,
+   "tcyc": 0
+  },
+  "mismatched_seeds": [],
+  "seconds": {
+   "blz_fuzz": 3.8,
+   "gfp": 37.0
+  },
+  "seeds": "0:2000"
+ },
+ "hi_small": {
+  "cpu_vs_gfp_G1": {
+   "deg_in": {
+    "a": "features/scratch_s1/g1_cpu/deg_in.npy",
+    "b": "features/dg2_R6_G1/deg_in.npy",
+    "cols": 12,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "deg_out": {
+    "a": "features/scratch_s1/g1_cpu/deg_out.npy",
+    "b": "features/dg2_R6_G1/deg_out.npy",
+    "cols": 12,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "fan_in": {
+    "a": "features/scratch_s1/g1_cpu/fan_in.npy",
+    "b": "features/dg2_R6_G1/fan_in.npy",
+    "cols": 12,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "fan_out": {
+    "a": "features/scratch_s1/g1_cpu/fan_out.npy",
+    "b": "features/dg2_R6_G1/fan_out.npy",
+    "cols": 12,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "sg": {
+    "a": "features/scratch_s1/g1_cpu/sg.npy",
+    "b": "features/dg2_R6_G1/sg.npy",
+    "cols": 10,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "tcyc": {
+    "a": "features/scratch_s1/g1_cpu/tcyc.npy",
+    "b": "features/dg2_R6_G1/tcyc.npy",
+    "cols": 9,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   }
+  },
+  "cpu_vs_oracle": {
+   "deg_in": {
+    "a": "features/scratch_s1/g1_cpu/deg_in.npy",
+    "b": "features/scratch_s1/g1_oracle/deg_in.npy",
+    "cols": 12,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "deg_out": {
+    "a": "features/scratch_s1/g1_cpu/deg_out.npy",
+    "b": "features/scratch_s1/g1_oracle/deg_out.npy",
+    "cols": 12,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "fan_in": {
+    "a": "features/scratch_s1/g1_cpu/fan_in.npy",
+    "b": "features/scratch_s1/g1_oracle/fan_in.npy",
+    "cols": 12,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "fan_out": {
+    "a": "features/scratch_s1/g1_cpu/fan_out.npy",
+    "b": "features/scratch_s1/g1_oracle/fan_out.npy",
+    "cols": 12,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "sg": {
+    "a": "features/scratch_s1/g1_cpu/sg.npy",
+    "b": "features/scratch_s1/g1_oracle/sg.npy",
+    "cols": 10,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   },
+   "tcyc": {
+    "a": "features/scratch_s1/g1_cpu/tcyc.npy",
+    "b": "features/scratch_s1/g1_oracle/tcyc.npy",
+    "cols": 9,
+    "first_eid": 0,
+    "first_mismatches": [],
+    "mismatched_rows": 0,
+    "mismatches_by_column": {},
+    "rows": 5078345
+   }
+  },
+  "runs": {
+   "cpu": {
+    "profile_id": "6ba8d2e9cfef8d33",
+    "backend": {
+     "disabled_optimizations": [],
+     "name": "cpu",
+     "schedule": "dynamic",
+     "threads": 12
+    },
+    "threads": 12,
+    "block_seconds": {
+     "deg_in": 0.115297961,
+     "deg_out": 0.187619942,
+     "fan_in": 0.132393801,
+     "fan_out": 2.595886232,
+     "sg": 1.678698019,
+     "tcyc": 1.082252438
+    },
+    "batch": {
+     "batches": 39676,
+     "cuts": "splits",
+     "module": "runtime/batch.cpp (not generated code, D-36)",
+     "size": 128,
+     "time_window": 342000
+    },
+    "git": {
+     "dirty": true,
+     "sha": "2b0b9488dee4b9e721eae31bf2548c8e93ccbc28"
+    },
+    "wall_seconds": 9.24,
+    "peak_rss_kb": 593072,
+    "index_build_seconds": 0.454706481
+   },
+   "oracle": {
+    "profile_id": "6ba8d2e9cfef8d33",
+    "backend": {
+     "disabled_optimizations": [],
+     "name": "oracle",
+     "threads": 12
+    },
+    "threads": 12,
+    "block_seconds": {
+     "deg_in": 0.342695476,
+     "deg_out": 130.847791264,
+     "fan_in": 0.34332225,
+     "fan_out": 124.213386761,
+     "sg": 319.09826339,
+     "tcyc": 5.693355533
+    },
+    "batch": {
+     "batches": 39676,
+     "cuts": "splits",
+     "module": "oracle/batch_oracle.cpp",
+     "size": 128,
+     "time_window": 342000
+    },
+    "git": {
+     "dirty": true,
+     "sha": "2b0b9488dee4b9e721eae31bf2548c8e93ccbc28"
+    },
+    "wall_seconds": 583.95,
+    "peak_rss_kb": 457484,
+    "index_build_seconds": 0.478051418
+   },
+   "gfp_G1": {
+    "dir": "features/dg2_R6_G1",
+    "seconds": 709.2755250930786,
+    "peak_rss_mb": 1619.890625
+   }
+  },
+  "note": "blz mine --profile configs/profiles/dg2_g1.yaml on data/hi_small.blzg, 12 threads; wall time and peak RSS from /usr/bin/time; each block's data equals the frozen G1 block, whose output_sha256 configs/dg2_frozen.yaml records"
+ }
+}

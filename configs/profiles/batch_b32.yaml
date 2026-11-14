@@ -1,0 +1,16 @@
+# S1 acceptance profile (SPEC v2 §8 S1): GFP batch mode with batches of 32 edges and no cuts,
+# v1_default's windows, unit bins 2..33, k_max 33. fuzz-diff uses each fuzz graph's own
+# window for every block (and so for GFP's time_window), as in v1.
+version: 2
+profile: batch_b32
+visibility: batch
+credit: participants
+batch: {size: 32, cuts: none}
+k_max: 33
+blocks:
+  fan_in:  {patterns: [fan_in], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]}
+  fan_out: {patterns: [fan_out], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]}
+  deg_in:  {patterns: [deg_in], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]}
+  deg_out: {patterns: [deg_out], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]}
+  sg:      {patterns: [sg_gather, sg_scatter], window: 21600, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]}
+  tcyc:    {patterns: [tcyc], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]}

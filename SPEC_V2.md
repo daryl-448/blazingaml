@@ -1049,6 +1049,94 @@ its own acceptance test and a short addendum to this file. The recommended order
 - **Trap:** participants credit is retrospective. It MUST NOT rewrite a fit row from validation or
   test evidence; the addendum fixes which later edges a row may see (§3.3).
 
+#### S1 addendum (normative)
+
+Pinned by A34–A42 (Appendix A′). The user pulled S1 forward under DG-3 (§13) on 2026-11-14.
+
+- **Profile.** `visibility: batch`, `credit: participants` and `batch: {size: B, cuts: none |
+  splits}` come together; any one without the others is an error at load. The canonical JSON gains
+  `batch: {size, cuts}` only for these profiles, so every earlier profile id is unchanged.
+  `credit: participants` exists only as GFP batch mode. CUDA rejects it with E404, and so does a
+  block other than the six v1 blocks. Each block has the oracle's pattern list (E404 on cpu too).
+- **Batches.** A batch is one GFP `transform()` call: B consecutive eids, counted from 0 and again
+  from each cut. `cuts: splits` cuts at `b_fv` and at the train/test boundary of the whole stream
+  (§3.3), as R6 did; `cuts: none` has no cuts. GFP's `time_window` is the largest block window
+  (GFP's −1). A row is returned at the end of its batch.
+- **Graph during a call (batch visibility, eviction).** The call's graph G is the edges of earlier
+  batches with ts ≥ ts[lo − 1] − time_window (lo = the batch's first eid), plus every edge of the
+  batch; the first batch drops nothing (A34, A37). No row ever sees a later batch. `max_no_edges`
+  is not modelled: profiles have no such key, and GFP's default (−1) keeps everything.
+- **Credit.** Every edge of the batch is a trigger, self-loops included. A trigger's instances
+  credit their participants that are in the batch; earlier batches' rows were already returned
+  and get nothing (A35). A row gets one count per instance that credits it, at that instance's
+  size. Instances are never merged across triggers.
+- **Rule 1 (fan, degree).** Trigger e = (u → v, t): W = the non-loop edges of G into v (out of u)
+  with t − δ < ts ≤ t, the batch's later eids with ts = t included. Fan's size is W's distinct
+  neighbours, degree's |W|. Every edge of W in the batch is a participant, parallel edges included.
+  A self-loop trigger computes its W too, but is never in it (A39).
+- **Rule 2 (tcyc).** Trigger e = (u → v, t), u ≠ v: its instances are the stream-mode cycles (§4.6
+  of v1: one per node sequence, every other edge in t − δ ≤ ts < t, so the batch's later edges never
+  take part). An instance's participants are e and every window edge c_{i−1} → c_i that some valid
+  increasing timestamp assignment of the sequence uses; a parallel edge that fits no assignment is
+  not one (A40). `k_max` caps lengths at run time; GFP has none.
+- **Rule 3 (SG).** Trigger e = (a → b, t), δ = SG's window. up = G's edges with ts ≥ t − δ (no
+  upper bound: the batch's later edges are in it); win = up's edges with ts ≤ t. Pairs: gather
+  (s, w = b, x = b) for each s ∉ {a, b} with s → a in up; scatter (s = a, w, x = a) for each
+  w ∉ {a, b} with b → w in up. I = {y ≠ x : s → y and y → w in win}. When |I| ≥ 2 the pair is
+  reported, unless a batch edge f with ts > t suppresses it:
+  - gather: f = y → w (y ≠ x) with s → y in G, or f = s → y (y ≠ x) with y → w in up;
+  - scatter: f = s → y (y ≠ x) with y → w in G, or f = y → w (y ≠ x) with s → y in up.
+
+  A report credits each batch edge of win that is s → y or y → w with y ∈ I, parallel edges
+  included. Crediting up instead of win would give the same rows: such a later edge suppresses the
+  report (A41, A42).
+- **Growing instances (A5).** Fan, degree and tcyc instances are per trigger, so a growing star
+  credits its early edges once per later trigger, at each trigger's size. An SG pair that a later
+  batch edge extends is suppressed at the earlier triggers, so it is reported by the triggers with
+  its latest timestamp only, at its size then. Ties report once per tied trigger (A41).
+- **The trap (§3.3).** A row sees its whole batch, and SG rows see later edges of it. With
+  `cuts: splits` no batch holds eids on both sides of `b_fv` or of the train/test boundary, so a fit
+  row sees only fit edges and a train row only train edges. `blz mine` refuses a batch layout in
+  which a batch holds both sides of either boundary (on HI-Small, `cuts: none` at B = 128 does).
+
+As implemented (S1):
+
+- Batch mode is a runtime module, not DSL output [D-36]: `src/runtime/batch.{hpp,cpp}` (the
+  layout, the shared driver, the CPU module over the T-CSR/P-CSR index) and
+  `src/oracle/batch_oracle.{hpp,cpp}`. The oracle is written from the rules above, with per-node
+  eid lists and `std::set`; it shares no index code with the CPU module. Its tcyc keeps every
+  feasible arrival and departure time. Batches are independent, so both run them in parallel,
+  each into a buffer of its own; the selected rows are copied out. This is §8's "per-thread
+  buffers merged in eid order": the buffers are disjoint, and the rows are deterministic.
+- `blz mine` runs batch profiles on the oracle and cpu; the manifest records `batch` {size, cuts,
+  batches, time_window, module}. `blz fuzz --batch B` writes the batch oracle's rows (batches of B,
+  no cuts, time_window = the graph's window); `blz fuzz-diff --profile <batch profile>` diffs the
+  CPU module against the batch oracle, with each graph's window for every block and `cuts: splits`
+  on the graph's own boundaries. `blz metamorphic`, `blz bench` and `blz coverage` reject batch
+  profiles.
+- Profiles: `configs/profiles/dg2_g1.yaml` (G1's call: W-C windows, D-9 bins, B = 128 with
+  `cuts: splits`, k_max 33) and the acceptance profiles `batch_b4.yaml` and `batch_b32.yaml`
+  (`cuts: none`, unit bins 2..33, k_max 33). k_max 33 is above every tcyc length GFP finds on
+  HI-Small at the W-C window (the longest is 11, DG-4).
+- Probes: `tools/gfp/probes.py` adds A39–A42, 31 fixtures. A search over random graphs with
+  gapped timestamps, distinct SG and other windows and random cuts found, for each rejected
+  alternative of a rule, a graph on which GFP agrees with the rule and not with the alternative.
+  Each graph is shrunk and kept with GFP's rows. `tests/golden/gfp_batch_probes.json` has 49
+  cases. The unit tests run the oracle and the CPU module on every plain-`transform()` case
+  (A34, A35, A39–A42) and check B = 1 against v1's stream mode with trigger credit (300 fuzz
+  graphs, all six blocks).
+- **Outcome:** see `results/s1_batch.json`.
+  - Oracle = GFP batch mode on 2,000 fuzz graphs at B = 4 and B = 32 (403,557 edges): 0
+    mismatched rows in every block.
+  - CPU = oracle on 10,000 fuzz graphs (2,053,897 edges) for `batch_b4`, `batch_b32` and
+    `dg2_g1`: 0 mismatched rows.
+  - HI-Small, `dg2_g1`: CPU = oracle, and both equal the frozen GFP G1 blocks
+    (`features/dg2_R6_G1`) byte for byte. The data SHA-256 of each block is the `output_sha256`
+    that `configs/dg2_frozen.yaml` records. Time: CPU 9.2 s at 12 threads (RSS 0.6 GB), oracle
+    9 min 44 s, GFP's G1 pass 709 s.
+  - G1 is therefore compiled: `blz mine --backend cpu --profile configs/profiles/dg2_g1.yaml`
+    reproduces the frozen recipe's pattern blocks (DG-3, §13).
+
 ### S2 — vertex statistics in C++
 
 - **Gate:** R7 F1 is adopted.
@@ -1175,6 +1263,9 @@ v1's E0–E5 stand. E6 becomes R8 (validation) and E8's sensitivity table (test)
 - **Compiler:** the invalid-spec suite grows by the E205 cases; snapshots of `sg_ordered` and of
   each `--disable` variant of one representative spec.
 - **Slow integration:** HI-Small, every v2 core profile, oracle = CPU = CUDA.
+- **S1:** `tests/unit/test_batch.cpp` (the batch probes on the oracle and CPU, B = 1 against v1,
+  CPU = oracle across layouts, trigger selections and thread counts); slow:
+  `fuzz_diff_<batch profile>_cpu_10k` for `batch_b4`, `batch_b32` and `dg2_g1`.
 
 ---
 
@@ -1210,6 +1301,9 @@ exist, under either visibility. `--triggers` must then be `all`, `range:a:b` or 
 on the prefix, because the named splits are defined on the whole stream. The manifest records
 `edges`. Under stream visibility, the rows of a prefix run equal the full run's first k rows
 (v1_default on cpu, k = 4,062,676, all six blocks).
+
+As implemented (S1): `blz fuzz --batch B`, `blz fuzz-diff --profile <batch profile>` and
+`tools/gfp/fuzz_vs_gfp.py --batch B` (§8 S1).
 
 As implemented (P9): `blz coverage --graph g [--gt results/gt_join.json] --profile p --features
 <dir> [--pred <u8[m] npy>] [--eligibility <coverage_gfp.json>] --out <json>`. It checks the
@@ -1586,6 +1680,8 @@ Table 3 (`all`), with the paper's counts in brackets:
 
 S1–S9 in the order of §8, each after its gate and the user's approval.
 
+Status: the user pulled S1–S3 forward under DG-3 on 2026-11-14. S1 is done (§8 S1 addendum).
+
 ---
 
 ## 13. Risks and decision gates
@@ -1606,11 +1702,11 @@ S1–S9 in the order of §8, each after its gate and the user's approval.
 
 ## Appendix A′ — GFP probes added by v2
 
-Run in P8 before R6 (snapml 1.17.2, a fresh preprocessor per case). `tools/gfp/probes.py`
-asserts every answer below. A34–A37 describe batch mode, so they are kept here rather than in
-Appendix A (stream mode, batch size 1), and their cases and GFP's full rows are in
-`tests/golden/gfp_batch_probes.json` (18 cases). A38 is a stream-mode fact about GFP's bins and
-is asserted only.
+Run in P8 before R6 (snapml 1.17.2, a fresh preprocessor per case); A39–A42 were added by S1.
+`tools/gfp/probes.py` asserts every answer below. A34–A37 and A39–A42 describe batch mode, so they
+are kept here rather than in Appendix A (stream mode, batch size 1), and their cases and GFP's full
+rows are in `tests/golden/gfp_batch_probes.json` (49 cases). A38 is a stream-mode fact about GFP's
+bins and is asserted only.
 
 | # | Question | Answer (P8) |
 |---|---|---|
@@ -1620,7 +1716,17 @@ is asserted only.
 | A37 | Eviction: with `time_window` / `max_no_edges` set, which edges does a batch still see? | A `time_window` below the largest pattern window has no effect (GFP keeps that window). With `max_no_edges = 2`, a stream edge sees only the 2 most recent earlier edges, but a batch always sees all of its own edges. |
 | A38 | (Found while checking R6's tooling.) Which bin does GFP use for an instance of size S? | **The first bin i with S ≤ b_i, or the last bin.** This is not the bin with b_i ≤ S < b_{i+1} that GFP's docstring states and SPEC §4.2 uses. The two rules agree only for unit-width bins (`[2..33]` and `[1..8]`), which covers every v1 parity run and probe, so v1 could not see the difference. With D-9's fan bins, size 6 lands in [7, 9) instead of [5, 7). `gfp_bins()` (`tools/gfp/gfp_common.py`) passes b′_i = b_{i+1} − 1 and keeps the last value. GFP then bins exactly as §4.2 does, given b_0 = 2 (min size 2) or unit-width bins [D-32]. With that translation, G1's code run at batch size 1 gives `blz`'s rows exactly (100,000 edges, v1_default). |
 
-S3 adds its lc-cycle probes (A39 onwards) when it starts.
+S1's probes (A39–A42) each list the rejected alternatives their fixtures separate
+(`S1_RULES` in `tools/gfp/probes.py`); the answers are the rules of the S1 addendum (§8).
+
+| # | Question | Answer (S1) |
+|---|---|---|
+| A39 | Fan and degree in a batch: which edges form a trigger's instance, and which are credited? | **Rule 1.** The non-loop edges into v (out of u) with t − δ < ts ≤ t in the graph up to the batch's end, including later eids with ts = t; every one of them in the batch is credited, once per trigger. Rejected: only eids ≤ e, later timestamps of the batch, a closed lower bound, self-loops in W, self-loop triggers that do not search, trigger-only credit. |
+| A40 | tcyc in a batch: which edges are participants? | **Rule 2.** The trigger and every window edge between consecutive cycle nodes that some increasing timestamp assignment uses, once per node sequence. Rejected: an open lower bound, trigger-only credit, every window edge between consecutive nodes, one instance per edge path. |
+| A41 | SG in a batch: which triggers report a pair, and over which views? | **Rule 3.** Pairs come from up (ts ≥ t − δ, the batch's later edges included); I from win (ts ≤ t); self-loop triggers search; tied last edges each report; the excluded node never suppresses. Rejected: pairs from win, pairs from G's lower bound, ties that suppress, x as a suppressor, no self-loop searchers. |
+| A42 | SG suppression and eviction: which later batch edges cancel an earlier trigger's report? | **Rule 3.** A later y → w (gather) or s → y (scatter) whose other edge is in G, and a later s → y (gather) or y → w (scatter) whose other edge is in up; G evicts at the largest pattern window. Rejected: no suppression, each other view (up, G, from the batch's first ts, every edge, none) on each side, eviction at SG's or the other patterns' window. |
+
+S2 and S3 add their probes (A43 onwards) when they start.
 
 ## Appendix B′ — deviations added by v2
 
@@ -1652,3 +1758,4 @@ S3 adds its lc-cycle probes (A39 onwards) when it starts.
 | D-33 | E9's GFP eligibility of a batch recipe (G1) sends each attempt edge in the batch it had in the full stream (G1's layout: 128 eids from each cut, cuts at `b_fv` and 4,062,676), in eid order, to a fresh preprocessor. The alternative, fresh batches of 128 over the isolated stream, would put nearly every attempt in a single batch, where every edge sees and credits every other edge. That is not what the full pass did. With the full-stream layout, the isolated and full runs differ only in which edges exist. |
 | D-34 | E9's detection uses refits of the recorded models (the ladder and E8 kept neither models nor predictions). A refit is used only when its confusion counts equal the ledger's (validation) or E8's (test) exactly. Nothing is selected and nothing feeds back (§4.5 step 4). Vertex statistics are not a pattern block and get no eligibility or activation. |
 | D-35 | E11 is the A30 run of the P11 campaign (`results/e11_ablation_a30.{json,md}`: the instance's EPYC 7542 CPU, at 1 and 16 threads), not a run on `local` at 1 and 12 threads as §7.2 states. It is complete: no cell skipped or noisy, and every hash check passed. The user accepted it on 2026-11-13, which saves 30–60 min of idle-window timing on `local`. |
+| D-36 | GFP batch mode (S1) is a hand-written runtime module with a literal oracle, not DSL output. Its SG report rule (suppression by later batch edges, role-dependent views, eviction at the largest window) is GFP's call semantics, not a pattern, and the DSL has no construct for "the rest of the call". CUDA rejects it (E404). `dg2_g1` sets k_max 33 so that tcyc counts every cycle GFP counts on HI-Small (the longest has 11 edges); GFP has no cap. |

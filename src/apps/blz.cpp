@@ -36,7 +36,9 @@
 #if BLZ_WITH_XGBOOST
 #include "ml/xgb.hpp"
 #endif
+#include "oracle/batch_oracle.hpp"
 #include "oracle/oracle.hpp"
+#include "runtime/batch.hpp"
 #include "runtime/coverage.hpp"
 #include "runtime/cpu_backend.hpp"
 #include "runtime/cuda_backend.hpp"
@@ -305,8 +307,21 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
                              "uses cpu); the CUDA kernels take an eid range");
   if (threads > 0) omp_set_num_threads(threads);
   std::optional<blz::Oracle> oracle;
+  std::optional<blz::BatchOracle> batch_oracle;
   std::optional<blz::GraphIndex> index;
+  std::optional<blz::BatchLayout> layout;  // GFP batch mode (SPEC v2 §8 S1)
+  if (prof.batch) {
+    layout = blz::batch_layout(*prof.batch, m, g.ts);
+    // S1's trap: a batch's rows see the whole batch, so a batch that holds eids on both sides of
+    // b_fv or of the train/test boundary would give fit (train) rows validation (test) evidence.
+    for (const std::uint64_t c : {blz::fit_val_boundary(g.ts), blz::train_size(g.m())})
+      if (c < m && !std::binary_search(layout->starts.begin(), layout->starts.end(), c))
+        throw std::runtime_error(profile_path + ": batch " + std::to_string(layout->batch_of(c)) +
+                                 " holds eids on both sides of the split boundary at eid " + std::to_string(c) +
+                                 ", so its earlier rows would see later-split edges (SPEC v2 §8 S1); use cuts: splits");
+  }
   if (cpu || gpu) index.emplace(src, dst, ts, g.n());
+  else if (layout) batch_oracle.emplace(blz::EdgeStream{src, dst, ts, g.n()}, *layout, prof.batch_time_window());
   else oracle.emplace(blz::EdgeStream{src, dst, ts, g.n()}, prof.visibility);
   const double build_s = secs(t0);
   std::fprintf(stderr, "%s index built in %.1f s (m=%llu, n=%llu); profile %s (%s); triggers %s: %llu rows\n",
@@ -346,6 +361,12 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
   if (gpu) jbe["heavy_threshold"] = threshold_name(heavy);
   meta["backend"] = jbe;
   meta["triggers"] = sel.json();
+  if (layout)
+    meta["batch"] = {{"size", prof.batch->size},
+                     {"cuts", prof.batch->cut_at_splits ? "splits" : "none"},
+                     {"batches", layout->batches()},
+                     {"time_window", prof.batch_time_window()},
+                     {"module", cpu ? "runtime/batch.cpp (not generated code, D-36)" : "oracle/batch_oracle.cpp"}};
   meta["graph"] = graph;
   meta["edges"] = m;  // the graph is eids [0, edges) (--edges; m otherwise)
   meta["blzg_sha256"] = blzg_sha;
@@ -380,7 +401,11 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
     std::uint64_t sat = 0;
     blz::CpuBlockTiming tm;
     blz::CudaBlockTiming ctm;
-    if (cpu) {
+    if (layout && cpu) {
+      sat = blz::mine_batch_cpu(index->view(), b, p, prof.k_max, prof.batch_time_window(), *layout, sel, feats.data());
+    } else if (layout) {
+      sat = batch_oracle->mine(b, p, prof.k_max, sel, feats.data());
+    } else if (cpu) {
       tm = blz::mine_cpu(index->view(), pb->patterns, p, prof.visibility, sel, schedule, feats.data());
       sat = tm.saturated;
     } else if (gpu) {
@@ -401,9 +426,10 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
     j["columns"] = blz::column_names(b, p.bins);
     j["mine_seconds"] = mine_s;
     // A sweep (SPEC v2 §7.1) walks every list entry whatever the sample, so its time is not scaled.
-    if (sel.sampled && rows > 0)
+    // Batch mode computes every batch that holds a sampled row, so rows do not scale it: no estimate.
+    if (sel.sampled && rows > 0 && !layout)
       j["extrapolated_mine_seconds"] = tm.sweep_seconds + (mine_s - tm.sweep_seconds) * double(m) / double(rows);
-    if (cpu) {
+    if (cpu && !layout) {
       j["schedule_seconds"] = tm.schedule_seconds;
       j["loop_seconds"] = tm.loop_seconds;
       j["cpu_plans"] = cpu_plans_json(*pb);
@@ -518,8 +544,11 @@ int compare(const std::string& a_path, const std::string& b_path, const std::str
 
 // Fuzz graphs (SPEC §13.3) plus their oracle features, for tools/gfp/fuzz_vs_gfp.py. Writes
 // graphs.npy (int64[total, 6]: seed, eid, src, dst, ts, window) and <block>.npy (uint32 rows
-// aligned with graphs.npy) for every v1 block, with the graph's window for every block.
-int fuzz(const std::string& seeds, const std::string& bins_opt, int k_max, const std::string& out) {
+// aligned with graphs.npy) for every v1 block, with the graph's window for every block. With
+// batch > 0 the features are GFP batch mode's (SPEC v2 §8 S1): batches of `batch` edges, no cuts,
+// time_window = the graph's window.
+int fuzz(const std::string& seeds, const std::string& bins_opt, int k_max, std::uint64_t batch,
+         const std::string& out) {
   const auto [s0, s1] = parse_range(seeds);
   const auto bins = parse_bins(bins_opt);
   std::vector<std::int64_t> rows;
@@ -531,11 +560,16 @@ int fuzz(const std::string& seeds, const std::string& bins_opt, int k_max, const
       rows.insert(rows.end(), {std::int64_t(seed), std::int64_t(e), fg.src[e], fg.dst[e],
                                fg.ts[e], fg.window});
     const blz::Oracle oracle({fg.src, fg.dst, fg.ts, fg.n});
+    std::optional<blz::BatchOracle> bo;
+    if (batch) bo.emplace(blz::EdgeStream{fg.src, fg.dst, fg.ts, fg.n}, blz::batch_layout(m, batch, {}), fg.window);
+    blz::TriggerSel all;
+    all.last = m;
     for (blz::Block b : blz::kV1Blocks) {  // GFP's blocks: sg_ord has no GFP counterpart
       auto& f = feats[b];
       const std::size_t at = f.size();
       f.resize(at + m * bins.size(), 0);
-      oracle.mine(b, {fg.window, bins}, k_max, 0, m, f.data() + at);
+      if (bo) bo->mine(b, {fg.window, bins}, k_max, all, f.data() + at);
+      else oracle.mine(b, {fg.window, bins}, k_max, 0, m, f.data() + at);
     }
   }
   std::filesystem::create_directories(out);
@@ -758,6 +792,7 @@ int bench(const std::string& graph, const std::string& config, const std::string
   if (reps < 1) throw std::runtime_error("--reps must be >= 1");
   const blz::Profile prof = blz::load_profile(config);
   blz::check_profile_backend(prof, blz::Backend::cpu);
+  if (prof.batch) throw std::runtime_error("bench: GFP batch mode profiles are not supported (SPEC v2 §8 S1)");
   const std::vector<const blz::ProfileBlock*> blocks = select_blocks(prof, blocks_opt);
   const std::vector<int> threads = parse_int_list(threads_opt);
   std::vector<blz::Schedule> schedules;
@@ -1012,6 +1047,9 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
     for (std::uint32_t h : thresholds) hs.push_back(threshold_name(h));
     res["heavy_thresholds"] = hs;
     res["cuda"] = cuda_json();
+  } else if (prof.batch) {
+    res["batch"] = {{"size", prof.batch->size}, {"cuts", prof.batch->cut_at_splits ? "splits" : "none"},
+                    {"time_window", "each graph's window"}};
   } else {
     res["schedules"] = {"dynamic", "sorted"};
   }
@@ -1297,6 +1335,8 @@ int main(int argc, char** argv) {
   fz->add_option("--seeds", seeds, "a:b")->required();
   fz->add_option("--bins", bins);
   fz->add_option("--k-max", k_max, "tcyc cap; the default exceeds every fuzz graph's n");
+  std::uint64_t fz_batch = 0;
+  fz->add_option("--batch", fz_batch, "GFP batch mode (SPEC v2 §8 S1) with batches of this many edges (0: stream mode)");
   fz->add_option("--out", out)->required();
 
   std::string features, set, xgb = "configs/xgb_default.yaml";
@@ -1402,7 +1442,7 @@ int main(int argc, char** argv) {
       if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");
       return compare(a_npy, b_npy, graph, tw, first_eid, report, name);
     }
-    if (*fz) return fuzz(seeds, bins, k_max, out);
+    if (*fz) return fuzz(seeds, bins, k_max, fz_batch, out);
     if (*tr) return train(graph, features, set, xgb, out, name.empty() ? set : name, threads);
   } catch (const std::exception& e) {
     std::fprintf(stderr, "error: %s\n", e.what());

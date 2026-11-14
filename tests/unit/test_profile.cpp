@@ -96,7 +96,14 @@ TEST_CASE("profiles: the id follows every semantic field and the block order") {
   CHECK(parse_profile(profile("  fan_in: {patterns: [fan_in], window: 3600, bins: [2, 3]}\n" + deg), "a.yaml").id() != base);
   CHECK(parse_profile(profile(fan + deg, "visibility: stream\ncredit: trigger\nk_max: 12\n"), "a.yaml").id() != base);
   CHECK(parse_profile(profile(fan + deg, "visibility: timestamp\ncredit: trigger\nk_max: 10\n"), "a.yaml").id() != base);
-  CHECK(parse_profile(profile(fan + deg, "visibility: stream\ncredit: participants\nk_max: 10\n"), "a.yaml").id() != base);
+  const std::string batch4 = "visibility: batch\ncredit: participants\nbatch: {size: 4, cuts: none}\nk_max: 10\n";
+  const std::string b4 = parse_profile(profile(fan + deg, batch4), "a.yaml").id();
+  CHECK(b4 != base);
+  std::string batch5 = batch4, splits = batch4;
+  batch5.replace(batch5.find("size: 4"), 7, "size: 5");
+  splits.replace(splits.find("cuts: none"), 10, "cuts: splits");
+  CHECK(parse_profile(profile(fan + deg, batch5), "a.yaml").id() != b4);
+  CHECK(parse_profile(profile(fan + deg, splits), "a.yaml").id() != b4);
   // A changed spec changes the id: the patterns enter it by their spec's SHA-256.
   std::vector<PatternInfo> reg(registered_patterns().begin(), registered_patterns().end());
   for (PatternInfo& pi : reg)
@@ -140,8 +147,8 @@ TEST_CASE("profiles: schema errors carry the location") {
   CHECK(error_of(profile("  fan_in: {patterns: [fan_in, fan_in], window: 1, bins: [2]}\n")) ==
         "p.yaml:7:31: fan_in: pattern 'fan_in' is listed twice");
   CHECK(error_of(profile("  fan_in: {patterns: [fan_in], window: 1, bins: [2]}\n",
-                         "visibility: batch\ncredit: trigger\nk_max: 10\n")) ==
-        "p.yaml:3:13: visibility must be stream or timestamp, found 'batch'");
+                         "visibility: batched\ncredit: trigger\nk_max: 10\n")) ==
+        "p.yaml:3:13: visibility must be stream, timestamp or batch, found 'batched'");
   CHECK(error_of(profile("  fan_in: {patterns: [fan_in], window: 1, bins: [2]}\n",
                          "visibility: stream\ncredit: trigger\nk_max: 1\n")) == "p.yaml:5:8: k_max must be >= 2");
   CHECK(error_of("version: 2\nprofile: 1x\n").find("p.yaml:2:10: 'profile' must be an identifier") == 0);
@@ -150,11 +157,23 @@ TEST_CASE("profiles: schema errors carry the location") {
 
 TEST_CASE("profiles: E404 names the backend and the profile key") {
   const std::string fan = "  fan_in: {patterns: [fan_in], window: 86400, bins: [2]}\n";
-  const Profile part = parse_profile(profile(fan, "visibility: stream\ncredit: participants\nk_max: 10\n"), "p.yaml");
+  const std::string batch = "visibility: batch\ncredit: participants\nbatch: {size: 4, cuts: none}\nk_max: 10\n";
+  const Profile part = parse_profile(profile(fan, batch), "p.yaml");
   CHECK_FALSE(part.causal());
   CHECK(backend_error(part, Backend::cuda) ==
-        "p.yaml:4:9: error E404: the cuda backend cannot run credit: participants (stretch item S1 of SPEC v2 "
-        "implements it)");
+        "p.yaml:4:9: error E404: the cuda backend cannot run credit: participants (GFP batch mode runs on the oracle "
+        "and cpu, SPEC v2 §8 S1)");
+  CHECK(backend_error(part, Backend::oracle) == "ok");
+  CHECK(backend_error(part, Backend::cpu) == "ok");
+  // Batch mode covers GFP's blocks, each with the oracle's pattern list, on cpu too.
+  const Profile ord = parse_profile(profile("  sg_ord: {patterns: [sg_ordered], window: 21600, bins: [2]}\n", batch), "p.yaml");
+  CHECK(backend_error(ord, Backend::cpu) ==
+        "p.yaml:8:3: error E404: GFP batch mode covers GFP's blocks only; block sg_ord has no batch semantics (SPEC v2 "
+        "§8 S1)");
+  const Profile half_b = parse_profile(profile("  sg: {patterns: [sg_gather], window: 21600, bins: [2]}\n", batch), "p.yaml");
+  CHECK(backend_error(half_b, Backend::cpu) ==
+        "p.yaml:8:3: error E404: GFP batch mode computes block sg as the patterns [sg_gather, sg_scatter] together; "
+        "it cannot run another pattern list");
   const Profile ts = parse_profile(profile(fan, "visibility: timestamp\ncredit: trigger\nk_max: 10\n"), "p.yaml");
   CHECK_FALSE(ts.causal());
   for (Backend b : {Backend::oracle, Backend::cpu, Backend::cuda})  // the oracle since P8, cpu and cuda since P10
@@ -180,6 +199,45 @@ TEST_CASE("profiles: E404 names the backend and the profile key") {
         "patterns/deg_in.yaml:4:8: error E402: pattern 'deg_in' emits into block 'deg_in', which the feature config "
         "cfg.yaml does not define");
   CHECK(backend_error(v1, Backend::oracle) == "ok");
+}
+
+TEST_CASE("profiles: GFP batch mode (SPEC v2 §8 S1)") {
+  const std::string fan = "  fan_in: {patterns: [fan_in], window: 86400, bins: [2]}\n";
+  const auto head = [](const std::string& vis, const std::string& credit, const std::string& batch) {
+    return "visibility: " + vis + "\ncredit: " + credit + "\n" + batch + "k_max: 10\n";
+  };
+  const std::string together =
+      "GFP batch mode needs visibility: batch, credit: participants and batch: {size, cuts} together (SPEC v2 §8 S1)";
+  CHECK(error_of(profile(fan, head("stream", "participants", ""))) == "p.yaml:4:9: " + together);
+  CHECK(error_of(profile(fan, head("batch", "trigger", ""))) == "p.yaml:3:13: " + together);
+  CHECK(error_of(profile(fan, head("stream", "trigger", "batch: {size: 4, cuts: none}\n"))) == "p.yaml:5:8: " + together);
+  CHECK(error_of(profile(fan, head("batch", "participants", "batch: {size: 0, cuts: none}\n"))).find(
+            "batch size must be >= 1") != std::string::npos);
+  CHECK(error_of(profile(fan, head("batch", "participants", "batch: {size: 4, cuts: some}\n"))).find(
+            "batch cuts must be none or splits, found 'some'") != std::string::npos);
+  CHECK(error_of(profile(fan, head("batch", "participants", "batch: {size: 4}\n"))).find("needs 'cuts'") !=
+        std::string::npos);
+  CHECK(error_of(profile(fan, head("batch", "participants", "batch: {size: 4, cuts: none, x: 1}\n"))).find(
+            "unknown key 'x'") != std::string::npos);
+  CHECK(error_of(profile(fan, head("batch", "participants", "batch: 4\n"))).find("'batch' must be a map") !=
+        std::string::npos);
+
+  // The DG-3 profile: G1's call, GFP's time_window is the largest block window.
+  const Profile g1 = load_profile(kSrc + "/configs/profiles/dg2_g1.yaml");
+  REQUIRE(g1.batch);
+  CHECK(g1.batch->size == 128);
+  CHECK(g1.batch->cut_at_splits);
+  CHECK(g1.batch_time_window() == 342000);
+  CHECK(std::string(g1.visibility_label()) == "batch");
+  CHECK_FALSE(g1.causal());
+  const auto r = g1.resolved();
+  CHECK(r["visibility"] == "batch");
+  CHECK(r["batch"]["cuts"] == "splits");
+  CHECK(r["batch"]["time_window"] == 342000);
+  CHECK(g1.canonical()["batch"]["size"] == 128);
+  CHECK(g1.row_sees().find("GFP batch mode") == 0);
+  // Profiles without the key keep their ids: the canonical form gains no batch entry.
+  CHECK_FALSE(load_profile(kSrc + "/configs/profiles/v1_default.yaml").canonical().contains("batch"));
 }
 
 TEST_CASE("profiles: registry_profile is every registered block with the compiled K_MAX") {
