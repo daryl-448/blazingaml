@@ -10,9 +10,16 @@ namespace blz {
 
 std::string_view block_name(Block b) {
   static constexpr std::array<std::string_view, kAllBlocks.size()> names = {
-      "fan_in", "fan_out", "deg_in", "deg_out", "sg", "tcyc", "sg_ord"};
+      "fan_in", "fan_out", "deg_in", "deg_out", "sg", "tcyc", "sg_ord", "lcyc"};
   return names[int(b)];
 }
+
+WorkLimitExceeded::WorkLimitExceeded(const std::string& where, std::uint64_t eid_, std::uint64_t limit_)
+    : std::runtime_error(where + ": trigger eid " + std::to_string(eid_) + " exceeded the work limit of " +
+                         std::to_string(limit_) + " bindings (SPEC v2 §8 S3); the run stops, no row is truncated; "
+                         "raise it with --work-limit"),
+      eid(eid_),
+      limit(limit_) {}
 
 std::optional<Block> parse_block(std::string_view name) {
   for (Block b : kAllBlocks)

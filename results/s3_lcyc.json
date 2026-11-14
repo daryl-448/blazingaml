@@ -1,0 +1,265 @@
+{
+ "fuzz_cpu_vs_oracle": {
+  "backend": "cpu",
+  "bins": "profile",
+  "edges": 2053897,
+  "first_limited_seeds": [
+   8,
+   44,
+   48,
+   77,
+   119,
+   127,
+   152,
+   153,
+   187,
+   238,
+   282,
+   295,
+   297,
+   300,
+   323,
+   389,
+   429,
+   477,
+   506,
+   522
+  ],
+  "first_mismatched_seeds": [],
+  "git": {
+   "dirty": true,
+   "sha": "c3e5251ef115d63647547d6c8b7af6d0d662daa4"
+  },
+  "graphs": 10000,
+  "k_max": 10,
+  "limited_graphs": 537,
+  "mismatched_rows_by_block": {
+   "lcyc": 0
+  },
+  "mismatched_seeds": 0,
+  "profile": {
+   "file": "configs/profiles/lcyc_f2.yaml",
+   "id": "224ccfac00940a90",
+   "name": "lcyc_f2"
+  },
+  "schedules": [
+   "dynamic",
+   "sorted"
+  ],
+  "seconds": 2263.235370459,
+  "seeds": "0:10000",
+  "work_limit": 1000000
+ },
+ "fuzz_cuda_vs_oracle": {
+  "backend": "cuda",
+  "bins": "profile",
+  "cuda": {
+   "build": "nvcc 13.4.92, sm 75,80, -O3 -DNDEBUG",
+   "compute_capability": "7.5",
+   "device": "NVIDIA GeForce GTX 1650 SUPER",
+   "driver_version": 13040,
+   "memory_mb": {
+    "free": 3041,
+    "total": 3728
+   },
+   "runtime_version": 13040,
+   "sm_count": 20
+  },
+  "edges": 2053897,
+  "first_limited_seeds": [
+   8,
+   44,
+   48,
+   77,
+   119,
+   127,
+   152,
+   153,
+   187,
+   238,
+   282,
+   295,
+   297,
+   300,
+   323,
+   389,
+   429,
+   477,
+   506,
+   522
+  ],
+  "first_mismatched_seeds": [],
+  "git": {
+   "dirty": true,
+   "sha": "c3e5251ef115d63647547d6c8b7af6d0d662daa4"
+  },
+  "graphs": 10000,
+  "heavy_thresholds": [
+   "0",
+   "4"
+  ],
+  "k_max": 10,
+  "limited_graphs": 537,
+  "mismatched_rows_by_block": {
+   "lcyc": 0
+  },
+  "mismatched_seeds": 0,
+  "profile": {
+   "file": "configs/profiles/lcyc_f2.yaml",
+   "id": "224ccfac00940a90",
+   "name": "lcyc_f2"
+  },
+  "seconds": 5030.565907665,
+  "seeds": "0:10000",
+  "work_limit": 1000000
+ },
+ "fuzz_cuda_light_vs_oracle": {
+  "backend": "cuda",
+  "bins": "profile",
+  "cuda": {
+   "build": "nvcc 13.4.92, sm 75,80, -O3 -DNDEBUG",
+   "compute_capability": "7.5",
+   "device": "NVIDIA GeForce GTX 1650 SUPER",
+   "driver_version": 13040,
+   "memory_mb": {
+    "free": 2778,
+    "total": 3728
+   },
+   "runtime_version": 13040,
+   "sm_count": 20
+  },
+  "edges": 2053897,
+  "first_limited_seeds": [
+   3,
+   6,
+   8,
+   14,
+   38,
+   44,
+   47,
+   48,
+   64,
+   77,
+   98,
+   102,
+   103,
+   113,
+   115,
+   119,
+   123,
+   127,
+   150,
+   151
+  ],
+  "first_mismatched_seeds": [],
+  "git": {
+   "dirty": true,
+   "sha": "c3e5251ef115d63647547d6c8b7af6d0d662daa4"
+  },
+  "graphs": 10000,
+  "heavy_thresholds": [
+   "all"
+  ],
+  "k_max": 10,
+  "limited_graphs": 1727,
+  "mismatched_rows_by_block": {
+   "lcyc": 0
+  },
+  "mismatched_seeds": 0,
+  "profile": {
+   "file": "configs/profiles/lcyc_f2.yaml",
+   "id": "224ccfac00940a90",
+   "name": "lcyc_f2"
+  },
+  "seconds": 3890.62882487,
+  "seeds": "0:10000",
+  "work_limit": 100000
+ },
+ "hi_small_ac1": {
+  "graph": "data/hi_small.blzg",
+  "profile": "configs/profiles/lcyc_f2.yaml",
+  "work_limit": 100000000,
+  "backends": {
+   "oracle": {
+    "mine_seconds": 2.94,
+    "output_fnv1a": 9717565363251746754,
+    "lcyc_npy_sha256": "63e31aee84bfe989b84f3418685722fe750ed5d33de41c8e2e1dac5983e49b02",
+    "threads": 12,
+    "saturated": 0,
+    "git": {
+     "dirty": true,
+     "sha": "c3e5251ef115d63647547d6c8b7af6d0d662daa4"
+    }
+   },
+   "cpu": {
+    "mine_seconds": 1.33,
+    "output_fnv1a": 9717565363251746754,
+    "lcyc_npy_sha256": "63e31aee84bfe989b84f3418685722fe750ed5d33de41c8e2e1dac5983e49b02",
+    "threads": 12,
+    "saturated": 0,
+    "git": {
+     "dirty": true,
+     "sha": "c3e5251ef115d63647547d6c8b7af6d0d662daa4"
+    }
+   },
+   "cuda": {
+    "mine_seconds": 1.45,
+    "output_fnv1a": 9717565363251746754,
+    "lcyc_npy_sha256": "63e31aee84bfe989b84f3418685722fe750ed5d33de41c8e2e1dac5983e49b02",
+    "threads": 12,
+    "saturated": 0,
+    "git": {
+     "dirty": true,
+     "sha": "c3e5251ef115d63647547d6c8b7af6d0d662daa4"
+    }
+   }
+  },
+  "oracle_eq_cpu_eq_cuda": true,
+  "note": "blz mine --profile lcyc_f2 on each backend; cuda on the GTX 1650 SUPER (default heavy threshold)"
+ },
+ "lcyc_vs_gfp_hi_small": {
+  "blz_dir": "features/scratch_s3_cpu",
+  "gfp_dir": "/home/daryl/Projects/blazingaml/features/dg2_R7_F2",
+  "window": 86400,
+  "bins": [
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10
+  ],
+  "lc_len": 10,
+  "rows": 5078345,
+  "rows_with_a_gfp_cycle": 1135,
+  "mismatched_rows": 0,
+  "mismatched_tie_rows": 0,
+  "mismatched_unexplained": 0,
+  "first_mismatched_eids": [],
+  "first_unexplained": [],
+  "seconds": 1.7
+ },
+ "lcyc_vs_gfp_fuzz": {
+  "generator": "blz fuzz --lcyc (SPEC \u00a713.3 graphs; the oracle, length <= 10, bins 2..10)",
+  "gfp": "snapml==1.17.2, stream mode, lc-cycle only, lc-cycle_len 10, fresh instance per graph",
+  "gfp_ts_offset": 1,
+  "seeds": "0:2000",
+  "work_limit": 1000000,
+  "gfp_jobs": 4,
+  "graphs": 2000,
+  "graphs_limited_skipped": 96,
+  "rows": 369426,
+  "rows_with_a_gfp_cycle": 202380,
+  "mismatched_rows": 74723,
+  "mismatched_tie_rows": 74723,
+  "mismatched_unexplained": 0,
+  "first_unexplained": [],
+  "seconds": {
+   "blz_fuzz": 0.0,
+   "gfp": 7534.2
+  }
+ }
+}

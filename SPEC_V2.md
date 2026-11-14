@@ -1232,6 +1232,94 @@ As implemented (S2):
 - **AC:** AC1 (oracle = CPU = CUDA) at length ≤ 10 and window 86,400. Oracle = GFP on HI-Small and on
   2,000 fuzz graphs, except tie cases reproduced as probes and accepted by a `D-n`.
 
+#### S3 addendum (normative)
+
+Pinned by A46–A49 (Appendix A′). The user pulled S3 forward under DG-3 (§13) on 2026-11-14.
+
+- **Instances (A47, A48).** A trigger e = (u → v, t) with u ≠ v counts the simple cycles through
+  its own edge. A self-loop trigger emits nothing.
+  - A cycle is a node sequence v = c_0, c_1, …, c_h, u of distinct nodes, with a window edge
+    c_i → c_{i+1} for each hop and c_h → u.
+  - The window edges come in any time order. Parallel edges collapse: one instance per node
+    sequence.
+  - The size is h + 2, from 2 to L inclusive, with L = `K_MAX` = 10 (GFP's `lc-cycle_len`).
+  - GFP rejects L = 1.
+- **Window (A46).** The other edges have earlier eids and t − W ≤ ts < t, a closed lower bound.
+  - W is the block's own window: GFP's `lc-cycle_tw`, not another pattern's window or the
+    eviction window.
+  - The rule never uses an edge with ts = t, so it gives the same rows under either visibility.
+- **Ties (A49, D-38).** `blz` leaves out every edge tied with the trigger (ts = t). GFP uses a tie
+  edge x → y iff rank(y) < rank(v).
+  - rank is the order in which GFP's graph first saw the node, over the whole stream, src before
+    dst within an edge. It is kept after eviction.
+  - Equivalently, the trigger must be the cycle's largest edge by (ts, rank(dst)).
+  - This resolves O-2 (SPEC Appendix A). (1,1,2) has no tie and is found. In (1,2,2), the tie edge
+    closes at u, which GFP saw after v, so it is not found. With u seen first, it is (A49).
+- **Work limit.** Unordered enumeration can explode, so a `work_limit: true` pattern counts its
+  bindings per trigger.
+  - A binding is a `for_all` binding past its stage's filters. The oracle counts each extension of
+    the path to a new node, which is the same number.
+  - Every backend and schedule stops on the same triggers: those whose count exceeds the limit.
+  - The run then fails with `WorkLimitExceeded`, which names the smallest such eid, whatever the
+    thread count, schedule or kernel. No row is written, and none is truncated.
+  - The default limit is 10⁸ bindings (`--work-limit`).
+
+As implemented (S3):
+
+- **DSL and code generation.**
+  - The DSL has a top-level `work_limit: true` key (parsed, lowered, printed in the IR dump).
+  - The generated code calls `out.over(p.work_limit)` once per binding.
+  - The OpenMP driver records the smallest aborted eid and skips any trigger whose eid is larger
+    than an abort already seen.
+  - The CUDA light kernel counts in its `RowSink`. The heavy kernel counts in one shared-memory
+    counter per warp. Both kernels `atomicMin` the eid and skip larger eids; they read it with a
+    relaxed atomic load.
+  - The counter costs each warp 8 B of the heavy block's 48 KiB of shared memory. A CUDA block
+    therefore takes 1 to 767 bins, one fewer than the 768 of SPEC §7.5.
+- **`patterns/lcyc.yaml`.**
+  - It has tcyc's shape without the ordering constraints. Every hop and every close has
+    `break_if: "x.t >= t"`, which keeps ties out.
+  - Distinct nodes come from `skip_if: "C{k} in [U, V, C{1..k-1}]"`, and `close_k` is an `exists`
+    on U.
+  - `Block::lcyc` has a closed lower bound.
+  - `registry_profile()` leaves lcyc out. It runs only from a profile that lists it:
+    `configs/profiles/lcyc_f2.yaml` (F2's window 86,400, bins 2..10, k_max 10).
+- **Oracle.** `Oracle::lcyc` is a literal DFS over each node's set of window successors.
+- **CLI.**
+  - `blz mine --work-limit`: the manifest records `work_limit` on the lcyc block.
+  - `blz fuzz-diff --work-limit`: see D-39.
+  - `blz fuzz --lcyc [--work-limit]`: the oracle's rows. Every row of a limited graph is
+    UINT32_MAX.
+  - `tools/gfp/lcyc_vs_gfp.py`: fuzz and HI-Small modes. It checks every mismatching row against
+    both rules: ties left out for `blz`, A49's rank rule for GFP.
+- **Tests.**
+  - `tests/unit/test_lcyc.cpp`: the 16 probe cases on the oracle, the CPU (both schedules) and
+    CUDA (H = 0, 2 and all), and the work-limit error.
+  - The lcyc parity and invariance tests in `test_cpu_backend.cpp` and `test_cuda_backend.cpp`:
+    40 fuzz graphs at a limit of 20,000, with rows or the stop eid compared across ranges, threads,
+    schedules and thresholds.
+  - Slow: `fuzz_diff_lcyc_f2_{cpu,cuda,cuda_light}_10k`.
+- **Outcome** (`results/s3_lcyc.json`):
+  - Probes: A46–A49 hold on all 16 cases (13 `rule`, 3 `tie`), and GFP rejects L = 1.
+  - AC1 on fuzz graphs (10,000 graphs, 2,053,897 edges):
+    - CPU, both schedules, limit 10⁶: 0 mismatching rows. 537 graphs are limited, with equal stop
+      eids.
+    - CUDA at H = 0 and 4, limit 10⁶: 0 mismatching rows, with the same 537 limited graphs.
+    - CUDA at H = all, limit 10⁵ (D-39): 0 mismatching rows. 1,727 graphs are limited, with equal stop
+      eids.
+  - AC1 on HI-Small (window 86,400, length ≤ 10):
+    - oracle = CPU = CUDA byte for byte (`lcyc.npy` sha256 63e31aee…), 0 saturated;
+    - 2.9 s on the oracle, 1.3 s on the CPU (12 threads) and 1.5 s on the GTX 1650 SUPER.
+    - No trigger reaches the default limit of 10⁸.
+  - GFP on HI-Small: F2's lcyc block equals `blz`'s on all 5,078,345 rows, 1,135 of which have a
+    cycle. No usable tie edge occurs, so S3 compiles F2 byte for byte.
+  - GFP on 2,000 fuzz graphs, with the 96 limited graphs skipped:
+    - 74,723 of the 369,426 rows differ (202,380 rows have a GFP cycle);
+    - every one is a tie row: GFP's row is A49's rank rule, and `blz`'s is the rule without ties;
+    - 0 mismatches are unexplained.
+    - The generator makes ties common on purpose (SPEC §13.3: T ∈ [2, 60]).
+  - GFP replayed the 1,904 graphs in 7,534 s on 4 processes; one graph alone took 59 s.
+
 ### S4 — `union` and `difference`
 
 Each op ships with one library spec that uses it, so that no op exists without a feature:
@@ -1330,8 +1418,9 @@ v1's E0–E5 stand. E6 becomes R8 (validation) and E8's sensitivity table (test)
   - the sweep driver against the per-trigger plan;
   - E403, E404.
 - **Golden:** Appendix A′ probes enter `tests/golden/gfp_probes.json` only if they describe stream
-  mode. Batch probes are kept in a separate `tests/golden/gfp_batch_probes.json`, used by S1, and
-  vertex-statistics probes in `tests/golden/gfp_vstats_probes.json`, used by S2.
+  mode. Batch probes are kept in a separate `tests/golden/gfp_batch_probes.json`, used by S1,
+  vertex-statistics probes in `tests/golden/gfp_vstats_probes.json`, used by S2, and lc-cycle probes
+  in `tests/golden/gfp_lcyc_probes.json`, used by S3.
 - **Fuzz:** the generator is unchanged. `blz fuzz-diff` gains `--profile`, so AC1 runs per profile.
 - **Metamorphic:** §3.4, in the fast suite (200 graphs) and the slow suite (2,000).
 - **Compiler:** the invalid-spec suite grows by the E205 cases; snapshots of `sg_ordered` and of
@@ -1343,6 +1432,12 @@ v1's E0–E5 stand. E6 becomes R8 (validation) and E8's sensitivity table (test)
 - **S2:** `tests/unit/test_vstats.cpp`: the GFP probes, the naive reference bit for bit (1 thread,
   every thread, a range), and CPU = CUDA on 300 fuzz graphs. GFP parity runs through
   `tools/gfp/vstats_vs_gfp.py`, which needs snapml, not through ctest.
+- **S3:**
+  - `tests/unit/test_lcyc.cpp`: the lc-cycle probes and the work-limit error, on the oracle, the CPU
+    and CUDA.
+  - lcyc's fuzz parity with the work limit, in `test_cpu_backend.cpp` and `test_cuda_backend.cpp`.
+  - Slow: `fuzz_diff_lcyc_f2_{cpu,cuda,cuda_light}_10k`.
+  - GFP parity runs through `tools/gfp/lcyc_vs_gfp.py`.
 
 ---
 
@@ -1383,6 +1478,9 @@ As implemented (S1): `blz fuzz --batch B`, `blz fuzz-diff --profile <batch profi
 `tools/gfp/fuzz_vs_gfp.py --batch B` (§8 S1).
 
 As implemented (S2): `blz vstats`, `blz fuzz --vstats` and `tools/gfp/vstats_vs_gfp.py` (§8 S2).
+
+As implemented (S3): `blz mine --work-limit`, `blz fuzz-diff --work-limit`, `blz fuzz --lcyc` and
+`tools/gfp/lcyc_vs_gfp.py` (§8 S3).
 
 As implemented (P9): `blz coverage --graph g [--gt results/gt_join.json] --profile p --features
 <dir> [--pred <u8[m] npy>] [--eligibility <coverage_gfp.json>] --out <json>`. It checks the
@@ -1570,6 +1668,12 @@ Table 3 (`all`), with the paper's counts in brackets:
     in `blz` (S1).
 - **DG-3, after E8.** The user decides whether to pull S1, S2 or S3 forward. The verdict stands
   either way.
+  - **Resolved on 2026-11-14:** the user pulled S1–S3 forward, and all three are done. Every
+    GFP-produced feature of the frozen recipe now has a compiled counterpart:
+    - G1's pattern blocks byte for byte (S1);
+    - F1's vertex statistics by F1's rule, with D-37's deviation (S2);
+    - F2's lc-cycle block byte for byte on HI-Small (S3, D-38).
+  - Nothing was refit or rescored: E8's verdict stands (§4.5 step 4).
 
 ### P9 — Coverage
 
@@ -1760,7 +1864,8 @@ Table 3 (`all`), with the paper's counts in brackets:
 S1–S9 in the order of §8, each after its gate and the user's approval.
 
 Status: the user pulled S1–S3 forward under DG-3 on 2026-11-14. S1 is done (§8 S1 addendum). S2
-is done with D-37's deviation (§8 S2 addendum).
+is done with D-37's deviation (§8 S2 addendum). S3 is done with D-38's tie deviation and D-39's work
+limit (§8 S3 addendum). DG-3 is resolved (P8). S4–S9 wait for their gates and the user.
 
 ---
 
@@ -1775,15 +1880,15 @@ is done with D-37's deviation (§8 S2 addendum).
 | R11 | The ladder's Python fits diverge from `blz train`. | E8 runs `v1_default` through both `blz train` and the Python tool; both must reproduce v1's E2/E3 counts. If they differ, E8 reports both, takes the `v1_default` row from `blz train`, and records the difference against the frozen row's tool. |
 | R12 | RAM on `local` (about 3 GB free) with wider ladder matrices. | `QuantileDMatrix` from batches; RSS recorded per fit; a fit that would exceed 3 GB runs with fewer threads or is recorded as `skipped: memory`. |
 | R13 | Shared-desktop timing noise (v1 E4: fan_out 1.21–1.70 s at 12 threads). | §2.5 timing hygiene; the ablation reports min and max, not only the median. |
-| DG-3 | The frozen recipe depends on features only GFP produces (R6 batch semantics, R7 vertex statistics or lc-cycle). | Before E8, record it as "identified with GFP-produced features; not yet compiled". After E8, ask the user whether to pull S1, S2 or S3 forward. The verdict stands either way. |
+| DG-3 | The frozen recipe depends on features only GFP produces (R6 batch semantics, R7 vertex statistics or lc-cycle). | Before E8, record it as "identified with GFP-produced features; not yet compiled". After E8, ask the user whether to pull S1, S2 or S3 forward. The verdict stands either way. **Resolved on 2026-11-14:** S1–S3 are done (P8). |
 | DG-4 | The frozen tcyc window is longer than D-8's, so `K_MAX = 10` may cut cycles that GFP counts. | Report only. Before E8, measure the GFP tcyc length histogram at the frozen tcyc window (E0's method, under the 60-minute pass limit) and report the share of triggers with cycles longer than `K_MAX` next to E8. The frozen recipe keeps `K_MAX = 10`; DG-1's raise rule is not applied after the freeze. |
 
 ---
 
 ## Appendix A′ — GFP probes added by v2
 
-Run in P8 before R6 (snapml 1.17.2, a fresh preprocessor per case); A39–A42 were added by S1 and
-A43–A45 by S2.
+Run in P8 before R6 (snapml 1.17.2, a fresh preprocessor per case); A39–A42 were added by S1,
+A43–A45 by S2 and A46–A49 by S3.
 `tools/gfp/probes.py` asserts every answer below. A34–A37 and A39–A42 describe batch mode, so they
 are kept here rather than in Appendix A (stream mode, batch size 1), and their cases and GFP's full
 rows are in `tests/golden/gfp_batch_probes.json` (49 cases). A38 is a stream-mode fact about GFP's
@@ -1817,7 +1922,18 @@ S2's probes (A43–A45) check GFP's rows against the S2 rule and against each re
 | A44 | The formulas: ratio, variance, skew, kurtosis, small samples. | ratio = degree / fan (0 when fan = 0); population variance; skew = m3 / m2^1.5; kurtosis = m4 / m2² (not excess); n ≤ 1 gives 0. A variance below 10⁻⁵ · mean² is reported as 0 with its skew and kurtosis, for ts too: ts 1,000,001 and 1,000,006 give 0. Rejected: fan / degree, the sample variance, excess kurtosis, no guard. |
 | A45 | After an eviction, are GFP's statistics those of the window? | **No.** GFP subtracts evicted values from running sums and keeps the rounding residue. In the fixture, a side that holds the single amount 4.0 reports a mean of 3.9999999999999933, a variance of −0.0162 and a kurtosis of −1.98 × 10⁵, with or without self-loops. Fan and degree are exact. Accepted as D-37. |
 
-S3 adds its probes (A46 onwards) when it starts.
+S3's probes (A46–A49) check GFP's rows against the S3 rule, with GFP's tie rank, and against each
+rejected alternative (`S3_FIXTURES` in `tools/gfp/probes.py`, `lc_model` in
+`tools/gfp/lcyc_vs_gfp.py`; lc-cycle only, `lc-cycle_len` 10, bins 2..10). GFP's rows and `blz`'s
+are in `tests/golden/gfp_lcyc_probes.json`: 16 cases, 13 `rule` cases where they are equal and
+3 `tie` cases where they differ (D-38).
+
+| # | Question | Answer (S3) |
+|---|---|---|
+| A46 | lc-cycle's window: which edges, and which window? | Edges with earlier eids and t − W ≤ ts ≤ t, where W is `lc-cycle_tw`. The window is the pattern's own and is anchored at the trigger's t. Rejected: an open lower bound; a start at ts[e − 1] − W (A43's eviction rule); another pattern's window, i.e. GFP's time_window (fan at 100 with lc-cycle at 4). |
+| A47 | The length bound. | 2 ≤ size ≤ `lc-cycle_len`, inclusive: a 10-cycle counts at L = 10, an 11-cycle does not, and 2-cycles count. GFP rejects `lc-cycle_len` = 1. Rejected: L − 1, L + 1, no 2-cycles. |
+| A48 | Must the trigger be on the cycle, and what is one instance? | The simple cycles through the trigger edge, one per node sequence, with edges in any time order. Rejected: increasing ts along the path (tcyc's order), every cycle through u, edge sequences (parallel edges multiply), walks that repeat a node. |
+| A49 | Ties (O-2): may another cycle edge have ts = t? | **Only by GFP's node order.** A tie edge x → y is usable iff rank(y) < rank(v). rank is the order in which GFP first saw the node over the whole stream, src before dst, and it is kept after eviction. This explains O-2: (1,1,2) is found, (1,2,2) is not, and (1,2,2) is found once u was seen before v. Rejected: no tie edges (`blz`, D-38), every tie edge, the src key rank(x) > rank(u), dst before src, node ids as ranks, ranks over the window's edges only. |
 
 ## Appendix B′ — deviations added by v2
 
@@ -1851,3 +1967,5 @@ S3 adds its probes (A46 onwards) when it starts.
 | D-35 | E11 is the A30 run of the P11 campaign (`results/e11_ablation_a30.{json,md}`: the instance's EPYC 7542 CPU, at 1 and 16 threads), not a run on `local` at 1 and 12 threads as §7.2 states. It is complete: no cell skipped or noisy, and every hash check passed. The user accepted it on 2026-11-13, which saves 30–60 min of idle-window timing on `local`. |
 | D-36 | GFP batch mode (S1) is a hand-written runtime module with a literal oracle, not DSL output. Its SG report rule (suppression by later batch edges, role-dependent views, eviction at the largest window) is GFP's call semantics, not a pattern, and the DSL has no construct for "the rest of the call". CUDA rejects it (E404). `dg2_g1` sets k_max 33 so that tcyc counts every cycle GFP counts on HI-Small (the longest has 11 edges); GFP has no cap. |
 | D-37 | S2's vertex statistics are each window's exact statistics: two passes in eid order (§8 S2). They do not reproduce the residue of GFP's running sums after an eviction (A45). The mismatches all fall on sides that lost an edge to eviction: 0.93 % of values on 2,000 fuzz graphs and 1.2 % on HI-Small (20 % of rows; F1 holds 93,585 negative variances). They are accepted as GFP's numerical defect. Reproducing it would need GFP's per-node add and subtract sequence over the whole stream, which a per-trigger module does not have, and it would copy the error. Fan and degree equal GFP everywhere. A `vertex_stats_tw` below the largest pattern window (A43) is not modelled; F1 does not use one. |
+| D-38 | S3's lcyc leaves out every edge tied with the trigger (ts = t), under both visibilities. GFP decides a tie by its node order (A49): a tie edge x → y counts iff GFP first saw y before v. That order is the history of the call, not the window's edges, and the DSL has no node order: its node comparisons are ==, != and `in`, and a mixed predicate is E203. Matching it would need a per-node insertion rank carried through the index and a new predicate. The tie rows are accepted instead. On the 1,904 fuzz graphs under the limit, 74,723 of 369,426 rows (20 %) differ, every one reproduced by A49's rule (SPEC §13.3 makes ties common). On HI-Small none differ: F2 equals `blz` on every row. This resolves O-2. |
+| D-39 | The work limit (§8 S3) counts bindings per trigger. It stops the run with the smallest eid over the limit and never truncates a row. AC1's fuzz runs use a limit of 10⁶ on the CPU and on CUDA at H = 0 and 4. 537 of the 10,000 graphs reach it; for those, the stop eid is compared on every backend, schedule and threshold, not the rows. CUDA's all-light pass (H = all) uses 10⁵, which 1,727 graphs reach (0 mismatching rows). There one GPU thread walks each trigger's bindings serially, so at 10⁶ that pass alone would take about 3.75 h on the GTX 1650 SUPER. The light kernel runs the same generated `<pattern>_trigger` as the CPU driver, which is checked at 10⁶. GFP's fuzz parity skips the graphs limited at 10⁶ (96 of 2,000). HI-Small runs at the default of 10⁸, which no trigger reaches. |

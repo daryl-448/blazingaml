@@ -12,6 +12,7 @@
 
 #include "graph/fuzz_gen.hpp"
 #include "graph/index.hpp"
+#include "oracle/oracle.hpp"
 #include "runtime/cpu_backend.hpp"
 #include "runtime/fuzz_diff.hpp"
 
@@ -26,6 +27,24 @@ std::vector<std::uint32_t> mine(const GraphIndex& idx, Block b, const BlockParam
   return out;
 }
 
+// A run's rows, or the eid of the trigger that stopped it (SPEC v2 §8 S3).
+struct Outcome {
+  std::vector<std::uint32_t> rows;
+  std::uint64_t aborted = UINT64_MAX;
+  bool operator==(const Outcome&) const = default;
+};
+
+template <class F>
+Outcome outcome(F&& f) {
+  Outcome o;
+  try {
+    o.rows = f();
+  } catch (const WorkLimitExceeded& e) {
+    o.aborted = e.eid;
+  }
+  return o;
+}
+
 std::string error_of(const FeatureConfig& cfg) {
   try {
     check_backend_config(cfg, "cfg.yaml");
@@ -37,10 +56,11 @@ std::string error_of(const FeatureConfig& cfg) {
 
 }  // namespace
 
-TEST_CASE("registry: the library's eight patterns, one block each, sg from two") {
+TEST_CASE("registry: the library's nine patterns, one block each, sg from two") {
   std::set<std::string> names;
   for (const PatternInfo& p : registered_patterns()) names.insert(p.name);
-  CHECK(names == std::set<std::string>{"deg_in", "deg_out", "fan_in", "fan_out", "sg_gather", "sg_ordered", "sg_scatter", "tcyc"});
+  CHECK(names == std::set<std::string>{"deg_in", "deg_out", "fan_in", "fan_out", "lcyc", "sg_gather", "sg_ordered",
+                                       "sg_scatter", "tcyc"});
   for (Block b : kAllBlocks) CHECK(!patterns_for(b).empty());
   CHECK(patterns_for(Block::sg).size() == 2);
   CHECK(compiled_k_max() == 10);
@@ -129,6 +149,7 @@ TEST_CASE("cpu backend rows do not depend on the trigger range, threads or sched
     const std::uint64_t m = fg.src.size(), mid = m / 3;
     const BlockParams p{fg.window, {2, 3, 4, 5, 6, 8}};
     for (Block b : kAllBlocks) {
+      if (b == Block::lcyc) continue;  // needs a work limit: the next test
       omp_set_num_threads(1);
       const auto one = mine(idx, b, p, 0, m);
       omp_set_num_threads(4);
@@ -139,4 +160,42 @@ TEST_CASE("cpu backend rows do not depend on the trigger range, threads or sched
     }
   }
   omp_set_num_threads(omp_get_num_procs());
+}
+
+// SPEC v2 §8 S3: lcyc's rows equal the oracle's, and a run over the work limit stops with the same
+// eid, the smallest over the limit, whatever the thread count, the schedule or the range.
+TEST_CASE("lcyc: rows or the smallest eid over the work limit equal the oracle's, any range, threads or schedule") {
+  const std::vector<std::uint32_t> bins = {2, 3, 4, 5, 6, 7, 8, 9, 10};
+  int stopped = 0;
+  for (std::uint64_t seed = 0; seed < 40; ++seed) {
+    const FuzzGraph fg = fuzz_graph(seed);
+    const GraphIndex idx(fg.src, fg.dst, fg.ts, fg.n);
+    const Oracle o({fg.src, fg.dst, fg.ts, fg.n});
+    const std::uint64_t m = fg.src.size(), mid = m / 3;
+    BlockParams p{fg.window, bins};
+    p.work_limit = 20'000;
+    const Outcome want = outcome([&] {
+      std::vector<std::uint32_t> out(m * bins.size(), 0);
+      o.mine(Block::lcyc, p, 10, 0, m, out.data());
+      return out;
+    });
+    stopped += want.aborted != UINT64_MAX;
+    for (int threads : {1, 4}) {
+      omp_set_num_threads(threads);
+      for (Schedule s : {Schedule::dynamic, Schedule::sorted}) {
+        INFO("seed " << seed << " threads " << threads << " " << schedule_name(s));
+        CHECK(outcome([&] { return mine(idx, Block::lcyc, p, 0, m, s); }) == want);
+      }
+    }
+    const Outcome tail = outcome([&] { return mine(idx, Block::lcyc, p, mid, m, Schedule::sorted); });
+    INFO("seed " << seed << " tail");
+    if (want.aborted == UINT64_MAX)
+      CHECK((tail.aborted == UINT64_MAX &&
+             std::equal(tail.rows.begin(), tail.rows.end(), want.rows.begin() + std::ptrdiff_t(mid * bins.size()))));
+    else if (want.aborted >= mid)
+      CHECK(tail.aborted == want.aborted);
+  }
+  omp_set_num_threads(omp_get_num_procs());
+  CHECK(stopped > 0);  // the limit is hit on some graphs and not on others
+  CHECK(stopped < 30);
 }

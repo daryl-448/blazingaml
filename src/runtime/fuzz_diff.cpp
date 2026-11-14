@@ -32,9 +32,21 @@ std::vector<std::uint32_t> fuzz_bins(const ProfileBlock& pb, std::span<const std
   return v;
 }
 
+// Runs f; returns UINT64_MAX, or the eid at which the work limit stopped it (SPEC v2 §8 S3).
+template <class F>
+std::uint64_t stop_eid(F&& f) {
+  try {
+    f();
+  } catch (const WorkLimitExceeded& x) {
+    return x.eid;
+  }
+  return UINT64_MAX;
+}
+
 }  // namespace
 
-FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins) {
+FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
+                       std::uint64_t work_limit) {
   const int k_max = prof.k_max;
   std::array<std::vector<std::uint32_t>, kAllBlocks.size()> block_bins;
   for (const ProfileBlock& pb : prof.blocks) block_bins[int(pb.block)] = fuzz_bins(pb, bins);
@@ -48,6 +60,7 @@ FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, 
     const Oracle oracle({fg.src, fg.dst, fg.ts, fg.n}, prof.visibility);
     const GraphIndex index(fg.src, fg.dst, fg.ts, fg.n);
     std::array<std::uint64_t, kAllBlocks.size()> bad{};
+    bool limited = false;
     TriggerSel all;
     all.last = m;
     // GFP batch mode (SPEC v2 §8 S1): the batch oracle against the CPU module. Every block has the
@@ -61,7 +74,8 @@ FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, 
     }
     for (const ProfileBlock& pb : prof.blocks) {
       const Block b = pb.block;
-      const BlockParams p{fg.window, block_bins[int(b)]};
+      BlockParams p{fg.window, block_bins[int(b)]};
+      p.work_limit = work_limit;
       const std::size_t nb = p.bins.size();
       std::vector<std::uint32_t> want(m * nb, 0);
       if (layout) {
@@ -72,10 +86,16 @@ FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, 
           bad[int(b)] += !std::equal(got.begin() + e * nb, got.begin() + (e + 1) * nb, want.begin() + e * nb);
         continue;
       }
-      oracle.mine(b, p, k_max, 0, m, want.data());
+      const std::uint64_t stop = stop_eid([&] { oracle.mine(b, p, k_max, 0, m, want.data()); });
+      limited = limited || stop != UINT64_MAX;
       for (Schedule s : {Schedule::dynamic, Schedule::sorted}) {
         std::vector<std::uint32_t> got(m * nb, 0);
-        mine_cpu(index.view(), pb.patterns, p, prof.visibility, all, s, got.data());
+        const std::uint64_t got_stop =
+            stop_eid([&] { mine_cpu(index.view(), pb.patterns, p, prof.visibility, all, s, got.data()); });
+        if (stop != UINT64_MAX || got_stop != UINT64_MAX) {
+          bad[int(b)] += got_stop != stop;
+          continue;
+        }
         for (std::uint64_t e = 0; e < m; ++e)
           bad[int(b)] += !std::equal(got.begin() + e * nb, got.begin() + (e + 1) * nb, want.begin() + e * nb);
       }
@@ -90,14 +110,16 @@ FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, 
         any = any || bad[i] != 0;
       }
       if (any) res.bad_seeds.push_back(std::uint64_t(si));
+      if (limited) res.limited_seeds.push_back(std::uint64_t(si));
     }
   }
   std::sort(res.bad_seeds.begin(), res.bad_seeds.end());
+  std::sort(res.limited_seeds.begin(), res.limited_seeds.end());
   return res;
 }
 
 FuzzDiff fuzz_diff_cuda(const Profile& prof, std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
-                        std::span<const std::uint32_t> thresholds) {
+                        std::span<const std::uint32_t> thresholds, std::uint64_t work_limit) {
   const int k_max = prof.k_max;
   std::array<std::vector<std::uint32_t>, kAllBlocks.size()> block_bins;
   for (const ProfileBlock& pb : prof.blocks) block_bins[int(pb.block)] = fuzz_bins(pb, bins);
@@ -108,6 +130,7 @@ FuzzDiff fuzz_diff_cuda(const Profile& prof, std::uint64_t s0, std::uint64_t s1,
     FuzzGraph fg;
     std::unique_ptr<GraphIndex> index;
     std::array<std::vector<std::uint32_t>, kAllBlocks.size()> want;
+    std::array<std::uint64_t, kAllBlocks.size()> stop;  // the oracle's stop eid, or UINT64_MAX
   };
   constexpr std::uint64_t kBatch = 256;
   for (std::uint64_t b0 = s0; b0 < s1; b0 += kBatch) {
@@ -120,24 +143,37 @@ FuzzDiff fuzz_diff_cuda(const Profile& prof, std::uint64_t s0, std::uint64_t s1,
       const std::uint64_t m = it.fg.src.size();
       const Oracle oracle({it.fg.src, it.fg.dst, it.fg.ts, it.fg.n}, prof.visibility);
       it.index = std::make_unique<GraphIndex>(it.fg.src, it.fg.dst, it.fg.ts, it.fg.n);
+      it.stop.fill(UINT64_MAX);
       for (const ProfileBlock& pb : prof.blocks) {
-        const auto& bb = block_bins[int(pb.block)];
-        it.want[int(pb.block)].assign(m * bb.size(), 0);
-        oracle.mine(pb.block, {it.fg.window, bb}, k_max, 0, m, it.want[int(pb.block)].data());
+        BlockParams p{it.fg.window, block_bins[int(pb.block)]};
+        p.work_limit = work_limit;
+        it.want[int(pb.block)].assign(m * p.bins.size(), 0);
+        it.stop[int(pb.block)] =
+            stop_eid([&] { oracle.mine(pb.block, p, k_max, 0, m, it.want[int(pb.block)].data()); });
       }
     }
     for (std::size_t i = 0; i < items.size(); ++i) {
       const Item& it = items[i];
       const std::uint64_t m = it.fg.src.size();
       const DeviceGraph dg(it.index->view());
-      bool any = false;
+      bool any = false, limited = false;
       for (const ProfileBlock& pb : prof.blocks)
         for (std::uint32_t h : thresholds) {
           const Block b = pb.block;
-          const BlockParams p{it.fg.window, block_bins[int(b)]};
+          BlockParams p{it.fg.window, block_bins[int(b)]};
+          p.work_limit = work_limit;
           const std::size_t nb = p.bins.size();
           std::vector<std::uint32_t> got(m * nb);
-          miner.mine(dg, pb.patterns, p, prof.visibility, 0, m, h, got.data());
+          const std::uint64_t got_stop =
+              stop_eid([&] { miner.mine(dg, pb.patterns, p, prof.visibility, 0, m, h, got.data()); });
+          if (it.stop[int(b)] != UINT64_MAX || got_stop != UINT64_MAX) {
+            limited = limited || it.stop[int(b)] != UINT64_MAX;
+            if (got_stop != it.stop[int(b)]) {
+              ++res.mismatched_rows[int(b)];
+              any = true;
+            }
+            continue;
+          }
           const auto& want = it.want[int(b)];
           for (std::uint64_t e = 0; e < m; ++e)
             if (!std::equal(got.begin() + e * nb, got.begin() + (e + 1) * nb, want.begin() + e * nb)) {
@@ -148,6 +184,7 @@ FuzzDiff fuzz_diff_cuda(const Profile& prof, std::uint64_t s0, std::uint64_t s1,
       ++res.graphs;
       res.edges += m;
       if (any) res.bad_seeds.push_back(b0 + i);
+      if (limited) res.limited_seeds.push_back(b0 + i);
     }
   }
   return res;

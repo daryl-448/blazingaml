@@ -88,7 +88,7 @@ Profile parse_profile(std::string_view yaml_text, const std::string& file,
                       std::span<const PatternInfo> registry = registered_patterns());
 
 // Every block that a registered pattern emits into, in GFP order, with those patterns, and
-// k_max = the compiled K_MAX. Windows and bins are left empty: fuzz graphs bring their own.
+// k_max = the compiled K_MAX; lcyc only from a profile that lists it (SPEC v2 §8 S3). Windows and bins are left empty: fuzz graphs bring their own.
 // The default of `blz fuzz-diff` and `blz metamorphic` without --profile (the v1 behaviour).
 Profile registry_profile(std::span<const PatternInfo> registry = registered_patterns());
 

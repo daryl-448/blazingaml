@@ -22,6 +22,24 @@ namespace {
 
 constexpr std::uint32_t kThresholds[] = {0, 2, kAllLight};  // all heavy, mixed, all light
 
+// A run's rows, or the eid of the trigger that stopped it (SPEC v2 §8 S3).
+struct Outcome {
+  std::vector<std::uint32_t> rows;
+  std::uint64_t aborted = UINT64_MAX;
+  bool operator==(const Outcome&) const = default;
+};
+
+template <class F>
+Outcome outcome(F&& f) {
+  Outcome o;
+  try {
+    o.rows = f();
+  } catch (const WorkLimitExceeded& e) {
+    o.aborted = e.eid;
+  }
+  return o;
+}
+
 std::vector<std::uint32_t> mine_gpu(CudaMiner& miner, const DeviceGraph& dg, Block b, const BlockParams& p,
                                     std::uint64_t first, std::uint64_t last, std::uint32_t h) {
   std::vector<std::uint32_t> out((last - first) * p.bins.size(), 0xdeadbeef);
@@ -133,6 +151,7 @@ TEST_CASE("cuda backend rows equal the cpu backend's for any trigger range and t
     const std::uint64_t m = fg.src.size(), mid = m / 3;
     const BlockParams p{fg.window, {2, 3, 4, 5, 6, 8}};
     for (Block b : kAllBlocks) {
+      if (b == Block::lcyc) continue;  // needs a work limit: the next test
       std::vector<std::uint32_t> cpu(m * p.bins.size(), 0);
       mine_cpu(idx.view(), b, p, 0, m, Schedule::dynamic, cpu.data());
       for (std::uint32_t h : kThresholds) {
@@ -145,6 +164,34 @@ TEST_CASE("cuda backend rows equal the cpu backend's for any trigger range and t
       }
     }
   }
+}
+
+// SPEC v2 §8 S3: lcyc's CUDA rows equal the CPU's at every threshold, and a run over the work
+// limit stops with the CPU's eid, the smallest over the limit.
+TEST_CASE("lcyc: cuda rows or the smallest eid over the work limit equal the cpu's, every threshold") {
+  CudaMiner miner;
+  const std::vector<std::uint32_t> bins = {2, 3, 4, 5, 6, 7, 8, 9, 10};
+  int stopped = 0;
+  for (std::uint64_t seed = 0; seed < 40; ++seed) {
+    const FuzzGraph fg = fuzz_graph(seed);
+    const GraphIndex idx(fg.src, fg.dst, fg.ts, fg.n);
+    const DeviceGraph dg(idx.view());
+    const std::uint64_t m = fg.src.size();
+    BlockParams p{fg.window, bins};
+    p.work_limit = 20'000;
+    const Outcome want = outcome([&] {
+      std::vector<std::uint32_t> out(m * bins.size(), 0);
+      mine_cpu(idx.view(), Block::lcyc, p, 0, m, Schedule::dynamic, out.data());
+      return out;
+    });
+    stopped += want.aborted != UINT64_MAX;
+    for (std::uint32_t h : kThresholds) {
+      INFO("seed " << seed << " H=" << h);
+      CHECK(outcome([&] { return mine_gpu(miner, dg, Block::lcyc, p, 0, m, h); }) == want);
+    }
+  }
+  CHECK(stopped > 0);
+  CHECK(stopped < 30);
 }
 
 // Bucketing: every trigger goes to exactly one kernel, once per pattern of the block.

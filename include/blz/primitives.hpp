@@ -181,6 +181,8 @@ struct GraphView {
 struct Params {
   std::int64_t span = 0;
   bool ts_visibility = false;  // false: stream visibility (v1); true: timestamp visibility
+  // Bindings one trigger may make in a pattern compiled with `work_limit: true` (SPEC v2 §8 S3).
+  std::uint64_t work_limit = UINT64_MAX;
 };
 
 // count_distinct / count_edges (SPEC §5.3): the number of distinct neighbours, or of edges, in

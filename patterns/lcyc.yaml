@@ -1,0 +1,53 @@
+# lcyc (SPEC v2 §8 S3): simple cycles of length 2..K_MAX through the trigger U -> V, GFP's
+# lc-cycle. tcyc's shape without its ordering constraints: every other edge of the cycle is a
+# window edge strictly before t, in any time order, and the nodes are distinct. One cycle per node
+# sequence (distinct bindings, earliest witnesses). The search is unordered, so it can explode:
+# every binding counts against the runtime work limit, which stops the run with the trigger's eid.
+version: 1
+pattern: lcyc
+block: lcyc
+consts: {K_MAX: 10}
+window: {span: delta_lc, lower: closed}
+work_limit: true
+trigger: {edge: e0, src: U, dst: V}
+constraints: [{skip_if: "U == V"}]
+stages:
+  - id: close_2                          # the cycle V -> U -> V
+    op: exists
+    src: V.out
+    node: U
+    edge: c2
+    constraints: [{break_if: "c2.t >= t"}]
+    emit: {size: 2}
+  - id: hop_1
+    op: for_all
+    src: V.out
+    edge: h1
+    dst_var: C1
+    constraints:
+      - break_if: "h1.t >= t"
+      - skip_if: "C1 in [U, V]"
+  - id: close_3
+    op: exists
+    src: C1.out
+    node: U
+    edge: c3
+    constraints: [{break_if: "c3.t >= t"}]
+    emit: {size: 3}
+  - repeat: {var: k, from: 2, to: "K_MAX - 2"}
+    stages:
+      - id: "hop_{k}"
+        op: for_all
+        src: "C{k-1}.out"
+        edge: "h{k}"
+        dst_var: "C{k}"
+        constraints:
+          - break_if: "h{k}.t >= t"
+          - skip_if: "C{k} in [U, V, C{1..k-1}]"
+      - id: "close_{k+2}"
+        op: exists
+        src: "C{k}.out"
+        node: U
+        edge: "c{k+2}"
+        constraints: [{break_if: "c{k+2}.t >= t"}]
+        emit: {size: "{k+2}"}

@@ -1,6 +1,7 @@
 #include "oracle/oracle.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <limits>
 #include <map>
 #include <queue>
@@ -192,8 +193,45 @@ void Oracle::tcyc(const Trigger& tr, int k_max, std::vector<std::uint64_t>& size
   dfs(dfs, {std::numeric_limits<Ts>::min()});
 }
 
+// SPEC v2 §8 S3 (lcyc): the simple cycles through the trigger u -> v of length 2..k_max in any
+// time order. A cycle is a node sequence v = c_0, c_1, ..., c_h, u of distinct nodes, h + 2 <=
+// k_max, with an edge c_i -> c_{i+1} for every hop and c_h -> u, each in the window with ts < t
+// (an edge tied with the trigger never takes part, A49). Parallel edges collapse: one cycle per
+// node sequence. Each extension of the path to a new node is one binding; more than `limit` of
+// them abort the trigger (the same count as the generated code's).
+bool Oracle::lcyc(const Trigger& tr, int k_max, std::uint64_t limit, std::vector<std::uint64_t>& sizes) const {
+  std::vector<std::uint32_t> path = {tr.u, tr.v};  // u closes the cycle and is never a hop
+  std::uint64_t work = 0;
+  bool aborted = false;
+  const auto successors = [&](std::uint32_t x) {
+    std::set<std::uint32_t> ys;
+    const Window w = window(out_[x], tr);
+    for (auto f = w.begin; f != w.end && s_.ts[*f] < tr.t; ++f) ys.insert(s_.dst[*f]);
+    return ys;
+  };
+  const auto dfs = [&](const auto& self, std::uint32_t x, int hops) -> void {  // hops: the nodes c_1.. so far
+    for (std::uint32_t y : successors(x)) {
+      if (aborted) return;
+      if (y == tr.u) {
+        sizes.push_back(std::uint64_t(hops) + 2);
+        continue;
+      }
+      if (std::find(path.begin(), path.end(), y) != path.end() || hops + 1 > k_max - 2) continue;
+      if (++work > limit) {
+        aborted = true;
+        return;
+      }
+      path.push_back(y);
+      self(self, y, hops + 1);
+      path.pop_back();
+    }
+  };
+  dfs(dfs, tr.v, 0);
+  return !aborted;
+}
+
 std::uint64_t Oracle::mine_one(Block b, const BlockParams& p, int k_max, std::uint64_t e, std::uint32_t* row,
-                               bool gather_only) const {
+                               bool gather_only, bool* aborted) const {
   const Trigger tr{std::uint32_t(e), s_.src[e], s_.dst[e], s_.ts[e], std::int64_t(s_.ts[e]) - p.window,
                    closed_lower_bound(b)};
   if (tr.u == tr.v) return 0;  // self-loop triggers emit nothing (§4.1)
@@ -202,6 +240,12 @@ std::uint64_t Oracle::mine_one(Block b, const BlockParams& p, int k_max, std::ui
     case Block::sg: sg(tr, !gather_only, sizes); break;
     case Block::tcyc: tcyc(tr, k_max, sizes); break;
     case Block::sg_ord: sg_ordered(tr, sizes); break;
+    case Block::lcyc:
+      if (!lcyc(tr, k_max, p.work_limit, sizes)) {
+        if (aborted) *aborted = true;
+        return 0;
+      }
+      break;
     default: fan_or_degree(b, tr, sizes);
   }
   std::uint64_t saturated = 0;
@@ -212,14 +256,31 @@ std::uint64_t Oracle::mine_one(Block b, const BlockParams& p, int k_max, std::ui
   return saturated;
 }
 
+namespace {
+
+// The work limit's report (SPEC v2 §8 S3) names the smallest aborted eid, whatever the thread
+// count: a trigger is skipped only if its eid is larger than an abort already seen.
+void lower_to(std::atomic<std::uint64_t>& a, std::uint64_t e) {
+  for (std::uint64_t v = a.load(); e < v && !a.compare_exchange_weak(v, e);) {}
+}
+
+}  // namespace
+
 std::uint64_t Oracle::mine(Block b, const BlockParams& p, int k_max, std::uint64_t first,
                            std::uint64_t last, std::uint32_t* out) const {
   if (first > last || last > s_.src.size()) throw std::invalid_argument("oracle: bad trigger range");
   if (k_max < 2) throw std::invalid_argument("oracle: k_max < 2");
   const std::size_t nb = p.bins.size();
   std::uint64_t saturated = 0;
+  std::atomic<std::uint64_t> aborted{UINT64_MAX};
 #pragma omp parallel for schedule(dynamic, 256) reduction(+ : saturated)
-  for (std::uint64_t e = first; e < last; ++e) saturated += mine_one(b, p, k_max, e, out + (e - first) * nb);
+  for (std::uint64_t e = first; e < last; ++e) {
+    if (e > aborted.load(std::memory_order_relaxed)) continue;
+    bool ab = false;
+    saturated += mine_one(b, p, k_max, e, out + (e - first) * nb, false, &ab);
+    if (ab) lower_to(aborted, e);
+  }
+  if (aborted != UINT64_MAX) throw WorkLimitExceeded("oracle, block " + std::string(block_name(b)), aborted, p.work_limit);
   return saturated;
 }
 
@@ -230,8 +291,15 @@ std::uint64_t Oracle::mine(Block b, const BlockParams& p, int k_max, std::span<c
     if (e >= s_.src.size()) throw std::invalid_argument("oracle: trigger eid >= m");
   const std::size_t nb = p.bins.size();
   std::uint64_t saturated = 0;
+  std::atomic<std::uint64_t> aborted{UINT64_MAX};
 #pragma omp parallel for schedule(dynamic, 256) reduction(+ : saturated)
-  for (std::size_t r = 0; r < eids.size(); ++r) saturated += mine_one(b, p, k_max, eids[r], out + r * nb);
+  for (std::size_t r = 0; r < eids.size(); ++r) {
+    if (eids[r] > aborted.load(std::memory_order_relaxed)) continue;
+    bool ab = false;
+    saturated += mine_one(b, p, k_max, eids[r], out + r * nb, false, &ab);
+    if (ab) lower_to(aborted, eids[r]);
+  }
+  if (aborted != UINT64_MAX) throw WorkLimitExceeded("oracle, block " + std::string(block_name(b)), aborted, p.work_limit);
   return saturated;
 }
 

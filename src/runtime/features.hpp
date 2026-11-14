@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <optional>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -10,21 +11,23 @@
 namespace blz {
 
 // Output blocks: the six v1 blocks in GFP column order (SPEC §4.2), then sg_ord (SPEC v2 §6.3),
-// which GFP does not have.
-enum class Block { fan_in, fan_out, deg_in, deg_out, sg, tcyc, sg_ord };
-inline constexpr std::array<Block, 7> kAllBlocks = {Block::fan_in,  Block::fan_out, Block::deg_in, Block::deg_out,
-                                                    Block::sg,      Block::tcyc,    Block::sg_ord};
+// which GFP does not have, and lcyc (GFP's lc-cycle, SPEC v2 §8 S3).
+enum class Block { fan_in, fan_out, deg_in, deg_out, sg, tcyc, sg_ord, lcyc };
+inline constexpr std::array<Block, 8> kAllBlocks = {Block::fan_in, Block::fan_out, Block::deg_in, Block::deg_out,
+                                                    Block::sg,     Block::tcyc,    Block::sg_ord, Block::lcyc};
 // The v1 blocks: what a v1 feature config covers (E402) and what GFP computes.
 inline constexpr std::array<Block, 6> kV1Blocks = {Block::fan_in,  Block::fan_out, Block::deg_in,
                                                    Block::deg_out, Block::sg,      Block::tcyc};
-inline bool is_v1_block(Block b) { return b != Block::sg_ord; }
+inline bool is_v1_block(Block b) { return b != Block::sg_ord && b != Block::lcyc; }
 
 std::string_view block_name(Block b);
 std::optional<Block> parse_block(std::string_view name);
 
-// Window lower bound (SPEC §4.1): fan and degree are open (t' > t - delta), SG, tcyc and sg_ord
-// closed (t' >= t - delta). Fixed by the semantics, not by the config.
-inline bool closed_lower_bound(Block b) { return b == Block::sg || b == Block::tcyc || b == Block::sg_ord; }
+// Window lower bound (SPEC §4.1): fan and degree are open (t' > t - delta), SG, tcyc, sg_ord and
+// lcyc closed (t' >= t - delta). Fixed by the semantics, not by the config.
+inline bool closed_lower_bound(Block b) {
+  return b == Block::sg || b == Block::tcyc || b == Block::sg_ord || b == Block::lcyc;
+}
 
 // Which edges a trigger e = (u -> v, t) may see (SPEC §4.1 of v1, §6.1 of v2): stream = eid' <=
 // eid (the default, GFP stream mode); timestamp = t' <= t, so later edges of the same timestamp
@@ -32,9 +35,22 @@ inline bool closed_lower_bound(Block b) { return b == Block::sg || b == Block::t
 enum class Visibility { stream, timestamp };
 const char* visibility_name(Visibility v);  // defined in runtime/profile.cpp
 
+// The per-trigger work limit of lcyc (SPEC v2 §8 S3): bindings one trigger may make before the
+// run stops with that trigger's eid. Every backend counts the same bindings, so they all stop on
+// the same triggers. No other block counts work.
+inline constexpr std::uint64_t kDefaultWorkLimit = 100'000'000;
+
 struct BlockParams {
   std::int32_t window = 0;           // delta, seconds (> 0)
   std::vector<std::uint32_t> bins;   // strictly increasing, last bin open-ended
+  std::uint64_t work_limit = kDefaultWorkLimit;
+};
+
+// Thrown when a trigger exceeds the work limit (SPEC v2 §8 S3). `eid` is the smallest such
+// trigger among those that ran (a driver skips the triggers it has not started yet).
+struct WorkLimitExceeded : std::runtime_error {
+  WorkLimitExceeded(const std::string& where, std::uint64_t eid, std::uint64_t limit);
+  std::uint64_t eid, limit;
 };
 
 // A feature config (configs/features_*.yaml, SPEC §4.8).

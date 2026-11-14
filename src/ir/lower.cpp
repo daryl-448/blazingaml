@@ -73,6 +73,7 @@ class Lowerer {
     p.span_param = s_.span.s;
     p.lower_open = s_.lower_open;
     p.visibility = s_.visibility;
+    p.work_limit = s_.work_limit;
     p.e0 = s_.trig_edge.s;
     p.src_var = s_.trig_src.s;
     p.dst_var = s_.trig_dst.s;

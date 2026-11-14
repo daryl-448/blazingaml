@@ -46,7 +46,8 @@ void check_backend_config(const FeatureConfig& cfg, const std::string& config_na
     if (const auto b = parse_block(p.block); !b || is_v1_block(*b)) refs.push_back({p.name, p.block, p.block_loc});
   check_registration(refs, cfg, config_name);
   for (const PatternInfo& p : registered_patterns())
-    if (const ConstInfo* k = find_const(p, "K_MAX"); k && k->value != cfg.k_max)
+    if (const auto b = parse_block(p.block); b && !is_v1_block(*b)) continue;  // not run by a v1 config
+    else if (const ConstInfo* k = find_const(p, "K_MAX"); k && k->value != cfg.k_max)
       throw std::runtime_error(std::string(p.file) + ": pattern '" + p.name + "' was compiled with K_MAX = " +
                                std::to_string(k->value) + ", but " + config_name + " has k_max: " +
                                std::to_string(cfg.k_max));
@@ -69,7 +70,7 @@ CpuBlockTiming mine_cpu(const GraphView& g, std::span<const PatternInfo* const> 
   if (sel.first > sel.last || sel.last > g.m) throw std::invalid_argument("mine_cpu: bad trigger range");
   for (std::uint32_t e : sel.eids)
     if (e < sel.first || e >= sel.last) throw std::invalid_argument("mine_cpu: sample eid outside its range");
-  const Params params{p.window, vis == Visibility::timestamp};
+  const Params params{p.window, vis == Visibility::timestamp, p.work_limit};
   BlockOut bo{out, sel.first, p.bins.data(), std::uint32_t(p.bins.size()), 0,
               sel.sampled ? sel.eids.data() : nullptr, sel.sampled ? sel.eids.size() : 0, sel.last};
   CpuBlockTiming timing;
@@ -105,6 +106,8 @@ CpuBlockTiming mine_cpu(const GraphView& g, std::span<const PatternInfo* const> 
     auto t1 = Clock::now();
     pat->cpu(g, params, triggers, bo, schedule == Schedule::sorted ? kSortedChunk : kDynamicChunk);
     timing.loop_seconds += since(t1);
+    if (bo.aborted != UINT64_MAX)
+      throw WorkLimitExceeded(std::string("cpu, pattern ") + pat->name, bo.aborted, p.work_limit);
     if (pat->cpu_sweep) timing.sweep_seconds += since(t1);
   }
   timing.saturated = bo.saturated;

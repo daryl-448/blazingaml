@@ -133,6 +133,9 @@ struct Pattern {
   std::string span_param;      // runtime int parameter: the window span (the block's window)
   bool lower_open = false;
   Visibility visibility = Visibility::stream;  // the pin, when visibility_loc.line > 0 (SPEC v2 §6.1)
+  // `work_limit: true` (SPEC v2 §8 S3): every binding counts against Params::work_limit; past it
+  // the trigger stops and its sink is marked aborted, which the runtime turns into an error.
+  bool work_limit = false;
   std::string e0, src_var, dst_var;
   IntEnv consts;
   std::vector<Expr> trigger_filters;

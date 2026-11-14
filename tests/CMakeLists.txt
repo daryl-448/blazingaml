@@ -12,6 +12,7 @@ add_executable(blz_unit_tests
   unit/test_oracle.cpp
   unit/test_batch.cpp
   unit/test_vstats.cpp
+  unit/test_lcyc.cpp
   unit/test_metrics.cpp
   unit/test_registration.cpp
   unit/test_dsl_expr.cpp
@@ -113,6 +114,21 @@ foreach(prof batch_b4 batch_b32 dg2_g1)
     COMMAND blz fuzz-diff --seeds 0:10000 --profile ${PROJECT_SOURCE_DIR}/configs/profiles/${prof}.yaml)
   set_tests_properties(fuzz_diff_${prof}_cpu_10k PROPERTIES LABELS slow)
 endforeach()
+
+# SPEC v2 §8 S3: AC1 for lcyc (length <= 10) on 10,000 fuzz graphs. A graph whose oracle run
+# reaches the work limit is reported and its stop eid compared, not its rows (D-39): 10^6 on the
+# CPU and CUDA's H = 0 and 4; 10^5 for H = all, where one GPU thread walks each trigger's bindings.
+add_test(NAME fuzz_diff_lcyc_f2_cpu_10k
+  COMMAND blz fuzz-diff --seeds 0:10000 --work-limit 1000000 --profile ${PROJECT_SOURCE_DIR}/configs/profiles/lcyc_f2.yaml)
+set_tests_properties(fuzz_diff_lcyc_f2_cpu_10k PROPERTIES LABELS slow)
+if(BLZ_ENABLE_CUDA)
+  add_test(NAME fuzz_diff_lcyc_f2_cuda_10k
+    COMMAND blz fuzz-diff --backend cuda --heavy 0,4 --seeds 0:10000 --work-limit 1000000 --profile ${PROJECT_SOURCE_DIR}/configs/profiles/lcyc_f2.yaml)
+  set_tests_properties(fuzz_diff_lcyc_f2_cuda_10k PROPERTIES LABELS slow)
+  add_test(NAME fuzz_diff_lcyc_f2_cuda_light_10k
+    COMMAND blz fuzz-diff --backend cuda --heavy all --seeds 0:10000 --work-limit 100000 --profile ${PROJECT_SOURCE_DIR}/configs/profiles/lcyc_f2.yaml)
+  set_tests_properties(fuzz_diff_lcyc_f2_cuda_light_10k PROPERTIES LABELS slow)
+endif()
 
 # SPEC v2 §6.1 (P8): the oracle under timestamp visibility, including tcyc's visibility invariance.
 add_test(NAME metamorphic_tsvis_oracle_2k

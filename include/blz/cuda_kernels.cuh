@@ -11,9 +11,17 @@
 // Heavy kernel: one warp per trigger. The lanes emit into the warp's 64-bit histogram in shared
 // memory; after the body the lanes add it into the row, saturating at UINT32_MAX exactly as
 // RowSink does one emit at a time. Each trigger's row is written by one thread or one warp, so
-// no global atomics are needed except for the saturation counter.
+// no global atomics are needed except for the saturation counter and the work-limit report.
+//
+// Work limit (SPEC v2 §8 S3): a `work_limit` pattern calls sink.over(limit) once per binding. The
+// light kernel counts in its RowSink; the heavy kernel's lanes count into one counter per warp
+// in shared memory, so a trigger aborts exactly when its bindings exceed the limit, as on the
+// CPU. An aborted trigger's eid goes to run.aborted (atomicMin); the host turns it into an error.
+// A trigger with a larger eid than run.aborted is skipped, so the report is the smallest aborted
+// eid, as on the CPU and in the oracle.
 #include <cstdint>
 
+#include <cuda/atomic>
 #include <cuda_runtime.h>
 
 #include "blz/registry.hpp"
@@ -32,17 +40,29 @@ __device__ inline std::int64_t warp_sum(std::int64_t x) {
   return x;
 }
 
+// The smallest aborted eid so far: a relaxed atomic load, since other triggers atomicMin it.
+__device__ inline unsigned long long abort_bound(unsigned long long* a) {
+  return ::cuda::atomic_ref<unsigned long long, ::cuda::thread_scope_device>(*a).load(::cuda::std::memory_order_relaxed);
+}
+
 // The heavy kernel's sink: one warp's histogram. Same binning as RowSink (SPEC §4.2).
 struct WarpSink {
   unsigned long long* hist = nullptr;
   const std::uint32_t* bins = nullptr;
   std::uint32_t nbins = 0;
+  unsigned long long* work = nullptr;  // the warp's binding count (shared memory)
+  bool aborted = false;                // this lane saw the count pass the limit
 
   __device__ void emit(std::int64_t size) {
     if (size < 2 || size < std::int64_t(bins[0])) return;
     std::uint32_t i = nbins - 1;
     while (size < std::int64_t(bins[i])) --i;
     atomicAdd(&hist[i], 1ULL);
+  }
+  __device__ bool over(std::uint64_t limit) {
+    if (atomicAdd(work, 1ULL) + 1 <= limit) return false;
+    aborted = true;
+    return true;
   }
 };
 
@@ -58,9 +78,11 @@ __global__ void light_kernel(GraphView g, Params p, CudaRun r) {
   const std::uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= r.count) return;
   const std::uint32_t e = r.triggers[i];
+  if (e > abort_bound(r.aborted)) return;  // past an abort already seen
   RowSink sink{r.out + (e - r.first) * r.nbins, r.bins, r.nbins, 0};
   K::trigger(g, p, e, sink);
   if (sink.saturated) atomicAdd(r.saturated, (unsigned long long)sink.saturated);
+  if (sink.aborted) atomicMin(r.aborted, (unsigned long long)e);
 }
 
 template <class K>
@@ -70,12 +92,18 @@ __global__ void heavy_kernel(GraphView g, Params p, CudaRun r) {
   const std::uint64_t w = std::uint64_t(blockIdx.x) * (blockDim.x / kWarpSize) + warp;
   if (w >= r.count) return;  // the same for every lane of the warp
   const std::uint32_t e = r.triggers[w];
+  unsigned long long bound = 0;  // one read per warp, so the whole warp returns or none of it
+  if (lane == 0) bound = abort_bound(r.aborted);
+  if (e > __shfl_sync(kFullMask, bound, 0)) return;
   unsigned long long* hist = hist_all + std::size_t(warp) * r.nbins;
+  unsigned long long* work = hist_all + std::size_t(blockDim.x / kWarpSize) * r.nbins + warp;
   for (std::uint32_t i = lane; i < r.nbins; i += kWarpSize) hist[i] = 0;
+  if (lane == 0) *work = 0;
   __syncwarp();
-  WarpSink sink{hist, r.bins, r.nbins};
+  WarpSink sink{hist, r.bins, r.nbins, work};
   K::warp(g, p, e, lane, sink);
   __syncwarp();
+  if (sink.aborted) atomicMin(r.aborted, (unsigned long long)e);
   std::uint32_t* row = r.out + (e - r.first) * r.nbins;
   unsigned long long lost = 0;
   for (std::uint32_t i = lane; i < r.nbins; i += kWarpSize) {
@@ -98,9 +126,9 @@ void launch_bucket(const GraphView& g, const Params& p, std::uint64_t first, std
   bucket_kernel<K><<<blocks, kBucketThreads, 0, cudaStream_t(stream)>>>(g, p, first, count, threshold, flags);
 }
 
-// Shared memory of one heavy block: one histogram per warp.
+// Shared memory of one heavy block: one histogram per warp, then one work counter per warp.
 inline std::size_t heavy_shared_bytes(std::uint32_t nbins) {
-  return std::size_t(kHeavyWarps) * nbins * sizeof(unsigned long long);
+  return std::size_t(kHeavyWarps) * (nbins + 1) * sizeof(unsigned long long);
 }
 
 template <class K>

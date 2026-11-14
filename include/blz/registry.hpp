@@ -10,11 +10,17 @@ namespace blz {
 
 // One trigger's output row. emit(size) bins one instance (SPEC §4.2): sizes below 2 or below
 // b_0 are dropped, the last bin is open-ended, counts saturate at UINT32_MAX.
+//
+// over(limit) counts one binding of a pattern compiled with `work_limit: true` (SPEC v2 §8 S3).
+// Past `limit` bindings it marks the trigger aborted and returns true; the generated code then
+// stops the trigger, and the driver reports it: a row is never truncated silently.
 struct RowSink {
   std::uint32_t* row = nullptr;
   const std::uint32_t* bins = nullptr;
   std::uint32_t nbins = 0;
   std::uint64_t saturated = 0;
+  std::uint64_t work = 0;
+  bool aborted = false;
 
   BLZ_HD void emit(std::int64_t size) {
     if (size < 2 || size < std::int64_t(bins[0])) return;
@@ -22,6 +28,11 @@ struct RowSink {
     while (size < std::int64_t(bins[i])) --i;
     if (row[i] == UINT32_MAX) ++saturated;
     else ++row[i];
+  }
+  BLZ_HD bool over(std::uint64_t limit) {
+    if (++work <= limit) return false;
+    aborted = true;
+    return true;
   }
 };
 
@@ -37,6 +48,9 @@ struct BlockOut {
   const std::uint32_t* rows = nullptr;
   std::uint64_t nrows = 0;
   std::uint64_t last = 0;  // without `rows`: the end of the eid range
+  // The smallest eid whose trigger exceeded the work limit (SPEC v2 §8 S3), or UINT64_MAX. Set
+  // by the drivers of `work_limit` patterns, which then skip the triggers not yet started.
+  std::uint64_t aborted = UINT64_MAX;
 
   RowSink sink(std::uint32_t e) const { return {data + row_of(e) * nbins, bins, nbins, 0}; }
   // Whether trigger e has a row (the sweep driver walks every list entry, SPEC v2 §7.1).
@@ -82,6 +96,7 @@ struct CudaRun {
   const std::uint32_t* bins = nullptr;
   std::uint32_t nbins = 0;
   unsigned long long* saturated = nullptr;  // emits lost to saturation are added here
+  unsigned long long* aborted = nullptr;    // atomicMin of the eids over the work limit (SPEC v2 §8 S3)
   const std::uint32_t* triggers = nullptr;
   std::uint32_t count = 0;
   bool heavy = false;  // heavy: warp per trigger; light: thread per trigger

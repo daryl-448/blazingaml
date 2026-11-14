@@ -227,7 +227,7 @@ Stage stage_of(const YNode& n) {
 
 Spec parse_spec(const YNode& root, const std::string& file) {
   map_of(root, "a spec");
-  check_keys(root, {"version", "pattern", "block", "consts", "window", "visibility", "trigger",
+  check_keys(root, {"version", "pattern", "block", "consts", "window", "visibility", "work_limit", "trigger",
                     "constraints", "stages"},
              "the spec");
   Spec s;
@@ -258,6 +258,8 @@ Spec parse_spec(const YNode& root, const std::string& file) {
     else if (v->scalar == "timestamp") s.visibility = Visibility::timestamp;
     else fail("E101", v->loc, "visibility must be stream or timestamp, found '" + v->scalar + "'");
   }
+
+  if (const YNode* v = root.get("work_limit")) s.work_limit = boolean(*v, "'work_limit'");
 
   const YNode& trig = *required(root, "trigger", "the spec");
   map_of(trig, "'trigger'");

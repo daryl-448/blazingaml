@@ -283,7 +283,7 @@ std::string threshold_name(std::uint32_t h) { return h == blz::kAllLight ? "all"
 
 int mine(const std::string& graph, const std::string& profile_path, const std::string& backend, int threads,
          const std::string& schedule_opt, std::uint32_t heavy, const std::string& blocks_opt,
-         const std::string& triggers, std::uint64_t edges, const std::string& out) {
+         const std::string& triggers, std::uint64_t edges, std::uint64_t work_limit, const std::string& out) {
   const blz::Backend be = blz::parse_backend(backend);
   const bool cpu = be == blz::Backend::cpu, gpu = be == blz::Backend::cuda;
   if (gpu && !blz::cuda_built()) blz::cuda_device();  // throws: no CUDA backend in this build
@@ -392,7 +392,8 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
   std::uint64_t total_saturated = 0;
   for (const blz::ProfileBlock* pb : blocks) {
     const blz::Block b = pb->block;
-    const blz::BlockParams& p = pb->params;
+    blz::BlockParams p = pb->params;
+    p.work_limit = work_limit;  // a run over it stops with an error (SPEC v2 §8 S3)
     const std::uint64_t cells = rows * p.bins.size();
     std::vector<std::uint32_t> feats;
     std::optional<blz::PinnedBuffer> pinned;  // cuda: the rows, copied straight from the device
@@ -423,6 +424,7 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
         gpu ? std::span<const std::uint32_t>(pinned->data(), cells) : std::span<const std::uint32_t>(feats);
     blz::write_npy_u32(out + "/" + file, data, rows, p.bins.size());
     auto j = block_params_json(p, b);
+    if (b == blz::Block::lcyc) j["work_limit"] = p.work_limit;  // bindings per trigger; no row reached it
     j["file"] = file;
     j["columns"] = blz::column_names(b, p.bins);
     j["mine_seconds"] = mine_s;
@@ -635,14 +637,18 @@ int compare(const std::string& a_path, const std::string& b_path, const std::str
 // graphs.npy (int64[total, 6]: seed, eid, src, dst, ts, window) and <block>.npy (uint32 rows
 // aligned with graphs.npy) for every v1 block, with the graph's window for every block. With
 // batch > 0 the features are GFP batch mode's (SPEC v2 §8 S1): batches of `batch` edges, no cuts,
-// time_window = the graph's window.
+// time_window = the graph's window. With lcyc (SPEC v2 §8 S3, stream mode only), also lcyc.npy:
+// the oracle's lcyc rows, length <= the compiled K_MAX, at `work_limit`; every row of a graph that
+// reaches the limit is UINT32_MAX (tools/gfp/lcyc_vs_gfp.py skips those graphs).
 int fuzz(const std::string& seeds, const std::string& bins_opt, int k_max, std::uint64_t batch, bool vstats,
-         const std::string& out) {
+         bool lcyc, std::uint64_t work_limit, const std::string& out) {
+  if (lcyc && batch) throw std::runtime_error("fuzz: --lcyc is stream mode only");
   const auto [s0, s1] = parse_range(seeds);
   const auto bins = parse_bins(bins_opt);
   std::vector<std::int64_t> rows;
   std::map<blz::Block, std::vector<std::uint32_t>> feats;
   std::vector<double> amounts, vs;  // --vstats (SPEC v2 §8 S2)
+  std::uint64_t limited = 0;        // --lcyc: graphs that reached the work limit
   for (std::uint64_t seed = s0; seed < s1; ++seed) {
     const blz::FuzzGraph fg = blz::fuzz_graph(seed);
     const std::uint64_t m = fg.src.size();
@@ -672,6 +678,19 @@ int fuzz(const std::string& seeds, const std::string& bins_opt, int k_max, std::
       if (bo) bo->mine(b, {fg.window, bins}, k_max, all, f.data() + at);
       else oracle.mine(b, {fg.window, bins}, k_max, 0, m, f.data() + at);
     }
+    if (lcyc) {
+      auto& f = feats[blz::Block::lcyc];
+      const std::size_t at = f.size();
+      f.resize(at + m * bins.size(), 0);
+      blz::BlockParams p{fg.window, bins};
+      p.work_limit = work_limit;
+      try {
+        oracle.mine(blz::Block::lcyc, p, blz::compiled_k_max(), 0, m, f.data() + at);
+      } catch (const blz::WorkLimitExceeded&) {
+        std::fill(f.begin() + std::ptrdiff_t(at), f.end(), UINT32_MAX);
+        ++limited;
+      }
+    }
   }
   std::filesystem::create_directories(out);
   const std::uint64_t total = rows.size() / 6;
@@ -684,6 +703,9 @@ int fuzz(const std::string& seeds, const std::string& bins_opt, int k_max, std::
   }
   std::fprintf(stderr, "seeds %s: %llu edges -> %s\n", seeds.c_str(), (unsigned long long)total,
                out.c_str());
+  if (lcyc)
+    std::fprintf(stderr, "lcyc: %llu graphs reached the work limit of %llu bindings (rows UINT32_MAX)\n",
+                 (unsigned long long)limited, (unsigned long long)work_limit);
   return 0;
 }
 
@@ -1115,8 +1137,8 @@ void merge_report(const std::string& report, const std::string& name, const nloh
 // not. cuda runs every graph once per light/heavy threshold. With --profile (SPEC v2 §10), the
 // profile's blocks, patterns and k_max; without, every registered pattern (v1).
 int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::string& backend,
-              const std::string& heavy_opt, const std::string& profile_path, const std::string& report,
-              const std::string& name) {
+              const std::string& heavy_opt, const std::string& profile_path, std::uint64_t work_limit,
+              const std::string& report, const std::string& name) {
   const auto [s0, s1] = parse_range(seeds);
   const bool gpu = backend == "cuda";
   const blz::Profile prof = profile_path.empty() ? blz::registry_profile() : blz::load_profile(profile_path);
@@ -1126,7 +1148,8 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
   const std::vector<std::uint32_t> thresholds = parse_thresholds(heavy_opt);
   auto t0 = Clock::now();
   const blz::FuzzDiff d =
-      gpu ? blz::fuzz_diff_cuda(prof, s0, s1, bins, thresholds) : blz::fuzz_diff_cpu(prof, s0, s1, bins);
+      gpu ? blz::fuzz_diff_cuda(prof, s0, s1, bins, thresholds, work_limit)
+          : blz::fuzz_diff_cpu(prof, s0, s1, bins, work_limit);
   nlohmann::json per_block = nlohmann::json::object();
   std::uint64_t bad = 0;
   for (const blz::ProfileBlock& pb : prof.blocks) {
@@ -1144,6 +1167,11 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
                         {"mismatched_rows_by_block", per_block},
                         {"mismatched_seeds", d.bad_seeds.size()},
                         {"first_mismatched_seeds", first_bad},
+                        {"work_limit", work_limit},
+                        {"limited_graphs", d.limited_seeds.size()},
+                        {"first_limited_seeds", std::vector<std::uint64_t>(d.limited_seeds.begin(),
+                                                    d.limited_seeds.begin() + std::ptrdiff_t(std::min<std::size_t>(
+                                                                                  20, d.limited_seeds.size())))},
                         {"seconds", secs(t0)},
                         {"git", git_info()}};
   if (!profile_path.empty()) res["profile"] = profile_ref(prof);
@@ -1161,6 +1189,9 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
   std::printf("fuzz-diff %s vs oracle, seeds %s: %llu graphs, %llu edges, %llu mismatching rows (%.1f s)\n",
               backend.c_str(), seeds.c_str(), (unsigned long long)d.graphs, (unsigned long long)d.edges,
               (unsigned long long)bad, secs(t0));
+  if (!d.limited_seeds.empty())
+    std::printf("  %llu graphs reached the work limit of %llu bindings: their stop eids compared, not their rows\n",
+                (unsigned long long)d.limited_seeds.size(), (unsigned long long)work_limit);
   if (bad) std::printf("%s\n", res.dump(1).c_str());
   merge_report(report, name, res);
   return bad == 0 ? 0 : 2;
@@ -1420,6 +1451,8 @@ int main(int argc, char** argv) {
   mn->add_option("--blocks", blocks, "comma-separated; default: every block of the profile");
   mn->add_option("--triggers", triggers, "all | train | test | fit | val | range:a:b | sample:<pct>:<seed>");
   mn->add_option("--edges", edges, "mine on the stream prefix [0, k) only: later edges do not exist (SPEC v2 §4.4 R5)");
+  std::uint64_t work_limit = blz::kDefaultWorkLimit;
+  mn->add_option("--work-limit", work_limit, "lcyc: bindings per trigger; past it the run stops with an error (SPEC v2 §8 S3)");
   mn->add_option("--out", out)->required();
 
   std::string a_npy, b_npy, report, name;
@@ -1444,6 +1477,9 @@ int main(int argc, char** argv) {
   fz->add_option("--batch", fz_batch, "GFP batch mode (SPEC v2 §8 S1) with batches of this many edges (0: stream mode)");
   bool fz_vstats = false;
   fz->add_flag("--vstats", fz_vstats, "also amounts.npy and vstats.npy (SPEC v2 §8 S2): window = the graph's, ts offset 1");
+  bool fz_lcyc = false;
+  fz->add_flag("--lcyc", fz_lcyc, "also lcyc.npy (SPEC v2 §8 S3): length <= the compiled K_MAX; limited graphs' rows UINT32_MAX");
+  fz->add_option("--work-limit", work_limit, "--lcyc: bindings per trigger");
   fz->add_option("--out", out)->required();
 
   std::int32_t vs_window = 0;
@@ -1492,6 +1528,7 @@ int main(int argc, char** argv) {
   fd->add_option("--backend", fd_backend)->check(CLI::IsMember({"cpu", "cuda"}));
   fd->add_option("--heavy", fd_heavy, "cuda: light/heavy thresholds, each run on every graph");
   fd->add_option("--profile", profile, "blocks, patterns and k_max (SPEC v2 §10); windows come from the graphs");
+  fd->add_option("--work-limit", work_limit, "lcyc: bindings per trigger; a graph past it is reported, its stop eid compared");
   fd->add_option("--report", report, "merge the summary into this JSON file");
   fd->add_option("--name", name, "key (JSON pointer path) in --report")->needs("--report");
 
@@ -1532,7 +1569,7 @@ int main(int argc, char** argv) {
       if (profile.empty() == config.empty()) throw std::runtime_error("give one of --profile and --config");
       if (profile.empty()) profile = config;
     }
-    if (*mn) return mine(graph, profile, backend, threads, schedule, heavy, blocks, triggers, edges, out);
+    if (*mn) return mine(graph, profile, backend, threads, schedule, heavy, blocks, triggers, edges, work_limit, out);
     if (*bn) {
       if (bench_name.empty()) bench_name = backend;
       if (backend == "cuda") {
@@ -1545,7 +1582,7 @@ int main(int argc, char** argv) {
     }
     if (*fd) {
       if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");
-      return fuzz_diff(seeds, fd_bins, fd_backend, fd_heavy, profile, report, name);
+      return fuzz_diff(seeds, fd_bins, fd_backend, fd_heavy, profile, work_limit, report, name);
     }
     if (*mt) {
       if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");
@@ -1560,7 +1597,7 @@ int main(int argc, char** argv) {
       if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");
       return compare(a_npy, b_npy, graph, tw, first_eid, report, name);
     }
-    if (*fz) return fuzz(seeds, bins, k_max, fz_batch, fz_vstats, out);
+    if (*fz) return fuzz(seeds, bins, k_max, fz_batch, fz_vstats, fz_lcyc, work_limit, out);
     if (*vsc) return vstats(graph, vs_window, vs_ts_offset, backend == "oracle" ? "cpu" : backend, threads, triggers, out);
     if (*tr) return train(graph, features, set, xgb, out, name.empty() ? set : name, threads);
   } catch (const std::exception& e) {

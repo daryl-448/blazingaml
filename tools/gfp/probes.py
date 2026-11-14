@@ -13,9 +13,14 @@ The vertex-statistics probes A43-A45 (S2) assert GFP's window, formulas and guar
 rule (vs_model) and each rejected alternative, and A45 its running-accumulator drift after
 eviction. GFP's rows go to tests/golden/gfp_vstats_probes.json (test_vstats.cpp).
 
+The lc-cycle probes A46-A49 (S3) assert GFP's window, length bound, cycle shape and tie rule
+against the S3 rule (lcyc_vs_gfp.lc_model) and each rejected alternative. GFP's rows and the
+rule's without ties (blz's lcyc) go to tests/golden/gfp_lcyc_probes.json (test_lcyc.cpp).
+
 Usage: uv run probes.py [--out ../../tests/golden/gfp_probes.json]
                         [--batch-out ../../tests/golden/gfp_batch_probes.json]
-                        [--vstats-out ../../tests/golden/gfp_vstats_probes.json] [--check-only]
+                        [--vstats-out ../../tests/golden/gfp_vstats_probes.json]
+                        [--lcyc-out ../../tests/golden/gfp_lcyc_probes.json] [--check-only]
 """
 
 import argparse
@@ -26,6 +31,7 @@ from pathlib import Path
 import numpy as np
 
 from gfp_common import PATTERN_BLOCKS, edge_row, gfp_bins, make_preprocessor, split_blocks
+from lcyc_vs_gfp import BINS as LCYC_BINS, LC_LEN as LCYC_LEN, binned, gfp_lc, lc_model, run_gfp
 from vstats_vs_gfp import INT_COLS as VS_INT_COLS, NAMES as VS_NAMES, gfp_vstats
 
 BINS = list(range(1, 9))
@@ -507,6 +513,84 @@ def vstats_probes(failures):
     return cases
 
 
+# S3 (SPEC v2 §8 S3, Appendix A' A46-A49): GFP's lc-cycle in stream mode, lc-cycle_len 10, bins
+# 2..10 (F2's). lc_model() is the S3 rule with GFP's tie rule (ties="rank"); its keyword arguments
+# are the rejected alternatives:
+#   A46 window: closed=False (open lower bound); lower=prev (the window starts at ts[e - 1] - W,
+#       GFP's eviction rule of A43); W=other (another pattern's window, i.e. GFP's time_window).
+#   A47 length: L=9, L=11 (the bound is lc-cycle_len, inclusive); min_len=3 (no 2-cycles).
+#   A48 shape: ordered=True (increasing ts along the path, as tcyc); through=u (every cycle through
+#       u, not only the trigger edge's); nodes=False (edge sequences); simple=False (walks).
+#   A49 ties: ties=none (every tie left out: blz's lcyc, D-38); ties=all; key=src (a tie x -> y
+#       iff rank(x) > rank(u)); order=dst_first, rank=id, rank=window (other ranks).
+# Each fixture: (probe, rejected alternatives, edges src>dst@ts, W[, other pattern's window]).
+S3_FIXTURES = [
+    ("A46", ["closed=False"], "10>11@5 11>12@6 12>10@10", 5),
+    ("A46", ["lower=prev"], "10>11@5 11>12@6 12>10@10", 4),
+    ("A46", ["W=other"], "10>11@5 11>12@6 12>10@10", 4, 100),
+    ("A47", ["L=9"], " ".join(f"{30 + i}>{30 + (i + 1) % 10}@{i + 1}" for i in range(10)), 100),
+    ("A47", ["L=11"], " ".join(f"{30 + i}>{30 + (i + 1) % 11}@{i + 1}" for i in range(11)), 100),
+    ("A47", ["min_len=3"], "10>11@1 11>10@2", 100),
+    ("A48", ["ordered=True"], "11>12@1 10>11@2 12>10@3", 100),
+    ("A48", ["through=u"], "10>12@1 12>10@2 10>11@3", 100),
+    ("A48", ["nodes=False"], "10>11@1 11>12@2 11>12@3 12>10@4", 100),
+    ("A48", ["simple=False"], "10>11@1 11>10@2 10>12@3 12>10@4", 100),
+    ("A49", ["ties=none", "rank=window"], "10>12@1 11>10@100 10>11@100", 5),
+    ("A49", ["ties=all", "order=dst_first", "rank=id"], "11>10@5 10>11@5", 100),
+    ("A49", ["key=src"], "12>13@1 10>14@2 11>12@3 12>10@9 10>11@9", 100),
+    # O-2 (SPEC Appendix A): (1,1,2) is found, (1,2,2) is not, and the latter depends on the order
+    # in which GFP first saw the nodes: with 12 seen first, the same cycle is found.
+    ("A49", [], "10>11@1 11>12@1 12>10@2", 100),
+    ("A49", ["ties=all"], "10>11@1 11>12@2 12>10@2", 100),
+    ("A49", ["ties=none", "rank=id"], "12>13@1 10>11@1 11>12@2 12>10@2", 100),
+]
+
+
+def lc_alt(alt, W, other):
+    """'key=value' -> lc_model keyword arguments."""
+    key, _, val = alt.partition("=")
+    if key == "W":
+        return {"W": other}
+    if key == "L":
+        return {"W": W, "L": int(val)}
+    if key in ("closed", "simple", "nodes"):
+        return {"W": W, key: False}
+    if key == "ordered":
+        return {"W": W, "ordered": True}
+    if key == "min_len":
+        return {"W": W, "min_len": int(val)}
+    return {"W": W, key: val}
+
+
+def lcyc_probes(failures):
+    """SPEC v2 Appendix A' (A46-A49). Returns the golden cases: edges, W, GFP's rows, blz's."""
+    cases = []
+    for fx in S3_FIXTURES:
+        probe, rejected, spec, W = fx[:4]
+        other = fx[4] if len(fx) > 4 else None
+        es = edges(spec)
+        assert [t for _, _, t in es] == sorted(t for _, _, t in es), spec  # SPEC §3.3, as the C++ tests need
+        gfp = run_gfp(es, W, other_tw=other)
+        cid = f"{probe}/{spec}/W={W}" + (f"/fan_tw={other}" if other else "")
+        rule = [binned(r, LCYC_BINS) for r in lc_model(es, W)]
+        if gfp != rule:
+            failures.append(f"{cid}: GFP {gfp} differs from the rule {rule}")
+        for alt in rejected:
+            if [binned(r, LCYC_BINS) for r in lc_model(es, **lc_alt(alt, W, other))] == gfp:
+                failures.append(f"{cid}: does not separate the rule from {alt}")
+        blz = [binned(r, LCYC_BINS) for r in lc_model(es, W, ties="none")]
+        cases.append({"id": cid, "edges": [list(e) for e in es], "window": W, "other_tw": other,
+                      "kind": "rule" if blz == gfp else "tie", "output": gfp, "blz": blz})
+    # A47: GFP rejects lc-cycle_len = 1 (set_params raises SystemError, the check's Error as its cause).
+    try:
+        gfp_lc(10, L=1).transform(np.array([[0, 1, 2, 1]], dtype=np.float64))
+        failures.append("A47: GFP accepted lc-cycle_len = 1")
+    except Exception as e:  # noqa: BLE001
+        if "greater than one" not in f"{e} {e.__cause__}":
+            failures.append(f"A47: lc-cycle_len = 1 failed with {e!r}, not the length check")
+    return cases
+
+
 def fresh_pp():
     return make_preprocessor(ALL_PATTERNS, 100, BINS, lc_len=LC_LEN)
 
@@ -533,6 +617,7 @@ def main():
     ap.add_argument("--out", default=str(here.parents[1] / "tests/golden/gfp_probes.json"))
     ap.add_argument("--batch-out", default=str(here.parents[1] / "tests/golden/gfp_batch_probes.json"))
     ap.add_argument("--vstats-out", default=str(here.parents[1] / "tests/golden/gfp_vstats_probes.json"))
+    ap.add_argument("--lcyc-out", default=str(here.parents[1] / "tests/golden/gfp_lcyc_probes.json"))
     ap.add_argument("--check-only", action="store_true")
     args = ap.parse_args()
 
@@ -587,11 +672,13 @@ def main():
     bin_rule_probe(failures)
     batch_cases = batch_probes(failures)
     vstats_cases = vstats_probes(failures)
+    lcyc_cases = lcyc_probes(failures)
 
     for f in failures:
         print("FAIL", f, file=sys.stderr)
     print(f"{len(CASES)} stream probes + A28 + A29 + A33 + A38 + batch probes A34-A37, A39-A42 ({len(batch_cases)} cases)"
-          f" + vertex-statistics probes A43-A45 ({len(vstats_cases)} cases): {len(failures)} failures")
+          f" + vertex-statistics probes A43-A45 ({len(vstats_cases)} cases)"
+          f" + lc-cycle probes A46-A49 ({len(lcyc_cases)} cases): {len(failures)} failures")
     if failures:
         sys.exit(1)
     if not args.check_only:
@@ -632,6 +719,17 @@ def main():
                     "integer columns follow the rule.",
         }
         write_golden(args.vstats_out, vdoc, vstats_cases)
+        ldoc = {
+            "generator": "tools/gfp/probes.py (SPEC v2 Appendix A', A46-A49)",
+            "gfp": "snapml==1.17.2, stream mode (one transform() per edge, fresh instance), lc-cycle only (with fan "
+                   "at other_tw where given), lc-cycle_len 10, bins 2..10",
+            "bins": LCYC_BINS,
+            "lc_len": LCYC_LEN,
+            "note": "edges are [src, dst, ts] with eid = index, ts as GFP saw it (no offset). window = lc-cycle_tw. "
+                    "output[i] = GFP's row i; blz[i] = the S3 rule's without tie edges (blz's lcyc). kind: rule = "
+                    "they are equal; tie = they differ by A49's tie rule (D-38).",
+        }
+        write_golden(args.lcyc_out, ldoc, lcyc_cases)
 
 
 if __name__ == "__main__":

@@ -91,6 +91,7 @@ TEST_CASE("oracle rows do not depend on the trigger range or the thread count") 
     const std::uint64_t m = fg.src.size(), mid = m / 2;
     const BlockParams p{fg.window, {2, 3, 4, 5, 6, 8}};
     for (Block b : kAllBlocks) {
+      if (b == Block::lcyc) continue;  // needs a work limit: its own test in test_cpu_backend.cpp
       omp_set_num_threads(1);
       const auto one = mine_all(o, b, p, 64, 0, m);
       omp_set_num_threads(4);

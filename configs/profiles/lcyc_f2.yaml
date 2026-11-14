@@ -1,0 +1,11 @@
+# Semantic profile (SPEC v2 §8 S3): the lcyc block alone, at F2's window and bins (SPEC v2 §4.4
+# R7: GFP lc-cycle, length <= 10, window 86,400, bins as tcyc under W-C). Stream visibility,
+# trigger credit; lcyc never uses an edge tied with the trigger, so the visibility does not
+# change its rows. 9 columns.
+version: 2
+profile: lcyc_f2
+visibility: stream
+credit: trigger
+k_max: 10
+blocks:
+  lcyc: {patterns: [lcyc], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}

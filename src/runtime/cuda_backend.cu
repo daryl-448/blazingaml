@@ -59,7 +59,8 @@ __global__ void iota_kernel(std::uint32_t* ids, std::uint64_t first, std::uint32
 }
 
 // The largest bin count the heavy kernel's shared histograms allow (48 KB per block).
-constexpr std::uint32_t kMaxBins = 48 * 1024 / (cuda::kHeavyWarps * sizeof(unsigned long long));
+// heavy_shared_bytes(nbins) <= 48 KiB: one histogram and one work counter (SPEC v2 §8 S3) per warp.
+constexpr std::uint32_t kMaxBins = 48 * 1024 / (cuda::kHeavyWarps * sizeof(unsigned long long)) - 1;
 
 }  // namespace
 
@@ -183,14 +184,15 @@ struct CudaMiner::Impl {
   cudaStream_t stream = nullptr;
   enum { kStart, kBucket, kLight, kHeavy, kDone, kD2h0, kD2h1, kEvents };
   cudaEvent_t ev[kEvents] = {};
-  DeviceBuffer out, ids, flags, part, temp, bins, counters;  // counters: saturated (u64), heavy count (int)
-  std::uint64_t* host_counters = nullptr;                   // pinned: saturated, heavy count
+  // counters: saturated (u64), heavy count (int), aborted eid (u64, SPEC v2 §8 S3)
+  DeviceBuffer out, ids, flags, part, temp, bins, counters;
+  std::uint64_t* host_counters = nullptr;  // pinned: the same three
 
   Impl() {
     BLZ_CUDA(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
     for (cudaEvent_t& e : ev) BLZ_CUDA(cudaEventCreate(&e));
-    BLZ_CUDA(cudaMallocHost(reinterpret_cast<void**>(&host_counters), 2 * sizeof(std::uint64_t)));
-    counters.ensure(2 * sizeof(std::uint64_t));
+    BLZ_CUDA(cudaMallocHost(reinterpret_cast<void**>(&host_counters), 3 * sizeof(std::uint64_t)));
+    counters.ensure(3 * sizeof(std::uint64_t));
   }
   ~Impl() {
     for (cudaEvent_t e : ev)
@@ -240,11 +242,12 @@ CudaBlockTiming CudaMiner::mine(const DeviceGraph& g, std::span<const PatternInf
   s.temp.ensure(temp_bytes);
 
   const cudaStream_t st = s.stream;
-  const Params params{p.window, vis == Visibility::timestamp};
+  const Params params{p.window, vis == Visibility::timestamp, p.work_limit};
   BLZ_CUDA(cudaMemcpyAsync(s.bins.ptr, p.bins.data(), nbins * sizeof(std::uint32_t), cudaMemcpyHostToDevice, st));
   BLZ_CUDA(cudaEventRecord(s.ev[Impl::kStart], st));
   BLZ_CUDA(cudaMemsetAsync(s.out.ptr, 0, out_bytes, st));
   BLZ_CUDA(cudaMemsetAsync(s.counters.ptr, 0, sizeof(std::uint64_t), st));
+  BLZ_CUDA(cudaMemsetAsync(s.counters.as<std::uint64_t>() + 2, 0xff, sizeof(std::uint64_t), st));  // no abort
   iota_kernel<<<(count + 255) / 256, 256, 0, st>>>(s.ids.as<std::uint32_t>(), first, count);
   BLZ_CUDA(cudaGetLastError());
 
@@ -254,6 +257,7 @@ CudaBlockTiming CudaMiner::mine(const DeviceGraph& g, std::span<const PatternInf
   run.bins = s.bins.as<std::uint32_t>();
   run.nbins = nbins;
   run.saturated = reinterpret_cast<unsigned long long*>(s.counters.as<std::uint64_t>());
+  run.aborted = reinterpret_cast<unsigned long long*>(s.counters.as<std::uint64_t>() + 2);
   run.stream = st;
   // H = 0 and H = kAllLight need no work estimates (a window size is < 2^31): every trigger goes
   // to one kernel, in eid order.
@@ -302,12 +306,14 @@ CudaBlockTiming CudaMiner::mine(const DeviceGraph& g, std::span<const PatternInf
   }
   BLZ_CUDA(cudaEventRecord(s.ev[Impl::kD2h0], st));
   BLZ_CUDA(cudaMemcpyAsync(host_out, s.out.ptr, out_bytes, cudaMemcpyDeviceToHost, st));
-  BLZ_CUDA(cudaMemcpyAsync(s.host_counters, s.counters.ptr, sizeof(std::uint64_t), cudaMemcpyDeviceToHost, st));
+  BLZ_CUDA(cudaMemcpyAsync(s.host_counters, s.counters.ptr, 3 * sizeof(std::uint64_t), cudaMemcpyDeviceToHost, st));
   BLZ_CUDA(cudaEventRecord(s.ev[Impl::kD2h1], st));
   BLZ_CUDA(cudaEventSynchronize(s.ev[Impl::kD2h1]));
   tm.kernel_seconds = setup_seconds + tm.bucket_seconds + tm.light_seconds + tm.heavy_seconds;
   tm.d2h_seconds = elapsed(s.ev[Impl::kD2h0], s.ev[Impl::kD2h1]);
   tm.saturated = s.host_counters[0];
+  if (s.host_counters[2] != UINT64_MAX)
+    throw WorkLimitExceeded(std::string("cuda, block ") + pats.front()->block, s.host_counters[2], p.work_limit);
   tm.wall_seconds = std::chrono::duration<double>(Clock::now() - t0).count();
   return tm;
 }

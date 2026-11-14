@@ -49,6 +49,7 @@ std::vector<std::string> oracle_patterns(Block b) {
     case Block::sg: return {"sg_gather", "sg_scatter"};
     case Block::tcyc: return {"tcyc"};
     case Block::sg_ord: return {"sg_ordered"};
+    case Block::lcyc: return {"lcyc"};
   }
   return {};
 }
@@ -341,6 +342,9 @@ Profile registry_profile(std::span<const PatternInfo> registry) {
   for (const PatternInfo& pi : registry)
     if (const ConstInfo* k = find_const(pi, "K_MAX")) p.k_max = int(k->value);
   for (Block b : kAllBlocks) {
+    // lcyc runs only from a profile that lists it (SPEC v2 §8 S3): on dense fuzz graphs its
+    // unordered search reaches the work limit, which the v1 fuzz and metamorphic runs do not expect.
+    if (b == Block::lcyc) continue;
     ProfileBlock pb{b, {}, {}, p.file};
     for (const PatternInfo& pi : registry)
       if (block_name(b) == pi.block) pb.patterns.push_back(&pi);
