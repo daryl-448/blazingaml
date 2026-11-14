@@ -13,6 +13,8 @@ void write_npy_i64(const std::string& path, std::span<const std::int64_t> data,
 // Same for uint32 ('<u4'), the feature block format (SPEC §8).
 void write_npy_u32(const std::string& path, std::span<const std::uint32_t> data,
                    std::uint64_t rows, std::uint64_t cols);
+// Same for float64 ('<f8'): vertex statistics (SPEC v2 §8 S2).
+void write_npy_f64(const std::string& path, std::span<const double> data, std::uint64_t rows, std::uint64_t cols);
 // The .npy v1.0 header (magic through the newline) for a C-order array.
 std::string npy_header(const std::string& descr, std::uint64_t rows, std::uint64_t cols);
 

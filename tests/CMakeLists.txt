@@ -11,6 +11,7 @@ add_executable(blz_unit_tests
   unit/test_fuzz_gen.cpp
   unit/test_oracle.cpp
   unit/test_batch.cpp
+  unit/test_vstats.cpp
   unit/test_metrics.cpp
   unit/test_registration.cpp
   unit/test_dsl_expr.cpp
@@ -33,6 +34,8 @@ if(BLZ_ENABLE_CUDA)
   target_sources(blz_unit_tests PRIVATE unit/test_cuda_backend.cpp)
 endif()
 target_link_libraries(blz_unit_tests PRIVATE blz_core blz_codegen Catch2::Catch2WithMain)
+# The vertex-statistics reference must round as vstats.cpp does (SPEC v2 §8 S2).
+set_source_files_properties(unit/test_vstats.cpp PROPERTIES COMPILE_OPTIONS -ffp-contract=off)
 target_compile_definitions(blz_unit_tests PRIVATE
   BLZ_TEST_TMPDIR="${CMAKE_CURRENT_BINARY_DIR}/tmp"
   BLZ_SOURCE_DIR="${PROJECT_SOURCE_DIR}")

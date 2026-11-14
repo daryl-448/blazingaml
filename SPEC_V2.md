@@ -1148,6 +1148,79 @@ As implemented (S1):
   relative error of 1e-6 of GFP (absolute 1e-9 near zero) on 2,000 fuzz graphs and HI-Small,
   because GFP's accumulation order is unknown. A larger difference needs a probe and a `D-n`.
 
+#### S2 addendum (normative)
+
+Pinned by A43–A45 (Appendix A′). The user pulled S2 forward under DG-3 (§13) on 2026-11-14.
+
+- **Rows.** One row per trigger e (GFP's stream mode, one `transform()` per edge), 52 float64
+  values: 4 sides (the out- and in-edges of e's source, then of its destination) × 13
+  statistics: fan, degree, ratio, then avg, sum, var, skew and kurtosis of ts and of
+  `amount_received`. The columns are `vs_<side>_<stat>` in GFP's order (`vstats_names()` in
+  `tools/gfp/dg2_features.py`).
+- **Window (A43).** A side's window is the node's edges in that direction with eid ≤ e and
+  ts ≥ ts[e − 1] − W, or every such edge at e = 0. That is GFP's graph at the call, after
+  eviction. The bound is closed, and a self-loop counts on both sides of its node. W is GFP's
+  `time_window`, the largest pattern window of the call: vertex statistics have no window of their
+  own. A `vertex_stats_tw` ≥ W has no effect. A smaller one shrinks the window of the value
+  statistics but not of fan and degree; the rule does not model that, so a GFP call matches it only
+  with `vertex_stats_tw` ≥ W (F1 has 86,400 for both).
+- **Statistics (A44).** fan = the distinct neighbours, degree = the window's size, ratio = degree /
+  fan (0 for an empty side). For each value column x (ts plus the run's ts offset, or the amount),
+  with n = the degree and m_k = the k-th central moment about the mean:
+  - avg = Σx / n and sum = Σx;
+  - var = m2 (population variance), skew = m3 / m2^1.5, and kurtosis = m4 / m2² (not excess).
+
+  n = 0 gives zeros. var, skew and kurtosis are 0 when n = 1, when m2 ≤ 0, or when m2 < 10⁻⁵ ·
+  avg² (GFP's cancellation guard, which applies to ts too).
+- **Accumulation.** Two passes over the window in eid order, in double: Σx, then Σd², Σd³ and Σd⁴
+  with d = x − avg. The CPU build compiles the module with `-ffp-contract=off` and the CUDA twin
+  with `--fmad=false`. Both run the same `BLZ_HD` code, so they agree bit for bit.
+- **GFP's drift (A45, D-37).** GFP keeps running sums per node. It adds an edge's values when the
+  edge arrives and subtracts them when the edge is evicted, and the subtraction leaves a residue:
+  - a mean that is not Σx / n, and a nonzero sum on an empty side;
+  - negative variances, and kurtoses of −10⁵.
+
+  `blz` computes each window afresh and does not reproduce the residue. Every mismatch with GFP is
+  on a side that lost an edge to eviction before the row.
+
+As implemented (S2):
+
+- `src/runtime/vstats.{hpp,cpp}` holds the `BLZ_HD` core and the OpenMP driver: one row per
+  trigger, for any `--triggers` selection. `src/runtime/vstats_cuda.cu` runs one thread per row
+  over an eid range.
+- `blz vstats --graph g --window W [--ts-offset o] [--backend cpu|cuda] [--threads n] [--triggers
+  ...] --out dir` writes `vstats.npy` (float64 [rows, 52]) and a manifest with the data's
+  `output_sha256`; cuda rejects samples. `--window 86400 --ts-offset 1` is F1's rule.
+- `blz fuzz --vstats` writes each fuzz graph's amounts and `blz`'s rows at the graph's window, with
+  ts offset 1. The amounts come from `fuzz_amounts`: cents, small integers, amounts up to 10⁷, tiny
+  values and repeats.
+- `tools/gfp/vstats_vs_gfp.py` has two modes:
+  - it replays the fuzz graphs into GFP with F1's call;
+  - or it compares a `blz vstats` run with F1, rounded to float32 and clipped as F1 was stored.
+
+  Both modes classify each mismatch by eviction.
+- Probes: `tools/gfp/probes.py` adds A43–A45 (11 cases in `tests/golden/gfp_vstats_probes.json`).
+  `tests/unit/test_vstats.cpp` checks the CPU module:
+  - against those cases;
+  - against a naive reference, bit for bit, at 1 thread, at every thread, and on a range;
+  - against CUDA, bit for bit, on 300 fuzz graphs.
+- **Outcome** (`results/s2_vstats.json`):
+  - Fuzz (2,000 graphs, 403,557 rows, 20,984,964 values):
+    - Fan and degree equal GFP everywhere.
+    - 196,100 values (0.93 %) in 49,495 rows are outside the tolerance, all on sides that lost an
+      edge to eviction. Sides without an evicted edge have 0 mismatches.
+    - GFP reports 23,792 negative variances.
+  - HI-Small against F1 (5,078,345 rows, 264,073,940 values):
+    - Fan and degree equal.
+    - 3,216,785 values (1.2 %) in 1,036,757 rows (20 %) are outside the tolerance, all after
+      eviction; 942,547 of them by more than 100 % relative.
+    - F1 holds 93,585 negative variances.
+  - CPU = CUDA byte for byte on HI-Small (`output_sha256` 5487fce7…):
+    - CPU: 2.5 s at 12 threads (index 0.4 s), plus 8.2 s to write and hash the 2.1 GB; RSS 0.7 GB.
+    - CUDA: 16.1 s on the GTX 1650 SUPER, whose float64 rate is low.
+  - The vertex statistics are therefore compiled with D-37's deviation: `blz vstats` reproduces F1's
+    rule, not F1's bytes.
+
 ### S3 — lc-cycle
 
 - Probes first: GFP lc-cycle's window rule, its bound, whether the trigger must be on the cycle, and
@@ -1257,7 +1330,8 @@ v1's E0–E5 stand. E6 becomes R8 (validation) and E8's sensitivity table (test)
   - the sweep driver against the per-trigger plan;
   - E403, E404.
 - **Golden:** Appendix A′ probes enter `tests/golden/gfp_probes.json` only if they describe stream
-  mode. Batch probes are kept in a separate `tests/golden/gfp_batch_probes.json`, used by S1.
+  mode. Batch probes are kept in a separate `tests/golden/gfp_batch_probes.json`, used by S1, and
+  vertex-statistics probes in `tests/golden/gfp_vstats_probes.json`, used by S2.
 - **Fuzz:** the generator is unchanged. `blz fuzz-diff` gains `--profile`, so AC1 runs per profile.
 - **Metamorphic:** §3.4, in the fast suite (200 graphs) and the slow suite (2,000).
 - **Compiler:** the invalid-spec suite grows by the E205 cases; snapshots of `sg_ordered` and of
@@ -1266,6 +1340,9 @@ v1's E0–E5 stand. E6 becomes R8 (validation) and E8's sensitivity table (test)
 - **S1:** `tests/unit/test_batch.cpp` (the batch probes on the oracle and CPU, B = 1 against v1,
   CPU = oracle across layouts, trigger selections and thread counts); slow:
   `fuzz_diff_<batch profile>_cpu_10k` for `batch_b4`, `batch_b32` and `dg2_g1`.
+- **S2:** `tests/unit/test_vstats.cpp`: the GFP probes, the naive reference bit for bit (1 thread,
+  every thread, a range), and CPU = CUDA on 300 fuzz graphs. GFP parity runs through
+  `tools/gfp/vstats_vs_gfp.py`, which needs snapml, not through ctest.
 
 ---
 
@@ -1304,6 +1381,8 @@ on the prefix, because the named splits are defined on the whole stream. The man
 
 As implemented (S1): `blz fuzz --batch B`, `blz fuzz-diff --profile <batch profile>` and
 `tools/gfp/fuzz_vs_gfp.py --batch B` (§8 S1).
+
+As implemented (S2): `blz vstats`, `blz fuzz --vstats` and `tools/gfp/vstats_vs_gfp.py` (§8 S2).
 
 As implemented (P9): `blz coverage --graph g [--gt results/gt_join.json] --profile p --features
 <dir> [--pred <u8[m] npy>] [--eligibility <coverage_gfp.json>] --out <json>`. It checks the
@@ -1680,7 +1759,8 @@ Table 3 (`all`), with the paper's counts in brackets:
 
 S1–S9 in the order of §8, each after its gate and the user's approval.
 
-Status: the user pulled S1–S3 forward under DG-3 on 2026-11-14. S1 is done (§8 S1 addendum).
+Status: the user pulled S1–S3 forward under DG-3 on 2026-11-14. S1 is done (§8 S1 addendum). S2
+is done with D-37's deviation (§8 S2 addendum).
 
 ---
 
@@ -1702,7 +1782,8 @@ Status: the user pulled S1–S3 forward under DG-3 on 2026-11-14. S1 is done (§
 
 ## Appendix A′ — GFP probes added by v2
 
-Run in P8 before R6 (snapml 1.17.2, a fresh preprocessor per case); A39–A42 were added by S1.
+Run in P8 before R6 (snapml 1.17.2, a fresh preprocessor per case); A39–A42 were added by S1 and
+A43–A45 by S2.
 `tools/gfp/probes.py` asserts every answer below. A34–A37 and A39–A42 describe batch mode, so they
 are kept here rather than in Appendix A (stream mode, batch size 1), and their cases and GFP's full
 rows are in `tests/golden/gfp_batch_probes.json` (49 cases). A38 is a stream-mode fact about GFP's
@@ -1726,7 +1807,17 @@ S1's probes (A39–A42) each list the rejected alternatives their fixtures separ
 | A41 | SG in a batch: which triggers report a pair, and over which views? | **Rule 3.** Pairs come from up (ts ≥ t − δ, the batch's later edges included); I from win (ts ≤ t); self-loop triggers search; tied last edges each report; the excluded node never suppresses. Rejected: pairs from win, pairs from G's lower bound, ties that suppress, x as a suppressor, no self-loop searchers. |
 | A42 | SG suppression and eviction: which later batch edges cancel an earlier trigger's report? | **Rule 3.** A later y → w (gather) or s → y (scatter) whose other edge is in G, and a later s → y (gather) or y → w (scatter) whose other edge is in up; G evicts at the largest pattern window. Rejected: no suppression, each other view (up, G, from the batch's first ts, every edge, none) on each side, eviction at SG's or the other patterns' window. |
 
-S2 and S3 add their probes (A43 onwards) when they start.
+S2's probes (A43–A45) check GFP's rows against the S2 rule and against each rejected alternative
+(`S2_FIXTURES` in `tools/gfp/probes.py`, F1's call); the answers are the rules of the S2 addendum
+(§8). GFP's rows are in `tests/golden/gfp_vstats_probes.json` (11 cases).
+
+| # | Question | Answer (S2) |
+|---|---|---|
+| A43 | Vertex statistics in stream mode: which of a node's edges does row e's side aggregate, and what do `vertex_stats_tw` and the pattern windows change? | **GFP's graph at the call.** The node's edges with eid ≤ e and ts ≥ ts[e − 1] − time_window (closed; every edge at e = 0), with self-loops on both sides; time_window is the largest pattern window. A `vertex_stats_tw` ≥ that has no effect. A smaller one shrinks the window of the value statistics, by the same rule, but not of fan and degree. Rejected: the window [t − W, t] at the trigger, an open bound, `vertex_stats_tw` or the companion pattern's window as W, self-loops left out. |
+| A44 | The formulas: ratio, variance, skew, kurtosis, small samples. | ratio = degree / fan (0 when fan = 0); population variance; skew = m3 / m2^1.5; kurtosis = m4 / m2² (not excess); n ≤ 1 gives 0. A variance below 10⁻⁵ · mean² is reported as 0 with its skew and kurtosis, for ts too: ts 1,000,001 and 1,000,006 give 0. Rejected: fan / degree, the sample variance, excess kurtosis, no guard. |
+| A45 | After an eviction, are GFP's statistics those of the window? | **No.** GFP subtracts evicted values from running sums and keeps the rounding residue. In the fixture, a side that holds the single amount 4.0 reports a mean of 3.9999999999999933, a variance of −0.0162 and a kurtosis of −1.98 × 10⁵, with or without self-loops. Fan and degree are exact. Accepted as D-37. |
+
+S3 adds its probes (A46 onwards) when it starts.
 
 ## Appendix B′ — deviations added by v2
 
@@ -1759,3 +1850,4 @@ S2 and S3 add their probes (A43 onwards) when they start.
 | D-34 | E9's detection uses refits of the recorded models (the ladder and E8 kept neither models nor predictions). A refit is used only when its confusion counts equal the ledger's (validation) or E8's (test) exactly. Nothing is selected and nothing feeds back (§4.5 step 4). Vertex statistics are not a pattern block and get no eligibility or activation. |
 | D-35 | E11 is the A30 run of the P11 campaign (`results/e11_ablation_a30.{json,md}`: the instance's EPYC 7542 CPU, at 1 and 16 threads), not a run on `local` at 1 and 12 threads as §7.2 states. It is complete: no cell skipped or noisy, and every hash check passed. The user accepted it on 2026-11-13, which saves 30–60 min of idle-window timing on `local`. |
 | D-36 | GFP batch mode (S1) is a hand-written runtime module with a literal oracle, not DSL output. Its SG report rule (suppression by later batch edges, role-dependent views, eviction at the largest window) is GFP's call semantics, not a pattern, and the DSL has no construct for "the rest of the call". CUDA rejects it (E404). `dg2_g1` sets k_max 33 so that tcyc counts every cycle GFP counts on HI-Small (the longest has 11 edges); GFP has no cap. |
+| D-37 | S2's vertex statistics are each window's exact statistics: two passes in eid order (§8 S2). They do not reproduce the residue of GFP's running sums after an eviction (A45). The mismatches all fall on sides that lost an edge to eviction: 0.93 % of values on 2,000 fuzz graphs and 1.2 % on HI-Small (20 % of rows; F1 holds 93,585 negative variances). They are accepted as GFP's numerical defect. Reproducing it would need GFP's per-node add and subtract sequence over the whole stream, which a per-trigger module does not have, and it would copy the error. Fan and degree equal GFP everywhere. A `vertex_stats_tw` below the largest pattern window (A43) is not modelled; F1 does not use one. |

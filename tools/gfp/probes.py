@@ -9,8 +9,13 @@ The batch-mode probes A34-A37 and A39-A42 (SPEC v2 Appendix A') assert what GFP 
 transform() batches, re-sent edges and eviction. They describe GFP, not this repo's semantics,
 so they go to a separate file, tests/golden/gfp_batch_probes.json (SPEC v2 §10; used by S1).
 
+The vertex-statistics probes A43-A45 (S2) assert GFP's window, formulas and guard against the S2
+rule (vs_model) and each rejected alternative, and A45 its running-accumulator drift after
+eviction. GFP's rows go to tests/golden/gfp_vstats_probes.json (test_vstats.cpp).
+
 Usage: uv run probes.py [--out ../../tests/golden/gfp_probes.json]
-                        [--batch-out ../../tests/golden/gfp_batch_probes.json] [--check-only]
+                        [--batch-out ../../tests/golden/gfp_batch_probes.json]
+                        [--vstats-out ../../tests/golden/gfp_vstats_probes.json] [--check-only]
 """
 
 import argparse
@@ -21,6 +26,7 @@ from pathlib import Path
 import numpy as np
 
 from gfp_common import PATTERN_BLOCKS, edge_row, gfp_bins, make_preprocessor, split_blocks
+from vstats_vs_gfp import INT_COLS as VS_INT_COLS, NAMES as VS_NAMES, gfp_vstats
 
 BINS = list(range(1, 9))
 LC_LEN = 8
@@ -358,6 +364,149 @@ def bin_rule_probe(failures):
     return got
 
 
+# S2 (SPEC v2 §8 S2, Appendix A' A43-A45): GFP's vertex statistics in stream mode, F1's call
+# (vstats_vs_gfp.gfp_vstats: amount as the second statistics column, temp-cycle as the companion).
+# vs_model() is the S2 addendum's rule; its keyword arguments are the rejected alternatives:
+#   lower=trigger: the window is [t_e - W, ...], not GFP's graph after eviction at ts[e - 1] - W;
+#   closed=False: an open lower bound; W=<x>: vertex_stats_tw, or another pattern's window, as W;
+#   loops=False: self-loops left out; ratio=fan/deg; ddof=1: sample variance; excess: kurtosis - 3;
+#   guard=False: no cancellation guard.
+# Each fixture: (probe, rejected alternatives, edges src>dst@ts:amount, the rule's W, GFP params).
+S2_FIXTURES = [
+    ("A43", ["lower=trigger", "W=vertex_stats_tw"], "1>9@1:2 2>9@5:3 3>9@20:5 4>9@40:1", 10,
+     {"vertex_stats_tw": 1000}),
+    ("A43", ["closed=False"], "1>9@1:2 2>9@11:3 3>9@21:5", 10, {}),
+    ("A43", ["W=temp-cycle_tw"], "1>9@1:2 2>9@5:3 3>9@20:5 4>9@40:1", 100,
+     {"temp-cycle_tw": 10, "fan": True, "fan_tw": 100, "fan_bins": [2]}),
+    ("A43", ["loops=False"], "9>9@1:5 1>9@2:3 9>1@3:4", 100, {}),
+    ("A44", ["ratio=fan/deg", "ddof=1", "excess"], "1>9@1:1 2>9@2:2 1>9@3:6", 100, {}),
+    ("A44", ["guard=False"], "1>9@1:1000 2>9@2:1006", 100, {}),
+    ("A44", [], "1>9@1:1000 2>9@2:1007", 100, {}),
+    ("A44", ["guard=False"], "1>9@1000001:2 2>9@1000006:3", 100, {}),
+]
+# A43 (split): a vertex_stats_tw below W shrinks the window of the value statistics (sum, avg,
+# var, ...), with the same rule (ts >= ts[e - 1] - vertex_stats_tw), but not of fan and degree,
+# which stay GFP's graph at W. The S2 rule needs vertex_stats_tw >= W (F1: both 86,400).
+S2_SPLIT = ("A43", "1>9@1:2 2>9@5:3 3>9@20:5 4>9@40:1", 10, 1)
+# A45: GFP's running accumulators after eviction. In row 3 node 1's out-edges hold the single
+# amount 4.0 (eids 0 and 1 are evicted at 42 - 15), whose variance is 0; GFP reports a negative one.
+S2_DRIFT = [("A45", "1>1@1:73.47 1>1@3:3.82 1>1@42:4 0>1@72:6.92", 15, 3, "vs_dst_out_amount_received_var"),
+            ("A45", "1>2@1:73.47 1>2@3:3.82 1>2@42:4 0>1@72:6.92", 15, 3, "vs_dst_out_amount_received_var")]
+
+
+def vs_edges(spec):
+    """'1>9@1:2.5' -> [(1, 9, 1, 2.5)]"""
+    return [(s, d, t, float(a)) for (s, d, t), a in
+            zip(edges(" ".join(tok.split(":")[0] for tok in spec.split())), (tok.split(":")[1] for tok in spec.split()))]
+
+
+def run_vstats(es, tw, params):
+    """A fresh GFP with F1's call at window tw, `params` overriding; one transform() per edge.
+    Returns each row's 52 statistics (the input columns and pattern bins are dropped)."""
+    g = gfp_vstats(tw)
+    p = g.get_params()
+    p.update(params)
+    g.set_params(p)
+    out = []
+    for i, (s, d, t, a) in enumerate(es):
+        row = g.transform(np.array([[i, s, d, t, a]], dtype=np.float64))[0]
+        out.append([float(x) for x in row[len(row) - len(VS_NAMES):]])
+    return out
+
+
+def vs_moments(xs, ddof=0, excess=False, guard=True):
+    n = len(xs)
+    if n == 0:
+        return [0.0] * 5
+    s = sum(xs)
+    mu = s / n
+    d = [x - mu for x in xs]
+    m2 = sum(v * v for v in d) / (n - ddof) if n > ddof else 0.0
+    m3, m4 = sum(v ** 3 for v in d) / n, sum(v ** 4 for v in d) / n
+    if not m2 > 0 or (guard and m2 < 1e-5 * mu * mu):
+        return [mu, s, 0.0, 0.0, 0.0]
+    return [mu, s, m2, m3 / m2 ** 1.5, m4 / m2 ** 2 - (3 if excess else 0)]
+
+
+def vs_model(es, W, lower="prev", closed=True, loops=True, ratio="deg/fan", **mom):
+    """Each row's 52 statistics by the S2 addendum's rule (the defaults) or an alternative."""
+    rows = []
+    for e, (u, v, t, _) in enumerate(es):
+        lo = (es[e - 1][2] - W if e else -float("inf")) if lower == "prev" else t - W
+        row = []
+        for node in (u, v):
+            for out_dir in (True, False):
+                win = [f for f in range(e + 1) if (es[f][0] if out_dir else es[f][1]) == node
+                       and (es[f][2] >= lo if closed else es[f][2] > lo) and (loops or es[f][0] != es[f][1])]
+                fan, n = len({es[f][1] if out_dir else es[f][0] for f in win}), len(win)
+                row += [fan, n, (n / fan if fan else 0.0) if ratio == "deg/fan" else (fan / n if n else 0.0)]
+                for k in (2, 3):
+                    row += vs_moments([float(es[f][k]) for f in win], **mom)
+        rows.append(row)
+    return rows
+
+
+def vs_equal(gfp, model):
+    """S2's acceptance test: integer columns equal, the rest within 1e-6 relative or 1e-9 absolute."""
+    a, b = np.array(model, dtype=np.float64), np.array(gfp, dtype=np.float64)
+    ok = np.abs(a - b) <= np.maximum(1e-9, 1e-6 * np.abs(b))
+    ok[:, VS_INT_COLS] = a[:, VS_INT_COLS] == b[:, VS_INT_COLS]
+    return bool(ok.all())
+
+
+def vstats_probes(failures):
+    """SPEC v2 Appendix A' (A43-A45). Returns the golden cases: edges, the rule's W, GFP's rows."""
+    cases = []
+    for probe, rejected, spec, W, params in S2_FIXTURES:
+        es = vs_edges(spec)
+        gfp = run_vstats(es, W, params)
+        cid = f"{probe}/{spec}/W={W}/{','.join(f'{k}={v}' for k, v in params.items()) or 'F1'}"
+        if not vs_equal(gfp, vs_model(es, W)):
+            failures.append(f"{cid}: GFP differs from the rule")
+        for alt in rejected:
+            key, _, val = alt.partition("=")
+            if key == "W":
+                kw = {"W": params[val]}
+            elif key == "lower":
+                kw = {"W": W, "lower": val}
+            elif key in ("closed", "loops", "guard"):
+                kw = {"W": W, key: False}
+            elif key == "ratio":
+                kw = {"W": W, "ratio": val}
+            elif key == "ddof":
+                kw = {"W": W, "ddof": int(val)}
+            else:
+                kw = {"W": W, key: True}
+            if vs_equal(gfp, vs_model(es, **kw)):
+                failures.append(f"{cid}: does not separate the rule from {alt}")
+        cases.append({"id": cid, "edges": [list(e) for e in es], "window": W, "params": params,
+                      "kind": "rule", "output": gfp})
+    probe, spec, W, vtw = S2_SPLIT
+    es = vs_edges(spec)
+    gfp = run_vstats(es, W, {"vertex_stats_tw": vtw})
+    cid = f"{probe}/{spec}/W={W}/vertex_stats_tw={vtw}"
+    at_w, at_v = vs_model(es, W), vs_model(es, vtw)
+    sums = [j for j, n in enumerate(VS_NAMES) if n.endswith("_sum")]
+    if not ([[r[c] for c in VS_INT_COLS] for r in gfp] == [[r[c] for c in VS_INT_COLS] for r in at_w]
+            and [[r[c] for c in sums] for r in gfp] == [[r[c] for c in sums] for r in at_v] and at_v != at_w):
+        failures.append(f"{cid}: fan and degree are not GFP's graph at W, or the sums not the window at vertex_stats_tw")
+    cases.append({"id": cid, "edges": [list(e) for e in es], "window": W, "params": {"vertex_stats_tw": vtw},
+                  "kind": "split", "output": gfp})
+    for probe, spec, W, row, col in S2_DRIFT:
+        es = vs_edges(spec)
+        gfp = run_vstats(es, W, {})
+        j = VS_NAMES.index(col)
+        cid = f"{probe}/{spec}/W={W}"
+        exact = vs_model(es, W)
+        if not (gfp[row][j] < 0 and exact[row][j] == 0 and vs_equal(gfp[:row], exact[:row])):
+            failures.append(f"{cid}: row {row} {col}: GFP {gfp[row][j]}, want < 0 (the rule gives {exact[row][j]})")
+        if [gfp[r][c] for r in range(len(es)) for c in VS_INT_COLS] != [exact[r][c] for r in range(len(es)) for c in VS_INT_COLS]:
+            failures.append(f"{cid}: integer statistics differ from the rule")
+        cases.append({"id": cid, "edges": [list(e) for e in es], "window": W, "params": {}, "kind": "drift",
+                      "output": gfp})
+    return cases
+
+
 def fresh_pp():
     return make_preprocessor(ALL_PATTERNS, 100, BINS, lc_len=LC_LEN)
 
@@ -383,6 +532,7 @@ def main():
     here = Path(__file__).resolve().parent
     ap.add_argument("--out", default=str(here.parents[1] / "tests/golden/gfp_probes.json"))
     ap.add_argument("--batch-out", default=str(here.parents[1] / "tests/golden/gfp_batch_probes.json"))
+    ap.add_argument("--vstats-out", default=str(here.parents[1] / "tests/golden/gfp_vstats_probes.json"))
     ap.add_argument("--check-only", action="store_true")
     args = ap.parse_args()
 
@@ -436,11 +586,12 @@ def main():
 
     bin_rule_probe(failures)
     batch_cases = batch_probes(failures)
+    vstats_cases = vstats_probes(failures)
 
     for f in failures:
         print("FAIL", f, file=sys.stderr)
-    print(f"{len(CASES)} stream probes + A28 + A29 + A33 + A38 + batch probes A34-A37, A39-A42 ({len(batch_cases)} cases): "
-          f"{len(failures)} failures")
+    print(f"{len(CASES)} stream probes + A28 + A29 + A33 + A38 + batch probes A34-A37, A39-A42 ({len(batch_cases)} cases)"
+          f" + vertex-statistics probes A43-A45 ({len(vstats_cases)} cases): {len(failures)} failures")
     if failures:
         sys.exit(1)
     if not args.check_only:
@@ -469,6 +620,18 @@ def main():
                     "chunk; other keys are set_params overrides. output[i][block] = edge i's bin counts.",
         }
         write_golden(args.batch_out, bdoc, batch_cases)
+        vdoc = {
+            "generator": "tools/gfp/probes.py (SPEC v2 Appendix A', A43-A45)",
+            "gfp": "snapml==1.17.2, stream mode (one transform() per edge, fresh instance), F1's call "
+                   "(vstats_vs_gfp.gfp_vstats(window), then params)",
+            "columns": VS_NAMES,
+            "note": "edges are [src, dst, ts, amount] with eid = index, ts as GFP saw it (no offset). window = "
+                    "the S2 rule's W (GFP's time_window, the largest pattern window). output[i] = row i's 52 "
+                    "statistics. kind: rule = the S2 rule gives GFP's rows (within S2's tolerance); split = "
+                    "vertex_stats_tw < W (A43), drift = GFP's running accumulators after eviction (A45): only the "
+                    "integer columns follow the rule.",
+        }
+        write_golden(args.vstats_out, vdoc, vstats_cases)
 
 
 if __name__ == "__main__":

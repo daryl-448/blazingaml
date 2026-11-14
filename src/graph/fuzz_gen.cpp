@@ -56,4 +56,18 @@ FuzzGraph fuzz_graph(std::uint64_t seed) {
   return g;
 }
 
+std::vector<double> fuzz_amounts(std::uint64_t seed, std::uint64_t m) {
+  SplitMix64 r{seed ^ 0x5eed5eed5eed5eedULL};
+  std::vector<double> a(m);
+  for (std::uint64_t i = 0; i < m; ++i) {
+    const std::uint32_t c = r.below(100);
+    if (c < 40) a[i] = double(r.below(10000)) / 100;                 // 0.00 .. 99.99
+    else if (c < 60) a[i] = double(1 + r.below(5));                  // ties
+    else if (c < 72) a[i] = double(r.below(1000000000)) / 100;       // up to 1e7
+    else if (c < 82) a[i] = double(1 + r.below(9)) / 1000;           // tiny
+    else a[i] = i > 0 ? a[i - 1] : 1.0;                              // repeats
+  }
+  return a;
+}
+
 }  // namespace blz

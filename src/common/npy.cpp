@@ -50,6 +50,10 @@ void write_npy_u32(const std::string& path, std::span<const std::uint32_t> data,
   write_npy(path, "<u4", data, rows, cols);
 }
 
+void write_npy_f64(const std::string& path, std::span<const double> data, std::uint64_t rows, std::uint64_t cols) {
+  write_npy(path, "<f8", data, rows, cols);
+}
+
 namespace {
 
 struct NpyLayout {

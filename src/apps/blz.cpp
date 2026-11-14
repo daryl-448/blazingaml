@@ -39,6 +39,7 @@
 #include "oracle/batch_oracle.hpp"
 #include "oracle/oracle.hpp"
 #include "runtime/batch.hpp"
+#include "runtime/vstats.hpp"
 #include "runtime/coverage.hpp"
 #include "runtime/cpu_backend.hpp"
 #include "runtime/cuda_backend.hpp"
@@ -456,6 +457,94 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
   return 0;
 }
 
+// Vertex statistics (SPEC v2 §8 S2) -> <out>/vstats.npy (float64[rows, 52], GFP's columns) +
+// features.json. Rows are computed and written in chunks, so the output never sits in memory.
+int vstats(const std::string& graph, std::int32_t window, double ts_offset, const std::string& backend, int threads,
+           const std::string& triggers, const std::string& out) {
+  const bool gpu = backend == "cuda";
+  if (backend != "cpu" && !gpu) throw std::runtime_error("vstats: --backend is cpu or cuda");
+  if (window <= 0) throw std::runtime_error("vstats: --window must be > 0");
+  if (threads > 0) omp_set_num_threads(threads);
+  auto t0 = Clock::now();
+  blz::BlzgView g(graph);
+  const blz::TriggerSel sel = blz::select_triggers(triggers, g.ts);
+  if (gpu && sel.sampled) throw std::runtime_error("vstats --backend cuda takes an eid range, not a sample");
+  const blz::GraphIndex index(g.src, g.dst, g.ts, g.n());
+  std::optional<blz::DeviceGraph> dgraph;
+  if (gpu) dgraph.emplace(index.view());
+  const double build_s = secs(t0);
+  const blz::VstatsParams p{window, ts_offset};
+  std::filesystem::create_directories(out);
+  const std::string path = out + "/vstats.npy", tmp = path + ".tmp";
+  std::ofstream f(tmp, std::ios::binary);
+  if (!f) throw std::runtime_error("cannot write " + tmp);
+  const std::uint64_t rows = sel.rows();
+  const std::string header = blz::npy_header("<f8", rows, blz::kVstatsCols);
+  f.write(header.data(), std::streamsize(header.size()));
+  blz::Sha256 sha;  // of the data bytes, without the header (as dg2_features.py's output_sha256)
+  constexpr std::uint64_t kChunk = 1u << 18;
+  std::vector<double> buf;
+  auto t1 = Clock::now();
+  double compute_s = 0;  // the statistics alone, without the write and the hash
+  for (std::uint64_t a = 0; a < rows; a += kChunk) {
+    const std::uint64_t b = std::min(rows, a + kChunk);
+    buf.assign((b - a) * blz::kVstatsCols, 0.0);
+    blz::TriggerSel part;
+    if (sel.sampled) {
+      part.sampled = true;
+      part.eids.assign(sel.eids.begin() + std::ptrdiff_t(a), sel.eids.begin() + std::ptrdiff_t(b));
+      part.first = part.eids.front();
+      part.last = std::uint64_t(part.eids.back()) + 1;
+    } else {
+      part.first = sel.first + a;
+      part.last = sel.first + b;
+    }
+    const auto tc = Clock::now();
+    if (gpu) blz::vstats_cuda(*dgraph, g.amount_received, p, part.first, part.last, buf.data());
+    else blz::vstats_cpu(index.view(), g.amount_received, p, part, buf.data());
+    compute_s += secs(tc);
+    const auto* bytes = reinterpret_cast<const char*>(buf.data());
+    f.write(bytes, std::streamsize(buf.size() * sizeof(double)));
+    sha.update(bytes, buf.size() * sizeof(double));
+  }
+  f.close();
+  if (!f) throw std::runtime_error("write failed: " + tmp);
+  std::filesystem::rename(tmp, path);
+  const double vs_s = secs(t1);
+  const std::string data_sha = blz::to_hex(sha.finish());
+  if (sel.sampled) blz::write_npy_u32(out + "/triggers.npy", sel.eids, sel.eids.size(), 1);
+  nlohmann::json meta = {
+      {"manifest_version", 2},
+      {"producer", "blz vstats"},
+      {"graph", graph},
+      {"blzg_sha256", file_sha256(graph)},
+      {"csv_sha256", blz::to_hex(g.csv_sha256())},
+      {"triggers", sel.json()},
+      {"backend", {{"name", backend}, {"threads", omp_get_max_threads()}}},
+      {"index_build_seconds", build_s},
+      {"blocks",
+       {{"vstats",
+         {{"file", "vstats.npy"},
+          {"dtype", "float64"},
+          {"columns", blz::vstats_column_names()},
+          {"columns_of_input", {"ts", "amount_received"}},
+          {"window", window},
+          {"ts_offset", ts_offset},
+          {"rule", "GFP stream-mode vertex statistics (SPEC v2 §8 S2): per side, the node's edges with eid <= e "
+                   "and ts >= ts[e - 1] - window; two-pass population moments in eid order; variance < 1e-5 * "
+                   "mean^2 is reported as 0 with its skew and kurtosis"},
+          {"output_sha256", data_sha},
+          {"mine_seconds", compute_s},
+          {"write_seconds", vs_s - compute_s}}}}},
+      {"peak_rss_mb", peak_rss_mb()},
+      {"git", git_info()}};
+  if (gpu) meta["cuda"] = {{"env", cuda_json()}};
+  std::ofstream(out + "/features.json") << meta.dump(1) << '\n';
+  std::fprintf(stderr, "vstats %s: %llu rows in %.1f s (index %.1f s, write and hash %.1f s), sha256 %s\n",
+               backend.c_str(), (unsigned long long)rows, compute_s, build_s, vs_s - compute_s, data_sha.c_str());
+  return 0;
+}
+
 // Mismatch report between two uint32 feature blocks (SPEC §11.1). Exit code 0 if equal, 2 if not.
 int compare(const std::string& a_path, const std::string& b_path, const std::string& graph,
             std::int64_t tw, std::uint64_t first_eid, const std::string& report,
@@ -547,15 +636,27 @@ int compare(const std::string& a_path, const std::string& b_path, const std::str
 // aligned with graphs.npy) for every v1 block, with the graph's window for every block. With
 // batch > 0 the features are GFP batch mode's (SPEC v2 §8 S1): batches of `batch` edges, no cuts,
 // time_window = the graph's window.
-int fuzz(const std::string& seeds, const std::string& bins_opt, int k_max, std::uint64_t batch,
+int fuzz(const std::string& seeds, const std::string& bins_opt, int k_max, std::uint64_t batch, bool vstats,
          const std::string& out) {
   const auto [s0, s1] = parse_range(seeds);
   const auto bins = parse_bins(bins_opt);
   std::vector<std::int64_t> rows;
   std::map<blz::Block, std::vector<std::uint32_t>> feats;
+  std::vector<double> amounts, vs;  // --vstats (SPEC v2 §8 S2)
   for (std::uint64_t seed = s0; seed < s1; ++seed) {
     const blz::FuzzGraph fg = blz::fuzz_graph(seed);
     const std::uint64_t m = fg.src.size();
+    if (vstats) {
+      // GFP's time_window is the graph's window; tools/gfp/vstats_vs_gfp.py sends ts + 1 (D-12).
+      const std::vector<double> a = blz::fuzz_amounts(seed, m);
+      const blz::GraphIndex idx(fg.src, fg.dst, fg.ts, fg.n);
+      blz::TriggerSel all;
+      all.last = m;
+      const std::size_t at = vs.size();
+      vs.resize(at + m * blz::kVstatsCols);
+      blz::vstats_cpu(idx.view(), a, {fg.window, 1.0}, all, vs.data() + at);
+      amounts.insert(amounts.end(), a.begin(), a.end());
+    }
     for (std::uint64_t e = 0; e < m; ++e)
       rows.insert(rows.end(), {std::int64_t(seed), std::int64_t(e), fg.src[e], fg.dst[e],
                                fg.ts[e], fg.window});
@@ -577,6 +678,10 @@ int fuzz(const std::string& seeds, const std::string& bins_opt, int k_max, std::
   blz::write_npy_i64(out + "/graphs.npy", rows, total, 6);
   for (auto& [b, f] : feats)
     blz::write_npy_u32(out + "/" + std::string(blz::block_name(b)) + ".npy", f, total, bins.size());
+  if (vstats) {
+    blz::write_npy_f64(out + "/amounts.npy", amounts, total, 1);
+    blz::write_npy_f64(out + "/vstats.npy", vs, total, blz::kVstatsCols);
+  }
   std::fprintf(stderr, "seeds %s: %llu edges -> %s\n", seeds.c_str(), (unsigned long long)total,
                out.c_str());
   return 0;
@@ -1337,7 +1442,20 @@ int main(int argc, char** argv) {
   fz->add_option("--k-max", k_max, "tcyc cap; the default exceeds every fuzz graph's n");
   std::uint64_t fz_batch = 0;
   fz->add_option("--batch", fz_batch, "GFP batch mode (SPEC v2 §8 S1) with batches of this many edges (0: stream mode)");
+  bool fz_vstats = false;
+  fz->add_flag("--vstats", fz_vstats, "also amounts.npy and vstats.npy (SPEC v2 §8 S2): window = the graph's, ts offset 1");
   fz->add_option("--out", out)->required();
+
+  std::int32_t vs_window = 0;
+  double vs_ts_offset = 0;
+  auto* vsc = app.add_subcommand("vstats", "Vertex statistics (SPEC v2 §8 S2) -> <out>/vstats.npy (float64) + features.json");
+  vsc->add_option("--graph", graph)->required();
+  vsc->add_option("--window", vs_window, "GFP's time_window: the largest pattern window of its call (F1: 86400)")->required();
+  vsc->add_option("--ts-offset", vs_ts_offset, "added to ts for the ts statistics (F1 sent ts + 1, D-12)");
+  vsc->add_option("--backend", backend, "cpu | cuda")->check(CLI::IsMember({"cpu", "cuda"}));
+  vsc->add_option("--threads", threads);
+  vsc->add_option("--triggers", triggers, "all | train | test | fit | val | range:a:b | sample:<pct>:<seed>");
+  vsc->add_option("--out", out)->required();
 
   std::string features, set, xgb = "configs/xgb_default.yaml";
   auto* tr = app.add_subcommand("train", "XGBoost on the train split, metrics on the test split");
@@ -1442,7 +1560,8 @@ int main(int argc, char** argv) {
       if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");
       return compare(a_npy, b_npy, graph, tw, first_eid, report, name);
     }
-    if (*fz) return fuzz(seeds, bins, k_max, fz_batch, out);
+    if (*fz) return fuzz(seeds, bins, k_max, fz_batch, fz_vstats, out);
+    if (*vsc) return vstats(graph, vs_window, vs_ts_offset, backend == "oracle" ? "cpu" : backend, threads, triggers, out);
     if (*tr) return train(graph, features, set, xgb, out, name.empty() ? set : name, threads);
   } catch (const std::exception& e) {
     std::fprintf(stderr, "error: %s\n", e.what());

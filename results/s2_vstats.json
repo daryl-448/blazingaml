@@ -1,0 +1,343 @@
+{
+ "vstats_vs_gfp_fuzz": {
+  "rows": 403557,
+  "values": 20984964,
+  "mismatched_values": 196100,
+  "mismatched_int_values": 0,
+  "mismatched_after_eviction": 196100,
+  "mismatched_no_eviction": 0,
+  "rows_with_eviction_side": 159964,
+  "rows_mismatched": 49495,
+  "mismatch_relative_error": {
+   "<=0.0001": 2401,
+   "<=0.01": 3405,
+   "<=1": 24686,
+   "<=inf": 165608
+  },
+  "gfp_negative_variances": 23792,
+  "by_column": {
+   "vs_src_out_amount_received_sum": {
+    "after_eviction": 6,
+    "no_eviction": 0
+   },
+   "vs_src_out_amount_received_var": {
+    "after_eviction": 14905,
+    "no_eviction": 0
+   },
+   "vs_src_out_amount_received_skew": {
+    "after_eviction": 15770,
+    "no_eviction": 0
+   },
+   "vs_src_out_amount_received_kurtosis": {
+    "after_eviction": 16979,
+    "no_eviction": 0
+   },
+   "vs_src_in_amount_received_avg": {
+    "after_eviction": 16,
+    "no_eviction": 0
+   },
+   "vs_src_in_amount_received_sum": {
+    "after_eviction": 315,
+    "no_eviction": 0
+   },
+   "vs_src_in_amount_received_var": {
+    "after_eviction": 16918,
+    "no_eviction": 0
+   },
+   "vs_src_in_amount_received_skew": {
+    "after_eviction": 14861,
+    "no_eviction": 0
+   },
+   "vs_src_in_amount_received_kurtosis": {
+    "after_eviction": 18300,
+    "no_eviction": 0
+   },
+   "vs_dst_out_amount_received_avg": {
+    "after_eviction": 10,
+    "no_eviction": 0
+   },
+   "vs_dst_out_amount_received_sum": {
+    "after_eviction": 367,
+    "no_eviction": 0
+   },
+   "vs_dst_out_amount_received_var": {
+    "after_eviction": 16764,
+    "no_eviction": 0
+   },
+   "vs_dst_out_amount_received_skew": {
+    "after_eviction": 14680,
+    "no_eviction": 0
+   },
+   "vs_dst_out_amount_received_kurtosis": {
+    "after_eviction": 18176,
+    "no_eviction": 0
+   },
+   "vs_dst_in_amount_received_sum": {
+    "after_eviction": 7,
+    "no_eviction": 0
+   },
+   "vs_dst_in_amount_received_var": {
+    "after_eviction": 14943,
+    "no_eviction": 0
+   },
+   "vs_dst_in_amount_received_skew": {
+    "after_eviction": 16001,
+    "no_eviction": 0
+   },
+   "vs_dst_in_amount_received_kurtosis": {
+    "after_eviction": 17082,
+    "no_eviction": 0
+   }
+  },
+  "generator": "blz fuzz --vstats (SPEC \u00a713.3 graphs, fuzz_amounts)",
+  "gfp": "snapml==1.17.2, stream mode, temp-cycle companion, fresh instance per graph",
+  "gfp_ts_offset": 1,
+  "seeds": "0:2000",
+  "graphs": 2000,
+  "first_mismatches": [
+   {
+    "seed": 0,
+    "eid": 241,
+    "column": "vs_src_in_amount_received_kurtosis",
+    "gfp": -96624.86523426234,
+    "blz": 1.0000000000000002
+   },
+   {
+    "seed": 0,
+    "eid": 246,
+    "column": "vs_dst_in_amount_received_var",
+    "gfp": 9.009293888766999,
+    "blz": 331.1956805555556
+   },
+   {
+    "seed": 0,
+    "eid": 248,
+    "column": "vs_src_out_amount_received_var",
+    "gfp": 1.8441639999595285,
+    "blz": 102.44550399999999
+   },
+   {
+    "seed": 0,
+    "eid": 254,
+    "column": "vs_src_out_amount_received_var",
+    "gfp": 2.980438888881853,
+    "blz": 86.8148888888889
+   },
+   {
+    "seed": 0,
+    "eid": 256,
+    "column": "vs_dst_in_amount_received_var",
+    "gfp": 21.756288489572402,
+    "blz": 297.91604848979586
+   },
+   {
+    "seed": 1,
+    "eid": 45,
+    "column": "vs_dst_out_amount_received_var",
+    "gfp": 0.0,
+    "blz": 435.34822499999996
+   },
+   {
+    "seed": 1,
+    "eid": 47,
+    "column": "vs_src_in_amount_received_var",
+    "gfp": -138.24440833320688,
+    "blz": 456.4632249999999
+   },
+   {
+    "seed": 1,
+    "eid": 55,
+    "column": "vs_src_out_amount_received_var",
+    "gfp": 87.69293888829276,
+    "blz": 377.92508888888887
+   },
+   {
+    "seed": 1,
+    "eid": 56,
+    "column": "vs_src_out_amount_received_var",
+    "gfp": 107.13623749930217,
+    "blz": 324.8103499999999
+   },
+   {
+    "seed": 1,
+    "eid": 64,
+    "column": "vs_dst_out_amount_received_var",
+    "gfp": -289.79168333519993,
+    "blz": 0.44046666666666673
+   }
+  ],
+  "seconds": {
+   "blz_fuzz": 6.4,
+   "gfp": 19.0
+  }
+ },
+ "vstats_vs_gfp_hi_small": {
+  "rows": 5078345,
+  "values": 264073940,
+  "mismatched_values": 3216785,
+  "mismatched_int_values": 0,
+  "mismatched_after_eviction": 3216785,
+  "mismatched_no_eviction": 0,
+  "rows_with_eviction_side": 3924195,
+  "rows_mismatched": 1036757,
+  "mismatch_relative_error": {
+   "<=0.0001": 1299464,
+   "<=0.01": 642046,
+   "<=1": 332728,
+   "<=inf": 942547
+  },
+  "gfp_negative_variances": 93585,
+  "by_column": {
+   "vs_src_out_ts_var": {
+    "after_eviction": 138382,
+    "no_eviction": 0
+   },
+   "vs_src_out_ts_skew": {
+    "after_eviction": 219924,
+    "no_eviction": 0
+   },
+   "vs_src_out_ts_kurtosis": {
+    "after_eviction": 219159,
+    "no_eviction": 0
+   },
+   "vs_src_out_amount_received_var": {
+    "after_eviction": 152656,
+    "no_eviction": 0
+   },
+   "vs_src_out_amount_received_skew": {
+    "after_eviction": 193695,
+    "no_eviction": 0
+   },
+   "vs_src_out_amount_received_kurtosis": {
+    "after_eviction": 241633,
+    "no_eviction": 0
+   },
+   "vs_src_in_ts_var": {
+    "after_eviction": 62352,
+    "no_eviction": 0
+   },
+   "vs_src_in_ts_skew": {
+    "after_eviction": 83468,
+    "no_eviction": 0
+   },
+   "vs_src_in_ts_kurtosis": {
+    "after_eviction": 83286,
+    "no_eviction": 0
+   },
+   "vs_src_in_amount_received_sum": {
+    "after_eviction": 39131,
+    "no_eviction": 0
+   },
+   "vs_src_in_amount_received_var": {
+    "after_eviction": 95472,
+    "no_eviction": 0
+   },
+   "vs_src_in_amount_received_skew": {
+    "after_eviction": 97016,
+    "no_eviction": 0
+   },
+   "vs_src_in_amount_received_kurtosis": {
+    "after_eviction": 136513,
+    "no_eviction": 0
+   },
+   "vs_dst_out_ts_var": {
+    "after_eviction": 51590,
+    "no_eviction": 0
+   },
+   "vs_dst_out_ts_skew": {
+    "after_eviction": 70043,
+    "no_eviction": 0
+   },
+   "vs_dst_out_ts_kurtosis": {
+    "after_eviction": 69829,
+    "no_eviction": 0
+   },
+   "vs_dst_out_amount_received_sum": {
+    "after_eviction": 40016,
+    "no_eviction": 0
+   },
+   "vs_dst_out_amount_received_var": {
+    "after_eviction": 66322,
+    "no_eviction": 0
+   },
+   "vs_dst_out_amount_received_skew": {
+    "after_eviction": 75435,
+    "no_eviction": 0
+   },
+   "vs_dst_out_amount_received_kurtosis": {
+    "after_eviction": 105523,
+    "no_eviction": 0
+   },
+   "vs_dst_in_ts_var": {
+    "after_eviction": 147979,
+    "no_eviction": 0
+   },
+   "vs_dst_in_ts_skew": {
+    "after_eviction": 216629,
+    "no_eviction": 0
+   },
+   "vs_dst_in_ts_kurtosis": {
+    "after_eviction": 215157,
+    "no_eviction": 0
+   },
+   "vs_dst_in_amount_received_var": {
+    "after_eviction": 109332,
+    "no_eviction": 0
+   },
+   "vs_dst_in_amount_received_skew": {
+    "after_eviction": 133392,
+    "no_eviction": 0
+   },
+   "vs_dst_in_amount_received_kurtosis": {
+    "after_eviction": 152817,
+    "no_eviction": 0
+   },
+   "vs_src_in_amount_received_avg": {
+    "after_eviction": 12,
+    "no_eviction": 0
+   },
+   "vs_dst_in_amount_received_sum": {
+    "after_eviction": 14,
+    "no_eviction": 0
+   },
+   "vs_dst_in_amount_received_avg": {
+    "after_eviction": 6,
+    "no_eviction": 0
+   },
+   "vs_src_out_amount_received_sum": {
+    "after_eviction": 2,
+    "no_eviction": 0
+   }
+  },
+  "blz_dir": "../../features/scratch_s2/vs_cpu",
+  "gfp_dir": "/home/daryl/Projects/blazingaml/features/dg2_R7_F1",
+  "window": 86400,
+  "note": "blz float64 rounded to float32 and clipped to the float32 range, as F1 stored GFP's values",
+  "seconds": 11.7
+ },
+ "hi_small_backends": {
+  "command": "blz vstats --graph data/hi_small.blzg --window 86400 --ts-offset 1 --backend <cpu|cuda> [--threads 12]",
+  "rows": 5078345,
+  "columns": 52,
+  "dtype": "float64",
+  "output_sha256": "5487fce7c984faade60655398e1a5d7f876b33e231306e7438a95ad55999a6c9",
+  "cpu": {
+   "threads": 12,
+   "compute_seconds": 2.5,
+   "index_seconds": 0.4,
+   "write_and_hash_seconds": 8.2,
+   "wall_seconds": 11.8,
+   "peak_rss_mb": 684
+  },
+  "cuda": {
+   "gpu": "NVIDIA GeForce GTX 1650 SUPER (sm_75)",
+   "compute_seconds": 16.1,
+   "index_seconds": 0.5,
+   "write_and_hash_seconds": 8.1,
+   "wall_seconds": 25.5,
+   "peak_rss_mb": 840
+  },
+  "cpu_equals_cuda": "byte for byte (cmp of the two vstats.npy files; same output_sha256)",
+  "host_load": "load average 1.3 before the runs; no foreign jobs stopped"
+ }
+}

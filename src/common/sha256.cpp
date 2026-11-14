@@ -1,5 +1,6 @@
 #include "common/sha256.hpp"
 
+#include <algorithm>
 #include <bit>
 #include <cstring>
 
@@ -56,6 +57,38 @@ Sha256Digest sha256(const void* data, std::size_t len) {
   Sha256Digest out;
   for (int i = 0; i < 8; ++i)
     for (int j = 0; j < 4; ++j) out[4 * i + j] = std::uint8_t(h[i] >> (24 - 8 * j));
+  return out;
+}
+
+void Sha256::update(const void* data, std::size_t len) {
+  const auto* p = static_cast<const std::uint8_t*>(data);
+  len_ += len;
+  if (used_) {
+    const std::size_t k = std::min<std::size_t>(64 - used_, len);
+    std::memcpy(buf_ + used_, p, k);
+    used_ += k;
+    p += k;
+    len -= k;
+    if (used_ < 64) return;
+    block(h_, buf_);
+    used_ = 0;
+  }
+  for (; len >= 64; p += 64, len -= 64) block(h_, p);
+  std::memcpy(buf_, p, len);
+  used_ = len;
+}
+
+Sha256Digest Sha256::finish() {
+  std::uint8_t tail[128] = {};
+  std::memcpy(tail, buf_, used_);
+  tail[used_] = 0x80;
+  const std::size_t tail_len = used_ < 56 ? 64 : 128;
+  const std::uint64_t bits = len_ * 8;
+  for (int i = 0; i < 8; ++i) tail[tail_len - 1 - i] = std::uint8_t(bits >> (8 * i));
+  for (std::size_t off = 0; off < tail_len; off += 64) block(h_, tail + off);
+  Sha256Digest out;
+  for (int i = 0; i < 8; ++i)
+    for (int j = 0; j < 4; ++j) out[4 * i + j] = std::uint8_t(h_[i] >> (24 - 8 * j));
   return out;
 }
 

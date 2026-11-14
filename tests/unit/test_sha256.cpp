@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <algorithm>
 #include <string>
 
 #include "common/sha256.hpp"
@@ -13,4 +14,16 @@ TEST_CASE("sha256 FIPS 180-4 vectors") {
         "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1");
   CHECK(h(std::string(1'000'000, 'a')) ==
         "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0");
+}
+
+TEST_CASE("sha256 in pieces equals one call") {
+  std::string s;
+  for (int i = 0; i < 1000; ++i) s += char('a' + i % 26);
+  for (std::size_t piece : {1, 7, 63, 64, 65, 200}) {
+    blz::Sha256 st;
+    for (std::size_t a = 0; a < s.size(); a += piece) st.update(s.data() + a, std::min(piece, s.size() - a));
+    CHECK(blz::to_hex(st.finish()) == h(s));
+  }
+  blz::Sha256 empty;
+  CHECK(blz::to_hex(empty.finish()) == h(""));
 }
