@@ -1,0 +1,316 @@
+{
+ "disable_distinct_first": {
+  "backend": "cpu",
+  "bins": "profile",
+  "edges": 403557,
+  "first_limited_seeds": [],
+  "first_mismatched_seeds": [],
+  "git": {
+   "dirty": true,
+   "sha": "8ef14ca253dbc4bc0d8c1d898d658a68222afe81"
+  },
+  "graphs": 2000,
+  "k_max": 10,
+  "limited_graphs": 0,
+  "mismatched_rows_by_block": {
+   "fan_oneway_out": 0,
+   "fan_total": 0
+  },
+  "mismatched_seeds": 0,
+  "profile": {
+   "file": "configs/profiles/fan_sets.yaml",
+   "id": "4cb5c5c881fd7505",
+   "name": "fan_sets"
+  },
+  "schedules": [
+   "dynamic",
+   "sorted"
+  ],
+  "seconds": 0.083657891,
+  "seeds": "0:2000",
+  "work_limit": 100000000,
+  "disabled_optimizations": [
+   "distinct_first"
+  ],
+  "note": "a CPU-only build with -DBLZ_DISABLE_OPTS (blzc --disable for the whole library, SPEC v2 \u00a77.2); degree_order and sweep do not change the code of union or difference"
+ },
+ "disable_find_start+count_only": {
+  "backend": "cpu",
+  "bins": "profile",
+  "edges": 403557,
+  "first_limited_seeds": [],
+  "first_mismatched_seeds": [],
+  "git": {
+   "dirty": true,
+   "sha": "8ef14ca253dbc4bc0d8c1d898d658a68222afe81"
+  },
+  "graphs": 2000,
+  "k_max": 10,
+  "limited_graphs": 0,
+  "mismatched_rows_by_block": {
+   "fan_oneway_out": 0,
+   "fan_total": 0
+  },
+  "mismatched_seeds": 0,
+  "profile": {
+   "file": "configs/profiles/fan_sets.yaml",
+   "id": "4cb5c5c881fd7505",
+   "name": "fan_sets"
+  },
+  "schedules": [
+   "dynamic",
+   "sorted"
+  ],
+  "seconds": 0.07962703,
+  "seeds": "0:2000",
+  "work_limit": 100000000,
+  "disabled_optimizations": [
+   "find_start",
+   "count_only"
+  ],
+  "note": "a CPU-only build with -DBLZ_DISABLE_OPTS (blzc --disable for the whole library, SPEC v2 \u00a77.2); degree_order and sweep do not change the code of union or difference"
+ },
+ "disable_find_start+distinct_first": {
+  "backend": "cpu",
+  "bins": "profile",
+  "edges": 403557,
+  "first_limited_seeds": [],
+  "first_mismatched_seeds": [],
+  "git": {
+   "dirty": true,
+   "sha": "8ef14ca253dbc4bc0d8c1d898d658a68222afe81"
+  },
+  "graphs": 2000,
+  "k_max": 10,
+  "limited_graphs": 0,
+  "mismatched_rows_by_block": {
+   "fan_oneway_out": 0,
+   "fan_total": 0
+  },
+  "mismatched_seeds": 0,
+  "profile": {
+   "file": "configs/profiles/fan_sets.yaml",
+   "id": "4cb5c5c881fd7505",
+   "name": "fan_sets"
+  },
+  "schedules": [
+   "dynamic",
+   "sorted"
+  ],
+  "seconds": 0.08351007,
+  "seeds": "0:2000",
+  "work_limit": 100000000,
+  "disabled_optimizations": [
+   "find_start",
+   "distinct_first"
+  ],
+  "note": "a CPU-only build with -DBLZ_DISABLE_OPTS (blzc --disable for the whole library, SPEC v2 \u00a77.2); degree_order and sweep do not change the code of union or difference"
+ },
+ "fuzz_cpu_vs_oracle": {
+  "backend": "cpu",
+  "bins": "profile",
+  "edges": 2053897,
+  "first_limited_seeds": [],
+  "first_mismatched_seeds": [],
+  "git": {
+   "dirty": true,
+   "sha": "8ef14ca253dbc4bc0d8c1d898d658a68222afe81"
+  },
+  "graphs": 10000,
+  "k_max": 10,
+  "limited_graphs": 0,
+  "mismatched_rows_by_block": {
+   "fan_oneway_out": 0,
+   "fan_total": 0
+  },
+  "mismatched_seeds": 0,
+  "profile": {
+   "file": "configs/profiles/fan_sets.yaml",
+   "id": "4cb5c5c881fd7505",
+   "name": "fan_sets"
+  },
+  "schedules": [
+   "dynamic",
+   "sorted"
+  ],
+  "seconds": 0.382108492,
+  "seeds": "0:10000",
+  "work_limit": 100000000
+ },
+ "fuzz_cpu_vs_oracle_tsvis": {
+  "backend": "cpu",
+  "bins": "profile",
+  "edges": 2053897,
+  "first_limited_seeds": [],
+  "first_mismatched_seeds": [],
+  "git": {
+   "dirty": true,
+   "sha": "8ef14ca253dbc4bc0d8c1d898d658a68222afe81"
+  },
+  "graphs": 10000,
+  "k_max": 10,
+  "limited_graphs": 0,
+  "mismatched_rows_by_block": {
+   "fan_oneway_out": 0,
+   "fan_total": 0
+  },
+  "mismatched_seeds": 0,
+  "profile": {
+   "file": "/tmp/claude-1000/-home-daryl-Projects-blazingaml/b3c4ffc7-aadc-4aeb-b427-90fb3552f2d3/scratchpad/fan_sets_tsvis.yaml",
+   "id": "64496068a08d022e",
+   "name": "fan_sets_tsvis",
+   "note": "configs/profiles/fan_sets.yaml with visibility: timestamp (a scratch copy, not committed)"
+  },
+  "schedules": [
+   "dynamic",
+   "sorted"
+  ],
+  "seconds": 0.393995953,
+  "seeds": "0:10000",
+  "work_limit": 100000000
+ },
+ "fuzz_cuda_vs_oracle": {
+  "backend": "cuda",
+  "bins": "profile",
+  "cuda": {
+   "build": "nvcc 13.4.92, sm 75,80, -O3 -DNDEBUG",
+   "compute_capability": "7.5",
+   "device": "NVIDIA GeForce GTX 1650 SUPER",
+   "driver_version": 13040,
+   "memory_mb": {
+    "free": 2940,
+    "total": 3728
+   },
+   "runtime_version": 13040,
+   "sm_count": 20
+  },
+  "edges": 2053897,
+  "first_limited_seeds": [],
+  "first_mismatched_seeds": [],
+  "git": {
+   "dirty": true,
+   "sha": "8ef14ca253dbc4bc0d8c1d898d658a68222afe81"
+  },
+  "graphs": 10000,
+  "heavy_thresholds": [
+   "0",
+   "4",
+   "all"
+  ],
+  "k_max": 10,
+  "limited_graphs": 0,
+  "mismatched_rows_by_block": {
+   "fan_oneway_out": 0,
+   "fan_total": 0
+  },
+  "mismatched_seeds": 0,
+  "profile": {
+   "file": "configs/profiles/fan_sets.yaml",
+   "id": "4cb5c5c881fd7505",
+   "name": "fan_sets"
+  },
+  "seconds": 5.109344584,
+  "seeds": "0:10000",
+  "work_limit": 100000000
+ },
+ "fuzz_cuda_vs_oracle_tsvis": {
+  "backend": "cuda",
+  "bins": "profile",
+  "cuda": {
+   "build": "nvcc 13.4.92, sm 75,80, -O3 -DNDEBUG",
+   "compute_capability": "7.5",
+   "device": "NVIDIA GeForce GTX 1650 SUPER",
+   "driver_version": 13040,
+   "memory_mb": {
+    "free": 2928,
+    "total": 3728
+   },
+   "runtime_version": 13040,
+   "sm_count": 20
+  },
+  "edges": 2053897,
+  "first_limited_seeds": [],
+  "first_mismatched_seeds": [],
+  "git": {
+   "dirty": true,
+   "sha": "8ef14ca253dbc4bc0d8c1d898d658a68222afe81"
+  },
+  "graphs": 10000,
+  "heavy_thresholds": [
+   "0",
+   "4",
+   "all"
+  ],
+  "k_max": 10,
+  "limited_graphs": 0,
+  "mismatched_rows_by_block": {
+   "fan_oneway_out": 0,
+   "fan_total": 0
+  },
+  "mismatched_seeds": 0,
+  "profile": {
+   "file": "/tmp/claude-1000/-home-daryl-Projects-blazingaml/b3c4ffc7-aadc-4aeb-b427-90fb3552f2d3/scratchpad/fan_sets_tsvis.yaml",
+   "id": "64496068a08d022e",
+   "name": "fan_sets_tsvis",
+   "note": "configs/profiles/fan_sets.yaml with visibility: timestamp (a scratch copy, not committed)"
+  },
+  "seconds": 5.253209661,
+  "seeds": "0:10000",
+  "work_limit": 100000000
+ },
+ "hi_small_ac1": {
+  "graph": "data/hi_small.blzg",
+  "profile": {
+   "file": "configs/profiles/fan_sets.yaml",
+   "id": "4cb5c5c881fd7505"
+  },
+  "output_fnv1a": {
+   "fan_oneway_out": 13255380566507627682,
+   "fan_total": 13985671823781125922
+  },
+  "npy_sha256": {
+   "fan_oneway_out": "c649a9c95394b06b3ce17de642aff944e8e40dcce591278ccdd35f47d0e2b7be",
+   "fan_total": "93f05f8555b5d28481779d6bdab225368937f3239aa216cf1a2aa47c09148ff1"
+  },
+  "mine_seconds": {
+   "oracle": {
+    "fan_oneway_out": 37.8,
+    "fan_total": 0.6
+   },
+   "cpu": {
+    "fan_oneway_out": 5.4,
+    "fan_total": 0.2
+   },
+   "cuda": {
+    "fan_oneway_out": 3.2,
+    "fan_total": 0.1
+   }
+  },
+  "saturated": 0,
+  "oracle_eq_cpu_eq_cuda": true,
+  "threads": 12,
+  "note": "blz mine --profile fan_sets on each backend (cuda on the GTX 1650 SUPER, default heavy threshold); every npy is byte-identical. The seconds are not a timing run (no idle-window check, no load log): fan_oneway_out has no sweep plan, so each trigger rescans u's out-window and probes u's in-list"
+ },
+ "hi_small_relations": {
+  "against": "features/cpu_default (v1 features_default: fan_out and fan_in at window 86,400, the same bins)",
+  "rows": 5078345,
+  "rows_with_an_instance": {
+   "fan_oneway_out": 2775033,
+   "fan_total": 2640949,
+   "fan_out": 2775585,
+   "fan_in": 1725512
+  },
+  "fan_oneway_out_bin_below_fan_out": 909,
+  "fan_oneway_out_bin_above_fan_out": 0,
+  "fan_total_bin_above_fan_in": 1623897,
+  "fan_total_bin_below_fan_in": 0,
+  "note": "N_out(u) \\ N_in(u) \u2286 N_out(u) and N_in(v) \u2286 N_in(v) \u222a N_out(v): the bins never cross. A counterparty paying back within 24 h is rare on HI-Small (909 rows change bin)"
+ },
+ "fuzz_relations_unit_test": {
+  "test": "tests/unit/test_set_ops.cpp (oracle, seeds 0:300, unit bins 2..60)",
+  "rows": 58893,
+  "difference_below_fan_out": 22593,
+  "union_above_fan_in": 34378,
+  "note": "the fuzz graphs exercise both ops: the difference removes a counterparty on 38 % of rows, the union adds one on 58 %"
+ }
+}

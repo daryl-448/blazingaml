@@ -14,6 +14,8 @@ const char* op_name(Op op) {
     case Op::intersection: return "intersection";
     case Op::exists: return "exists";
     case Op::count: return "count";
+    case Op::union_: return "union";
+    case Op::difference: return "difference";
   }
   return "?";
 }

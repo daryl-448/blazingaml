@@ -396,6 +396,8 @@ class CpuEmitter {
       case Op::intersection: return s.binding ? "intersection, binding" : "intersection, check";
       case Op::exists: return "exists";
       case Op::count: return s.multiplicity == Mult::distinct ? "count, distinct" : "count, edges";
+      case Op::union_: return "union, check";
+      case Op::difference: return "difference, check";
     }
     return "?";
   }
@@ -509,6 +511,21 @@ class CpuEmitter {
         if (need_ok) w.line("const bool " + ok + " = " + n + " != 0;");
         break;
       }
+      case Op::union_:
+      case Op::difference: {
+        const std::string elem = s.element_var.empty() ? id("y_", s.id) : node(s.element_var);
+        const std::string n = id("len_", s.output_var), set = id("set_", s.output_var);
+        if (s.materialize) {  // count_only disabled (SPEC v2 §7.2)
+          w.line("thread_local std::vector<std::uint32_t> " + set + ";  // count_only disabled: per thread, cleared per check");
+          w.line(set + ".clear();");
+        } else {
+          w.line("std::int64_t " + n + " = 0;");
+        }
+        set_op_scans(w, s, elem, s.materialize ? set + ".push_back(" + elem + ");" : "++" + n + ";");
+        if (s.materialize) w.line("const std::int64_t " + n + " = std::int64_t(" + set + ".size());");
+        if (need_ok) w.line("const bool " + ok + " = " + n + " != 0;");
+        break;
+      }
       case Op::for_all: unsupported(s.loc, "for_all is a binding stage");
     }
     if (s.emit) emit_stmt(w, *s.emit, ok, lane0);
@@ -603,6 +620,46 @@ class CpuEmitter {
         w.line("const std::int64_t " + witness(b.edge) + " = " + sa + " ? " + id("w_", sid) + " : " + scanned + ";");
     } else {
       w.line("if (" + P + ".pair_exists(" + px + ", " + elem + ", " + plo + ", " + phi + ", vis_e) == kNoTs) continue;");
+    }
+  }
+
+  // union and difference (SPEC v2 §8 S4) on the intersection's scan and probe, over distinct
+  // nodes. A difference scans its src operand and keeps the elements that the dst operand's probe
+  // does not find; a union counts its src operand, then scans its dst operand and keeps the
+  // elements that the src operand's probe does not find (|A| + |B \ A|). Every kept element that
+  // passes the filters runs `add`.
+  void set_op_scans(Writer& w, const Stage& s, const std::string& elem, const std::string& add) {
+    const Operand& a = s.operands[0];
+    const Operand& b = s.operands[1];
+    for (const Operand* o : {&a, &b})
+      w.line("const std::int64_t " + id("lo_", o->edge) + " = " + lo_of(o->lo_incl) + ", " + id("hi_", o->edge) +
+             " = " + hi_of(o->hi_incl) + ";");
+    const auto scan = [&](const Operand& o, const Operand* absent_from) {
+      const std::string L = tcsr(o.dir), j = id("j_", o.edge), r = id("r_", o.edge), lo = id("lo_", o.edge),
+                        hi = id("hi_", o.edge), set = id("ds_", o.edge);
+      if (opts().find_start)
+        w.line("const Range " + r + " = " + L + ".range(" + node(o.node) + ", " + lo + ", " + hi + ", vis_e);");
+      else
+        w.line("const Range " + r + " = " + L + ".head_range(" + node(o.node) + ", " + hi +
+               ", vis_e);  // find_start disabled: from the list head");
+      if (!opts().distinct_first) scan_set(w, set);
+      w.open("for (std::uint32_t " + j + " = " + r + ".lo; " + j + " < " + r + ".hi; ++" + j + ") {");
+      scan_tests(w, L, j, r + ".lo", lo, true, set);
+      if (absent_from || s.materialize || (!s.element_var.empty() && used(s.element_var)))
+        w.line("const std::uint32_t " + elem + " = " + L + ".nbr[" + j + "];");
+      for (const Expr& f : s.filters) w.line("if (" + cx(f) + ") continue;");
+      if (absent_from)
+        w.line("if (" + pcsr(absent_from->dir) + ".pair_exists(" + node(absent_from->node) + ", " + elem + ", " +
+               id("lo_", absent_from->edge) + ", " + id("hi_", absent_from->edge) + ", vis_e) != kNoTs) continue;  // in " +
+               absent_from->node + "." + dir_name(absent_from->dir));
+      w.line(add);
+      w.close();
+    };
+    if (s.op == Op::union_) {
+      scan(a, nullptr);
+      scan(b, &a);
+    } else {
+      scan(a, &b);
     }
   }
 

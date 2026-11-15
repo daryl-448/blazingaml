@@ -1,0 +1,22 @@
+# expect: E204 22:27 -- a witness time bounding a union, an aggregate
+version: 1
+pattern: p
+block: fan_total
+window: {span: d, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+stages:
+  - id: hop_1
+    op: for_all
+    src: V.out
+    edge: h1
+    dst_var: C1
+  - id: s
+    op: union
+    src: C1.in
+    dst: C1.out
+    edges: [e1, e2]
+    output: C
+    element: Y
+    constraints:
+      - skip_if: "Y == V"
+      - skip_if: "e1.t <= h1.t"

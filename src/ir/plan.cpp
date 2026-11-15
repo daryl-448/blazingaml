@@ -144,6 +144,31 @@ void plan_stage(Stage& st, const Pattern& p, const Opts& opts) {
       }
       break;
     }
+    case Op::union_:
+    case Op::difference: {
+      // SPEC v2 §8 S4: both reuse the intersection's scan and probe. A difference is not
+      // symmetric, so its scanned side is fixed; a union scans both sides.
+      Operand& a = st.operands[0];
+      Operand& b = st.operands[1];
+      const std::string as = a.node + "." + dir_name(a.dir), bs = b.node + "." + dir_name(b.dir);
+      a.access = Access::scan_distinct;
+      b.access = st.op == Op::union_ ? Access::scan_distinct : Access::probe;
+      st.notes.push_back(
+          st.op == Op::difference
+              ? "difference " + as + " \\ " + bs + " over distinct nodes: scan " + as +
+                    " (T-CSR, distinct-first) and keep the elements whose probe of " + bs +
+                    " (P-CSR) finds no edge; the scanned side is fixed (a difference is not symmetric)"
+              : "union " + as + " ∪ " + bs + " over distinct nodes, as |" + as + "| + |" + bs + " \\ " + as +
+                    "|: count " + as + " (T-CSR, distinct-first), then scan " + bs +
+                    " (T-CSR, distinct-first) and keep the elements whose probe of " + as + " (P-CSR) finds no edge");
+      st.materialize = !opts.count_only;
+      st.notes.push_back(opts.count_only
+                             ? "no materialization: " + st.output_var + " is used only through len(), so " +
+                                   "the elements that pass the filters are counted"
+                             : "count_only disabled (SPEC v2 §7.2): " + st.output_var +
+                                   " is materialized into a per-thread vector, then counted");
+      break;
+    }
   }
   for (const Operand& o : st.operands) st.notes.push_back(range_note(o, p.e0));
   const bool scans = st.op != Op::exists;

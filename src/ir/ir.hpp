@@ -76,9 +76,9 @@ struct Stage {
   Op op = Op::for_all;
   Loc loc;
   bool binding = false;            // opens a loop level (for_all, intersection with dst_var)
-  std::vector<Operand> operands;   // intersection: {src side, dst side}; otherwise one
+  std::vector<Operand> operands;   // intersection, union, difference: {src side, dst side}; otherwise one
   std::string bind_var;            // binding stages: the node variable bound per iteration
-  std::string output_var;          // count: the int; check intersection: the set
+  std::string output_var;          // count: the int; check intersection, union, difference: the set
   std::string element_var;         // check stages: the per-element node (own constraints only)
   std::string probe_node;          // exists: the node looked for
   Mult multiplicity = Mult::distinct;  // for_all, count
@@ -88,7 +88,7 @@ struct Stage {
   std::optional<Emit> emit;
   std::vector<std::string> exports;  // names later stages may use
   // Planner.
-  bool materialize = false;        // check intersection: false when the set is used only via len()
+  bool materialize = false;        // check intersection, union, difference: false when the set is used only via len()
   std::vector<std::string> notes;  // planner decisions, emitted as comments by the backends
 };
 

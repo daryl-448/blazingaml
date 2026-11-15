@@ -63,6 +63,7 @@ class Oracle {
   void sg(const Trigger& tr, bool scatter, std::vector<std::uint64_t>& sizes) const;
   void sg_ordered(const Trigger& tr, std::vector<std::uint64_t>& sizes) const;
   void tcyc(const Trigger& tr, int k_max, std::vector<std::uint64_t>& sizes) const;
+  void fan_sets(Block b, const Trigger& tr, std::vector<std::uint64_t>& sizes) const;  // SPEC v2 §8 S4
   // false when the trigger exceeded `limit` bindings
   bool lcyc(const Trigger& tr, int k_max, std::uint64_t limit, std::vector<std::uint64_t>& sizes) const;
 

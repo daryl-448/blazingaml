@@ -14,7 +14,8 @@ namespace blz::dsl {
 // yet; that is lowering's job (ir/lower.cpp).
 
 enum class Dir { in, out };
-enum class Op { for_all, intersection, exists, count };
+// union_ and difference: the set ops of SPEC v2 §8 S4 (check stages over two operands).
+enum class Op { for_all, intersection, exists, count, union_, difference };
 enum class Mult { distinct, edges };
 enum class Visibility { stream, timestamp };
 
@@ -49,7 +50,7 @@ struct Stage {
   Loc op_loc;
   std::optional<Port> src, dst;
   std::optional<Name> edge, dst_var, node, output, element;
-  std::vector<Name> edges;  // intersection: [src-side edge, dst-side edge]
+  std::vector<Name> edges;  // intersection, union, difference: [src-side edge, dst-side edge]
   std::optional<Mult> multiplicity;
   Loc multiplicity_loc;
   std::optional<bool> gate;
@@ -73,8 +74,8 @@ struct Spec {
   std::vector<Stage> stages;
 };
 
-// YAML tree of an *expanded* document (expand_spec) -> Spec. E101 on schema errors, E401 on a
-// reserved op, E101 on expression syntax errors.
+// YAML tree of an *expanded* document (expand_spec) -> Spec. E101 on schema errors, E401 on the
+// reserved op `differentiate`, E101 on expression syntax errors.
 Spec parse_spec(const YNode& expanded, const std::string& file);
 
 }  // namespace blz::dsl

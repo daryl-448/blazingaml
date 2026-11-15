@@ -1,0 +1,19 @@
+# fan_oneway_out (SPEC v2 §8 S4): |N_out(u) \ N_in(u) \ {u}|, the distinct counterparties that the
+# trigger's source u paid within the window and that paid nothing back to u within it (v counts
+# unless v paid u). The library spec of `difference`.
+version: 1
+pattern: fan_oneway_out
+block: fan_oneway_out
+window: {span: delta_fan, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+constraints: [{skip_if: "U == V"}]
+stages:
+  - id: oneway
+    op: difference
+    src: U.out
+    dst: U.in
+    edges: [e1, e2]
+    output: D
+    element: Y
+    constraints: [{skip_if: "Y == U"}]
+    emit: {size: "len(D)"}

@@ -13,6 +13,7 @@ add_executable(blz_unit_tests
   unit/test_batch.cpp
   unit/test_vstats.cpp
   unit/test_lcyc.cpp
+  unit/test_set_ops.cpp
   unit/test_metrics.cpp
   unit/test_registration.cpp
   unit/test_dsl_expr.cpp
@@ -128,6 +129,17 @@ if(BLZ_ENABLE_CUDA)
   add_test(NAME fuzz_diff_lcyc_f2_cuda_light_10k
     COMMAND blz fuzz-diff --backend cuda --heavy all --seeds 0:10000 --work-limit 100000 --profile ${PROJECT_SOURCE_DIR}/configs/profiles/lcyc_f2.yaml)
   set_tests_properties(fuzz_diff_lcyc_f2_cuda_light_10k PROPERTIES LABELS slow)
+endif()
+
+# SPEC v2 §8 S4: AC1 for the set ops' features, fan_oneway_out (difference) and fan_total (union),
+# on 10,000 fuzz graphs. CUDA runs H = 0, 4 and all.
+add_test(NAME fuzz_diff_fan_sets_cpu_10k
+  COMMAND blz fuzz-diff --seeds 0:10000 --profile ${PROJECT_SOURCE_DIR}/configs/profiles/fan_sets.yaml)
+set_tests_properties(fuzz_diff_fan_sets_cpu_10k PROPERTIES LABELS slow)
+if(BLZ_ENABLE_CUDA)
+  add_test(NAME fuzz_diff_fan_sets_cuda_10k
+    COMMAND blz fuzz-diff --backend cuda --seeds 0:10000 --profile ${PROJECT_SOURCE_DIR}/configs/profiles/fan_sets.yaml)
+  set_tests_properties(fuzz_diff_fan_sets_cuda_10k PROPERTIES LABELS slow)
 endif()
 
 # SPEC v2 §6.1 (P8): the oracle under timestamp visibility, including tcyc's visibility invariance.

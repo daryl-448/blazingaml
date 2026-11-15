@@ -65,7 +65,7 @@ TEST_CASE("invalid-spec suite: every file fails with its declared code and posit
 
 TEST_CASE("library: every pattern compiles, and its IR equals the snapshot") {
   const auto files = yaml_files("patterns");
-  REQUIRE(files.size() == 9);
+  REQUIRE(files.size() == 11);
   for (const fs::path& f : files) {
     INFO(f.filename().string() << " (regenerate with: blzc --dump-ir --out tests/specs/ir patterns/*.yaml)");
     const ir::Pattern p = ir::compile_file(f.string());

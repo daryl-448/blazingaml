@@ -1,0 +1,15 @@
+# expect: E205 15:30 -- an order constraint belongs to an intersection, not a difference
+version: 1
+pattern: p
+block: fan_oneway_out
+window: {span: d, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+stages:
+  - id: s
+    op: difference
+    src: U.out
+    dst: U.in
+    edges: [e1, e2]
+    output: D
+    element: Y
+    constraints: [{skip_if: "e1.t >= e2.t"}]

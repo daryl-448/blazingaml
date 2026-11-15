@@ -1333,6 +1333,62 @@ Each op ships with one library spec that uses it, so that no op exists without a
 - `differentiate` stays reserved (E401); it is what `skip_if` already does (§6.9).
 - **AC:** E401 is lifted for the two ops; AC1 on 10,000 fuzz graphs; invalid-spec cases.
 
+As implemented (S4):
+
+- **DSL.** `op: union` and `op: difference` take the check form of `intersection`: `src`, `dst`,
+  `edges: [ea, eb]`, `output: SetVar`, and optionally `element` and `gate` (D-40).
+  - With A = the distinct nodes of `src` and B those of `dst`, each in its own edge's bounds, the
+    window and the visibility: `difference` is A \ B and `union` is A ∪ B. The element filters
+    apply to every element of the result.
+  - The set is used through `len()`. A gate passes when it is non-empty.
+  - `dst_var` is E101 (no binding form).
+  - An order constraint between the two edges is E205, which only an intersection takes.
+  - A witness lower bound is E204: like a check intersection, both ops aggregate.
+  - E401 now covers only `differentiate`.
+- **Lowering** (`blzc`): both ops reuse the intersection's T-CSR scan (distinct-first) and P-CSR
+  probe, with fixed sides. `degree_order` therefore does not apply.
+  - `difference` scans `src` and keeps the elements whose probe of `dst` finds no edge.
+  - `union` counts `src`, then scans `dst` and keeps the elements whose probe of `src` finds no
+    edge: |A| + |B \ A|.
+  - `--disable find_start`, `distinct_first` and `count_only` work as for the other scans.
+  - The CUDA heavy kernel runs a root union or difference on lane 0 (a root check with no count,
+    §7.5 of v1), so the warp gives it no speed-up.
+- **Library.** `patterns/fan_oneway_out.yaml` and `patterns/fan_total.yaml` are fan-like: the
+  window has an open lower bound, and a self-loop trigger emits nothing.
+  - They emit into the new blocks `fan_oneway_out` and `fan_total`. These are not v1 blocks, so a
+    v1 config does not need them (E402).
+  - Unlike lcyc, they are in `registry_profile()`, so the default fuzz-diff and metamorphic runs
+    and the fast suites cover them.
+  - `configs/profiles/fan_sets.yaml` runs them at the fan window and bins (D-8, D-9): 24 columns.
+  - `Oracle::fan_sets` computes both from `std::set`s of the window's neighbours.
+- **Tests.**
+  - `tests/unit/test_set_ops.cpp` has 19 hand-checked cases on the oracle, the CPU (both
+    schedules) and CUDA (H = 0, 2 and all). They cover the open bound on both sides, a return
+    edge, v as a counterparty, overlap, self-loops, parallel edges, a self-loop trigger, and a
+    tie under both visibilities.
+  - It also checks that, on fuzz graphs, `fan_oneway_out` ≤ `fan_out` and `fan_total` ≥
+    `fan_in`. Over 58,893 rows, the inequality is strict on 38 % and 58 % of them, so the fuzz
+    graphs exercise both ops.
+  - The invalid-spec suite has three new cases: `e101_set_op_dst_var`, `e204_witness_set_op` and
+    `e205_set_op_order`. `e401_union` is gone.
+  - Slow: `fuzz_diff_fan_sets_{cpu,cuda}_10k`.
+- **Outcome** (`results/s4_set_ops.json`):
+  - AC1 on 10,000 fuzz graphs (2,053,897 edges) gives 0 mismatching rows in every run:
+    - the CPU, both schedules;
+    - CUDA at H = 0, 4 and all;
+    - the same again under timestamp visibility;
+    - the CPU `--disable` builds `find_start,count_only`, `distinct_first` and
+      `find_start,distinct_first`, on 2,000 graphs.
+  - Every existing snapshot is unchanged; only the registry gains two rows.
+  - HI-Small (`fan_sets`): oracle = CPU = CUDA byte for byte, 0 saturated.
+    - Against v1's `fan_out` and `fan_in`, the bins never cross.
+    - Only 909 rows have a counterparty that paid back within 24 h (`fan_oneway_out` below
+      `fan_out`).
+    - On 1,623,897 rows, `fan_total` is above `fan_in`.
+    - `fan_oneway_out` has no sweep plan, so it takes 5.4 s on the CPU (12 threads), against 0.2 s
+      for `fan_total`. This was not a timing run.
+  - Neither block is in any recipe: nothing was refit or rescored, and E8's verdict stands.
+
 ### S5 — new typologies
 
 - **Gate:** E9 shows typology T structurally ineligible for every existing block under the frozen
@@ -1438,6 +1494,10 @@ v1's E0–E5 stand. E6 becomes R8 (validation) and E8's sensitivity table (test)
   - lcyc's fuzz parity with the work limit, in `test_cpu_backend.cpp` and `test_cuda_backend.cpp`.
   - Slow: `fuzz_diff_lcyc_f2_{cpu,cuda,cuda_light}_10k`.
   - GFP parity runs through `tools/gfp/lcyc_vs_gfp.py`.
+- **S4:** `tests/unit/test_set_ops.cpp` (hand-checked cases on the oracle, the CPU and CUDA, and
+  the relations to fan_out and fan_in on fuzz graphs); the fuzz parity through the registry
+  profile in `test_cpu_backend.cpp` and `test_cuda_backend.cpp`; three invalid-spec cases; slow:
+  `fuzz_diff_fan_sets_{cpu,cuda}_10k`.
 
 ---
 
@@ -1865,7 +1925,8 @@ S1–S9 in the order of §8, each after its gate and the user's approval.
 
 Status: the user pulled S1–S3 forward under DG-3 on 2026-11-14. S1 is done (§8 S1 addendum). S2
 is done with D-37's deviation (§8 S2 addendum). S3 is done with D-38's tie deviation and D-39's work
-limit (§8 S3 addendum). DG-3 is resolved (P8). S4–S9 wait for their gates and the user.
+limit (§8 S3 addendum). DG-3 is resolved (P8). On 2026-11-15 the user asked for S4, which is done
+with D-40 (§8 S4 addendum). S5–S9 wait for their gates and the user.
 
 ---
 
@@ -1969,3 +2030,4 @@ are in `tests/golden/gfp_lcyc_probes.json`: 16 cases, 13 `rule` cases where they
 | D-37 | S2's vertex statistics are each window's exact statistics: two passes in eid order (§8 S2). They do not reproduce the residue of GFP's running sums after an eviction (A45). The mismatches all fall on sides that lost an edge to eviction: 0.93 % of values on 2,000 fuzz graphs and 1.2 % on HI-Small (20 % of rows; F1 holds 93,585 negative variances). They are accepted as GFP's numerical defect. Reproducing it would need GFP's per-node add and subtract sequence over the whole stream, which a per-trigger module does not have, and it would copy the error. Fan and degree equal GFP everywhere. A `vertex_stats_tw` below the largest pattern window (A43) is not modelled; F1 does not use one. |
 | D-38 | S3's lcyc leaves out every edge tied with the trigger (ts = t), under both visibilities. GFP decides a tie by its node order (A49): a tie edge x → y counts iff GFP first saw y before v. That order is the history of the call, not the window's edges, and the DSL has no node order: its node comparisons are ==, != and `in`, and a mixed predicate is E203. Matching it would need a per-node insertion rank carried through the index and a new predicate. The tie rows are accepted instead. On the 1,904 fuzz graphs under the limit, 74,723 of 369,426 rows (20 %) differ, every one reproduced by A49's rule (SPEC §13.3 makes ties common). On HI-Small none differ: F2 equals `blz` on every row. This resolves O-2. |
 | D-39 | The work limit (§8 S3) counts bindings per trigger. It stops the run with the smallest eid over the limit and never truncates a row. AC1's fuzz runs use a limit of 10⁶ on the CPU and on CUDA at H = 0 and 4. 537 of the 10,000 graphs reach it; for those, the stop eid is compared on every backend, schedule and threshold, not the rows. CUDA's all-light pass (H = all) uses 10⁵, which 1,727 graphs reach (0 mismatching rows). There one GPU thread walks each trigger's bindings serially, so at 10⁶ that pass alone would take about 3.75 h on the GTX 1650 SUPER. The light kernel runs the same generated `<pattern>_trigger` as the CPU driver, which is checked at 10⁶. GFP's fuzz parity skips the graphs limited at 10⁶ (96 of 2,000). HI-Small runs at the default of 10⁸, which no trigger reaches. |
+| D-40 | S4's `union` and `difference` are check stages only: `output` plus `len()`, with no binding form (`dst_var` is E101). A union element may have no edge on one side, and a difference element never has one on the probed side, so neither has a witness to export, and the two library features need only the size. Both ops have fixed sides: a difference is not symmetric, and a union's two scans each read their whole window anyway. A runtime choice of which side a union probes would only save probes. |

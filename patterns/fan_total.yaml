@@ -1,0 +1,18 @@
+# fan_total (SPEC v2 §8 S4): |N_in(v) ∪ N_out(v) \ {v}|, every distinct counterparty of the
+# trigger's destination v within the window, u included. The library spec of `union`.
+version: 1
+pattern: fan_total
+block: fan_total
+window: {span: delta_fan, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+constraints: [{skip_if: "U == V"}]
+stages:
+  - id: counterparties
+    op: union
+    src: V.in
+    dst: V.out
+    edges: [e1, e2]
+    output: C
+    element: Y
+    constraints: [{skip_if: "Y == V"}]
+    emit: {size: "len(C)"}

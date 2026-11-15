@@ -1,5 +1,5 @@
-// Schema checking: expanded YAML tree -> Spec (SPEC §6.1, §6.3). E101 / E401 only; names are
-// resolved by lowering.
+// Schema checking: expanded YAML tree -> Spec (SPEC §6.1, §6.3; union and difference: SPEC v2 §8 S4).
+// E101 / E401 only; names are resolved by lowering.
 #include <algorithm>
 #include <charconv>
 #include <initializer_list>
@@ -149,13 +149,18 @@ Stage stage_of(const YNode& n) {
   scalar_of(*opn, "'op'");
   s.op_loc = opn->loc;
   const std::string& op = opn->scalar;
-  if (op == "union" || op == "difference" || op == "differentiate")
-    fail("E401", opn->loc, "op '" + op + "' is reserved and not supported in v1");
+  // `differentiate` stays reserved: it is what skip_if node filters already do (SPEC v2 §8 S4).
+  if (op == "differentiate")
+    fail("E401", opn->loc, "op 'differentiate' is reserved and not supported; use skip_if node filters");
   if (op == "for_all") s.op = Op::for_all;
   else if (op == "intersection") s.op = Op::intersection;
   else if (op == "exists") s.op = Op::exists;
   else if (op == "count") s.op = Op::count;
-  else fail("E101", opn->loc, "unknown op '" + op + "' (expected for_all, intersection, exists or count)");
+  else if (op == "union") s.op = Op::union_;
+  else if (op == "difference") s.op = Op::difference;
+  else
+    fail("E101", opn->loc,
+         "unknown op '" + op + "' (expected for_all, intersection, exists, count, union or difference)");
 
   check_keys(n, kStageKeys, "a stage");
   s.id = ident(*required(n, "id", "a stage"), "stage id");
@@ -179,6 +184,11 @@ Stage stage_of(const YNode& n) {
     case Op::count:
       allowed = {"src", "edge", "element", "multiplicity", "output", "gate"};
       needs = {"src", "edge", "output"};
+      break;
+    case Op::union_:
+    case Op::difference:  // SPEC v2 §8 S4: check stages only, like the check form of intersection
+      allowed = {"src", "dst", "edges", "output", "element", "gate"};
+      needs = {"src", "dst", "edges", "output"};
       break;
   }
   for (const auto& [k, v] : n.map)

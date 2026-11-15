@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <iterator>
 #include <limits>
 #include <map>
 #include <queue>
@@ -230,6 +231,23 @@ bool Oracle::lcyc(const Trigger& tr, int k_max, std::uint64_t limit, std::vector
   return !aborted;
 }
 
+// SPEC v2 §8 S4, from the definitions, over the window's distinct neighbours (an open lower bound,
+// as fan): fan_oneway_out = |N_out(u) \ N_in(u) \ {u}|, the counterparties u paid that paid
+// nothing back to u; fan_total = |N_in(v) ∪ N_out(v) \ {v}|, every counterparty of v.
+void Oracle::fan_sets(Block b, const Trigger& tr, std::vector<std::uint64_t>& sizes) const {
+  const std::uint32_t x = b == Block::fan_total ? tr.v : tr.u;
+  std::set<std::uint32_t> in, out;
+  const Window wi = window(in_[x], tr), wo = window(out_[x], tr);
+  for (auto f = wi.begin; f != wi.end; ++f) in.insert(s_.src[*f]);
+  for (auto f = wo.begin; f != wo.end; ++f) out.insert(s_.dst[*f]);
+  in.erase(x);
+  out.erase(x);
+  std::vector<std::uint32_t> r;
+  if (b == Block::fan_oneway_out) std::set_difference(out.begin(), out.end(), in.begin(), in.end(), std::back_inserter(r));
+  else std::set_union(in.begin(), in.end(), out.begin(), out.end(), std::back_inserter(r));
+  sizes.push_back(r.size());
+}
+
 std::uint64_t Oracle::mine_one(Block b, const BlockParams& p, int k_max, std::uint64_t e, std::uint32_t* row,
                                bool gather_only, bool* aborted) const {
   const Trigger tr{std::uint32_t(e), s_.src[e], s_.dst[e], s_.ts[e], std::int64_t(s_.ts[e]) - p.window,
@@ -240,6 +258,8 @@ std::uint64_t Oracle::mine_one(Block b, const BlockParams& p, int k_max, std::ui
     case Block::sg: sg(tr, !gather_only, sizes); break;
     case Block::tcyc: tcyc(tr, k_max, sizes); break;
     case Block::sg_ord: sg_ordered(tr, sizes); break;
+    case Block::fan_oneway_out:
+    case Block::fan_total: fan_sets(b, tr, sizes); break;
     case Block::lcyc:
       if (!lcyc(tr, k_max, p.work_limit, sizes)) {
         if (aborted) *aborted = true;

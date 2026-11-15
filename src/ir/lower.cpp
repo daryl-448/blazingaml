@@ -406,8 +406,10 @@ class Lowerer {
                  "bound of a later scan, or the earliest-witness rule is not exact");
       // A witness lower bound is exact only on a scan whose result is an existence: exists, a
       // distinct for_all, a binding intersection. On an aggregate (count, a check intersection,
-      // for_all over every edge) the result would depend on which witness was taken.
+      // union or difference, for_all over every edge) the result would depend on which witness
+      // was taken.
       const bool aggregate = (st.op == Op::count) || (st.op == Op::intersection && !st.binding) ||
+                             st.op == Op::union_ || st.op == Op::difference ||
                              (st.op == Op::for_all && st.multiplicity == Mult::edges);
       if (!witness.empty() && aggregate)
         fail("E204", witness[0]->loc,
@@ -467,6 +469,18 @@ class Lowerer {
             out.element_var = st.element->s;
             local[out.element_var] = symbol(Sym::node, Ty::node, st.element->loc);
           }
+        }
+        break;
+      case Op::union_:
+      case Op::difference:  // SPEC v2 §8 S4: a check over two operands, like a check intersection
+        out.operands.push_back(operand(*st.src, st.edges[0], scope, "'src' of " + where));
+        out.operands.push_back(operand(*st.dst, st.edges[1], scope, "'dst' of " + where));
+        add_scanned(st.edges[0]);
+        add_scanned(st.edges[1]);
+        out.output_var = st.output->s;
+        if (st.element) {
+          out.element_var = st.element->s;
+          local[out.element_var] = symbol(Sym::node, Ty::node, st.element->loc);
         }
         break;
       case Op::exists:
