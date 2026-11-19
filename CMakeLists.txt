@@ -127,6 +127,7 @@ add_library(blz_core
   src/runtime/triggers.cpp
   src/runtime/registration.cpp
   src/runtime/cpu_backend.cpp
+  src/runtime/hybrid.cpp
   src/runtime/fuzz_diff.cpp
   src/runtime/metamorphic.cpp
   src/runtime/coverage.cpp

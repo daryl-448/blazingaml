@@ -64,7 +64,7 @@ GeneratedFile emit_registry(const std::vector<ir::Pattern>& patterns, const std:
            quoted(pinned ? dsl::format_loc(p.visibility_loc) : "") + ", " + quoted(p.span_param) + ", " + consts +
            ", &gen::" + p.name + "_cpu, &gen::" +
            p.name + "_work, BLZ_CUDA_FN(gen::" + p.name + "_cuda_bucket), BLZ_CUDA_FN(gen::" + p.name + "_cuda), " +
-           (p.plan.sweep ? "true" : "false") + "},");
+           (p.plan.sweep ? "true" : "false") + ", " + (p.plan.reach ? "true" : "false") + "},");
   }
   w.close("};");
   // blzc --disable applies to the whole library (SPEC v2 §7.2).

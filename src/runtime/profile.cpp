@@ -228,12 +228,15 @@ Profile parse_v2(const YAML::Node& root, const std::string& file, std::span<cons
 
 const char* visibility_name(Visibility v) { return v == Visibility::stream ? "stream" : "timestamp"; }
 const char* credit_name(Credit c) { return c == Credit::trigger ? "trigger" : "participants"; }
-const char* backend_name(Backend b) { return b == Backend::oracle ? "oracle" : b == Backend::cpu ? "cpu" : "cuda"; }
+const char* backend_name(Backend b) {
+  return b == Backend::oracle ? "oracle" : b == Backend::cpu ? "cpu" : b == Backend::cuda ? "cuda" : "hybrid";
+}
 Backend parse_backend(const std::string& s) {
   if (s == "oracle") return Backend::oracle;
   if (s == "cpu") return Backend::cpu;
   if (s == "cuda") return Backend::cuda;
-  throw std::runtime_error("unknown backend '" + s + "' (oracle, cpu, cuda)");
+  if (s == "hybrid") return Backend::hybrid;
+  throw std::runtime_error("unknown backend '" + s + "' (oracle, cpu, cuda, hybrid)");
 }
 
 const ProfileBlock* Profile::find(Block b) const {
@@ -360,9 +363,9 @@ Profile registry_profile(std::span<const PatternInfo> registry) {
 void check_profile_backend(const Profile& p, Backend b) {
   const std::string be = backend_name(b);
   if (p.credit == Credit::participants) {
-    if (b == Backend::cuda)
+    if (b == Backend::cuda || b == Backend::hybrid)
       fail_code(p.credit_loc, "E404",
-                "the cuda backend cannot run credit: participants (GFP batch mode runs on the oracle and cpu, "
+                "the " + be + " backend cannot run credit: participants (GFP batch mode runs on the oracle and cpu, "
                 "SPEC v2 §8 S1)");
     for (const ProfileBlock& pb : p.blocks)
       if (!is_v1_block(pb.block))

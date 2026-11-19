@@ -70,7 +70,7 @@ CpuBlockTiming mine_cpu(const GraphView& g, std::span<const PatternInfo* const> 
   if (sel.first > sel.last || sel.last > g.m) throw std::invalid_argument("mine_cpu: bad trigger range");
   for (std::uint32_t e : sel.eids)
     if (e < sel.first || e >= sel.last) throw std::invalid_argument("mine_cpu: sample eid outside its range");
-  const Params params{p.window, vis == Visibility::timestamp, p.work_limit};
+  const Params params{p.window, vis == Visibility::timestamp, p.work_limit, p.reach_prune};
   BlockOut bo{out, sel.first, p.bins.data(), std::uint32_t(p.bins.size()), 0,
               sel.sampled ? sel.eids.data() : nullptr, sel.sampled ? sel.eids.size() : 0, sel.last};
   CpuBlockTiming timing;

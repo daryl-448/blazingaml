@@ -1521,6 +1521,121 @@ As implemented (S5):
 - **AC:** bit-exact. E13 (1650S, and the A30 if it rides the campaign) reports hybrid against
   GPU-only and CPU-only, with T = max(CPU, GPU) + merge + every transfer.
 
+As implemented (S6):
+
+- **Pruning** (D-43).
+  - The planner (`src/ir/plan.cpp`, `chain_target`) marks a pattern for pruning when it is a
+    chain. All of the following must hold:
+    - every level below the root binds through a `for_all` over an out-list, with no emit, no
+      latest witness and no work limit;
+    - level 1 scans the trigger's src or dst, and level k scans the node bound at level k − 1,
+      strictly after that level's edge;
+    - every scan is bounded before t and from below by the window;
+    - every check below the root is an `exists` probe of the level's node's out-list for the same
+      trigger node (the target, not the scanned one), after the hop and before t.
+
+    In the library this is tcyc alone (target U, hops = depth + 1 = K_MAX − 1). The plan comment
+    and `--dump-ir` record it, and `PatternInfo::cpu_reach` exposes it.
+  - `include/blz/reach.hpp` (`ReachScratch`, one per OpenMP thread) does the search. Per trigger,
+    it computes each node's latest departure time towards U:
+    - ld[U] = t, and ld[x] = the latest ts of an edge x → y with ts < ld[y];
+    - the edges searched lie in the window's [lo, t − 1] and are visible to the trigger (the
+      same `vis_t`/`vis_e` bounds as the scans);
+    - the search runs in `hops` label-correcting rounds over walks (nodes may repeat, self-loops
+      excluded). Round r finds every walk of r edges; a value raised earlier in the same round
+      may be read later in it, so some longer walks count too. That only keeps more bindings, and
+      the cost stays at `hops` rounds.
+
+    Every simple path is a walk, so the cut is sound.
+  - The generated CPU body (`<p>_trigger_reach`) applies it in two places. Below the root it
+    returns when V cannot depart at or after the first hop's lower bound. At each binding, it
+    skips node C bound at hop time h unless ld[C] > h. The checks and emits are unchanged.
+  - Pruning is CPU only and opt-in at run time (`BlockParams::reach_prune`, `blz mine
+    --reach-prune`). The default stays off, so every earlier timing reproduces. The CUDA kernels
+    never prune.
+- **Hybrid** (D-44), in `src/runtime/hybrid.{hpp,cpp}` (`mine_hybrid`).
+  - A GPU host thread calls `CudaMiner::mine_split`. On the device, it computes the block's first
+    pattern's work estimate for every trigger. The estimate is the same function the CPU's sorted
+    schedule and the GPU's light/heavy split use. The thread then partitions the triggers at H_cpu
+    and copies the CPU's list (ascending eids) to the host.
+  - Through a `std::promise`, it hands the list to the calling thread. It then mines the rest
+    (light/heavy at H as usual) and copies the rows back.
+  - The calling thread runs `mine_cpu` on the list: the sorted schedule (D-29), with pruning when
+    asked. It writes into a compact buffer.
+  - After both sides finish, the merge copies the CPU's rows over the GPU's rows for the same
+    triggers, which the GPU left zero. Every pattern of a block runs on the side its trigger went
+    to, so the rows are disjoint, and the result does not depend on timing.
+  - H_cpu = 0 sends everything to the CPU (no GPU work), and `all` sends everything to the GPU.
+  - A work-limit abort (D-39) on either side reports the smaller eid, as a single backend would.
+  - The CUDA events use blocking sync in the hybrid, so the waiting GPU thread does not take a
+    core from the OpenMP team.
+  - `CudaMiner::mine_subset` mines an explicit ascending list of eids and leaves every other row
+    zero. It is tested, but the hybrid does not use it: a host-side split cost ~60 ms on HI-Small,
+    against ~15 ms on the device.
+- **CLI** (§11): `blz mine --backend hybrid [--cpu-threshold n] [--reach-prune]` (default H_cpu 32,
+  CPU schedule sorted unless `--schedule` is given). The manifest
+  records the threshold, the pruning, and per block the split, CPU, GPU, merge and total times
+  with the trigger counts.
+  - `blz bench --backend hybrid --cpu-threshold a,b,... --prune off,on` times GPU-only, CPU-only
+    and the hybrid, and checks that every run's rows are equal.
+  - `blz fuzz-diff --backend hybrid --heavy ... --cpu-threshold ...` runs the hybrid against the
+    oracle. CPU fuzz-diff now runs each pruning-eligible block both ways (both schedules ×
+    pruning off and on).
+- **Tests.**
+  - `tests/unit/test_reach.cpp` (fast) covers:
+    - the search on a hand graph: hop bound, window, visibility, re-targeting;
+    - the planner: tcyc only, hops 9 (4 at K_MAX = 5); a non-strict hop order, or an emit on a
+      hop, is not planned;
+    - six hand-checked tcyc cases on the oracle and the CPU, both schedules, pruning off and on,
+      including a walk the simple path rejects and ties at the hop and at t;
+    - on 300 fuzz graphs, that the cut fires. Of 128,102 first-hop bindings, 75,168 are cut, some
+      with an edge to U that comes too early, and 29,611 of 51,352 triggers end at the root.
+  - `tests/unit/test_hybrid.cpp` (CUDA) covers:
+    - the hybrid against the oracle on 150 fuzz graphs, at H ∈ {0, all} × H_cpu ∈ {0, 4, all};
+    - the split against the host's work estimate, with every row written over a 0xdeadbeef fill;
+    - `mine_subset`'s rows and its argument checks.
+  - Slow: `fuzz_diff_hybrid_10k` (registry profile) and `fuzz_diff_hybrid_tsvis_10k`
+    (`sg_ordered_tsvis`).
+  - Mutation checks on fuzz graphs, each giving mismatching rows:
+
+    | Mutation | Mismatching rows |
+    |---|---:|
+    | search of 2 rounds | 81,592 |
+    | search of K_MAX − 2 rounds | 2, on 10,000 graphs, so the bound is tight |
+    | keep when ld > h + 1 | 853,810 |
+    | merge skipping every other CPU row | 80,245 |
+- **Outcome** (E13, `results/e13_hybrid_local.{json,md}`, `bench/e13.sh`, `bench/e13_report.py`):
+  - The 1650S with the Ryzen 5 3600 (12 OpenMP threads). HI-Small, block tcyc, every trigger. Each
+    cell is the median of 5 timed runs after a warm-up, at H ∈ {32, 128, 1024} ×
+    H_cpu ∈ {4, 8, …, 256, all} × pruning off and on.
+  - Every run's rows were equal, and each profile's hash equals the recorded one (AC-V2-0 for
+    v1_default, E12's A30 run for dg2_wc and dg2_wb).
+  - `blz mine --backend hybrid --reach-prune` on v1_default equals CUDA on all six blocks.
+  - The A30 was not used: S6 rode no campaign. The other runs on the shared desktop were idle
+    (only the bench itself loaded the CPU).
+
+    | profile | GPU-only (best H) | CPU-only, not pruned / pruned | hybrid, pruned (H, H_cpu) | vs GPU-only | vs CPU-only | hybrid, not pruned |
+    |---|---:|---:|---:|---:|---:|---:|
+    | v1_default (24 h) | 259 ms (128) | 379 / 341 ms | 120 ms (1024, 8) | 2.2× | 2.8× | 224 ms |
+    | dg2_wc (89 h) | 669 ms (1024) | 910 / 574 ms | 140 ms (1024, 16) | 4.8× | 4.1× | 653 ms |
+    | dg2_wb (20 d) | 1.65 s (1024) | 2.04 / 1.14 s | 198 ms (32, 32) | 8.3× | 5.7× | 1.58 s |
+
+  - The gain needs both halves. Without pruning, the hybrid barely beats GPU-only: the heavy
+    triggers dominate the CPU too, so its best is H_cpu ≥ 256, with about 2,900 triggers on the
+    CPU.
+  - With pruning, the CPU takes 6–10 % of the 5.08 M triggers: 309 K at 24 h, 488 K at W-C and
+    370 K at 20 days. The two sides then finish together:
+    - v1_default: CPU 33 ms, GPU 82 ms;
+    - dg2_wb: CPU 114 ms, GPU 161 ms.
+  - The GPU threshold H matters little once the heavy triggers have left.
+  - Fixed costs inside T, every profile: graph upload ~32 ms, split ~15 ms (on the GPU), D2H
+    14 ms, merge ≤ 7 ms.
+  - Pruning alone gives 1.1× (24 h), 1.6× (W-C) and 1.8× (20 d) on the CPU. It gains more on the
+    hybrid's CPU side, which holds the long-window triggers it cuts best.
+  - Default H_cpu (D-44's rule, pruning on at H = 32) is **32**: summed T over the three profiles
+    is 496 ms, against 612 ms at 16 and 585 ms at 64. Each profile's best (retuning both
+    thresholds) is at most 17 % below it (dg2_wc: 140 ms against 168 ms at H = H_cpu = 32).
+
 ### S7 — output packing and multi-pattern fusion
 
 - **Packing:** per block, D2H as u8 or u16 with a saturation flag. Any overflow re-copies the block
@@ -1611,6 +1726,10 @@ v1's E0–E5 stand. E6 becomes R8 (validation) and E8's sensitivity table (test)
   CPU and CUDA, and gs ≤ fan_out and long chains on fuzz graphs); `min` and `witness: latest` in
   `test_dsl_expr.cpp` and `test_dsl_lower.cpp`; nine invalid-spec cases; the fuzz parity and
   visibility invariance through the registry profile; slow: `fuzz_diff_typologies_{cpu,cuda}_10k`.
+- **S6:** `tests/unit/test_reach.cpp` (the search, the planner's chain rule, hand-checked tcyc rows
+  with and without pruning, and the cut's rate on fuzz graphs); `tests/unit/test_hybrid.cpp` (CUDA:
+  the hybrid against the oracle, the split, `mine_subset`); CPU fuzz-diff runs pruning-eligible
+  blocks both ways; slow: `fuzz_diff_hybrid_10k` and `fuzz_diff_hybrid_tsvis_10k`.
 
 ---
 
@@ -1654,6 +1773,10 @@ As implemented (S2): `blz vstats`, `blz fuzz --vstats` and `tools/gfp/vstats_vs_
 
 As implemented (S3): `blz mine --work-limit`, `blz fuzz-diff --work-limit`, `blz fuzz --lcyc` and
 `tools/gfp/lcyc_vs_gfp.py` (§8 S3).
+
+As implemented (S6): `blz mine --backend hybrid [--cpu-threshold n] [--reach-prune]` (`--reach-prune`
+also on `--backend cpu`), `blz bench --backend hybrid --cpu-threshold a,b,... --prune off,on`, and
+`blz fuzz-diff --backend hybrid --cpu-threshold a,b,...` (§8 S6).
 
 As implemented (P9): `blz coverage --graph g [--gt results/gt_join.json] --profile p --features
 <dir> [--pred <u8[m] npy>] [--eligibility <coverage_gfp.json>] --out <json>`. It checks the
@@ -2040,7 +2163,9 @@ Status: the user pulled S1–S3 forward under DG-3 on 2026-11-14. S1 is done (§
 is done with D-37's deviation (§8 S2 addendum). S3 is done with D-38's tie deviation and D-39's work
 limit (§8 S3 addendum). DG-3 is resolved (P8). On 2026-11-15 the user asked for S4, which is done
 with D-40 (§8 S4 addendum). On 2026-11-19 the user asked for S5, which is done with D-41's scope
-and D-42's semantics (§8 S5 addendum). S6–S9 wait for their gates and the user.
+and D-42's semantics (§8 S5 addendum). On 2026-11-19 the user asked for S6, which is done with
+D-43's pruning and D-44's hybrid (§8 S6 addendum); E13 ran on the 1650S only. S7–S9 wait for their
+gates and the user.
 
 ---
 
@@ -2147,3 +2272,5 @@ are in `tests/golden/gfp_lcyc_probes.json`: 16 cases, 13 `rule` cases where they
 | D-40 | S4's `union` and `difference` are check stages only: `output` plus `len()`, with no binding form (`dst_var` is E101). A union element may have no edge on one side, and a difference element never has one on the probed side, so neither has a witness to export, and the two library features need only the size. Both ops have fixed sides: a difference is not symmetric, and a union's two scans each read their whole window anyway. A runtime choice of which side a union probes would only save probes. |
 | D-41 | S5's scope. The gate (§8) admits RANDOM, which no block of the frozen recipe sees, and STACK, which only tcyc sees (33 %, mostly 2-cycles), an exception to the gate's literal "no block"; both are temporal chains, so S5 adds a chain spec, tchain. GATHER-SCATTER fails the gate's first half (92 % eligible, mostly through fan and degree); the user chose to build the §8 draft, gs, anyway. BIPARTITE stays out: every attempt is a matching, so no pattern of two or more edges sees it. A chain of more than two edges needs each hop bounded above by the next hop's time, which v1's witness rule forbids (E204), so the DSL gains `witness: latest` with the mirror rule (a latest witness may only bound from above), and `min()` in `iexpr` for gs. |
 | D-42 | S5's semantics. gs's B includes W, unlike the draft (which excluded x and w from both sides): the trigger is itself a scatter edge, and B is then fan_out's set, so gs ≤ fan_out. A excludes W, as the draft says, and is cut at t (strictly earlier sources); B is not ordered against A. gs has fan's open lower bound. tchain counts one instance per node sequence (all nodes distinct, V included, so never a cycle), each hop strictly earlier than the next, with tcyc's closed lower bound and bins; like tcyc, its rows do not depend on the visibility. |
+| D-43 | S6's reachability pruning. The planner marks chain patterns only (§8 S6 addendum), and in the library that is tcyc alone. The search runs over walks, not simple paths, in depth + 1 = K_MAX − 1 rounds, each of which finds at least every walk one edge longer: sound for every binding, and one round fewer already gives wrong rows (the mutation check). Pruning is CPU only and opt-in at run time (`reach_prune`, default off), so every earlier timing and snapshot stays as it was. The CUDA kernels do not prune: a per-trigger search does not fit the light kernel's one-thread-per-trigger budget, and in the hybrid the heavy triggers that gain from it go to the CPU. |
+| D-44 | S6's hybrid. The split is computed on the GPU, from the block's first pattern's work estimate, which is the same estimate the sorted schedule and the light/heavy split use. Every pattern of the block runs on the side of its trigger, so the rows are disjoint and the merge is a copy. The CPU side runs the sorted schedule, and E13 times it with pruning. T counts the graph upload, the split and its copy, both sides, and the merge. The default H_cpu of `blz mine --backend hybrid` follows E13's pre-registered rule: the smallest summed median T with pruning on, at H = 32, over v1_default, dg2_wc and dg2_wb. |

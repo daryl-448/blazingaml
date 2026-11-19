@@ -106,6 +106,7 @@ bool meta_test_applies(MetaTest t, const Profile& prof, [[maybe_unused]] Backend
 MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0, std::uint64_t s1,
                               std::span<const std::uint32_t> bins, std::span<const std::uint32_t> thresholds) {
   check_profile_backend(prof, be);
+  if (be == Backend::hybrid) throw std::invalid_argument("metamorphic: the hybrid backend is not supported");
   // The relations are about stream and timestamp visibility; batch mode is checked by fuzz-diff
   // against the batch oracle and by tools/gfp/fuzz_vs_gfp.py against GFP.
   if (prof.batch) throw std::invalid_argument("metamorphic: GFP batch mode profiles are not supported (SPEC v2 §8 S1)");

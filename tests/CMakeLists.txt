@@ -29,12 +29,13 @@ add_executable(blz_unit_tests
   unit/test_metamorphic.cpp
   unit/test_gt_join.cpp
   unit/test_coverage.cpp
-  unit/test_sweep.cpp)
+  unit/test_sweep.cpp
+  unit/test_reach.cpp)
 if(BLZ_WITH_XGBOOST)
   target_sources(blz_unit_tests PRIVATE unit/test_xgb.cpp)
 endif()
 if(BLZ_ENABLE_CUDA)
-  target_sources(blz_unit_tests PRIVATE unit/test_cuda_backend.cpp)
+  target_sources(blz_unit_tests PRIVATE unit/test_cuda_backend.cpp unit/test_hybrid.cpp)
 endif()
 target_link_libraries(blz_unit_tests PRIVATE blz_core blz_codegen Catch2::Catch2WithMain)
 # The vertex-statistics reference must round as vstats.cpp does (SPEC v2 §8 S2).
@@ -76,6 +77,14 @@ if(BLZ_ENABLE_CUDA)
   # The same for CUDA, with every trigger on the heavy kernel, then mixed, then on the light one.
   add_test(NAME fuzz_diff_cuda_10k COMMAND blz fuzz-diff --backend cuda --seeds 0:10000)
   set_tests_properties(fuzz_diff_cuda_10k PROPERTIES LABELS slow)
+  # SPEC v2 §8 S6: the hybrid (heavy triggers on the CPU, pruned, the light ones on the GPU), every
+  # pair of GPU thresholds 0, 4, all and CPU thresholds 0, 4, all, under both visibilities.
+  add_test(NAME fuzz_diff_hybrid_10k COMMAND blz fuzz-diff --backend hybrid --seeds 0:10000)
+  add_test(NAME fuzz_diff_hybrid_tsvis_10k COMMAND blz fuzz-diff --backend hybrid --seeds 0:10000
+    --profile ${PROJECT_SOURCE_DIR}/configs/profiles/sg_ordered_tsvis.yaml)
+  # Nine runs per graph on tiny graphs: two OpenMP threads spin less than twelve (about 8 min each).
+  set_tests_properties(fuzz_diff_hybrid_10k fuzz_diff_hybrid_tsvis_10k PROPERTIES LABELS slow
+    ENVIRONMENT OMP_NUM_THREADS=2 TIMEOUT 3000)
 endif()
 
 # SPEC v2 §3.6: the DG-2 ledger's budget, stop rule and entry checks.

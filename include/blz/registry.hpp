@@ -125,6 +125,7 @@ struct PatternInfo {
   CudaBucketFn cuda_bucket;  // null in a build without CUDA
   CudaFn cuda;               // null in a build without CUDA
   bool cpu_sweep;            // the CPU driver is the sweep plan (SPEC v2 §7.1)
+  bool cpu_reach;            // the CPU driver prunes by reachability when Params::reach_prune (SPEC v2 §8 S6)
 };
 
 // Every pattern blzc compiled into this build, in the order of its spec arguments.

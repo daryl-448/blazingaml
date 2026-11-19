@@ -11,6 +11,7 @@
 #include "oracle/oracle.hpp"
 #include "runtime/batch.hpp"
 #include "runtime/cuda_backend.hpp"
+#include "runtime/hybrid.hpp"
 
 namespace blz {
 
@@ -88,10 +89,15 @@ FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, 
       }
       const std::uint64_t stop = stop_eid([&] { oracle.mine(b, p, k_max, 0, m, want.data()); });
       limited = limited || stop != UINT64_MAX;
-      for (Schedule s : {Schedule::dynamic, Schedule::sorted}) {
+      // A block with a pattern planned for reachability pruning (SPEC v2 §8 S6) runs both ways.
+      const bool reach = std::any_of(pb.patterns.begin(), pb.patterns.end(), [](const PatternInfo* pi) { return pi->cpu_reach; });
+      for (int run = 0; run < (reach ? 4 : 2); ++run) {
+        const Schedule s = run % 2 == 0 ? Schedule::dynamic : Schedule::sorted;
+        BlockParams q = p;
+        q.reach_prune = run >= 2;
         std::vector<std::uint32_t> got(m * nb, 0);
         const std::uint64_t got_stop =
-            stop_eid([&] { mine_cpu(index.view(), pb.patterns, p, prof.visibility, all, s, got.data()); });
+            stop_eid([&] { mine_cpu(index.view(), pb.patterns, q, prof.visibility, all, s, got.data()); });
         if (stop != UINT64_MAX || got_stop != UINT64_MAX) {
           bad[int(b)] += got_stop != stop;
           continue;
@@ -120,11 +126,21 @@ FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, 
 
 FuzzDiff fuzz_diff_cuda(const Profile& prof, std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
                         std::span<const std::uint32_t> thresholds, std::uint64_t work_limit) {
+  return fuzz_diff_hybrid(prof, s0, s1, bins, thresholds, {}, work_limit);
+}
+
+FuzzDiff fuzz_diff_hybrid(const Profile& prof, std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
+                          std::span<const std::uint32_t> thresholds, std::span<const std::uint32_t> cpu_thresholds,
+                          std::uint64_t work_limit) {
   const int k_max = prof.k_max;
   std::array<std::vector<std::uint32_t>, kAllBlocks.size()> block_bins;
   for (const ProfileBlock& pb : prof.blocks) block_bins[int(pb.block)] = fuzz_bins(pb, bins);
   FuzzDiff res;
-  CudaMiner miner;
+  const bool hybrid = !cpu_thresholds.empty();
+  CudaMiner miner(hybrid);
+  // The plain CUDA runs have one pass per GPU threshold; the hybrid one per (GPU, CPU) pair.
+  const std::uint32_t plain[] = {0};
+  const std::span<const std::uint32_t> splits = hybrid ? cpu_thresholds : std::span<const std::uint32_t>(plain);
   // Batches: the oracle and the host index in parallel over seeds, then the GPU in seed order.
   struct Item {
     FuzzGraph fg;
@@ -158,29 +174,36 @@ FuzzDiff fuzz_diff_cuda(const Profile& prof, std::uint64_t s0, std::uint64_t s1,
       const DeviceGraph dg(it.index->view());
       bool any = false, limited = false;
       for (const ProfileBlock& pb : prof.blocks)
-        for (std::uint32_t h : thresholds) {
-          const Block b = pb.block;
-          BlockParams p{it.fg.window, block_bins[int(b)]};
-          p.work_limit = work_limit;
-          const std::size_t nb = p.bins.size();
-          std::vector<std::uint32_t> got(m * nb);
-          const std::uint64_t got_stop =
-              stop_eid([&] { miner.mine(dg, pb.patterns, p, prof.visibility, 0, m, h, got.data()); });
-          if (it.stop[int(b)] != UINT64_MAX || got_stop != UINT64_MAX) {
-            limited = limited || it.stop[int(b)] != UINT64_MAX;
-            if (got_stop != it.stop[int(b)]) {
-              ++res.mismatched_rows[int(b)];
-              any = true;
+        for (std::uint32_t h : thresholds)
+          for (std::uint32_t hc : splits) {
+            const Block b = pb.block;
+            BlockParams p{it.fg.window, block_bins[int(b)]};
+            p.work_limit = work_limit;
+            p.reach_prune = hybrid;  // the hybrid's CPU side prunes where it can (SPEC v2 §8 S6)
+            const std::size_t nb = p.bins.size();
+            std::vector<std::uint32_t> got(m * nb);
+            const std::uint64_t got_stop = stop_eid([&] {
+              if (hybrid)
+                mine_hybrid(it.index->view(), dg, miner, pb.patterns, p, prof.visibility, 0, m, hc, h, Schedule::sorted,
+                            got.data());
+              else
+                miner.mine(dg, pb.patterns, p, prof.visibility, 0, m, h, got.data());
+            });
+            if (it.stop[int(b)] != UINT64_MAX || got_stop != UINT64_MAX) {
+              limited = limited || it.stop[int(b)] != UINT64_MAX;
+              if (got_stop != it.stop[int(b)]) {
+                ++res.mismatched_rows[int(b)];
+                any = true;
+              }
+              continue;
             }
-            continue;
+            const auto& want = it.want[int(b)];
+            for (std::uint64_t e = 0; e < m; ++e)
+              if (!std::equal(got.begin() + e * nb, got.begin() + (e + 1) * nb, want.begin() + e * nb)) {
+                ++res.mismatched_rows[int(b)];
+                any = true;
+              }
           }
-          const auto& want = it.want[int(b)];
-          for (std::uint64_t e = 0; e < m; ++e)
-            if (!std::equal(got.begin() + e * nb, got.begin() + (e + 1) * nb, want.begin() + e * nb)) {
-              ++res.mismatched_rows[int(b)];
-              any = true;
-            }
-        }
       ++res.graphs;
       res.edges += m;
       if (any) res.bad_seeds.push_back(b0 + i);

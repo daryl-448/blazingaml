@@ -11,7 +11,8 @@ namespace blz {
 
 // AC1 on fuzz graphs (SPEC §13.3): the generated CPU backend against the oracle, every row of
 // every block, on the graphs of seeds [s0, s1). Each graph uses its own window for every block,
-// `bins`, and the compiled K_MAX for the oracle's tcyc cap. Both schedules are checked.
+// `bins`, and the compiled K_MAX for the oracle's tcyc cap. Both schedules are checked, and for a
+// block with a pattern planned for reachability pruning (tcyc, SPEC v2 §8 S6) both again with it.
 // The profile forms (SPEC v2 §10) take the blocks, their patterns and k_max from `prof`; the
 // windows still come from each graph, and the bins from `bins`, or from each profile block when
 // `bins` is empty. The forms without a profile use registry_profile(): every registered block (v1's
@@ -39,5 +40,13 @@ FuzzDiff fuzz_diff_cuda(std::uint64_t s0, std::uint64_t s1, std::span<const std:
                         std::span<const std::uint32_t> thresholds);
 FuzzDiff fuzz_diff_cuda(const Profile& prof, std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
                         std::span<const std::uint32_t> thresholds, std::uint64_t work_limit = kDefaultWorkLimit);
+
+// AC1 for the hybrid (SPEC v2 §8 S6): mine_hybrid with reachability pruning on its CPU side and
+// the sorted schedule, once per pair of a GPU light/heavy threshold in `thresholds` and a CPU
+// threshold in `cpu_thresholds` (0: every trigger on the CPU, kAllGpu: every trigger on the GPU).
+// With no CPU threshold it is fuzz_diff_cuda.
+FuzzDiff fuzz_diff_hybrid(const Profile& prof, std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
+                          std::span<const std::uint32_t> thresholds, std::span<const std::uint32_t> cpu_thresholds,
+                          std::uint64_t work_limit = kDefaultWorkLimit);
 
 }  // namespace blz

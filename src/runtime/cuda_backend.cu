@@ -1,6 +1,7 @@
 // The CUDA backend's host side (SPEC §7.5). See cuda_backend.hpp.
 #include "runtime/cuda_backend.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <cstring>
@@ -56,6 +57,13 @@ struct DeviceBuffer {
 __global__ void iota_kernel(std::uint32_t* ids, std::uint64_t first, std::uint32_t count) {
   const std::uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < count) ids[i] = std::uint32_t(first + i);
+}
+
+// mine_subset: the heavy flag of each listed trigger, from the flags of the whole range.
+__global__ void gather_flags_kernel(const std::uint32_t* ids, std::uint32_t count, std::uint64_t first,
+                                    const std::uint8_t* all, std::uint8_t* flags) {
+  const std::uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < count) flags[i] = all[ids[i] - first];
 }
 
 // The largest bin count the heavy kernel's shared histograms allow (48 KB per block).
@@ -182,15 +190,16 @@ double DeviceGraph::upload_seconds() const { return impl_->upload_s; }
 
 struct CudaMiner::Impl {
   cudaStream_t stream = nullptr;
-  enum { kStart, kBucket, kLight, kHeavy, kDone, kD2h0, kD2h1, kEvents };
+  enum { kStart, kBucket, kPart, kLight, kHeavy, kDone, kD2h0, kD2h1, kH2d0, kH2d1, kSplit0, kSplit1, kEvents };
   cudaEvent_t ev[kEvents] = {};
   // counters: saturated (u64), heavy count (int), aborted eid (u64, SPEC v2 §8 S3)
-  DeviceBuffer out, ids, flags, part, temp, bins, counters;
+  DeviceBuffer out, ids, flags, flags_all, part, temp, bins, counters;
   std::uint64_t* host_counters = nullptr;  // pinned: the same three
 
-  Impl() {
+  explicit Impl(bool blocking_sync) {
     BLZ_CUDA(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
-    for (cudaEvent_t& e : ev) BLZ_CUDA(cudaEventCreate(&e));
+    for (cudaEvent_t& e : ev)
+      BLZ_CUDA(cudaEventCreateWithFlags(&e, blocking_sync ? cudaEventBlockingSync : cudaEventDefault));
     BLZ_CUDA(cudaMallocHost(reinterpret_cast<void**>(&host_counters), 3 * sizeof(std::uint64_t)));
     counters.ensure(3 * sizeof(std::uint64_t));
   }
@@ -202,7 +211,7 @@ struct CudaMiner::Impl {
   }
 };
 
-CudaMiner::CudaMiner() : impl_(std::make_unique<Impl>()) {}
+CudaMiner::CudaMiner(bool blocking_sync) : impl_(std::make_unique<Impl>(blocking_sync)) {}
 CudaMiner::~CudaMiner() = default;
 
 CudaBlockTiming CudaMiner::mine(const DeviceGraph& g, Block b, const BlockParams& p, std::uint64_t first,
@@ -215,6 +224,31 @@ CudaBlockTiming CudaMiner::mine(const DeviceGraph& g, Block b, const BlockParams
 CudaBlockTiming CudaMiner::mine(const DeviceGraph& g, std::span<const PatternInfo* const> pats, const BlockParams& p,
                                 Visibility vis, std::uint64_t first, std::uint64_t last, std::uint32_t heavy_threshold,
                                 std::uint32_t* host_out) {
+  return run(g, pats, p, vis, first, last, nullptr, nullptr, heavy_threshold, host_out);
+}
+
+CudaBlockTiming CudaMiner::mine_subset(const DeviceGraph& g, std::span<const PatternInfo* const> pats,
+                                       const BlockParams& p, Visibility vis, std::uint64_t first, std::uint64_t last,
+                                       std::span<const std::uint32_t> subset, std::uint32_t heavy_threshold,
+                                       std::uint32_t* host_out) {
+  for (std::size_t i = 0; i < subset.size(); ++i)
+    if (subset[i] < first || subset[i] >= last || (i > 0 && subset[i] <= subset[i - 1]))
+      throw std::invalid_argument("CudaMiner::mine_subset: the subset must be ascending eids in [first, last)");
+  return run(g, pats, p, vis, first, last, &subset, nullptr, heavy_threshold, host_out);
+}
+
+CudaBlockTiming CudaMiner::mine_split(const DeviceGraph& g, std::span<const PatternInfo* const> pats,
+                                      const BlockParams& p, Visibility vis, std::uint64_t first, std::uint64_t last,
+                                      std::uint32_t cpu_threshold, std::uint32_t heavy_threshold,
+                                      std::uint32_t* host_out, const CpuListFn& on_cpu_list) {
+  const Split split{cpu_threshold, &on_cpu_list};
+  return run(g, pats, p, vis, first, last, nullptr, &split, heavy_threshold, host_out);
+}
+
+CudaBlockTiming CudaMiner::run(const DeviceGraph& g, std::span<const PatternInfo* const> pats, const BlockParams& p,
+                               Visibility vis, std::uint64_t first, std::uint64_t last,
+                               const std::span<const std::uint32_t>* subset, const Split* split,
+                               std::uint32_t heavy_threshold, std::uint32_t* host_out) {
   const auto t0 = Clock::now();
   Impl& s = *impl_;
   const GraphView& dg = g.view();
@@ -226,30 +260,75 @@ CudaBlockTiming CudaMiner::mine(const DeviceGraph& g, std::span<const PatternInf
   if (nbins == 0 || nbins > kMaxBins)
     throw std::invalid_argument("CudaMiner::mine: the CUDA backend supports 1.." + std::to_string(kMaxBins) + " bins");
   CudaBlockTiming tm;
-  const std::uint32_t count = std::uint32_t(last - first);
-  const std::size_t out_bytes = std::size_t(count) * nbins * sizeof(std::uint32_t);
-  if (count == 0) return tm;
+  const std::uint32_t rows = std::uint32_t(last - first);
+  // The triggers mined: every row's, the subset's, or (split) the ones the CPU does not take.
+  std::uint32_t count = subset ? std::uint32_t(subset->size()) : rows;
+  const bool listed = subset || split;  // the mined triggers are a list, not the whole range
+  const std::size_t out_bytes = std::size_t(rows) * nbins * sizeof(std::uint32_t);
+  if (rows == 0) {
+    if (split) (*split->on_cpu_list)({});
+    return tm;
+  }
 
   s.out.ensure(out_bytes);
-  s.ids.ensure(count * sizeof(std::uint32_t));
-  s.flags.ensure(count);
-  s.part.ensure(count * sizeof(std::uint32_t));
+  s.ids.ensure(std::max<std::size_t>(count, 1) * sizeof(std::uint32_t));
+  s.flags.ensure(std::max<std::uint32_t>(count, 1));
+  if (listed) s.flags_all.ensure(rows);
+  s.part.ensure(std::max<std::size_t>(count, 1) * sizeof(std::uint32_t));
   s.bins.ensure(nbins * sizeof(std::uint32_t));
   std::size_t temp_bytes = 0;
   int* d_heavy = reinterpret_cast<int*>(s.counters.as<std::uint64_t>() + 1);
   BLZ_CUDA(cub::DevicePartition::Flagged(nullptr, temp_bytes, s.ids.as<std::uint32_t>(), s.flags.as<std::uint8_t>(),
                                          s.part.as<std::uint32_t>(), d_heavy, int(count), s.stream));
-  s.temp.ensure(temp_bytes);
+  s.temp.ensure(std::max<std::size_t>(temp_bytes, 1));
 
   const cudaStream_t st = s.stream;
   const Params params{p.window, vis == Visibility::timestamp, p.work_limit};
   BLZ_CUDA(cudaMemcpyAsync(s.bins.ptr, p.bins.data(), nbins * sizeof(std::uint32_t), cudaMemcpyHostToDevice, st));
+  if (subset && count > 0) {
+    BLZ_CUDA(cudaEventRecord(s.ev[Impl::kH2d0], st));
+    BLZ_CUDA(cudaMemcpyAsync(s.ids.ptr, subset->data(), count * sizeof(std::uint32_t), cudaMemcpyHostToDevice, st));
+    BLZ_CUDA(cudaEventRecord(s.ev[Impl::kH2d1], st));
+  }
+  if (split) {
+    // The CPU's triggers first, in eid order (the partition's selected side), to the host; the
+    // others, in reverse eid order, become this run's list.
+    BLZ_CUDA(cudaEventRecord(s.ev[Impl::kSplit0], st));
+    iota_kernel<<<(rows + 255) / 256, 256, 0, st>>>(s.ids.as<std::uint32_t>(), first, rows);
+    BLZ_CUDA(cudaGetLastError());
+    pats.front()->cuda_bucket(dg, Params{p.window, vis == Visibility::timestamp, p.work_limit}, first, rows,
+                              split->cpu_threshold, s.flags.as<std::uint8_t>(), st);
+    BLZ_CUDA(cudaGetLastError());
+    BLZ_CUDA(cub::DevicePartition::Flagged(s.temp.ptr, temp_bytes, s.ids.as<std::uint32_t>(), s.flags.as<std::uint8_t>(),
+                                           s.part.as<std::uint32_t>(), d_heavy, int(rows), st));
+    BLZ_CUDA(cudaMemcpyAsync(s.host_counters + 1, d_heavy, sizeof(int), cudaMemcpyDeviceToHost, st));
+    BLZ_CUDA(cudaEventRecord(s.ev[Impl::kPart], st));
+    BLZ_CUDA(cudaEventSynchronize(s.ev[Impl::kPart]));
+    int ncpu = 0;
+    std::memcpy(&ncpu, s.host_counters + 1, sizeof(int));
+    if (ncpu < 0 || std::uint32_t(ncpu) > rows) throw std::runtime_error("CUDA: bad partition count");
+    std::vector<std::uint32_t> cpu_list(static_cast<std::size_t>(ncpu));
+    if (ncpu > 0)
+      BLZ_CUDA(cudaMemcpyAsync(cpu_list.data(), s.part.ptr, std::size_t(ncpu) * sizeof(std::uint32_t),
+                               cudaMemcpyDeviceToHost, st));
+    count = rows - std::uint32_t(ncpu);
+    if (count > 0)
+      BLZ_CUDA(cudaMemcpyAsync(s.ids.ptr, s.part.as<std::uint32_t>() + ncpu, std::size_t(count) * sizeof(std::uint32_t),
+                               cudaMemcpyDeviceToDevice, st));
+    BLZ_CUDA(cudaEventRecord(s.ev[Impl::kSplit1], st));
+    BLZ_CUDA(cudaEventSynchronize(s.ev[Impl::kSplit1]));
+    tm.split_seconds = elapsed(s.ev[Impl::kSplit0], s.ev[Impl::kSplit1]);
+    tm.cpu_triggers = std::uint64_t(ncpu);
+    (*split->on_cpu_list)(std::move(cpu_list));
+  }
   BLZ_CUDA(cudaEventRecord(s.ev[Impl::kStart], st));
   BLZ_CUDA(cudaMemsetAsync(s.out.ptr, 0, out_bytes, st));
   BLZ_CUDA(cudaMemsetAsync(s.counters.ptr, 0, sizeof(std::uint64_t), st));
   BLZ_CUDA(cudaMemsetAsync(s.counters.as<std::uint64_t>() + 2, 0xff, sizeof(std::uint64_t), st));  // no abort
-  iota_kernel<<<(count + 255) / 256, 256, 0, st>>>(s.ids.as<std::uint32_t>(), first, count);
-  BLZ_CUDA(cudaGetLastError());
+  if (!listed) {
+    iota_kernel<<<(count + 255) / 256, 256, 0, st>>>(s.ids.as<std::uint32_t>(), first, count);
+    BLZ_CUDA(cudaGetLastError());
+  }
 
   CudaRun run;
   run.out = s.out.as<std::uint32_t>();
@@ -266,19 +345,28 @@ CudaBlockTiming CudaMiner::mine(const DeviceGraph& g, std::span<const PatternInf
   // bucket..done interval; the host bookkeeping between patterns is not in it.
   double setup_seconds = 0;
   for (const PatternInfo* pi : pats) {
+    if (count == 0) break;  // an empty subset: the rows stay zero
     // Bucketing: work estimates -> flags -> heavy triggers first (in eid order), light after
     // them (in reverse eid order).
     BLZ_CUDA(cudaEventRecord(s.ev[Impl::kBucket], st));
     int heavy = heavy_threshold == 0 ? int(count) : 0;
     const std::uint32_t* list = s.ids.as<std::uint32_t>();
     if (!one_kernel) {
-      pi->cuda_bucket(dg, params, first, count, heavy_threshold, s.flags.as<std::uint8_t>(), st);
+      if (listed) {  // the whole range's flags, then the list's
+        pi->cuda_bucket(dg, params, first, rows, heavy_threshold, s.flags_all.as<std::uint8_t>(), st);
+        BLZ_CUDA(cudaGetLastError());
+        gather_flags_kernel<<<(count + 255) / 256, 256, 0, st>>>(s.ids.as<std::uint32_t>(), count, first,
+                                                                 s.flags_all.as<std::uint8_t>(), s.flags.as<std::uint8_t>());
+      } else {
+        pi->cuda_bucket(dg, params, first, count, heavy_threshold, s.flags.as<std::uint8_t>(), st);
+      }
       BLZ_CUDA(cudaGetLastError());
       BLZ_CUDA(cub::DevicePartition::Flagged(s.temp.ptr, temp_bytes, s.ids.as<std::uint32_t>(),
                                              s.flags.as<std::uint8_t>(), s.part.as<std::uint32_t>(), d_heavy,
                                              int(count), st));
       BLZ_CUDA(cudaMemcpyAsync(s.host_counters + 1, d_heavy, sizeof(int), cudaMemcpyDeviceToHost, st));
-      BLZ_CUDA(cudaStreamSynchronize(st));
+      BLZ_CUDA(cudaEventRecord(s.ev[Impl::kPart], st));
+      BLZ_CUDA(cudaEventSynchronize(s.ev[Impl::kPart]));
       std::memcpy(&heavy, s.host_counters + 1, sizeof(int));
       if (heavy < 0 || std::uint32_t(heavy) > count) throw std::runtime_error("CUDA: bad partition count");
       list = s.part.as<std::uint32_t>();
@@ -309,8 +397,10 @@ CudaBlockTiming CudaMiner::mine(const DeviceGraph& g, std::span<const PatternInf
   BLZ_CUDA(cudaMemcpyAsync(s.host_counters, s.counters.ptr, 3 * sizeof(std::uint64_t), cudaMemcpyDeviceToHost, st));
   BLZ_CUDA(cudaEventRecord(s.ev[Impl::kD2h1], st));
   BLZ_CUDA(cudaEventSynchronize(s.ev[Impl::kD2h1]));
+  if (count == 0) setup_seconds = elapsed(s.ev[Impl::kStart], s.ev[Impl::kD2h0]);
   tm.kernel_seconds = setup_seconds + tm.bucket_seconds + tm.light_seconds + tm.heavy_seconds;
   tm.d2h_seconds = elapsed(s.ev[Impl::kD2h0], s.ev[Impl::kD2h1]);
+  if (subset && count > 0) tm.h2d_seconds = elapsed(s.ev[Impl::kH2d0], s.ev[Impl::kH2d1]);
   tm.saturated = s.host_counters[0];
   if (s.host_counters[2] != UINT64_MAX)
     throw WorkLimitExceeded(std::string("cuda, block ") + pats.front()->block, s.host_counters[2], p.work_limit);

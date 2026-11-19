@@ -16,7 +16,7 @@ namespace {
 
 
 constexpr PatternInfo kPatterns[] = {
-  {"fan_out", "fan_out", "patterns/fan_out.yaml:4:8", "patterns/fan_out.yaml", "e7e7bf2d050b766bddb75dd845cbdda020ef551a668259579697c833d4a39dd2", "", "", "delta_fan", {}, &gen::fan_out_cpu, &gen::fan_out_work, BLZ_CUDA_FN(gen::fan_out_cuda_bucket), BLZ_CUDA_FN(gen::fan_out_cuda), false},
+  {"fan_out", "fan_out", "patterns/fan_out.yaml:4:8", "patterns/fan_out.yaml", "e7e7bf2d050b766bddb75dd845cbdda020ef551a668259579697c833d4a39dd2", "", "", "delta_fan", {}, &gen::fan_out_cpu, &gen::fan_out_work, BLZ_CUDA_FN(gen::fan_out_cuda_bucket), BLZ_CUDA_FN(gen::fan_out_cuda), false, false},
 };
 
 constexpr const char* kDisabled[] = {"sweep"};

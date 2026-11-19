@@ -185,6 +185,9 @@ struct Params {
   bool ts_visibility = false;  // false: stream visibility (v1); true: timestamp visibility
   // Bindings one trigger may make in a pattern compiled with `work_limit: true` (SPEC v2 §8 S3).
   std::uint64_t work_limit = UINT64_MAX;
+  // Reachability pruning (SPEC v2 §8 S6, D-43): the OpenMP driver of a pattern planned for it runs
+  // <pattern>_trigger_reach. The rows are the same either way; CUDA ignores it.
+  bool reach_prune = false;
 };
 
 // count_distinct / count_edges (SPEC §5.3): the number of distinct neighbours, or of edges, in

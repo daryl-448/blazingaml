@@ -17,6 +17,12 @@
 //     gate, no output used by another stage) runs on lane 0 only; otherwise every lane evaluates
 //     it, so its result and its gate are the same in every lane and need no broadcast.
 //
+// Reach mode (SPEC v2 §8 S6, D-43; host only, when Plan::reach) writes a second CPU body,
+// <pattern>_trigger_reach, that the driver runs when Params::reach_prune is set. The root runs
+// ReachScratch::search towards the plan's target and returns when the first scan's node cannot
+// depart in time; each binding stage then skips a node that cannot reach the target after its
+// hop. Checks and emits are unchanged, so the rows are the same.
+//
 // Plan::opts (blzc --disable, SPEC v2 §7.2) switches optimizations off for the E11 ablation; such
 // code is CPU-only (host containers), and warp mode never sees it. Plan::sweep (SPEC v2 §7.1)
 // replaces the OpenMP driver of a fan or degree pattern with the sweep over every node's list
@@ -110,9 +116,19 @@ class CpuEmitter {
       w.line();
       w.line("#include <atomic>");
     }
+    if (p_.plan.reach) {
+      w.line();
+      w.line("#include \"blz/reach.hpp\"");
+    }
     w.line();
     w.line("namespace blz::gen {");
     w.line();
+    if (p_.plan.reach) {
+      reach_ = true;
+      trigger_fn(w);
+      reach_ = false;
+      w.line();
+    }
     if (p_.work_limit) {
       w.line("// Each trigger writes only its own row. A trigger over the work limit (SPEC v2 §8 S3) stops");
       w.line("// the run: the error names the smallest aborted eid, whatever the schedule, so only triggers");
@@ -141,6 +157,23 @@ class CpuEmitter {
              "(const GraphView& g, const Params& p, std::span<const std::uint32_t> triggers, BlockOut& out, int chunk) {");
       w.line("const std::int64_t count = std::int64_t(triggers.size());");
       w.line("std::uint64_t saturated = 0;");
+      if (p_.plan.reach) {
+        w.open("if (p.reach_prune) {  // reach pruning (SPEC v2 §8 S6): one search scratch per thread");
+        w.line("#pragma omp parallel reduction(+ : saturated)");
+        w.open("{");
+        w.line("ReachScratch reach(g.n);");
+        w.line("#pragma omp for schedule(dynamic, chunk)");
+        w.open("for (std::int64_t i = 0; i < count; ++i) {");
+        w.line("const std::uint32_t e = triggers[std::size_t(i)];");
+        w.line("RowSink sink = out.sink(e);");
+        w.line(fn("trigger_reach") + "(g, p, e, sink, reach);");
+        w.line("saturated += sink.saturated;");
+        w.close();
+        w.close();
+        w.line("out.saturated += saturated;");
+        w.line("return;");
+        w.close();
+      }
       w.line("#pragma omp parallel for schedule(dynamic, chunk) reduction(+ : saturated)");
       w.open("for (std::int64_t i = 0; i < count; ++i) {");
       w.line("const std::uint32_t e = triggers[std::size_t(i)];");
@@ -684,6 +717,9 @@ class CpuEmitter {
       if (used(s.bind_var))
         w.line("const std::uint32_t " + node(s.bind_var) + " = " + L + ".nbr[" + j + "];");
       for (const Expr& f : s.filters) w.line("if (" + cx(f) + ") continue;");
+      if (reach_)
+        w.line("if (!reach.keep(" + L + ".nbr[" + j + "], " + L + ".ts[" + j + "])) continue;  // reach pruning: no walk to " +
+               p_.plan.reach_target + " departs after this hop");
       if (used(o.edge) && s.latest_witness)  // SPEC v2 §8 S5: the neighbour's last edge in the same range
         w.line("const std::int64_t " + witness(o.edge) + " = " + pcsr(o.dir) + ".pair_latest(" + node(o.node) + ", " +
                L + ".nbr[" + j + "], " + lo_of(o.lo_incl) + ", " + hi_of(o.hi_incl) +
@@ -699,6 +735,16 @@ class CpuEmitter {
 
   void level(Writer& w, std::size_t i) {
     const Level& lv = p_.levels[i];
+    if (reach_ && i == 1) {
+      // Level 1 is the root's last part, so a trigger whose first scan's node cannot reach the
+      // target returns here (D-43).
+      const Operand& o = lv.binding->operands[0];
+      w.line("// reach pruning (SPEC v2 §8 S6, D-43): latest departure times towards " + p_.plan.reach_target +
+             ", at most " + std::to_string(p_.plan.reach_hops) + " hops");
+      w.line("reach.search(g.in, " + node(p_.plan.reach_target) + ", t, " + cx(p_.plan.reach_lo) +
+             ", min_ts(t - 1, vis_t), vis_e, " + std::to_string(p_.plan.reach_hops) + ");");
+      w.line("if (!reach.keep(" + node(o.node) + ", " + lo_of(o.lo_incl) + " - 1)) return;");
+    }
     if (lv.binding) binding(w, *lv.binding, warp_ && lv.binding->id == p_.plan.split_stage);
     for (const Stage& s : lv.checks) {
       if (warp_ && i == 0) root_check_warp(w, s);
@@ -716,6 +762,11 @@ class CpuEmitter {
       w.line("template <class Sink>");
       w.open("__device__ inline void " + fn("trigger_warp") +
              "(const GraphView& g, const Params& p, std::uint32_t e, std::uint32_t lane, " + sink + ") {");
+    } else if (reach_) {
+      w.line("// " + fn("trigger") + " with reachability pruning (SPEC v2 §8 S6, D-43): the same rows, CPU only.");
+      w.line("template <class Sink>");
+      w.open("inline void " + fn("trigger_reach") + "(const GraphView& g, const Params& p, std::uint32_t e, " + sink +
+             ", ReachScratch& reach) {");
     } else {
       w.line("// One trigger's instances (SPEC §4.1): every emit adds to row e of block " + p_.block + ".");
       w.line("template <class Sink>");
@@ -772,6 +823,7 @@ class CpuEmitter {
   std::set<std::string> used_;
   bool has_emit_ = false;
   bool warp_ = false;
+  bool reach_ = false;  // writing <pattern>_trigger_reach (SPEC v2 §8 S6)
 };
 
 }  // namespace

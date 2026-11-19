@@ -124,6 +124,16 @@ struct Plan {
   // over the trigger's src.out or dst.in. The OpenMP driver walks every node's list once.
   bool sweep = false;
   std::string sweep_stage;
+  // Reachability pruning (SPEC v2 §8 S6, D-43), planned for a chain pattern: every emit below the
+  // root needs a temporal walk from the bound node to `reach_target` with strictly increasing
+  // times, all in the window and before t. The CPU driver then runs <pattern>_trigger_reach when
+  // Params::reach_prune is set: one backward search per trigger from the target (at most
+  // reach_hops hops, edges in [reach_lo, t - 1]) gives each node its latest departure time, and a
+  // binding whose node cannot depart after its hop's time is cut. CUDA never prunes.
+  bool reach = false;
+  std::string reach_target;    // the node every closing probe looks for (a trigger node)
+  int reach_hops = 0;          // depth + 1: the first scan's node, then one hop per binding level
+  Expr reach_lo;               // the window's inclusive lower bound
   Opts opts;                   // the optimizations this plan was made with
   std::vector<std::string> notes;
 };

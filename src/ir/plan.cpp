@@ -1,6 +1,7 @@
 // Planner (SPEC §7.3). Every decision is also recorded as a note, which the backends emit as a
 // comment in the generated code.
 #include <algorithm>
+#include <optional>
 #include <set>
 #include <stdexcept>
 
@@ -234,6 +235,67 @@ const Stage* sweep_stage(const Pattern& p) {
   return &s;
 }
 
+// Reachability pruning (SPEC v2 §8 S6, D-43). Bound shapes, after normalization to inclusive form:
+// `t - c` with c >= 1 (an upper bound before the trigger) and `x.t + c` with c >= 1 (a lower bound
+// strictly after edge x).
+bool is_trigger_time(const Expr& e, const std::string& e0) {
+  return (e.k == Expr::K::Name && e.sym == Sym::trig_time) || (e.k == Expr::K::EdgeT && e.name == e0);
+}
+bool before_t(const Operand& o, const std::string& e0) {
+  for (const Expr& x : o.hi_incl)
+    if (x.k == Expr::K::Sub && is_trigger_time(x.kids[0], e0) && x.kids[1].k == Expr::K::Int && x.kids[1].ival >= 1)
+      return true;
+  return false;
+}
+bool after_edge(const Operand& o, const std::string& edge) {
+  for (const Expr& x : o.lo_incl)
+    if (x.k == Expr::K::Add && x.kids[0].k == Expr::K::EdgeT && x.kids[0].name == edge &&
+        x.kids[1].k == Expr::K::Int && x.kids[1].ival >= 1)
+      return true;
+  return false;
+}
+std::optional<Expr> window_lo(const Operand& o) {
+  for (const TimeBound& b : o.lo)
+    if (b.from_window) return b.strict ? shift(b.expr, +1) : b.expr;
+  return std::nullopt;
+}
+
+// Whether p is a chain pattern (D-43), and if so its reach target. Every level below the root
+// binds with a for_all over the previous level's node (a trigger node X for level 1), out-going,
+// with each hop strictly after the one before it and before t; every check below the root is an
+// exists probe of that level's node's out-list for one trigger node U != X, strictly after the
+// level's hop and before t; no binding emits; no work limit. Then every emit below the root
+// closes a temporal walk to U, so a binding whose node has no such walk departing after its hop
+// can be cut without changing any row. Root checks are untouched.
+std::optional<std::string> chain_target(const Pattern& p) {
+  if (p.work_limit || p.levels.size() < 2) return std::nullopt;
+  std::string target, prev_node, prev_edge;
+  for (std::size_t i = 1; i < p.levels.size(); ++i) {
+    const Stage& b = *p.levels[i].binding;
+    if (b.op != Op::for_all || b.latest_witness || b.emit) return std::nullopt;
+    const Operand& o = b.operands[0];
+    if (o.dir != Dir::out || !before_t(o, p.e0) || !window_lo(o)) return std::nullopt;
+    if (i == 1) {
+      if (o.node != p.src_var && o.node != p.dst_var) return std::nullopt;
+    } else if (o.node != prev_node || !after_edge(o, prev_edge)) {
+      return std::nullopt;
+    }
+    for (const Stage& c : p.levels[i].checks) {
+      if (c.op != Op::exists) return std::nullopt;
+      const Operand& q = c.operands[0];
+      if (q.node != b.bind_var || q.dir != Dir::out || !before_t(q, p.e0) || !after_edge(q, o.edge))
+        return std::nullopt;
+      if (target.empty()) target = c.probe_node;
+      if (c.probe_node != target) return std::nullopt;
+    }
+    prev_node = b.bind_var;
+    prev_edge = o.edge;
+  }
+  const std::string& x = p.levels[1].binding->operands[0].node;
+  if (target.empty() || (target != p.src_var && target != p.dst_var) || target == x) return std::nullopt;
+  return target;
+}
+
 template <class F>
 void for_each_stage(Pattern& p, F&& f) {
   for (Level& lv : p.levels) {
@@ -324,6 +386,20 @@ void plan(Pattern& p, const Opts& opts) {
     } else {
       pl.notes.push_back("CUDA heavy kernel: no binding stage and no root count; lane 0 runs every check");
     }
+  }
+
+  if (const auto target = chain_target(p)) {
+    const Operand& o = p.levels[1].binding->operands[0];
+    pl.reach = true;
+    pl.reach_target = *target;
+    pl.reach_hops = pl.depth + 1;
+    pl.reach_lo = *window_lo(o);
+    pl.notes.push_back(
+        "reach pruning (SPEC v2 §8 S6, D-43), CPU only, when Params::reach_prune: every emit below the root closes a "
+        "temporal walk to " + *target + ", so per trigger a backward search from " + *target + " over in-lists (edges in [" +
+        to_string(pl.reach_lo) + ", t - 1], at most " + std::to_string(pl.reach_hops) +
+        " hops) gives each node its latest departure time; " + o.node + " must depart at or after " + o.edge +
+        "'s lower bound, and a binding whose node cannot depart after its hop's time is cut");
   }
 
   if (const Stage* s = sweep_stage(p)) {

@@ -27,7 +27,7 @@ std::uint64_t DeviceGraph::bytes() const { no_cuda(); }
 double DeviceGraph::upload_seconds() const { no_cuda(); }
 
 struct CudaMiner::Impl {};
-CudaMiner::CudaMiner() { no_cuda(); }
+CudaMiner::CudaMiner(bool) { no_cuda(); }
 CudaMiner::~CudaMiner() = default;
 CudaBlockTiming CudaMiner::mine(const DeviceGraph&, Block, const BlockParams&, std::uint64_t, std::uint64_t,
                                 std::uint32_t, std::uint32_t*) {
@@ -35,6 +35,16 @@ CudaBlockTiming CudaMiner::mine(const DeviceGraph&, Block, const BlockParams&, s
 }
 CudaBlockTiming CudaMiner::mine(const DeviceGraph&, std::span<const PatternInfo* const>, const BlockParams&,
                                 Visibility, std::uint64_t, std::uint64_t, std::uint32_t, std::uint32_t*) {
+  no_cuda();
+}
+CudaBlockTiming CudaMiner::mine_subset(const DeviceGraph&, std::span<const PatternInfo* const>, const BlockParams&,
+                                       Visibility, std::uint64_t, std::uint64_t, std::span<const std::uint32_t>,
+                                       std::uint32_t, std::uint32_t*) {
+  no_cuda();
+}
+CudaBlockTiming CudaMiner::mine_split(const DeviceGraph&, std::span<const PatternInfo* const>, const BlockParams&,
+                                      Visibility, std::uint64_t, std::uint64_t, std::uint32_t, std::uint32_t,
+                                      std::uint32_t*, const CpuListFn&) {
   no_cuda();
 }
 

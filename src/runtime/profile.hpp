@@ -21,7 +21,7 @@ enum class Credit { trigger, participants };  // participants: stretch item S1
 const char* credit_name(Credit c);
 
 // The backends a profile can be run on (E404 names them).
-enum class Backend { oracle, cpu, cuda };
+enum class Backend { oracle, cpu, cuda, hybrid };  // hybrid: cpu + cuda (SPEC v2 §8 S6)
 const char* backend_name(Backend b);
 Backend parse_backend(const std::string& s);
 

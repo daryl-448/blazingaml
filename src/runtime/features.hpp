@@ -48,6 +48,7 @@ struct BlockParams {
   std::int32_t window = 0;           // delta, seconds (> 0)
   std::vector<std::uint32_t> bins;   // strictly increasing, last bin open-ended
   std::uint64_t work_limit = kDefaultWorkLimit;
+  bool reach_prune = false;  // the CPU's reachability pruning (SPEC v2 §8 S6): a speed option, same rows
 };
 
 // Thrown when a trigger exceeds the work limit (SPEC v2 §8 S3). `eid` is the smallest such

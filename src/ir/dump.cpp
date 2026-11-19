@@ -110,7 +110,8 @@ std::string dump(const Pattern& p) {
   }
   o << "plan depth " << p.plan.depth << " work " << p.plan.work_stage << " split "
     << p.plan.split_stage << (p.plan.split_raw_count ? " (raw count)" : "")
-    << (p.plan.sweep ? " cpu sweep " + p.plan.sweep_stage : "") << "\n";
+    << (p.plan.sweep ? " cpu sweep " + p.plan.sweep_stage : "")
+    << (p.plan.reach ? " reach " + p.plan.reach_target + " hops " + std::to_string(p.plan.reach_hops) : "") << "\n";
   for (const auto& n : p.plan.notes) o << "  // " << n << "\n";
   return o.str();
 }

@@ -45,6 +45,7 @@
 #include "runtime/cuda_backend.hpp"
 #include "runtime/features.hpp"
 #include "runtime/fuzz_diff.hpp"
+#include "runtime/hybrid.hpp"
 #include "runtime/metamorphic.hpp"
 #include "runtime/profile.hpp"
 #include "runtime/triggers.hpp"
@@ -282,11 +283,15 @@ std::vector<std::uint32_t> parse_thresholds(const std::string& s) {
 std::string threshold_name(std::uint32_t h) { return h == blz::kAllLight ? "all" : std::to_string(h); }
 
 int mine(const std::string& graph, const std::string& profile_path, const std::string& backend, int threads,
-         const std::string& schedule_opt, std::uint32_t heavy, const std::string& blocks_opt,
-         const std::string& triggers, std::uint64_t edges, std::uint64_t work_limit, const std::string& out) {
+         const std::string& schedule_opt, std::uint32_t heavy, std::uint32_t cpu_heavy, bool reach_prune,
+         const std::string& blocks_opt, const std::string& triggers, std::uint64_t edges, std::uint64_t work_limit,
+         const std::string& out) {
   const blz::Backend be = blz::parse_backend(backend);
-  const bool cpu = be == blz::Backend::cpu, gpu = be == blz::Backend::cuda;
+  // hybrid (SPEC v2 §8 S6): the cuda backend's device and rows, plus the cpu backend's index.
+  const bool hybrid = be == blz::Backend::hybrid;
+  const bool cpu = be == blz::Backend::cpu, gpu = be == blz::Backend::cuda || hybrid;
   if (gpu && !blz::cuda_built()) blz::cuda_device();  // throws: no CUDA backend in this build
+  if (reach_prune && !(cpu || hybrid)) throw std::runtime_error("--reach-prune is for the cpu and hybrid backends");
   const blz::Schedule schedule = blz::parse_schedule(schedule_opt);
   const blz::Profile prof = blz::load_profile(profile_path);  // E403
   blz::check_profile_backend(prof, be);                       // E404 (v1 configs: E402, K_MAX)
@@ -321,7 +326,7 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
                                  " holds eids on both sides of the split boundary at eid " + std::to_string(c) +
                                  ", so its earlier rows would see later-split edges (SPEC v2 §8 S1); use cuts: splits");
   }
-  if (cpu || gpu) index.emplace(src, dst, ts, g.n());
+  if (cpu || gpu) index.emplace(src, dst, ts, g.n());  // hybrid: gpu
   else if (layout) batch_oracle.emplace(blz::EdgeStream{src, dst, ts, g.n()}, *layout, prof.batch_time_window());
   else oracle.emplace(blz::EdgeStream{src, dst, ts, g.n()}, prof.visibility);
   const double build_s = secs(t0);
@@ -332,7 +337,7 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
   std::optional<blz::CudaMiner> miner;
   if (gpu) {
     dgraph.emplace(index->view());
-    miner.emplace();
+    miner.emplace(hybrid);  // hybrid: the GPU's host thread sleeps while the CPU team works
     std::fprintf(stderr, "graph uploaded in %.3f s (%.0f MB)\n", dgraph->upload_seconds(), double(dgraph->bytes()) / 1e6);
   }
 
@@ -357,9 +362,11 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
   meta["patterns"] = patterns_json(prof);
   // blzc --disable (SPEC v2 §7.2) changes only the generated CPU code.
   nlohmann::json jbe = {{"name", backend}, {"threads", omp_get_max_threads()},
-                        {"disabled_optimizations", cpu ? disabled_json() : nlohmann::json::array()}};
-  if (cpu) jbe["schedule"] = blz::schedule_name(schedule);
+                        {"disabled_optimizations", cpu || hybrid ? disabled_json() : nlohmann::json::array()}};
+  if (cpu || hybrid) jbe["schedule"] = blz::schedule_name(schedule);
+  if (cpu || hybrid) jbe["reach_prune"] = reach_prune;
   if (gpu) jbe["heavy_threshold"] = threshold_name(heavy);
+  if (hybrid) jbe["cpu_threshold"] = threshold_name(cpu_heavy);
   meta["backend"] = jbe;
   meta["triggers"] = sel.json();
   if (layout)
@@ -375,7 +382,7 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
   meta["config"] = profile_path;
   meta["git"] = git_info();
   meta["threads"] = omp_get_max_threads();
-  if (cpu) meta["schedule"] = blz::schedule_name(schedule);
+  if (cpu || hybrid) meta["schedule"] = blz::schedule_name(schedule);
   if (gpu)
     meta["cuda"] = {{"env", cuda_json()},
                     {"heavy_threshold", threshold_name(heavy)},
@@ -394,6 +401,7 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
     const blz::Block b = pb->block;
     blz::BlockParams p = pb->params;
     p.work_limit = work_limit;  // a run over it stops with an error (SPEC v2 §8 S3)
+    p.reach_prune = reach_prune;  // SPEC v2 §8 S6: the same rows, faster where a pattern is planned for it
     const std::uint64_t cells = rows * p.bins.size();
     std::vector<std::uint32_t> feats;
     std::optional<blz::PinnedBuffer> pinned;  // cuda: the rows, copied straight from the device
@@ -403,6 +411,7 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
     std::uint64_t sat = 0;
     blz::CpuBlockTiming tm;
     blz::CudaBlockTiming ctm;
+    blz::HybridTiming htm;
     if (layout && cpu) {
       sat = blz::mine_batch_cpu(index->view(), b, p, prof.k_max, prof.batch_time_window(), *layout, sel, feats.data());
     } else if (layout) {
@@ -410,6 +419,10 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
     } else if (cpu) {
       tm = blz::mine_cpu(index->view(), pb->patterns, p, prof.visibility, sel, schedule, feats.data());
       sat = tm.saturated;
+    } else if (hybrid) {
+      htm = blz::mine_hybrid(index->view(), *dgraph, *miner, pb->patterns, p, prof.visibility, sel.first, sel.last,
+                             cpu_heavy, heavy, schedule, pinned->data());
+      sat = htm.saturated;
     } else if (gpu) {
       ctm = miner->mine(*dgraph, pb->patterns, p, prof.visibility, sel.first, sel.last, heavy, pinned->data());
       sat = ctm.saturated;
@@ -436,6 +449,14 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
       j["schedule_seconds"] = tm.schedule_seconds;
       j["loop_seconds"] = tm.loop_seconds;
       j["cpu_plans"] = cpu_plans_json(*pb);
+    }
+    if (hybrid) {
+      ctm = htm.gpu;
+      j["hybrid"] = {{"split_seconds", htm.split_seconds},     {"cpu_seconds", htm.cpu_seconds},
+                     {"gpu_seconds", htm.gpu_seconds},         {"overlap_seconds", htm.overlap_seconds},
+                     {"merge_seconds", htm.merge_seconds},     {"total_seconds", htm.total_seconds},
+                     {"cpu_triggers", htm.cpu_triggers},       {"gpu_triggers", htm.gpu_triggers},
+                     {"gpu_split_seconds", htm.gpu.split_seconds}, {"cpu_plans", cpu_plans_json(*pb)}};
     }
     if (gpu)
       j["cuda"] = {{"kernel_seconds", ctm.kernel_seconds}, {"bucket_seconds", ctm.bucket_seconds},
@@ -1112,6 +1133,180 @@ int bench_cuda(const std::string& graph, const std::string& config, int reps, co
   return 0;
 }
 
+// E13 (SPEC v2 §8 S6): the hybrid against GPU-only and CPU-only, per block, with `reps` timed runs
+// after one warm-up each. Every run's rows must equal the block's first run (SPEC §8).
+//   gpu: CudaMiner::mine over every trigger at --heavy (E5's form); T = upload + kernels + D2H.
+//   cpu: mine_cpu over every trigger, per --prune setting; T = schedule + loop.
+//   hybrid: mine_hybrid per CPU threshold and --prune setting; T = upload + the call's wall clock
+//     (the GPU's split, then both sides at once, then the merge; the GPU side holds every kernel
+//     and the D2H). T_formula = upload + max(gpu, split + cpu) + merge, from each side's own wall
+//     clock: the two paths from the call to the merge.
+// The CPU uses `threads` (0: the OpenMP default) and the schedule `sched_opt`.
+int bench_hybrid(const std::string& graph, const std::string& config, int reps, int threads, const std::string& sched_opt,
+                 const std::string& heavy_opt, const std::string& cpu_heavy_opt, const std::string& prune_opt,
+                 const std::string& blocks_opt, const std::string& out, const std::string& name) {
+  if (reps < 1) throw std::runtime_error("--reps must be >= 1");
+  const blz::Profile prof = blz::load_profile(config);
+  blz::check_profile_backend(prof, blz::Backend::hybrid);
+  if (prof.batch) throw std::runtime_error("bench: GFP batch mode profiles are not supported (SPEC v2 §8 S1)");
+  const std::vector<const blz::ProfileBlock*> blocks = select_blocks(prof, blocks_opt);
+  const blz::Schedule schedule = blz::parse_schedule(sched_opt);
+  const std::vector<std::uint32_t> gpu_h = parse_thresholds(heavy_opt), cpu_h = parse_thresholds(cpu_heavy_opt);
+  if (gpu_h.size() != 1) throw std::runtime_error("bench --backend hybrid takes one --heavy threshold");
+  std::vector<bool> prunes;
+  for (std::size_t q = 0; q <= prune_opt.size();) {
+    const std::size_t r = std::min(prune_opt.find(',', q), prune_opt.size());
+    const std::string v = prune_opt.substr(q, r - q);
+    if (v != "off" && v != "on") throw std::runtime_error("--prune takes off and on, got '" + v + "'");
+    prunes.push_back(v == "on");
+    q = r + 1;
+  }
+  if (threads > 0) omp_set_num_threads(threads);
+  nlohmann::json hs = nlohmann::json::array();
+  for (std::uint32_t h : cpu_h) hs.push_back(threshold_name(h));
+  nlohmann::json env = environment(config);
+  env["nvidia_smi"] = run_command("nvidia-smi -q 2>/dev/null");
+  nlohmann::json res = {{"env", env},
+                        {"cuda", cuda_json()},
+                        {"backend", "hybrid"},
+                        {"graph", graph},
+                        {"reps", reps},
+                        {"warmup", 1},
+                        {"threads", omp_get_max_threads()},
+                        {"schedule", blz::schedule_name(schedule)},
+                        {"heavy_threshold", threshold_name(gpu_h[0])},
+                        {"cpu_thresholds", hs},
+                        {"prune", prune_opt},
+                        {"profile", {{"name", prof.name}, {"id", prof.id()}}},
+                        {"disabled_optimizations", disabled_json()}};
+
+  blz::BlzgView g(graph);
+  auto t0 = Clock::now();
+  const blz::GraphIndex index(g.src, g.dst, g.ts, g.n());
+  res["index_build_seconds"] = secs(t0);
+  res["csv_sha256"] = blz::to_hex(g.csv_sha256());
+  std::vector<double> uploads;
+  for (int r = 0; r <= reps; ++r) {  // r == 0 is the warm-up
+    const blz::DeviceGraph dg(index.view());
+    if (r > 0) uploads.push_back(dg.upload_seconds());
+  }
+  res["graph_upload"] = summary(uploads);
+  const double upload = res["graph_upload"]["median"].get<double>();
+  const blz::DeviceGraph dg(index.view());
+  blz::CudaMiner gpu_miner;           // E5's miner, for the GPU-only runs
+  blz::CudaMiner hybrid_miner(true);  // blocking sync, next to the CPU team
+  const std::uint64_t m = g.m();
+  blz::TriggerSel all;
+  all.spec = "all";
+  all.last = m;
+
+  nlohmann::json runs = nlohmann::json::object();
+  for (const blz::ProfileBlock* pb : blocks) {
+    const std::string bname(blz::block_name(pb->block));
+    const std::uint64_t cells = m * pb->params.bins.size();
+    blz::PinnedBuffer buf(cells);
+    std::vector<std::uint32_t> ref;
+    nlohmann::json jb = {{"patterns", nlohmann::json::array()},
+                         {"window", pb->params.window},
+                         {"bins", pb->params.bins},
+                         {"cpu_plans", cpu_plans_json(*pb)}};
+    for (const blz::PatternInfo* pi : pb->patterns) jb["patterns"].push_back(pi->name);
+    const auto check = [&](const std::string& what) {
+      const std::span<const std::uint32_t> got(buf.data(), cells);
+      if (ref.empty()) {
+        ref.assign(got.begin(), got.end());
+        jb["output_fnv1a"] = fnv1a(ref);
+      } else if (!std::equal(got.begin(), got.end(), ref.begin())) {
+        throw std::runtime_error("bench: " + bname + " output differs in " + what + " (SPEC §8)");
+      }
+    };
+    {  // GPU only
+      std::vector<double> total, kernel, d2h;
+      blz::CudaBlockTiming tm;
+      for (int r = 0; r <= reps; ++r) {
+        tm = gpu_miner.mine(dg, pb->patterns, pb->params, prof.visibility, 0, m, gpu_h[0], buf.data());
+        check("gpu");
+        if (r == 0) continue;
+        total.push_back(upload + tm.kernel_seconds + tm.d2h_seconds);
+        kernel.push_back(tm.kernel_seconds);
+        d2h.push_back(tm.d2h_seconds);
+      }
+      jb["gpu"] = {{"total", summary(total)},
+                   {"kernel", summary(kernel)},
+                   {"d2h", summary(d2h)},
+                   {"light_triggers", tm.light},
+                   {"heavy_triggers", tm.heavy}};
+      std::fprintf(stderr, "%-8s gpu    H=%-4s total median %8.4f s\n", bname.c_str(), threshold_name(gpu_h[0]).c_str(),
+                   jb["gpu"]["total"]["median"].get<double>());
+    }
+    for (const bool prune : prunes) {
+      blz::BlockParams p = pb->params;
+      p.reach_prune = prune;
+      const std::string pk = prune ? "prune_on" : "prune_off";
+      {  // CPU only
+        std::vector<double> total;
+        std::vector<std::uint32_t> feats(cells);
+        for (int r = 0; r <= reps; ++r) {
+          std::fill(feats.begin(), feats.end(), 0u);
+          const blz::CpuBlockTiming tm =
+              blz::mine_cpu(index.view(), pb->patterns, p, prof.visibility, all, schedule, feats.data());
+          std::copy(feats.begin(), feats.end(), buf.data());
+          check("cpu, " + pk);
+          if (r > 0) total.push_back(tm.schedule_seconds + tm.loop_seconds);
+        }
+        jb["cpu"][pk] = {{"total", summary(total)}};
+        std::fprintf(stderr, "%-8s cpu    %-9s total median %8.4f s\n", bname.c_str(), pk.c_str(),
+                     jb["cpu"][pk]["total"]["median"].get<double>());
+      }
+      for (const std::uint32_t hc : cpu_h) {  // hybrid, per CPU threshold
+        std::vector<double> total, formula, split, gpu_split, cpu_s, gpu_s, overlap, merge, kernel, d2h;
+        blz::HybridTiming tm;
+        for (int r = 0; r <= reps; ++r) {
+          std::fill(buf.data(), buf.data() + cells, 0xdeadbeefu);  // every row must be written
+          tm = blz::mine_hybrid(index.view(), dg, hybrid_miner, pb->patterns, p, prof.visibility, 0, m, hc, gpu_h[0],
+                                schedule, buf.data());
+          check("hybrid, " + pk + ", cpu threshold " + threshold_name(hc));
+          if (r == 0) continue;
+          total.push_back(upload + tm.total_seconds);
+          formula.push_back(upload + std::max(tm.gpu_seconds, tm.split_seconds + tm.cpu_seconds) + tm.merge_seconds);
+          split.push_back(tm.split_seconds);
+          cpu_s.push_back(tm.cpu_seconds);
+          gpu_s.push_back(tm.gpu_seconds);
+          overlap.push_back(tm.overlap_seconds);
+          merge.push_back(tm.merge_seconds);
+          gpu_split.push_back(tm.gpu.split_seconds);
+          kernel.push_back(tm.gpu.kernel_seconds);
+          d2h.push_back(tm.gpu.d2h_seconds);
+        }
+        nlohmann::json jh = {{"total", summary(total)}, {"total_formula", summary(formula)},
+                             {"split", summary(split)}, {"cpu", summary(cpu_s)},
+                             {"gpu", summary(gpu_s)},   {"overlap", summary(overlap)},
+                             {"merge", summary(merge)}, {"gpu_split", summary(gpu_split)},
+                             {"kernel", summary(kernel)}, {"d2h", summary(d2h)},
+                             {"cpu_triggers", tm.cpu_triggers}, {"gpu_triggers", tm.gpu_triggers}};
+        std::fprintf(stderr,
+                     "%-8s hybrid %-9s Hc=%-5s total median %8.4f s (cpu %.4f s on %llu, gpu %.4f s on %llu, split "
+                     "%.4f, merge %.4f)\n",
+                     bname.c_str(), pk.c_str(), threshold_name(hc).c_str(), jh["total"]["median"].get<double>(),
+                     jh["cpu"]["median"].get<double>(), (unsigned long long)tm.cpu_triggers,
+                     jh["gpu"]["median"].get<double>(), (unsigned long long)tm.gpu_triggers,
+                     jh["split"]["median"].get<double>(), jh["merge"]["median"].get<double>());
+        jb["hybrid"][pk][threshold_name(hc)] = jh;
+      }
+    }
+    runs[bname] = jb;
+  }
+  res["blocks"] = runs;
+  res["peak_rss_mb"] = peak_rss_mb();
+  nlohmann::json doc = nlohmann::json::object();
+  if (std::filesystem::exists(out)) doc = nlohmann::json::parse(std::ifstream(out));
+  doc[nlohmann::json::json_pointer("/" + name)] = res;
+  ensure_parent(out);
+  std::ofstream(out) << doc.dump(1) << '\n';
+  std::fprintf(stderr, "wrote %s (/%s)\n", out.c_str(), name.c_str());
+  return 0;
+}
+
 // The JSON that names a profile in a results file.
 nlohmann::json profile_ref(const blz::Profile& prof) {
   return {{"name", prof.name}, {"file", prof.file}, {"id", prof.id()}};
@@ -1137,19 +1332,22 @@ void merge_report(const std::string& report, const std::string& name, const nloh
 // not. cuda runs every graph once per light/heavy threshold. With --profile (SPEC v2 §10), the
 // profile's blocks, patterns and k_max; without, every registered pattern (v1).
 int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::string& backend,
-              const std::string& heavy_opt, const std::string& profile_path, std::uint64_t work_limit,
-              const std::string& report, const std::string& name) {
+              const std::string& heavy_opt, const std::string& cpu_heavy_opt, const std::string& profile_path,
+              std::uint64_t work_limit, const std::string& report, const std::string& name) {
   const auto [s0, s1] = parse_range(seeds);
-  const bool gpu = backend == "cuda";
+  const bool hybrid = backend == "hybrid";
+  const bool gpu = backend == "cuda" || hybrid;
   const blz::Profile prof = profile_path.empty() ? blz::registry_profile() : blz::load_profile(profile_path);
   blz::check_profile_backend(prof, blz::Backend::oracle);
   blz::check_profile_backend(prof, blz::parse_backend(backend));
   const auto bins = fuzz_bins(bins_opt, !profile_path.empty());
   const std::vector<std::uint32_t> thresholds = parse_thresholds(heavy_opt);
+  const std::vector<std::uint32_t> cpu_thresholds = hybrid ? parse_thresholds(cpu_heavy_opt) : std::vector<std::uint32_t>{};
   auto t0 = Clock::now();
   const blz::FuzzDiff d =
-      gpu ? blz::fuzz_diff_cuda(prof, s0, s1, bins, thresholds, work_limit)
-          : blz::fuzz_diff_cpu(prof, s0, s1, bins, work_limit);
+      hybrid ? blz::fuzz_diff_hybrid(prof, s0, s1, bins, thresholds, cpu_thresholds, work_limit)
+      : gpu  ? blz::fuzz_diff_cuda(prof, s0, s1, bins, thresholds, work_limit)
+             : blz::fuzz_diff_cpu(prof, s0, s1, bins, work_limit);
   nlohmann::json per_block = nlohmann::json::object();
   std::uint64_t bad = 0;
   for (const blz::ProfileBlock& pb : prof.blocks) {
@@ -1179,6 +1377,12 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
     nlohmann::json hs = nlohmann::json::array();
     for (std::uint32_t h : thresholds) hs.push_back(threshold_name(h));
     res["heavy_thresholds"] = hs;
+    if (hybrid) {
+      nlohmann::json cs = nlohmann::json::array();
+      for (std::uint32_t h : cpu_thresholds) cs.push_back(threshold_name(h));
+      res["cpu_thresholds"] = cs;
+      res["hybrid_cpu"] = {{"schedule", "sorted"}, {"reach_prune", true}};
+    }
     res["cuda"] = cuda_json();
   } else if (prof.batch) {
     res["batch"] = {{"size", prof.batch->size}, {"cuts", prof.batch->cut_at_splits ? "splits" : "none"},
@@ -1444,10 +1648,15 @@ int main(int argc, char** argv) {
   auto* mn_prof = mn->add_option("--profile", profile, "semantic profile (configs/profiles/*.yaml, SPEC v2 §3.1)");
   auto* mn_cfg = mn->add_option("--config", config, "a v1 feature config (or a profile)");
   mn_prof->excludes(mn_cfg);
-  mn->add_option("--backend", backend)->check(CLI::IsMember({"oracle", "cpu", "cuda"}));
+  mn->add_option("--backend", backend)->check(CLI::IsMember({"oracle", "cpu", "cuda", "hybrid"}));
   mn->add_option("--threads", threads);
   mn->add_option("--schedule", schedule, "cpu backend: dynamic | sorted")->check(CLI::IsMember({"dynamic", "sorted"}));
   mn->add_option("--heavy-threshold", heavy, "cuda backend: work estimate from which a trigger is heavy");
+  std::string cpu_heavy_opt = std::to_string(blz::kDefaultCpuThreshold);
+  bool reach_prune = false;
+  mn->add_option("--cpu-threshold", cpu_heavy_opt,
+                 "hybrid backend: work estimate from which a trigger runs on the CPU ('all': none; SPEC v2 §8 S6)");
+  mn->add_flag("--reach-prune", reach_prune, "cpu and hybrid backends: reachability pruning (SPEC v2 §8 S6), same rows");
   mn->add_option("--blocks", blocks, "comma-separated; default: every block of the profile");
   mn->add_option("--triggers", triggers, "all | train | test | fit | val | range:a:b | sample:<pct>:<seed>");
   mn->add_option("--edges", edges, "mine on the stream prefix [0, k) only: later edges do not exist (SPEC v2 §4.4 R5)");
@@ -1511,13 +1720,16 @@ int main(int argc, char** argv) {
   auto* bn_prof = bn->add_option("--profile", profile, "semantic profile (SPEC v2 §3.1)");
   auto* bn_cfg = bn->add_option("--config", config, "a v1 feature config (or a profile)");
   bn_prof->excludes(bn_cfg);
-  bn->add_option("--backend", backend)->check(CLI::IsMember({"cpu", "cuda"}))->required();
+  bn->add_option("--backend", backend)->check(CLI::IsMember({"cpu", "cuda", "hybrid"}))->required();
   bn->add_option("--threads", threads_list, "comma-separated thread counts");
   bn->add_option("--reps", reps, "timed runs after one warm-up");
   bn->add_option("--schedule", schedules, "cpu: comma-separated: dynamic, sorted");
   bn->add_option("--heavy", heavy_list, "cuda: comma-separated light/heavy thresholds; 'all' = every trigger light "
                                         "(default 32)");
   bn->add_option("--blocks", blocks, "comma-separated; default: every block in the config");
+  std::string bn_cpu_heavy = "0,64,128,256,512,1024,all", bn_prune = "off,on";
+  bn->add_option("--cpu-threshold", bn_cpu_heavy, "hybrid: comma-separated CPU thresholds (SPEC v2 §8 S6)");
+  bn->add_option("--prune", bn_prune, "hybrid: reachability pruning on the CPU side: off, on or off,on");
   bn->add_option("--out", out, "merge the result into this JSON file")->required();
   bn->add_option("--name", bench_name, "key (JSON pointer path) in --out; default: the backend");
 
@@ -1525,8 +1737,10 @@ int main(int argc, char** argv) {
   auto* fd = app.add_subcommand("fuzz-diff", "AC1: a generated backend vs the oracle on fuzz graphs (SPEC §13.3)");
   fd->add_option("--seeds", seeds, "a:b")->required();
   fd->add_option("--bins", fd_bins, "default: the profile's bins per block, or 2..33 without --profile");
-  fd->add_option("--backend", fd_backend)->check(CLI::IsMember({"cpu", "cuda"}));
-  fd->add_option("--heavy", fd_heavy, "cuda: light/heavy thresholds, each run on every graph");
+  fd->add_option("--backend", fd_backend)->check(CLI::IsMember({"cpu", "cuda", "hybrid"}));
+  fd->add_option("--heavy", fd_heavy, "cuda, hybrid: light/heavy thresholds, each run on every graph");
+  std::string fd_cpu_heavy = "0,4,all";
+  fd->add_option("--cpu-threshold", fd_cpu_heavy, "hybrid: CPU thresholds, each run with every --heavy (SPEC v2 §8 S6)");
   fd->add_option("--profile", profile, "blocks, patterns and k_max (SPEC v2 §10); windows come from the graphs");
   fd->add_option("--work-limit", work_limit, "lcyc: bindings per trigger; a graph past it is reported, its stop eid compared");
   fd->add_option("--report", report, "merge the summary into this JSON file");
@@ -1569,9 +1783,25 @@ int main(int argc, char** argv) {
       if (profile.empty() == config.empty()) throw std::runtime_error("give one of --profile and --config");
       if (profile.empty()) profile = config;
     }
-    if (*mn) return mine(graph, profile, backend, threads, schedule, heavy, blocks, triggers, edges, work_limit, out);
+    if (*mn) {
+      // The hybrid's CPU side runs the sorted schedule unless --schedule says otherwise (SPEC v2 §8 S6).
+      if (backend == "hybrid" && !*mn->get_option("--schedule")) schedule = "sorted";
+      const std::vector<std::uint32_t> cpu_h = parse_thresholds(cpu_heavy_opt);
+      if (cpu_h.size() != 1) throw std::runtime_error("mine --cpu-threshold takes one value");
+      return mine(graph, profile, backend, threads, schedule, heavy, cpu_h[0], reach_prune, blocks, triggers, edges,
+                  work_limit, out);
+    }
     if (*bn) {
       if (bench_name.empty()) bench_name = backend;
+      if (backend == "hybrid") {
+        const std::string nt = *bn->get_option("--threads") ? threads_list : "0";
+        if (nt.find(',') != std::string::npos) throw std::runtime_error("bench --backend hybrid takes one --threads value");
+        if (schedules.find(',') != std::string::npos) throw std::runtime_error("bench --backend hybrid takes one --schedule");
+        if (!*bn->get_option("--schedule")) schedules = "sorted";
+        return bench_hybrid(graph, profile, reps, std::stoi(nt), schedules,
+                            heavy_list.empty() ? std::to_string(blz::kDefaultHeavyThreshold) : heavy_list, bn_cpu_heavy,
+                            bn_prune, blocks, out, bench_name);
+      }
       if (backend == "cuda") {
         if (*bn->get_option("--threads") || *bn->get_option("--schedule"))
           throw std::runtime_error("bench --backend cuda takes --heavy, not --threads or --schedule");
@@ -1582,7 +1812,7 @@ int main(int argc, char** argv) {
     }
     if (*fd) {
       if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");
-      return fuzz_diff(seeds, fd_bins, fd_backend, fd_heavy, profile, work_limit, report, name);
+      return fuzz_diff(seeds, fd_bins, fd_backend, fd_heavy, fd_cpu_heavy, profile, work_limit, report, name);
     }
     if (*mt) {
       if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");

@@ -3,6 +3,7 @@
 // const K_MAX = 10
 // planner: work estimate (sorted schedule, CUDA bucketing): the window size of hop_1.h1 (V.out), two binary searches
 // planner: CUDA heavy kernel: root checks close_2 on lane 0; the lanes stride over the scan of hop_1 and each runs every stage nested in its own bindings; lane bin counts are summed across the warp
+// planner: reach pruning (SPEC v2 §8 S6, D-43), CPU only, when Params::reach_prune: every emit below the root closes a temporal walk to U, so per trigger a backward search from U over in-lists (edges in [t - delta_cyc, t - 1], at most 9 hops) gives each node its latest departure time; V must depart at or after h1's lower bound, and a binding whose node cannot depart after its hop's time is cut
 #pragma once
 #include <cstdint>
 #include <span>

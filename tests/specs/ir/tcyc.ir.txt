@@ -165,6 +165,7 @@ level 0 (root)
                     emit 10 (min 2)
                     // probe P-CSR C8.out for U: two binary searches; c10 = the earliest witness in range
                     // c10 in C8.out: ts >= max(t - delta_cyc, h8.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
-plan depth 8 work hop_1 split hop_1
+plan depth 8 work hop_1 split hop_1 reach U hops 9
   // work estimate (sorted schedule, CUDA bucketing): the window size of hop_1.h1 (V.out), two binary searches
   // CUDA heavy kernel: root checks close_2 on lane 0; the lanes stride over the scan of hop_1 and each runs every stage nested in its own bindings; lane bin counts are summed across the warp
+  // reach pruning (SPEC v2 §8 S6, D-43), CPU only, when Params::reach_prune: every emit below the root closes a temporal walk to U, so per trigger a backward search from U over in-lists (edges in [t - delta_cyc, t - 1], at most 9 hops) gives each node its latest departure time; V must depart at or after h1's lower bound, and a binding whose node cannot depart after its hop's time is cut
