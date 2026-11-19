@@ -82,7 +82,10 @@ void plan_stage(Stage& st, const Pattern& p, const Opts& opts) {
       st.notes.push_back(st.multiplicity == Mult::distinct
                              ? "scan T-CSR " + o.node + "." + dir_name(o.dir) +
                                    " distinct-first: each " + st.bind_var + " once, " + o.edge +
-                                   " = its earliest witness in range"
+                                   (st.latest_witness
+                                        ? " = its latest witness in range (witness: latest, SPEC v2 §8 S5): "
+                                          "a P-CSR pair_latest probe per binding"
+                                        : " = its earliest witness in range")
                              : "scan T-CSR " + o.node + "." + dir_name(o.dir) + ": every edge binds " +
                                    st.bind_var);
       break;

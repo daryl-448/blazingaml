@@ -32,7 +32,8 @@ struct TimeBound {
 
 // How an operand's neighbour list is read (planner, §7.3).
 enum class Access {
-  scan_distinct,  // T-CSR scan, distinct-first: each neighbour once, with its earliest witness
+  scan_distinct,  // T-CSR scan, distinct-first: each neighbour once, with its earliest witness (or,
+                  // for `witness: latest`, its latest one from a P-CSR probe; SPEC v2 §8 S5)
   scan_edges,     // T-CSR scan, every edge
   probe,          // P-CSR probe for one node: the earliest witness within the bounds, or none
   intersect,      // one side of an intersection: scanned or probed, chosen per trigger at runtime
@@ -82,6 +83,7 @@ struct Stage {
   std::string element_var;         // check stages: the per-element node (own constraints only)
   std::string probe_node;          // exists: the node looked for
   Mult multiplicity = Mult::distinct;  // for_all, count
+  bool latest_witness = false;     // distinct for_all: bind with the latest witness (SPEC v2 §8 S5)
   std::vector<Expr> filters;       // node filters (§6.4): skip the element / binding if any holds
   std::optional<Order> order;      // intersection: at most one order constraint (SPEC v2 §6.2)
   bool gate = false;               // check stages: later stages run only if the check passed

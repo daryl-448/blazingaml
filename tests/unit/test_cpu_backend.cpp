@@ -56,11 +56,11 @@ std::string error_of(const FeatureConfig& cfg) {
 
 }  // namespace
 
-TEST_CASE("registry: the library's eleven patterns, one block each, sg from two") {
+TEST_CASE("registry: the library's thirteen patterns, one block each, sg from two") {
   std::set<std::string> names;
   for (const PatternInfo& p : registered_patterns()) names.insert(p.name);
-  CHECK(names == std::set<std::string>{"deg_in", "deg_out", "fan_in", "fan_oneway_out", "fan_out", "fan_total", "lcyc",
-                                       "sg_gather", "sg_ordered", "sg_scatter", "tcyc"});
+  CHECK(names == std::set<std::string>{"deg_in", "deg_out", "fan_in", "fan_oneway_out", "fan_out", "fan_total", "gs",
+                                       "lcyc", "sg_gather", "sg_ordered", "sg_scatter", "tchain", "tcyc"});
   for (Block b : kAllBlocks) CHECK(!patterns_for(b).empty());
   CHECK(patterns_for(Block::sg).size() == 2);
   CHECK(compiled_k_max() == 10);

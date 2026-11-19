@@ -24,7 +24,13 @@ struct Symbol {
   std::int64_t value = 0;  // consts
   EdgeRole role = EdgeRole::none;
   std::string owner;       // the stage that bound a witness edge
+  bool latest = false;     // a latest witness (`witness: latest`, SPEC v2 §8 S5), else the earliest
 };
+
+// "the earliest witness of stage 'x'" or "the latest witness of stage 'x'".
+std::string witness_text(const Symbol& s) {
+  return std::string(s.latest ? "the latest" : "the earliest") + " witness of stage '" + s.owner + "'";
+}
 
 Symbol symbol(Sym sym, Ty ty, const Loc& loc, EdgeRole role = EdgeRole::none, std::string owner = {}) {
   Symbol s;
@@ -218,6 +224,13 @@ class Lowerer {
                       (e.k == Expr::K::Add ? " to " : " from ") + ty_name(a));
         break;
       }
+      case Expr::K::Min: {  // SPEC v2 §8 S5
+        const Ty a = check(e.kids[0], sc), b = check(e.kids[1], sc);
+        if (a != Ty::int_ || b != Ty::int_)
+          mismatch(std::string("min() takes two ints, not ") + ty_name(a) + " and " + ty_name(b));
+        e.ty = Ty::int_;
+        break;
+      }
       case Expr::K::Cmp: {
         const Ty a = check(e.kids[0], sc), b = check(e.kids[1], sc);
         const bool eq = e.cmp == Expr::Cmp::eq || e.cmp == Expr::Cmp::ne;
@@ -358,11 +371,12 @@ class Lowerer {
           fail("E202", d.loc,
                "break_if '" + to_string(d) + "' bounds no edge this stage scans; a break_if must be a "
                "time bound (ex.t > τ or ex.t >= τ) on one of them, and node tests belong in skip_if");
-        if (!witness.empty())
+        if (!witness.empty()) {
+          const Symbol& ws = sc.at(witness[0]->name);
           fail("E204", witness[0]->loc,
-               "'" + witness[0]->name + ".t' is the earliest witness of stage '" +
-                   sc.at(witness[0]->name).owner +
-                   "'; an earlier stage's witness time may only be a lower bound of a later scan");
+               "'" + witness[0]->name + ".t' is " + witness_text(ws) + "; an earlier stage's witness time may only be " +
+                   (ws.latest ? "an upper" : "a lower") + " bound of a later scan");
+        }
         st.filters.push_back(std::move(d));
         continue;
       }
@@ -399,11 +413,22 @@ class Lowerer {
           default: break;
         }
       }
-      if (upper && !witness.empty())
-        fail("E204", witness[0]->loc,
-             "'" + witness[0]->name + ".t' (the earliest witness of stage '" + sc.at(witness[0]->name).owner +
-                 "') is used in an upper bound; an earlier stage's witness time may only be a lower "
-                 "bound of a later scan, or the earliest-witness rule is not exact");
+      // The earliest witness may only bound a later scan from below, the latest (SPEC v2 §8 S5) only
+      // from above: each is then the best witness for every later use, so the rule is exact.
+      for (const Expr* x : witness) {
+        const Symbol& ws = sc.at(x->name);
+        if (upper && !ws.latest)
+          fail("E204", x->loc,
+               "'" + x->name + ".t' (" + witness_text(ws) +
+                   ") is used in an upper bound; an earlier stage's witness time may only be a lower "
+                   "bound of a later scan, or the earliest-witness rule is not exact (a latest witness, "
+                   "witness: latest, may bound from above)");
+        if (!upper && ws.latest)
+          fail("E204", x->loc,
+               "'" + x->name + ".t' (" + witness_text(ws) +
+                   ") is used in a lower bound; a latest witness's time may only be an upper bound of a "
+                   "later scan, or the latest-witness rule is not exact");
+      }
       // A witness lower bound is exact only on a scan whose result is an existence: exists, a
       // distinct for_all, a binding intersection. On an aggregate (count, a check intersection,
       // union or difference, for_all over every edge) the result would depend on which witness
@@ -413,8 +438,8 @@ class Lowerer {
                              (st.op == Op::for_all && st.multiplicity == Mult::edges);
       if (!witness.empty() && aggregate)
         fail("E204", witness[0]->loc,
-             "'" + witness[0]->name + ".t' (the earliest witness of stage '" + sc.at(witness[0]->name).owner +
-                 "') bounds an aggregating scan; its result would depend on which witness was taken, "
+             "'" + witness[0]->name + ".t' (" + witness_text(sc.at(witness[0]->name)) +
+                 ") bounds an aggregating scan; its result would depend on which witness was taken, "
                  "so witness times may only bound exists, distinct for_all and binding intersection scans");
       Operand* target = nullptr;
       for (Operand& o : st.operands)
@@ -451,6 +476,7 @@ class Lowerer {
         out.operands.push_back(operand(*st.src, *st.edge, scope, "'src' of " + where));
         out.bind_var = st.dst_var->s;
         out.multiplicity = st.multiplicity.value_or(Mult::distinct);
+        out.latest_witness = st.latest_witness;
         add_scanned(*st.edge);
         local[out.bind_var] = symbol(Sym::node, Ty::node, st.dst_var->loc);
         break;
@@ -551,8 +577,11 @@ class Lowerer {
       // An ordered intersection's edges have no single witness, so they stay local (SPEC v2 §6.2;
       // a later use is E102).
       if (!out.order)
-        for (const Operand& o : out.operands)
-          export_name(o.edge, symbol(Sym::edge, Ty::edge, local.at(o.edge).loc, EdgeRole::witness, st.id.s));
+        for (const Operand& o : out.operands) {
+          Symbol ws = symbol(Sym::edge, Ty::edge, local.at(o.edge).loc, EdgeRole::witness, st.id.s);
+          ws.latest = out.latest_witness;
+          export_name(o.edge, ws);
+        }
     } else if (st.op == Op::exists) {
       // The witness exists only when the probe found one, i.e. only behind a gate.
       if (out.gate)

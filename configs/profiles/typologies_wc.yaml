@@ -1,0 +1,15 @@
+# Semantic profile (SPEC v2 §8 S5): the typologies' blocks at windows by D-25's W-C rule, for E9's
+# eligibility at the frozen recipe's kind of window: the 90th percentile (numpy's linear
+# interpolation) of the span of the complete attempts of the matching typologies that lie wholly
+# in the fit split (results/gt_join.json), rounded up to a whole hour, capped at 1,728,000:
+#   tchain <- RANDOM + STACK, 20 attempts: p90 309,072 s -> 309,600 (86 h);
+#   gs <- GATHER-SCATTER, 8 attempts: p90 337,236 s -> 338,400 (94 h).
+# Bins, visibility, credit and k_max as configs/profiles/typologies.yaml. Not part of any recipe.
+version: 2
+profile: typologies_wc
+visibility: stream
+credit: trigger
+k_max: 10
+blocks:
+  tchain: {patterns: [tchain], window: 309600, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}
+  gs:     {patterns: [gs],     window: 338400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50]}

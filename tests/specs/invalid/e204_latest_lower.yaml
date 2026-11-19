@@ -1,0 +1,22 @@
+# expect: E204 22:27 -- a latest witness time as a lower bound
+version: 1
+pattern: p
+block: fan_in
+window: {span: d, lower: closed}
+trigger: {edge: e0, src: U, dst: V}
+stages:
+  - id: hop_1
+    op: for_all
+    src: U.in
+    edge: h1
+    dst_var: C1
+    witness: latest
+    constraints: [{break_if: "h1.t >= t"}]
+  - id: hop_2
+    op: for_all
+    src: C1.in
+    edge: h2
+    dst_var: C2
+    constraints:
+      - break_if: "h2.t >= h1.t"
+      - skip_if: "h2.t <= h1.t - 100"

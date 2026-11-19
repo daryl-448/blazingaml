@@ -40,8 +40,8 @@ TEST_CASE("metamorphic: 200 fuzz graphs, oracle and cpu, under timestamp visibil
     INFO(backend_name(b));
     const MetamorphicResult r = metamorphic(ts, b, 0, 200, bins, {});
     check_clean(r, 200, ts, b);
-    // Visibility invariance compares the tcyc rows only, once per graph.
-    CHECK(r.rows_compared[int(MetaTest::visibility_invariance)] == r.edges);
+    // Visibility invariance compares the tcyc and tchain rows only, once per graph.
+    CHECK(r.rows_compared[int(MetaTest::visibility_invariance)] == 2 * r.edges);
   }
 }
 

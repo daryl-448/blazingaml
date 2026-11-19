@@ -57,6 +57,7 @@ void stage(std::ostringstream& o, const Stage& s, const std::string& ind) {
   if (!s.output_var.empty()) o << " -> " << s.output_var;
   if (s.op == Op::for_all || s.op == Op::count)
     o << " [" << (s.multiplicity == Mult::distinct ? "distinct" : "edges") << "]";
+  if (s.latest_witness) o << " [latest witness]";
   if (s.gate) o << " [gate]";
   o << "\n";
   for (const Operand& op : s.operands) {

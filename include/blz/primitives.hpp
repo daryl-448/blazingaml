@@ -21,6 +21,8 @@ inline constexpr std::uint32_t kAnyEid = UINT32_MAX;
 
 BLZ_HD inline std::int64_t max_ts(std::int64_t a, std::int64_t b) { return a < b ? b : a; }
 BLZ_HD inline std::int64_t min_ts(std::int64_t a, std::int64_t b) { return b < a ? b : a; }
+// min() of the DSL's int expressions (SPEC v2 §8 S5).
+BLZ_HD inline std::int64_t min_int(std::int64_t a, std::int64_t b) { return b < a ? b : a; }
 
 // Positions [lo, hi) of one node's T-CSR list.
 struct Range {

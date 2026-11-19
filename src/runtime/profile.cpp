@@ -52,6 +52,8 @@ std::vector<std::string> oracle_patterns(Block b) {
     case Block::lcyc: return {"lcyc"};
     case Block::fan_oneway_out: return {"fan_oneway_out"};
     case Block::fan_total: return {"fan_total"};
+    case Block::tchain: return {"tchain"};
+    case Block::gs: return {"gs"};
   }
   return {};
 }

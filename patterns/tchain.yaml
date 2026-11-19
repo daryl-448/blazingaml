@@ -1,0 +1,36 @@
+# tchain (SPEC v2 §8 S5): temporal chains C_{k-1} -> ... -> C1 -> U -> V of k = 2..K_MAX edges
+# that the trigger U -> V ends, every earlier hop strictly before the hop after it. The typology of
+# HI-Small's RANDOM attempts (simple paths) and STACK attempts (disjoint 2-hop chains). tcyc's
+# search run backward from U: one chain per node sequence, all nodes distinct (V included, so a
+# chain is never a cycle). Each hop binds its node with its latest witness (witness: latest), and
+# the next hop is bounded above by that witness's time: the mirror of tcyc's earliest-witness rule.
+version: 1
+pattern: tchain
+block: tchain
+consts: {K_MAX: 10}
+window: {span: delta_chain, lower: closed}
+trigger: {edge: e0, src: U, dst: V}
+constraints: [{skip_if: "U == V"}]
+stages:
+  - id: hop_1                            # C1 -> U, before the trigger
+    op: for_all
+    src: U.in
+    edge: h1
+    dst_var: C1
+    witness: latest
+    constraints:
+      - break_if: "h1.t >= t"
+      - skip_if: "C1 in [U, V]"
+    emit: {size: 2}
+  - repeat: {var: k, from: 2, to: "K_MAX - 1"}
+    stages:
+      - id: "hop_{k}"                    # C{k} -> C{k-1}, strictly before the hop after it
+        op: for_all
+        src: "C{k-1}.in"
+        edge: "h{k}"
+        dst_var: "C{k}"
+        witness: latest
+        constraints:
+          - break_if: "h{k}.t >= h{k-1}.t"
+          - skip_if: "C{k} in [U, V, C{1..k-1}]"
+        emit: {size: "{k+1}"}

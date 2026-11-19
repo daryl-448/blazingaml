@@ -23,7 +23,8 @@ std::string code_of(const std::string& s) {
 TEST_CASE("expr: canonical text round-trips") {
   for (const char* s : {"U == V", "S in [X, W]", "C3 not in [U, V, C1, C2]", "h2.t <= h1.t",
                         "c4.t >= t", "len(I) >= 2", "t - delta + 1", "X == V or e1.t >= t",
-                        "not X == V", "(X == V or Y == V) and e1.t < t", "C[3] in []", "n != 0"}) {
+                        "not X == V", "(X == V or Y == V) and e1.t < t", "C[3] in []", "n != 0",
+                        "min(a, b)", "min(a + 1, len(I)) - 1", "min(min(a, b), 3) >= 2"}) {
     const Expr e = parse(s);
     CHECK(to_string(e) == s);
     CHECK(to_string(parse(to_string(e))) == to_string(e));
@@ -53,6 +54,11 @@ TEST_CASE("expr: precedence and associativity") {
   CHECK(e.k == Expr::K::EdgeT);
   CHECK(e.name == "e1");
   CHECK(parse("C[12]").name == "C[12]");
+
+  const Expr m = parse("min(a, b + 1) - 2");  // SPEC v2 §8 S5: min() is an atom
+  REQUIRE(m.k == Expr::K::Sub);
+  REQUIRE(m.kids[0].k == Expr::K::Min);
+  CHECK(m.kids[0].kids[1].k == Expr::K::Add);
 }
 
 TEST_CASE("expr: node positions are column offsets into the scalar") {
@@ -66,7 +72,8 @@ TEST_CASE("expr: node positions are column offsets into the scalar") {
 
 TEST_CASE("expr: syntax errors are E101") {
   for (const char* s : {"", "U ==", "a < b < c", "U.x", "len(3)", "len I", "1x", "U @ V", "(U == V",
-                        "in", "X in U", "X in [U,", "U == V V", "U * 2", "99999999999999999999"}) {
+                        "in", "X in U", "X in [U,", "U == V V", "U * 2", "99999999999999999999",
+                        "min", "min(a)", "min(a, b, c)", "min a, b"}) {
     INFO(s);
     CHECK(code_of(s) == "E101");
   }

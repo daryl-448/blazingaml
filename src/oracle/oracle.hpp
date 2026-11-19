@@ -26,8 +26,8 @@ class Oracle {
   explicit Oracle(const EdgeStream& s, Visibility vis = Visibility::stream);
 
   // Mines block `b` for triggers [first, last): row (e - first) of `out` (bins.size() columns,
-  // zeroed by the caller) gets trigger e's histogram. `k_max` caps tcyc and lcyc lengths. Parallel
-  // over triggers with OpenMP. Returns the number of saturated increments (SPEC §4.2). lcyc
+  // zeroed by the caller) gets trigger e's histogram. `k_max` caps tcyc, lcyc and tchain lengths.
+  // Parallel over triggers with OpenMP. Returns the number of saturated increments (SPEC §4.2). lcyc
   // throws WorkLimitExceeded when a trigger makes more than p.work_limit bindings (SPEC v2 §8 S3).
   std::uint64_t mine(Block b, const BlockParams& p, int k_max, std::uint64_t first,
                      std::uint64_t last, std::uint32_t* out) const;
@@ -64,6 +64,9 @@ class Oracle {
   void sg_ordered(const Trigger& tr, std::vector<std::uint64_t>& sizes) const;
   void tcyc(const Trigger& tr, int k_max, std::vector<std::uint64_t>& sizes) const;
   void fan_sets(Block b, const Trigger& tr, std::vector<std::uint64_t>& sizes) const;  // SPEC v2 §8 S4
+  // SPEC v2 §8 S5: counts[k] = the chains of k edges (counts has k_max + 1 entries)
+  void tchain(const Trigger& tr, int k_max, std::vector<std::uint64_t>& counts) const;
+  void gs(const Trigger& tr, std::vector<std::uint64_t>& sizes) const;  // SPEC v2 §8 S5
   // false when the trigger exceeded `limit` bindings
   bool lcyc(const Trigger& tr, int k_max, std::uint64_t limit, std::vector<std::uint64_t>& sizes) const;
 

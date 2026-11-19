@@ -19,7 +19,7 @@ inline constexpr std::array<MetaTest, 5> kMetaTests = {MetaTest::prefix_closure,
 const char* meta_test_name(MetaTest t);
 
 // Whether test `t` runs for `prof` on `backend`: prefix closure needs trigger credit;
-// visibility invariance needs a tcyc block (every backend runs both visibilities since P10);
+// visibility invariance needs a tcyc or tchain block (every backend runs both visibilities since P10);
 // order relaxation needs an sg_ord block.
 bool meta_test_applies(MetaTest t, const Profile& prof, Backend backend);
 
@@ -44,8 +44,8 @@ struct MetamorphicResult {
 //   - relabeling: a seeded permutation of the node ids leaves every row unchanged;
 //   - time shift: adding a seeded constant in [1, 2^30] to every timestamp leaves every row
 //     unchanged;
-//   - visibility invariance: tcyc mined under the other visibility (stream <-> timestamp) gives
-//     the same rows (SPEC v2 §6.1);
+//   - visibility invariance: tcyc and tchain mined under the other visibility (stream <->
+//     timestamp) give the same rows (SPEC v2 §6.1, §8 S5);
 //   - order relaxation: per row, sg_ord's instance count (the sum over its bins) is at most that
 //     of sg_gather mined alone at sg_ord's window and bins, by the same backend (SPEC v2 §6.3).
 // check_profile_backend(prof, backend) must hold; this throws otherwise.

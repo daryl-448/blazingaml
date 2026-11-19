@@ -137,7 +137,7 @@ Emit emit_of(const YNode& n) {
 
 constexpr Keys kStageKeys = {"id",      "op",     "src",     "dst",          "edge",
                              "edges",   "dst_var", "node",   "output",       "element",
-                             "multiplicity", "gate", "constraints", "emit"};
+                             "multiplicity", "gate", "constraints", "emit", "witness"};
 
 Stage stage_of(const YNode& n) {
   if (!n.is_map()) fail("E101", n.loc, "a stage must be a map");
@@ -170,7 +170,7 @@ Stage stage_of(const YNode& n) {
   KeyList needs;
   switch (s.op) {
     case Op::for_all:
-      allowed = {"src", "edge", "dst_var", "multiplicity"};
+      allowed = {"src", "edge", "dst_var", "multiplicity", "witness"};
       needs = {"src", "edge", "dst_var"};
       break;
     case Op::intersection:
@@ -218,6 +218,14 @@ Stage stage_of(const YNode& n) {
   if (const YNode* v = n.get("gate")) {
     s.gate = boolean(*v, "'gate'");
     s.gate_loc = v->loc;
+  }
+  if (const YNode* v = n.get("witness")) {  // SPEC v2 §8 S5: for_all only (checked above)
+    scalar_of(*v, "'witness'");
+    if (v->scalar == "latest") s.latest_witness = true;
+    else if (v->scalar != "earliest") fail("E101", v->loc, "witness must be earliest or latest, found '" + v->scalar + "'");
+    if (s.latest_witness && s.multiplicity == Mult::edges)
+      fail("E101", v->loc,
+           "'witness: latest' needs multiplicity: distinct; a for_all over every edge binds each edge itself");
   }
   if (s.op == Op::intersection) {
     if (s.dst_var.has_value() == s.output.has_value())

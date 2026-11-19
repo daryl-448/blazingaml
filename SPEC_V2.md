@@ -242,7 +242,7 @@ They run on fuzz graphs (§13.3) for the oracle and the CPU backend, and on CUDA
 | Prefix closure | Mining the first k edges of a stream gives the same rows for those k edges as mining the whole stream. Under timestamp visibility, k is cut at a timestamp boundary. | causal profiles; timestamp visibility with the cut rule |
 | Relabeling | Permuting node ids consistently leaves every row unchanged. | all |
 | Time shift | Adding a constant to every timestamp leaves every row unchanged. | all |
-| Visibility invariance of tcyc | tcyc rows are equal under stream and timestamp visibility (§6.1). | tcyc |
+| Visibility invariance of tcyc | tcyc rows are equal under stream and timestamp visibility (§6.1). tchain's too (§8 S5). | tcyc, tchain |
 | Order relaxation | For every row, the number of `sg_ordered` instances (the sum over its bins) is ≤ the number of `sg_gather` instances when `sg_gather` is mined alone at the same window and bins. Ordering only removes sources and intermediates. Bins are not compared, because an instance can move to a lower bin. | `sg_ordered` |
 
 As implemented (P7): `src/runtime/metamorphic.{hpp,cpp}` and
@@ -255,6 +255,7 @@ As implemented (P7): `src/runtime/metamorphic.{hpp,cpp}` and
 - CUDA runs every graph at each heavy threshold (default 0, 4, `all`).
 - Visibility invariance runs on the oracle since P8, for profiles with tcyc. It mines tcyc alone under the
   other visibility and compares rows; it joins cpu and CUDA in P10. Order relaxation joins in P10.
+  Since S5 it also covers tchain: it mines whichever of tcyc and tchain the profile has.
 - A test runs only where it applies (`meta_test_applies`), and `blz metamorphic` reports `applies`
   for each test. Prefix closure under timestamp visibility moves its cut to a timestamp boundary
   (`tests/profiles/tsvis.yaml`, slow test `metamorphic_tsvis_oracle_2k`).
@@ -1402,6 +1403,114 @@ As implemented (S4):
 - **Speed:** a Fig. 9 analogue (stack speed, normalized to 1 thread) only if a stack spec exists.
 - **AC:** AC1 for every new spec, and its E9 eligibility reported.
 
+As implemented (S5):
+
+- **Gate** (`results/s5_typologies.json`, `gate`): E9's per-attempt eligibility under the frozen
+  recipe (`dg2_wc`), next to the structure of each typology's listed attempts.
+  - RANDOM is eligible for no block. Its attempts are simple paths; 68 % hold a two-hop temporal
+    chain. It passes.
+  - STACK is 33 % eligible, all through tcyc: 13 of its attempts are 2-cycles and one is a
+    4-cycle. Strictly, the gate's first half asks for no eligibility, so STACK is an exception: it
+    is admitted because 67 % of its attempts are seen by no block. 70 % of its attempts hold a
+    two-hop temporal chain.
+  - GATHER-SCATTER is 92 % eligible (84 % through fan and degree, 4 more attempts through tcyc
+    only), so it fails the gate's first half. The user chose on 2026-11-19 to build the draft
+    above anyway (D-41).
+  - BIPARTITE cannot pass: every attempt is a matching (no two of its edges share an account), so
+    no pattern of two or more edges sees it. It stays out.
+- **DSL.**
+  - `witness: latest` on a binding `for_all` with `multiplicity: distinct`. Each binding's witness
+    is then its neighbour's latest edge in the scan's bounds, not the earliest.
+    - The values are `earliest` (the default) and `latest`; anything else is E101.
+    - `witness: latest` with `multiplicity: edges` is E101, and `witness` on any other op too.
+  - E204 gains a mirror rule: a latest witness's time may only be an *upper* bound of a later
+    scan (`break_if: h2.t >= h1.t`). As a lower bound, in a node filter, or as a bound of an
+    aggregating scan, it is E204.
+    - An earliest witness keeps v1's rule (§6.4 of v1); its use as an upper bound is E204, and the
+      message points to `witness: latest`.
+    - A latest witness makes an upper bound exact, as the earliest makes a lower bound exact.
+  - `min(a, b)` in `iexpr`. It takes two ints (else E103) and exactly two arguments (else E101).
+    `min` is a reserved word (E102).
+- **Lowering** (`blzc`): a `for_all`'s latest witness is one `pair_latest` probe per binding, on
+  the scanned direction's P-CSR, with the scan's bounds and visibility. The plan comment records
+  it, and `--dump-ir` prints `[latest witness]`.
+- **Library.**
+  - `patterns/tchain.yaml`: chains C_{k−1} → … → C1 → U → V of k = 2..10 edges that the trigger
+    U → V ends (D-42).
+    - Each hop is strictly earlier than the hop after it.
+    - All nodes are distinct (V included), so a chain is never a cycle.
+    - One instance per node sequence, binned by its length in edges.
+    - This is tcyc's backward search without the closing edge, with tcyc's closed lower bound.
+  - `patterns/gs.yaml`: the draft above, with B pinned to include W (D-42).
+    - A = the distinct sources that sent to X in the window before t, X and W excluded.
+    - B = the distinct sinks X paid in the window, X excluded: fan_out's set.
+    - gs = min(|A|, |B|). An empty A emits nothing (`gate: true`), and a size below the first
+      bin (2) is not counted.
+    - The lower bound is open, as for fan.
+  - Both are new blocks (`tchain`, `gs`), not v1 blocks, and both are in `registry_profile()`, so
+    the default fuzz-diff and metamorphic runs and the fast suites cover them.
+  - `Oracle::tchain` (a backward search over node sequences that keeps every feasible departure
+    time) and `Oracle::gs` (`std::set`s of the window's neighbours) are the references.
+  - Profiles:
+    - `configs/profiles/typologies.yaml` runs both at the v1 window (D-8: 24 h), with tcyc's bins
+      for tchain and the fan bins for gs (D-9): 21 columns.
+    - `configs/profiles/typologies_wc.yaml` applies D-25's W-C rule to the fit split. tchain gets
+      309,600 s (86 h, from the 20 fit attempts of RANDOM and STACK) and gs 338,400 s (94 h, from
+      GATHER-SCATTER's 8).
+- **Metamorphic.** tchain is visibility-invariant like tcyc: every chain edge is strictly earlier
+  than the trigger, so both visibilities see it. Visibility invariance now mines whichever of tcyc
+  and tchain the profile has under the other visibility. gs is not invariant: B sees the
+  trigger's same-timestamp siblings only under timestamp visibility.
+- **Tests.**
+  - `tests/unit/test_typologies.cpp` has 26 hand-checked cases (15 for tchain, 11 for gs) on the
+    oracle, the CPU (both schedules) and CUDA (H = 0, 2 and all).
+    - They cover hop order and ties, distinct nodes, a chain through V, parallel edges with
+      several times, the latest witness, the length cap, A's cutoff at t, W in B,
+      self-loops and both visibilities.
+    - On fuzz graphs it checks gs ≤ fan_out. Over 58,893 rows, gs is non-zero on 44 % and below
+      fan_out on 26 %, and 37 % of rows hold a chain of 4 or more edges, so the fuzz graphs
+      exercise min() and long chains.
+  - `test_dsl_expr.cpp` covers `min`'s syntax, and `test_dsl_lower.cpp` the latest witness's
+    bounds and min's types.
+  - The invalid-spec suite has nine new cases: `e101_witness_value`, `e101_witness_edges`,
+    `e101_witness_not_for_all`, `e101_min_arity`, `e102_reserved_min`, `e103_min_node`,
+    `e204_latest_lower`, `e204_latest_count` and `e204_latest_filter`.
+  - Slow: `fuzz_diff_typologies_{cpu,cuda}_10k`.
+  - A mutation check: an emitter that binds the earliest witness instead gives 244,352
+    mismatching rows on 1,479 of 2,000 fuzz graphs.
+- **Outcome** (`results/s5_typologies.json`, `bench/s5_report.py`):
+  - AC1 on 10,000 fuzz graphs (2,053,897 edges) gives 0 mismatching rows in every run:
+    - the CPU, both schedules;
+    - CUDA at H = 0, 4 and all;
+    - the same again under timestamp visibility;
+    - the CPU `--disable` builds `find_start,count_only`, `distinct_first` and
+      `find_start,distinct_first`, on 2,000 graphs.
+  - Every existing snapshot is unchanged; only the registry gains two rows.
+  - HI-Small: oracle = CPU = CUDA byte for byte under both profiles, 0 saturated.
+  - E9 (`blz coverage`), eligible / activated in % of complete attempts. "Frozen" is E9's frozen
+    recipe, any block; "either" adds the new blocks to it.
+
+    | Typology | tchain 24 h | gs 24 h | tchain W-C | gs W-C | frozen | either, 24 h | either, W-C |
+    |---|---:|---:|---:|---:|---:|---:|---:|
+    | BIPARTITE | 0 / 76 | 0 / 27 | 0 / 94 | 0 / 67 | 0 | 0 | 0 |
+    | CYCLE | 69 / 94 | 0 / 46 | 74 / 100 | 0 / 76 | 78 | 100 | 100 |
+    | FAN-IN | 0 / 83 | 0 / 30 | 0 / 95 | 0 / 80 | 90 | 90 | 90 |
+    | FAN-OUT | 0 / 71 | 0 / 29 | 0 / 81 | 0 / 52 | 81 | 81 | 81 |
+    | GATHER-SCATTER | 77 / 94 | 41 / 67 | 82 / 100 | 65 / 90 | 92 | 92 | 92 |
+    | RANDOM | 66 / 90 | 0 / 42 | 68 / 100 | 0 / 76 | 0 | 66 | 68 |
+    | SCATTER-GATHER | 18 / 89 | 0 / 46 | 71 / 100 | 0 / 84 | 100 | 100 | 100 |
+    | STACK | 65 / 91 | 0 / 56 | 70 / 98 | 0 / 79 | 33 | 95 | 100 |
+    | **ALL** | 38 / 86 | 6 / 43 | 46 / 96 | 9 / 75 | 60 | 78 | 79 |
+
+  - So the gate's second half holds: tchain makes 66–68 % of RANDOM and 65–70 % of STACK eligible.
+    gs makes 41 % (24 h) and 65 % (W-C) of GATHER-SCATTER eligible, but adds no attempt that the
+    frozen recipe misses.
+  - Neither feature is selective. At 24 h, tchain is non-zero on 50.0 % of all edges and 44.7 %
+    of positives, and gs on 13.7 % and 13.3 %. At W-C: tchain 63.2 % and 69.4 %, gs 29.8 % and
+    33.0 %.
+  - The speed item (a Fig. 9 analogue) was not run; S5 made no timing run.
+  - Neither block is in any recipe: nothing was refit or rescored, and E8's verdict stands.
+
 ### S6 — tcyc hybrid CPU/GPU and reachability pruning
 
 - **Hybrid:** heavy triggers (work ≥ H_cpu) on the CPU backend while the GPU runs the light ones,
@@ -1498,6 +1607,10 @@ v1's E0–E5 stand. E6 becomes R8 (validation) and E8's sensitivity table (test)
   the relations to fan_out and fan_in on fuzz graphs); the fuzz parity through the registry
   profile in `test_cpu_backend.cpp` and `test_cuda_backend.cpp`; three invalid-spec cases; slow:
   `fuzz_diff_fan_sets_{cpu,cuda}_10k`.
+- **S5:** `tests/unit/test_typologies.cpp` (hand-checked cases for tchain and gs on the oracle, the
+  CPU and CUDA, and gs ≤ fan_out and long chains on fuzz graphs); `min` and `witness: latest` in
+  `test_dsl_expr.cpp` and `test_dsl_lower.cpp`; nine invalid-spec cases; the fuzz parity and
+  visibility invariance through the registry profile; slow: `fuzz_diff_typologies_{cpu,cuda}_10k`.
 
 ---
 
@@ -1926,7 +2039,8 @@ S1–S9 in the order of §8, each after its gate and the user's approval.
 Status: the user pulled S1–S3 forward under DG-3 on 2026-11-14. S1 is done (§8 S1 addendum). S2
 is done with D-37's deviation (§8 S2 addendum). S3 is done with D-38's tie deviation and D-39's work
 limit (§8 S3 addendum). DG-3 is resolved (P8). On 2026-11-15 the user asked for S4, which is done
-with D-40 (§8 S4 addendum). S5–S9 wait for their gates and the user.
+with D-40 (§8 S4 addendum). On 2026-11-19 the user asked for S5, which is done with D-41's scope
+and D-42's semantics (§8 S5 addendum). S6–S9 wait for their gates and the user.
 
 ---
 
@@ -2031,3 +2145,5 @@ are in `tests/golden/gfp_lcyc_probes.json`: 16 cases, 13 `rule` cases where they
 | D-38 | S3's lcyc leaves out every edge tied with the trigger (ts = t), under both visibilities. GFP decides a tie by its node order (A49): a tie edge x → y counts iff GFP first saw y before v. That order is the history of the call, not the window's edges, and the DSL has no node order: its node comparisons are ==, != and `in`, and a mixed predicate is E203. Matching it would need a per-node insertion rank carried through the index and a new predicate. The tie rows are accepted instead. On the 1,904 fuzz graphs under the limit, 74,723 of 369,426 rows (20 %) differ, every one reproduced by A49's rule (SPEC §13.3 makes ties common). On HI-Small none differ: F2 equals `blz` on every row. This resolves O-2. |
 | D-39 | The work limit (§8 S3) counts bindings per trigger. It stops the run with the smallest eid over the limit and never truncates a row. AC1's fuzz runs use a limit of 10⁶ on the CPU and on CUDA at H = 0 and 4. 537 of the 10,000 graphs reach it; for those, the stop eid is compared on every backend, schedule and threshold, not the rows. CUDA's all-light pass (H = all) uses 10⁵, which 1,727 graphs reach (0 mismatching rows). There one GPU thread walks each trigger's bindings serially, so at 10⁶ that pass alone would take about 3.75 h on the GTX 1650 SUPER. The light kernel runs the same generated `<pattern>_trigger` as the CPU driver, which is checked at 10⁶. GFP's fuzz parity skips the graphs limited at 10⁶ (96 of 2,000). HI-Small runs at the default of 10⁸, which no trigger reaches. |
 | D-40 | S4's `union` and `difference` are check stages only: `output` plus `len()`, with no binding form (`dst_var` is E101). A union element may have no edge on one side, and a difference element never has one on the probed side, so neither has a witness to export, and the two library features need only the size. Both ops have fixed sides: a difference is not symmetric, and a union's two scans each read their whole window anyway. A runtime choice of which side a union probes would only save probes. |
+| D-41 | S5's scope. The gate (§8) admits RANDOM, which no block of the frozen recipe sees, and STACK, which only tcyc sees (33 %, mostly 2-cycles), an exception to the gate's literal "no block"; both are temporal chains, so S5 adds a chain spec, tchain. GATHER-SCATTER fails the gate's first half (92 % eligible, mostly through fan and degree); the user chose to build the §8 draft, gs, anyway. BIPARTITE stays out: every attempt is a matching, so no pattern of two or more edges sees it. A chain of more than two edges needs each hop bounded above by the next hop's time, which v1's witness rule forbids (E204), so the DSL gains `witness: latest` with the mirror rule (a latest witness may only bound from above), and `min()` in `iexpr` for gs. |
+| D-42 | S5's semantics. gs's B includes W, unlike the draft (which excluded x and w from both sides): the trigger is itself a scatter edge, and B is then fan_out's set, so gs ≤ fan_out. A excludes W, as the draft says, and is cut at t (strictly earlier sources); B is not ordered against A. gs has fan's open lower bound. tchain counts one instance per node sequence (all nodes distinct, V included, so never a cycle), each hop strictly earlier than the next, with tcyc's closed lower bound and bins; like tcyc, its rows do not depend on the visibility. |

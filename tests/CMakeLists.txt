@@ -14,6 +14,7 @@ add_executable(blz_unit_tests
   unit/test_vstats.cpp
   unit/test_lcyc.cpp
   unit/test_set_ops.cpp
+  unit/test_typologies.cpp
   unit/test_metrics.cpp
   unit/test_registration.cpp
   unit/test_dsl_expr.cpp
@@ -140,6 +141,17 @@ if(BLZ_ENABLE_CUDA)
   add_test(NAME fuzz_diff_fan_sets_cuda_10k
     COMMAND blz fuzz-diff --backend cuda --seeds 0:10000 --profile ${PROJECT_SOURCE_DIR}/configs/profiles/fan_sets.yaml)
   set_tests_properties(fuzz_diff_fan_sets_cuda_10k PROPERTIES LABELS slow)
+endif()
+
+# SPEC v2 §8 S5: AC1 for the typologies' features, tchain (temporal chains, witness: latest) and
+# gs (gather-scatter, min()), on 10,000 fuzz graphs. CUDA runs H = 0, 4 and all.
+add_test(NAME fuzz_diff_typologies_cpu_10k
+  COMMAND blz fuzz-diff --seeds 0:10000 --profile ${PROJECT_SOURCE_DIR}/configs/profiles/typologies.yaml)
+set_tests_properties(fuzz_diff_typologies_cpu_10k PROPERTIES LABELS slow)
+if(BLZ_ENABLE_CUDA)
+  add_test(NAME fuzz_diff_typologies_cuda_10k
+    COMMAND blz fuzz-diff --backend cuda --seeds 0:10000 --profile ${PROJECT_SOURCE_DIR}/configs/profiles/typologies.yaml)
+  set_tests_properties(fuzz_diff_typologies_cuda_10k PROPERTIES LABELS slow)
 endif()
 
 # SPEC v2 §6.1 (P8): the oracle under timestamp visibility, including tcyc's visibility invariance.

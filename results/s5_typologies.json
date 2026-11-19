@@ -1,0 +1,818 @@
+{
+ "disable_distinct_first": {
+  "backend": "cpu",
+  "bins": "profile",
+  "edges": 403557,
+  "first_limited_seeds": [],
+  "first_mismatched_seeds": [],
+  "git": {
+   "dirty": true,
+   "sha": "e72c1507923ba011750ad6e9075368a5193915d5"
+  },
+  "graphs": 2000,
+  "k_max": 10,
+  "limited_graphs": 0,
+  "mismatched_rows_by_block": {
+   "gs": 0,
+   "tchain": 0
+  },
+  "mismatched_seeds": 0,
+  "profile": {
+   "file": "configs/profiles/typologies.yaml",
+   "id": "c5b77e3c4fd4ae6d",
+   "name": "typologies"
+  },
+  "schedules": [
+   "dynamic",
+   "sorted"
+  ],
+  "seconds": 1.480533161,
+  "seeds": "0:2000",
+  "work_limit": 100000000
+ },
+ "disable_find_start+count_only": {
+  "backend": "cpu",
+  "bins": "profile",
+  "edges": 403557,
+  "first_limited_seeds": [],
+  "first_mismatched_seeds": [],
+  "git": {
+   "dirty": true,
+   "sha": "e72c1507923ba011750ad6e9075368a5193915d5"
+  },
+  "graphs": 2000,
+  "k_max": 10,
+  "limited_graphs": 0,
+  "mismatched_rows_by_block": {
+   "gs": 0,
+   "tchain": 0
+  },
+  "mismatched_seeds": 0,
+  "profile": {
+   "file": "configs/profiles/typologies.yaml",
+   "id": "c5b77e3c4fd4ae6d",
+   "name": "typologies"
+  },
+  "schedules": [
+   "dynamic",
+   "sorted"
+  ],
+  "seconds": 1.334276092,
+  "seeds": "0:2000",
+  "work_limit": 100000000
+ },
+ "disable_find_start+distinct_first": {
+  "backend": "cpu",
+  "bins": "profile",
+  "edges": 403557,
+  "first_limited_seeds": [],
+  "first_mismatched_seeds": [],
+  "git": {
+   "dirty": true,
+   "sha": "e72c1507923ba011750ad6e9075368a5193915d5"
+  },
+  "graphs": 2000,
+  "k_max": 10,
+  "limited_graphs": 0,
+  "mismatched_rows_by_block": {
+   "gs": 0,
+   "tchain": 0
+  },
+  "mismatched_seeds": 0,
+  "profile": {
+   "file": "configs/profiles/typologies.yaml",
+   "id": "c5b77e3c4fd4ae6d",
+   "name": "typologies"
+  },
+  "schedules": [
+   "dynamic",
+   "sorted"
+  ],
+  "seconds": 1.438915654,
+  "seeds": "0:2000",
+  "work_limit": 100000000
+ },
+ "e9_eligibility": {
+  "typologies": {
+   "by_typology": {
+    "ALL": {
+     "activated_pct": {
+      "any": 85.9,
+      "gs": 43.0,
+      "tchain": 85.9
+     },
+     "complete": 370,
+     "eligible_pct": {
+      "any": 37.6,
+      "gs": 5.7,
+      "tchain": 37.6
+     }
+    },
+    "BIPARTITE": {
+     "activated_pct": {
+      "any": 75.5,
+      "gs": 26.5,
+      "tchain": 75.5
+     },
+     "complete": 49,
+     "eligible_pct": {
+      "any": 0.0,
+      "gs": 0.0,
+      "tchain": 0.0
+     }
+    },
+    "CYCLE": {
+     "activated_pct": {
+      "any": 94.4,
+      "gs": 46.3,
+      "tchain": 94.4
+     },
+     "complete": 54,
+     "eligible_pct": {
+      "any": 68.5,
+      "gs": 0.0,
+      "tchain": 68.5
+     }
+    },
+    "FAN-IN": {
+     "activated_pct": {
+      "any": 82.5,
+      "gs": 30.0,
+      "tchain": 82.5
+     },
+     "complete": 40,
+     "eligible_pct": {
+      "any": 0.0,
+      "gs": 0.0,
+      "tchain": 0.0
+     }
+    },
+    "FAN-OUT": {
+     "activated_pct": {
+      "any": 70.8,
+      "gs": 29.2,
+      "tchain": 70.8
+     },
+     "complete": 48,
+     "eligible_pct": {
+      "any": 0.0,
+      "gs": 0.0,
+      "tchain": 0.0
+     }
+    },
+    "GATHER-SCATTER": {
+     "activated_pct": {
+      "any": 94.1,
+      "gs": 66.7,
+      "tchain": 94.1
+     },
+     "complete": 51,
+     "eligible_pct": {
+      "any": 76.5,
+      "gs": 41.2,
+      "tchain": 76.5
+     }
+    },
+    "RANDOM": {
+     "activated_pct": {
+      "any": 90.2,
+      "gs": 41.5,
+      "tchain": 90.2
+     },
+     "complete": 41,
+     "eligible_pct": {
+      "any": 65.9,
+      "gs": 0.0,
+      "tchain": 65.9
+     }
+    },
+    "SCATTER-GATHER": {
+     "activated_pct": {
+      "any": 88.6,
+      "gs": 45.5,
+      "tchain": 88.6
+     },
+     "complete": 44,
+     "eligible_pct": {
+      "any": 18.2,
+      "gs": 0.0,
+      "tchain": 18.2
+     }
+    },
+    "STACK": {
+     "activated_pct": {
+      "any": 90.7,
+      "gs": 55.8,
+      "tchain": 90.7
+     },
+     "complete": 43,
+     "eligible_pct": {
+      "any": 65.1,
+      "gs": 0.0,
+      "tchain": 65.1
+     }
+    }
+   },
+   "nonzero_pct": {
+    "any": {
+     "edges": 49.96,
+     "positives": 44.7
+    },
+    "gs": {
+     "edges": 13.69,
+     "positives": 13.33
+    },
+    "tchain": {
+     "edges": 49.96,
+     "positives": 44.7
+    }
+   },
+   "profile_id": "c5b77e3c4fd4ae6d",
+   "windows": {
+    "gs": 86400,
+    "tchain": 86400
+   },
+   "with_frozen": {
+    "ALL": {
+     "complete": 370,
+     "either_pct": 77.8,
+     "frozen_any_pct": 60.0,
+     "new_any_pct": 37.6
+    },
+    "BIPARTITE": {
+     "complete": 49,
+     "either_pct": 0.0,
+     "frozen_any_pct": 0.0,
+     "new_any_pct": 0.0
+    },
+    "CYCLE": {
+     "complete": 54,
+     "either_pct": 100.0,
+     "frozen_any_pct": 77.8,
+     "new_any_pct": 68.5
+    },
+    "FAN-IN": {
+     "complete": 40,
+     "either_pct": 90.0,
+     "frozen_any_pct": 90.0,
+     "new_any_pct": 0.0
+    },
+    "FAN-OUT": {
+     "complete": 48,
+     "either_pct": 81.2,
+     "frozen_any_pct": 81.2,
+     "new_any_pct": 0.0
+    },
+    "GATHER-SCATTER": {
+     "complete": 51,
+     "either_pct": 92.2,
+     "frozen_any_pct": 92.2,
+     "new_any_pct": 76.5
+    },
+    "RANDOM": {
+     "complete": 41,
+     "either_pct": 65.9,
+     "frozen_any_pct": 0.0,
+     "new_any_pct": 65.9
+    },
+    "SCATTER-GATHER": {
+     "complete": 44,
+     "either_pct": 100.0,
+     "frozen_any_pct": 100.0,
+     "new_any_pct": 18.2
+    },
+    "STACK": {
+     "complete": 43,
+     "either_pct": 95.3,
+     "frozen_any_pct": 32.6,
+     "new_any_pct": 65.1
+    }
+   },
+   "with_frozen_note": "frozen_any = eligible for a block of E9's frozen recipe (configs/profiles/dg2_wc.yaml, W-C windows) under both profiles here"
+  },
+  "typologies_wc": {
+   "by_typology": {
+    "ALL": {
+     "activated_pct": {
+      "any": 95.9,
+      "gs": 75.4,
+      "tchain": 95.9
+     },
+     "complete": 370,
+     "eligible_pct": {
+      "any": 46.2,
+      "gs": 8.9,
+      "tchain": 46.2
+     }
+    },
+    "BIPARTITE": {
+     "activated_pct": {
+      "any": 93.9,
+      "gs": 67.3,
+      "tchain": 93.9
+     },
+     "complete": 49,
+     "eligible_pct": {
+      "any": 0.0,
+      "gs": 0.0,
+      "tchain": 0.0
+     }
+    },
+    "CYCLE": {
+     "activated_pct": {
+      "any": 100.0,
+      "gs": 75.9,
+      "tchain": 100.0
+     },
+     "complete": 54,
+     "eligible_pct": {
+      "any": 74.1,
+      "gs": 0.0,
+      "tchain": 74.1
+     }
+    },
+    "FAN-IN": {
+     "activated_pct": {
+      "any": 95.0,
+      "gs": 80.0,
+      "tchain": 95.0
+     },
+     "complete": 40,
+     "eligible_pct": {
+      "any": 0.0,
+      "gs": 0.0,
+      "tchain": 0.0
+     }
+    },
+    "FAN-OUT": {
+     "activated_pct": {
+      "any": 81.2,
+      "gs": 52.1,
+      "tchain": 81.2
+     },
+     "complete": 48,
+     "eligible_pct": {
+      "any": 0.0,
+      "gs": 0.0,
+      "tchain": 0.0
+     }
+    },
+    "GATHER-SCATTER": {
+     "activated_pct": {
+      "any": 100.0,
+      "gs": 90.2,
+      "tchain": 100.0
+     },
+     "complete": 51,
+     "eligible_pct": {
+      "any": 82.4,
+      "gs": 64.7,
+      "tchain": 82.4
+     }
+    },
+    "RANDOM": {
+     "activated_pct": {
+      "any": 100.0,
+      "gs": 75.6,
+      "tchain": 100.0
+     },
+     "complete": 41,
+     "eligible_pct": {
+      "any": 68.3,
+      "gs": 0.0,
+      "tchain": 68.3
+     }
+    },
+    "SCATTER-GATHER": {
+     "activated_pct": {
+      "any": 100.0,
+      "gs": 84.1,
+      "tchain": 100.0
+     },
+     "complete": 44,
+     "eligible_pct": {
+      "any": 70.5,
+      "gs": 0.0,
+      "tchain": 70.5
+     }
+    },
+    "STACK": {
+     "activated_pct": {
+      "any": 97.7,
+      "gs": 79.1,
+      "tchain": 97.7
+     },
+     "complete": 43,
+     "eligible_pct": {
+      "any": 69.8,
+      "gs": 0.0,
+      "tchain": 69.8
+     }
+    }
+   },
+   "nonzero_pct": {
+    "any": {
+     "edges": 63.52,
+     "positives": 69.98
+    },
+    "gs": {
+     "edges": 29.76,
+     "positives": 33.03
+    },
+    "tchain": {
+     "edges": 63.2,
+     "positives": 69.38
+    }
+   },
+   "profile_id": "d4e8496fd889075f",
+   "windows": {
+    "gs": 338400,
+    "tchain": 309600
+   },
+   "with_frozen": {
+    "ALL": {
+     "complete": 370,
+     "either_pct": 78.6,
+     "frozen_any_pct": 60.0,
+     "new_any_pct": 46.2
+    },
+    "BIPARTITE": {
+     "complete": 49,
+     "either_pct": 0.0,
+     "frozen_any_pct": 0.0,
+     "new_any_pct": 0.0
+    },
+    "CYCLE": {
+     "complete": 54,
+     "either_pct": 100.0,
+     "frozen_any_pct": 77.8,
+     "new_any_pct": 74.1
+    },
+    "FAN-IN": {
+     "complete": 40,
+     "either_pct": 90.0,
+     "frozen_any_pct": 90.0,
+     "new_any_pct": 0.0
+    },
+    "FAN-OUT": {
+     "complete": 48,
+     "either_pct": 81.2,
+     "frozen_any_pct": 81.2,
+     "new_any_pct": 0.0
+    },
+    "GATHER-SCATTER": {
+     "complete": 51,
+     "either_pct": 92.2,
+     "frozen_any_pct": 92.2,
+     "new_any_pct": 82.4
+    },
+    "RANDOM": {
+     "complete": 41,
+     "either_pct": 68.3,
+     "frozen_any_pct": 0.0,
+     "new_any_pct": 68.3
+    },
+    "SCATTER-GATHER": {
+     "complete": 44,
+     "either_pct": 100.0,
+     "frozen_any_pct": 100.0,
+     "new_any_pct": 70.5
+    },
+    "STACK": {
+     "complete": 43,
+     "either_pct": 100.0,
+     "frozen_any_pct": 32.6,
+     "new_any_pct": 69.8
+    }
+   },
+   "with_frozen_note": "frozen_any = eligible for a block of E9's frozen recipe (configs/profiles/dg2_wc.yaml, W-C windows) under both profiles here"
+  }
+ },
+ "fuzz_cpu_vs_oracle": {
+  "backend": "cpu",
+  "bins": "profile",
+  "edges": 2053897,
+  "first_limited_seeds": [],
+  "first_mismatched_seeds": [],
+  "git": {
+   "dirty": true,
+   "sha": "e72c1507923ba011750ad6e9075368a5193915d5"
+  },
+  "graphs": 10000,
+  "k_max": 10,
+  "limited_graphs": 0,
+  "mismatched_rows_by_block": {
+   "gs": 0,
+   "tchain": 0
+  },
+  "mismatched_seeds": 0,
+  "profile": {
+   "file": "configs/profiles/typologies.yaml",
+   "id": "c5b77e3c4fd4ae6d",
+   "name": "typologies"
+  },
+  "schedules": [
+   "dynamic",
+   "sorted"
+  ],
+  "seconds": 7.240050588,
+  "seeds": "0:10000",
+  "work_limit": 100000000
+ },
+ "fuzz_cpu_vs_oracle_tsvis": {
+  "backend": "cpu",
+  "bins": "profile",
+  "edges": 2053897,
+  "first_limited_seeds": [],
+  "first_mismatched_seeds": [],
+  "git": {
+   "dirty": true,
+   "sha": "e72c1507923ba011750ad6e9075368a5193915d5"
+  },
+  "graphs": 10000,
+  "k_max": 10,
+  "limited_graphs": 0,
+  "mismatched_rows_by_block": {
+   "gs": 0,
+   "tchain": 0
+  },
+  "mismatched_seeds": 0,
+  "profile": {
+   "file": "/tmp/claude-1000/-home-daryl-Projects-blazingaml/d536d983-c941-4295-8ebd-08958f128f56/scratchpad/typologies_tsvis.yaml",
+   "id": "16cf03e71b007a25",
+   "name": "typologies_tsvis"
+  },
+  "schedules": [
+   "dynamic",
+   "sorted"
+  ],
+  "seconds": 6.9540064,
+  "seeds": "0:10000",
+  "work_limit": 100000000
+ },
+ "fuzz_cuda_vs_oracle": {
+  "backend": "cuda",
+  "bins": "profile",
+  "cuda": {
+   "build": "nvcc 13.4.92, sm 75,80, -O3 -DNDEBUG",
+   "compute_capability": "7.5",
+   "device": "NVIDIA GeForce GTX 1650 SUPER",
+   "driver_version": 13040,
+   "memory_mb": {
+    "free": 2547,
+    "total": 3728
+   },
+   "runtime_version": 13040,
+   "sm_count": 20
+  },
+  "edges": 2053897,
+  "first_limited_seeds": [],
+  "first_mismatched_seeds": [],
+  "git": {
+   "dirty": true,
+   "sha": "e72c1507923ba011750ad6e9075368a5193915d5"
+  },
+  "graphs": 10000,
+  "heavy_thresholds": [
+   "0",
+   "4",
+   "all"
+  ],
+  "k_max": 10,
+  "limited_graphs": 0,
+  "mismatched_rows_by_block": {
+   "gs": 0,
+   "tchain": 0
+  },
+  "mismatched_seeds": 0,
+  "profile": {
+   "file": "configs/profiles/typologies.yaml",
+   "id": "c5b77e3c4fd4ae6d",
+   "name": "typologies"
+  },
+  "seconds": 76.056811884,
+  "seeds": "0:10000",
+  "work_limit": 100000000
+ },
+ "fuzz_cuda_vs_oracle_tsvis": {
+  "backend": "cuda",
+  "bins": "profile",
+  "cuda": {
+   "build": "nvcc 13.4.92, sm 75,80, -O3 -DNDEBUG",
+   "compute_capability": "7.5",
+   "device": "NVIDIA GeForce GTX 1650 SUPER",
+   "driver_version": 13040,
+   "memory_mb": {
+    "free": 2550,
+    "total": 3728
+   },
+   "runtime_version": 13040,
+   "sm_count": 20
+  },
+  "edges": 2053897,
+  "first_limited_seeds": [],
+  "first_mismatched_seeds": [],
+  "git": {
+   "dirty": true,
+   "sha": "e72c1507923ba011750ad6e9075368a5193915d5"
+  },
+  "graphs": 10000,
+  "heavy_thresholds": [
+   "0",
+   "4",
+   "all"
+  ],
+  "k_max": 10,
+  "limited_graphs": 0,
+  "mismatched_rows_by_block": {
+   "gs": 0,
+   "tchain": 0
+  },
+  "mismatched_seeds": 0,
+  "profile": {
+   "file": "/tmp/claude-1000/-home-daryl-Projects-blazingaml/d536d983-c941-4295-8ebd-08958f128f56/scratchpad/typologies_tsvis.yaml",
+   "id": "16cf03e71b007a25",
+   "name": "typologies_tsvis"
+  },
+  "seconds": 72.198085994,
+  "seeds": "0:10000",
+  "work_limit": 100000000
+ },
+ "fuzz_relations_unit_test": {
+  "gs_below_fan_out": 15480,
+  "gs_nonzero": 26007,
+  "note": "gs <= fan_out holds on every row; the fuzz graphs exercise gs's min() (it is below fan_out on 26 % of rows) and chains of 4 edges or more (37 % of rows)",
+  "rows": 58893,
+  "tchain_ge_4_edges": 21888,
+  "test": "tests/unit/test_typologies.cpp (oracle, seeds 0:300)"
+ },
+ "gate": {
+  "decision": "RANDOM passes the gate's first half (0 % eligible under the frozen recipe). STACK is an exception admitted with it: 33 % eligible, all through tcyc (13 attempts are 2-cycles, one a 4-cycle), so 67 % are seen by no block. A chain spec (tchain) makes most of both eligible. GATHER-SCATTER fails it (92 % eligible: 84 % through fan and degree, 4 more attempts through tcyc only); the user chose on 2026-11-19 to build its draft (gs) as well. BIPARTITE cannot pass: every attempt is a matching (D-41)",
+  "frozen_eligible_any_pct": {
+   "ALL": 60.0,
+   "BIPARTITE": 0.0,
+   "CYCLE": 77.8,
+   "FAN-IN": 90.0,
+   "FAN-OUT": 81.2,
+   "GATHER-SCATTER": 92.2,
+   "RANDOM": 0.0,
+   "SCATTER-GATHER": 100.0,
+   "STACK": 32.6
+  },
+  "frozen_recipe": "configs/profiles/dg2_wc.yaml",
+  "rule": "SPEC v2 §8 S5: E9 shows typology T ineligible for every existing block under the frozen profile, while a draft spec for T would make most of T's complete attempts eligible",
+  "structure": {
+   "BIPARTITE": {
+    "attempts": 49,
+    "gs_hub_pct": 0.0,
+    "largest_component_edges_max": 1,
+    "matching_pct": 100.0,
+    "two_hop_chain_pct": 0.0
+   },
+   "CYCLE": {
+    "attempts": 54,
+    "gs_hub_pct": 0.0,
+    "largest_component_edges_max": 12,
+    "matching_pct": 0.0,
+    "two_hop_chain_pct": 74.1
+   },
+   "FAN-IN": {
+    "attempts": 40,
+    "gs_hub_pct": 0.0,
+    "largest_component_edges_max": 16,
+    "matching_pct": 10.0,
+    "two_hop_chain_pct": 0.0
+   },
+   "FAN-OUT": {
+    "attempts": 48,
+    "gs_hub_pct": 0.0,
+    "largest_component_edges_max": 16,
+    "matching_pct": 16.7,
+    "two_hop_chain_pct": 0.0
+   },
+   "GATHER-SCATTER": {
+    "attempts": 51,
+    "gs_hub_pct": 84.3,
+    "largest_component_edges_max": 28,
+    "matching_pct": 0.0,
+    "two_hop_chain_pct": 84.3
+   },
+   "RANDOM": {
+    "attempts": 41,
+    "gs_hub_pct": 0.0,
+    "largest_component_edges_max": 11,
+    "matching_pct": 31.7,
+    "two_hop_chain_pct": 68.3
+   },
+   "SCATTER-GATHER": {
+    "attempts": 44,
+    "gs_hub_pct": 4.5,
+    "largest_component_edges_max": 32,
+    "matching_pct": 0.0,
+    "two_hop_chain_pct": 70.5
+   },
+   "STACK": {
+    "attempts": 43,
+    "gs_hub_pct": 0.0,
+    "largest_component_edges_max": 4,
+    "matching_pct": 0.0,
+    "two_hop_chain_pct": 69.8
+   }
+  }
+ },
+ "hi_small_ac1": {
+  "typologies": {
+   "backends": {
+    "cpu": {
+     "gs": {
+      "output_fnv1a": 4041246092584479955,
+      "saturated": 0
+     },
+     "profile_id": "c5b77e3c4fd4ae6d",
+     "tchain": {
+      "output_fnv1a": 17376890015181889313,
+      "saturated": 0
+     }
+    },
+    "cuda": {
+     "gs": {
+      "output_fnv1a": 4041246092584479955,
+      "saturated": 0
+     },
+     "profile_id": "c5b77e3c4fd4ae6d",
+     "tchain": {
+      "output_fnv1a": 17376890015181889313,
+      "saturated": 0
+     }
+    },
+    "oracle": {
+     "gs": {
+      "output_fnv1a": 4041246092584479955,
+      "saturated": 0
+     },
+     "profile_id": "c5b77e3c4fd4ae6d",
+     "tchain": {
+      "output_fnv1a": 17376890015181889313,
+      "saturated": 0
+     }
+    }
+   },
+   "cpu_sha256": {
+    "gs": "aa70658e9fd73e1022f3d27ed7180878da2bcb4da22982493a80c70d8a5ee8ec",
+    "tchain": "ce28e63767e84a2140cf05a41d9957b4b485cf76048a31b2b85ae5ade16c163d"
+   },
+   "hash_parity": true,
+   "note": "blz mine on each backend (cuda on the GTX 1650 SUPER, default heavy threshold); every backend's npy was byte-identical, and only the cpu one is kept (for blz coverage). Not a timing run."
+  },
+  "typologies_wc": {
+   "backends": {
+    "cpu": {
+     "gs": {
+      "output_fnv1a": 9816635375373001538,
+      "saturated": 0
+     },
+     "profile_id": "d4e8496fd889075f",
+     "tchain": {
+      "output_fnv1a": 14852976428670267001,
+      "saturated": 0
+     }
+    },
+    "cuda": {
+     "gs": {
+      "output_fnv1a": 9816635375373001538,
+      "saturated": 0
+     },
+     "profile_id": "d4e8496fd889075f",
+     "tchain": {
+      "output_fnv1a": 14852976428670267001,
+      "saturated": 0
+     }
+    },
+    "oracle": {
+     "gs": {
+      "output_fnv1a": 9816635375373001538,
+      "saturated": 0
+     },
+     "profile_id": "d4e8496fd889075f",
+     "tchain": {
+      "output_fnv1a": 14852976428670267001,
+      "saturated": 0
+     }
+    }
+   },
+   "cpu_sha256": {
+    "gs": "732ad45d5d3505e51ddbe43823ed49315393e55bbce3d0b87f65fb34f30de3d5",
+    "tchain": "f5a9ee34041c7936272615c24c55b1810e2d8ed1703e97ace363457b1d00fcd9"
+   },
+   "hash_parity": true,
+   "note": "blz mine on each backend (cuda on the GTX 1650 SUPER, default heavy threshold); every backend's npy was byte-identical, and only the cpu one is kept (for blz coverage). Not a timing run."
+  }
+ },
+ "mutation_check": {
+  "change": "the CPU emitter's for_all ignores witness: latest (it binds the scanned edge's own ts, the earliest witness)",
+  "mismatched_graphs": 1479,
+  "mismatched_rows": 244352,
+  "note": "the emitter was restored and rebuilt after the check",
+  "seeds": "0:2000, configs/profiles/typologies.yaml, cpu vs oracle"
+ }
+}

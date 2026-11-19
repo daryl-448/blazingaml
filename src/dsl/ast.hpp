@@ -53,6 +53,10 @@ struct Stage {
   std::vector<Name> edges;  // intersection, union, difference: [src-side edge, dst-side edge]
   std::optional<Mult> multiplicity;
   Loc multiplicity_loc;
+  // `witness: latest` (SPEC v2 §8 S5): a distinct for_all binds each neighbour with its latest
+  // witness edge instead of its earliest; later stages may then use that edge's time only as an
+  // upper bound. `witness: earliest` is the default.
+  bool latest_witness = false;
   std::optional<bool> gate;
   Loc gate_loc;
   std::vector<Constraint> constraints;

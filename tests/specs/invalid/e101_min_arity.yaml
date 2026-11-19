@@ -1,0 +1,13 @@
+# expect: E101 13:24 -- min() takes two arguments
+version: 1
+pattern: p
+block: fan_in
+window: {span: d, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+stages:
+  - id: n_in
+    op: count
+    src: V.in
+    edge: e1
+    output: n
+    emit: {size: "min(n)"}

@@ -248,6 +248,56 @@ void Oracle::fan_sets(Block b, const Trigger& tr, std::vector<std::uint64_t>& si
   sizes.push_back(r.size());
 }
 
+// SPEC v2 §8 S5 (tchain): the distinct simple node sequences c_{k-1}, ..., c_1, c_0 = u ending in
+// the trigger u -> v (2 <= k <= k_max edges, v included, all nodes distinct) with window edges
+// c_i -> c_{i-1} at t - delta <= t_{k-1} < ... < t_1 < t. counts[k] gets the number of sequences
+// with k edges.
+//
+// The mirror of tcyc's search: the DFS runs backward over node sequences, so each is reached once.
+// For the current prefix it carries the full set D of the times its head's chain edge can take
+// over every valid timestamp assignment of the suffix, considering all parallel edges, and does
+// not reduce D to its maximum, so the latest-witness rule that the generated code relies on is
+// tested, not assumed. An edge x -> head extends the prefix when its time is below some d in D.
+// Every hop needs ts < t, so timestamp visibility cannot change the result (as for tcyc).
+void Oracle::tchain(const Trigger& tr, int k_max, std::vector<std::uint64_t>& counts) const {
+  using Ts = std::int64_t;
+  std::vector<std::uint32_t> path = {tr.v, tr.u};
+  auto dfs = [&](auto& self, const std::vector<Ts>& departures) -> void {
+    // The feasible times of an edge into the head from each distinct in-neighbour x.
+    std::map<std::uint32_t, std::vector<Ts>> prev;
+    const Window w = window(in_[path.back()], tr);
+    for (auto f = w.begin; f != w.end; ++f) {
+      const Ts t1 = s_.ts[*f];
+      if (std::any_of(departures.begin(), departures.end(), [&](Ts d) { return t1 < d; }))
+        prev[s_.src[*f]].push_back(t1);
+    }
+    for (const auto& [x, xs] : prev) {
+      if (std::find(path.begin(), path.end(), x) != path.end()) continue;  // simple chains only
+      ++counts[path.size()];  // path.size() nodes before x: path.size() edges with x
+      if (int(path.size()) + 1 > k_max) continue;
+      path.push_back(x);
+      self(self, xs);
+      path.pop_back();
+    }
+  };
+  if (k_max >= 2) dfs(dfs, {tr.t});
+}
+
+// SPEC v2 §8 S5 (gs), from the definition: the trigger x -> w out of hub x completes one instance
+// of size min(|A|, |B|), A = the distinct sources s that sent to x before t (a window edge
+// s -> x with ts < t), s not in {x, w}; B = the distinct sinks d that x paid in the window, d != x
+// (w included). An open lower bound, as fan.
+void Oracle::gs(const Trigger& tr, std::vector<std::uint64_t>& sizes) const {
+  const std::uint32_t x = tr.u, w = tr.v;
+  std::set<std::uint32_t> a, b;
+  const Window wi = window(in_[x], tr), wo = window(out_[x], tr);
+  for (auto f = wi.begin; f != wi.end; ++f)
+    if (s_.ts[*f] < tr.t && s_.src[*f] != x && s_.src[*f] != w) a.insert(s_.src[*f]);
+  for (auto f = wo.begin; f != wo.end; ++f)
+    if (s_.dst[*f] != x) b.insert(s_.dst[*f]);
+  sizes.push_back(std::min(a.size(), b.size()));
+}
+
 std::uint64_t Oracle::mine_one(Block b, const BlockParams& p, int k_max, std::uint64_t e, std::uint32_t* row,
                                bool gather_only, bool* aborted) const {
   const Trigger tr{std::uint32_t(e), s_.src[e], s_.dst[e], s_.ts[e], std::int64_t(s_.ts[e]) - p.window,
@@ -260,6 +310,20 @@ std::uint64_t Oracle::mine_one(Block b, const BlockParams& p, int k_max, std::ui
     case Block::sg_ord: sg_ordered(tr, sizes); break;
     case Block::fan_oneway_out:
     case Block::fan_total: fan_sets(b, tr, sizes); break;
+    case Block::gs: gs(tr, sizes); break;
+    case Block::tchain: {  // counted per length: a hub can end millions of chains
+      std::vector<std::uint64_t> counts(std::size_t(std::max(k_max, 1)) + 1, 0);
+      tchain(tr, k_max, counts);
+      std::uint64_t saturated = 0;
+      for (std::size_t k = 0; k < counts.size(); ++k) {
+        const int i = bin_index(p.bins, k);
+        if (i < 0 || counts[k] == 0) continue;
+        const std::uint64_t room = UINT32_MAX - row[i], add = std::min<std::uint64_t>(room, counts[k]);
+        row[i] += std::uint32_t(add);
+        saturated += counts[k] - add;
+      }
+      return saturated;
+    }
     case Block::lcyc:
       if (!lcyc(tr, k_max, p.work_limit, sizes)) {
         if (aborted) *aborted = true;

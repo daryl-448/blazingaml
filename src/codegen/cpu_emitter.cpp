@@ -316,6 +316,7 @@ class CpuEmitter {
         }
       case K::EdgeT: return witness(e.name);
       case K::Len: return id("len_", e.name);
+      case K::Min: return "min_int(" + cx(e.kids[0]) + ", " + cx(e.kids[1]) + ")";
       case K::Add:
       case K::Sub: {
         const Expr& r = e.kids[1];
@@ -683,7 +684,12 @@ class CpuEmitter {
       if (used(s.bind_var))
         w.line("const std::uint32_t " + node(s.bind_var) + " = " + L + ".nbr[" + j + "];");
       for (const Expr& f : s.filters) w.line("if (" + cx(f) + ") continue;");
-      if (used(o.edge)) w.line("const std::int64_t " + witness(o.edge) + " = " + L + ".ts[" + j + "];");
+      if (used(o.edge) && s.latest_witness)  // SPEC v2 §8 S5: the neighbour's last edge in the same range
+        w.line("const std::int64_t " + witness(o.edge) + " = " + pcsr(o.dir) + ".pair_latest(" + node(o.node) + ", " +
+               L + ".nbr[" + j + "], " + lo_of(o.lo_incl) + ", " + hi_of(o.hi_incl) +
+               ", vis_e);  // witness: latest");
+      else if (used(o.edge))
+        w.line("const std::int64_t " + witness(o.edge) + " = " + L + ".ts[" + j + "];");
     } else {
       unsupported(s.loc, "only for_all and intersection bind");
     }

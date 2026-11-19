@@ -232,6 +232,16 @@ class Parser {
           e.name = v.text;
           return e;
         }
+        if (t.text == "min") {  // SPEC v2 §8 S5: min(iexpr, iexpr)
+          expect(Tok::T::lparen, "'(' after min");
+          Expr a = parse_sum();
+          expect(Tok::T::comma, "',' between the two arguments of min(");
+          Expr b = parse_sum();
+          expect(Tok::T::rparen, "')' closing min(");
+          Expr e = binary(Expr::K::Min, std::move(a), std::move(b));
+          e.loc = at(t.pos);
+          return e;
+        }
         if (peek().t == Tok::T::dot) {
           next();
           const Tok& f = peek();
@@ -309,6 +319,7 @@ std::string to_string(const Expr& e) {
     case Expr::K::Name: return e.name;
     case Expr::K::EdgeT: return e.name + ".t";
     case Expr::K::Len: return "len(" + e.name + ")";
+    case Expr::K::Min: return "min(" + to_string(e.kids[0]) + ", " + to_string(e.kids[1]) + ")";
     case Expr::K::Add: return wrap(e.kids[0], 5) + " + " + wrap(e.kids[1], 6);
     case Expr::K::Sub: return wrap(e.kids[0], 5) + " - " + wrap(e.kids[1], 6);
     case Expr::K::Cmp:

@@ -24,7 +24,7 @@ inline bool is_ident(std::string_view s) {
 
 // Words of the expression language; they cannot name anything.
 inline bool is_reserved(std::string_view s) {
-  static constexpr std::array<std::string_view, 6> kWords = {"t", "and", "or", "not", "in", "len"};
+  static constexpr std::array<std::string_view, 7> kWords = {"t", "and", "or", "not", "in", "len", "min"};
   for (auto w : kWords)
     if (s == w) return true;
   return false;

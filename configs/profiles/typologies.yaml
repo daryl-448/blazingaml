@@ -1,0 +1,12 @@
+# Semantic profile (SPEC v2 §8 S5): the new typologies' blocks, tchain (temporal chains, for
+# RANDOM and STACK) and gs (gather-scatter), at the v1 windows (D-8: one day) with tcyc's bins for
+# tchain (lengths 2..10) and the fan bins for gs (D-9). Stream visibility, trigger credit.
+# 21 columns.
+version: 2
+profile: typologies
+visibility: stream
+credit: trigger
+k_max: 10
+blocks:                      # output order = listed order
+  tchain: {patterns: [tchain], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}
+  gs:     {patterns: [gs],     window: 86400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50]}

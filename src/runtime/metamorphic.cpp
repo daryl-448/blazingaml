@@ -97,7 +97,7 @@ const char* meta_test_name(MetaTest t) {
 bool meta_test_applies(MetaTest t, const Profile& prof, [[maybe_unused]] Backend be) {
   switch (t) {
     case MetaTest::prefix_closure: return prof.credit == Credit::trigger;
-    case MetaTest::visibility_invariance: return prof.find(Block::tcyc) != nullptr;
+    case MetaTest::visibility_invariance: return prof.find(Block::tcyc) || prof.find(Block::tchain);
     case MetaTest::order_relaxation: return prof.find(Block::sg_ord) != nullptr;
     default: return true;
   }
@@ -111,13 +111,16 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
   if (prof.batch) throw std::invalid_argument("metamorphic: GFP batch mode profiles are not supported (SPEC v2 §8 S1)");
   if (be == Backend::cuda && thresholds.empty()) throw std::invalid_argument("metamorphic: cuda needs thresholds");
   const bool prefix_applies = meta_test_applies(MetaTest::prefix_closure, prof, be);
-  // tcyc alone, under the other visibility. Every backend runs both visibilities (P10), so the
-  // check of `prof` covers it; checking the one-block profile itself would fail a v1 config's E402.
+  // tcyc and tchain (SPEC v2 §8 S5) alone, under the other visibility: every hop of either is
+  // strictly before t. Every backend runs both visibilities (P10), so the check of `prof` covers
+  // it; checking the reduced profile itself would fail a v1 config's E402.
   std::optional<Profile> flipped;
   if (meta_test_applies(MetaTest::visibility_invariance, prof, be)) {
     flipped = prof;
     flipped->visibility = prof.visibility == Visibility::stream ? Visibility::timestamp : Visibility::stream;
-    flipped->blocks = {*prof.find(Block::tcyc)};
+    flipped->blocks.clear();
+    for (Block b : {Block::tcyc, Block::tchain})
+      if (const ProfileBlock* pb = prof.find(b)) flipped->blocks.push_back(*pb);
   }
   BlockBins block_bins;
   for (const ProfileBlock& pb : prof.blocks) {

@@ -1,0 +1,29 @@
+# gs (SPEC v2 §8 S5): gather-scatter through the trigger's source X, a hub that paid W. A = the
+# distinct sources that sent to X before t, X and W excluded; B = the distinct sinks X paid within
+# the window, X excluded and W included (the trigger is itself a scatter edge). One instance of
+# size min(|A|, |B|). Open lower bound and fan bins, as the fan counts it is made of.
+version: 1
+pattern: gs
+block: gs
+window: {span: delta_gs, lower: open}
+trigger: {edge: e0, src: X, dst: W}
+constraints: [{skip_if: "X == W"}]
+stages:
+  - id: sources
+    op: count
+    src: X.in
+    edge: e1
+    element: S
+    output: a
+    gate: true                           # no source: no instance, so the sinks are not counted
+    constraints:
+      - break_if: "e1.t >= t"
+      - skip_if: "S in [X, W]"
+  - id: sinks
+    op: count
+    src: X.out
+    edge: e2
+    element: D
+    output: b
+    constraints: [{skip_if: "D == X"}]
+    emit: {size: "min(a, b)"}

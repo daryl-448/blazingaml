@@ -30,6 +30,7 @@ struct Expr {
     Name,   // name: a node var, int var, param, const or `t`
     EdgeT,  // name.t, name an edge var
     Len,    // len(name)
+    Min,    // min(kids[0], kids[1]), ints (SPEC v2 §8 S5)
     Add,    // kids[0] + kids[1]
     Sub,    // kids[0] - kids[1]
     Cmp,    // kids[0] <cmp> kids[1]

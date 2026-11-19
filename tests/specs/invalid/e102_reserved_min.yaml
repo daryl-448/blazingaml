@@ -1,0 +1,12 @@
+# expect: E102 12:13 -- min is a reserved word
+version: 1
+pattern: p
+block: fan_in
+window: {span: d, lower: open}
+trigger: {edge: e0, src: U, dst: V}
+stages:
+  - id: n_in
+    op: count
+    src: V.in
+    edge: e1
+    output: min

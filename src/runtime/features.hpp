@@ -11,12 +11,13 @@
 namespace blz {
 
 // Output blocks: the six v1 blocks in GFP column order (SPEC §4.2), then sg_ord (SPEC v2 §6.3),
-// which GFP does not have, lcyc (GFP's lc-cycle, SPEC v2 §8 S3), and fan_oneway_out and fan_total,
-// the features of the set ops difference and union (SPEC v2 §8 S4).
-enum class Block { fan_in, fan_out, deg_in, deg_out, sg, tcyc, sg_ord, lcyc, fan_oneway_out, fan_total };
-inline constexpr std::array<Block, 10> kAllBlocks = {
-    Block::fan_in, Block::fan_out, Block::deg_in, Block::deg_out,         Block::sg,
-    Block::tcyc,   Block::sg_ord,  Block::lcyc,   Block::fan_oneway_out, Block::fan_total};
+// which GFP does not have, lcyc (GFP's lc-cycle, SPEC v2 §8 S3), fan_oneway_out and fan_total,
+// the features of the set ops difference and union (SPEC v2 §8 S4), and tchain and gs, the
+// typologies of SPEC v2 §8 S5 (temporal chains, gather-scatter).
+enum class Block { fan_in, fan_out, deg_in, deg_out, sg, tcyc, sg_ord, lcyc, fan_oneway_out, fan_total, tchain, gs };
+inline constexpr std::array<Block, 12> kAllBlocks = {
+    Block::fan_in, Block::fan_out, Block::deg_in, Block::deg_out,         Block::sg,        Block::tcyc,
+    Block::sg_ord, Block::lcyc,    Block::fan_oneway_out, Block::fan_total, Block::tchain, Block::gs};
 // The v1 blocks: what a v1 feature config covers (E402) and what GFP computes.
 inline constexpr std::array<Block, 6> kV1Blocks = {Block::fan_in,  Block::fan_out, Block::deg_in,
                                                    Block::deg_out, Block::sg,      Block::tcyc};
@@ -25,11 +26,11 @@ inline bool is_v1_block(Block b) { return int(b) <= int(Block::tcyc); }
 std::string_view block_name(Block b);
 std::optional<Block> parse_block(std::string_view name);
 
-// Window lower bound (SPEC §4.1): fan and degree (and S4's fan_oneway_out and fan_total) are open
-// (t' > t - delta), SG, tcyc, sg_ord and lcyc closed (t' >= t - delta). Fixed by the semantics, not
-// by the config.
+// Window lower bound (SPEC §4.1): fan and degree (and S4's fan_oneway_out and fan_total, and S5's
+// gs) are open (t' > t - delta), SG, tcyc, sg_ord, lcyc and S5's tchain closed (t' >= t - delta).
+// Fixed by the semantics, not by the config.
 inline bool closed_lower_bound(Block b) {
-  return b == Block::sg || b == Block::tcyc || b == Block::sg_ord || b == Block::lcyc;
+  return b == Block::sg || b == Block::tcyc || b == Block::sg_ord || b == Block::lcyc || b == Block::tchain;
 }
 
 // Which edges a trigger e = (u -> v, t) may see (SPEC §4.1 of v1, §6.1 of v2): stream = eid' <=

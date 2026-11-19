@@ -243,7 +243,7 @@ TEST_CASE("profiles: GFP batch mode (SPEC v2 §8 S1)") {
 TEST_CASE("profiles: registry_profile is every registered block with the compiled K_MAX") {
   const Profile r = registry_profile();
   CHECK(r.k_max == 10);
-  CHECK(r.blocks.size() == 9);  // every block but lcyc
+  CHECK(r.blocks.size() == 11);  // every block but lcyc
   REQUIRE(r.find(Block::sg_ord) != nullptr);
   CHECK(std::string(r.find(Block::sg_ord)->patterns.at(0)->name) == "sg_ordered");
   CHECK(r.find(Block::sg)->patterns.size() == 2);

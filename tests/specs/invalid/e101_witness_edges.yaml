@@ -1,0 +1,14 @@
+# expect: E101 14:14 -- witness: latest on a for_all over every edge
+version: 1
+pattern: p
+block: fan_in
+window: {span: d, lower: closed}
+trigger: {edge: e0, src: U, dst: V}
+stages:
+  - id: hop_1
+    op: for_all
+    src: U.in
+    edge: h1
+    dst_var: C1
+    multiplicity: edges
+    witness: latest

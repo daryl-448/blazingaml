@@ -1533,7 +1533,7 @@ int main(int argc, char** argv) {
   fd->add_option("--name", name, "key (JSON pointer path) in --report")->needs("--report");
 
   std::string mt_backend = "cpu";
-  auto* mt = app.add_subcommand("metamorphic", "SPEC v2 §3.4: prefix closure, relabeling, time shift, tcyc visibility invariance on fuzz graphs");
+  auto* mt = app.add_subcommand("metamorphic", "SPEC v2 §3.4: prefix closure, relabeling, time shift, tcyc and tchain visibility invariance on fuzz graphs");
   mt->add_option("--seeds", seeds, "a:b")->required();
   mt->add_option("--bins", fd_bins, "default: the profile's bins per block, or 2..33 without --profile");
   mt->add_option("--backend", mt_backend)->check(CLI::IsMember({"oracle", "cpu", "cuda"}));

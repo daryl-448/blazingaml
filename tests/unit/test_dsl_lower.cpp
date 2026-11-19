@@ -112,6 +112,41 @@ TEST_CASE("lower: gated exists exports its witness; constants resolve") {
   CHECK(h.exports == std::vector<std::string>{"C1", "h1"});
 }
 
+// SPEC v2 §8 S5: a distinct for_all with `witness: latest` exports a latest witness, which later
+// scans may use as an upper bound only; min() is an int.
+TEST_CASE("lower: witness: latest bounds later scans from above; min() of ints") {
+  const ir::Pattern p = compile(
+      "stages:\n"
+      "  - id: h\n    op: for_all\n    src: U.in\n    edge: h1\n    dst_var: C1\n    witness: latest\n"
+      "    constraints: [{break_if: \"h1.t >= t\"}]\n"
+      "  - id: g\n    op: for_all\n    src: C1.in\n    edge: h2\n    dst_var: C2\n"
+      "    constraints: [{break_if: \"h2.t >= h1.t\"}]\n"
+      "  - id: n\n    op: count\n    src: C2.out\n    edge: e3\n    output: k\n"
+      "    emit: {size: \"min(k, 2 + 1)\"}\n");
+  const ir::Stage& h = *p.levels.at(1).binding;
+  const ir::Stage& g = *p.levels.at(2).binding;
+  CHECK(h.latest_witness);
+  CHECK_FALSE(g.latest_witness);
+  CHECK(texts(g.operands[0].hi_incl) == "h1.t - 1");
+  const ir::Stage& n = p.levels.at(2).checks.at(0);
+  REQUIRE(n.emit);
+  CHECK(n.emit->size.k == dsl::Expr::K::Min);
+  CHECK(n.emit->size.ty == dsl::Ty::int_);
+  // The earliest witness (the default) may not bound from above, the latest not from below.
+  CHECK(code_of("stages:\n"
+                     "  - {id: h, op: for_all, src: U.in, edge: h1, dst_var: C1, witness: earliest}\n"
+                     "  - id: g\n    op: for_all\n    src: C1.in\n    edge: h2\n    dst_var: C2\n"
+                     "    constraints: [{break_if: \"h2.t >= h1.t\"}]\n") == "E204");
+  CHECK(code_of("stages:\n"
+                     "  - {id: h, op: for_all, src: U.in, edge: h1, dst_var: C1, witness: latest}\n"
+                     "  - id: g\n    op: exists\n    src: C1.in\n    node: V\n    edge: h2\n"
+                     "    constraints: [{skip_if: \"h2.t < h1.t\"}]\n") == "E204");
+  CHECK(code_of("stages:\n"
+                     "  - {id: h, op: for_all, src: U.in, edge: h1, dst_var: C1, witness: latest}\n"
+                     "  - id: g\n    op: exists\n    src: C1.in\n    node: V\n    edge: h2\n"
+                     "    constraints: [{break_if: \"h2.t >= h1.t\"}]\n") == "ok");
+}
+
 TEST_CASE("lower: visibility timestamp and indexed vars are accepted") {
   const ir::Pattern p = ir::compile_text(
       "version: 1\npattern: p\nblock: sg\nwindow: {span: d, lower: closed}\nvisibility: timestamp\n"
