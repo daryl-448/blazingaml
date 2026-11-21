@@ -12,6 +12,10 @@
 #      profile, and blz bench --backend cpu at nproc threads (GPU vs CPU on this instance);
 #   5. with more than 12 vCPUs and at most E11_START_MIN minutes spent so far, E11 at 1 and nproc
 #      threads (bench/e11.py --host a30). GFP is not timed (SPEC v2 §7.3).
+# With BLZ_CAMPAIGN=s7 (SPEC v2 §8 S7), steps 3-5 are instead: the fast tests; blz fuzz-diff
+# --backend cuda --fuse --pack on 10,000 graphs at H = 0, 4 and all, for every registered block
+# and for sg_ordered_tsvis; HI-Small mined with --fuse --pack under v1_default (its hashes and
+# copy widths into results/s7_a30.json); and bench/s7.sh (results/e12_s7_a30.{json,md}).
 # Results go to $BLZ_WORK/repo/results/{p11_a30,e12_gpu_a30,e11_ablation_a30}.json (and the E11
 # .md) and a30_p11_env.txt. Exit status: non-zero on the first failure.
 set -euxo pipefail
@@ -22,6 +26,7 @@ cd "$W"
 set -a
 . "$W/source.env"
 set +a
+CAMPAIGN=${BLZ_CAMPAIGN:-p11}
 rm -rf repo
 mkdir -p repo
 tar -xzf repo.tgz -C repo
@@ -35,7 +40,7 @@ NP=$(nproc)
   free -m
   nvidia-smi
   cat /etc/os-release
-} > results/a30_p11_env.txt 2>&1 || true
+} > "results/a30_${CAMPAIGN}_env.txt" 2>&1 || true
 
 # --- toolchain ---------------------------------------------------------------------------------
 # CMake and Ninja in a venv of their own (`jl run` may already run inside ~/.venv).
@@ -87,6 +92,31 @@ cmake --preset rel-cuda -DCMAKE_CUDA_COMPILER="$NVCC" -DCMAKE_CUDA_ARCHITECTURES
 cmake --build build/rel-cuda -j"$NP"
 ctest --preset rel-cuda -j4
 BLZ=build/rel-cuda/blz
+
+if [ "$CAMPAIGN" = s7 ]; then
+  R=results/s7_a30.json
+  "$BLZ" fuzz-diff --backend cuda --fuse --pack --seeds 0:10000 --report "$R" --name fuzz_diff/registry
+  "$BLZ" fuzz-diff --backend cuda --fuse --pack --seeds 0:10000 --profile configs/profiles/sg_ordered_tsvis.yaml \
+    --report "$R" --name fuzz_diff/sg_ordered_tsvis
+  "$BLZ" mine --graph data/hi_small.blzg --profile configs/profiles/v1_default.yaml --backend cuda --fuse --pack \
+    --out features/a30_s7
+  python3 - "$R" features/a30_s7/features.json <<'PY'
+import json, os, sys
+path, meta = sys.argv[1], json.load(open(sys.argv[2]))
+doc = json.load(open(path)) if os.path.exists(path) else {}
+doc["hi_small"] = {"v1_default": {"backend": meta["backend"], "cuda": meta["cuda"]["env"],
+                                  "output_fnv1a": {b: v["output_fnv1a"] for b, v in meta["blocks"].items()},
+                                  "pack": {b: v["cuda"].get("pack") for b, v in meta["blocks"].items()},
+                                  "fused": {b: v["cuda"].get("fused") for b, v in meta["blocks"].items()}}}
+doc["git"] = meta["git"]
+open(path, "w").write(json.dumps(doc, indent=1) + "\n")
+PY
+  rm -rf features/a30_s7
+  HOST=a30 bench/s7.sh
+  echo "a30_remote (s7): done in $(( ($(date +%s) - START) / 60 )) min"
+  exit 0
+fi
+
 R=results/p11_a30.json
 for p in v1_default sg_ordered_v1w sg_ordered_tsvis; do
   "$BLZ" fuzz-diff --backend cuda --seeds 0:10000 --profile "configs/profiles/$p.yaml" \

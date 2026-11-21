@@ -11,24 +11,33 @@
 #      unless --keep, so a broken run does not keep billing the GPU.
 # Then render the report: bench/e12_report.py results/e12_gpu_a30.json.
 #
-# Usage: bench/a30.sh [--id MACHINE_ID] [--keep] [--destroy]
+# --campaign s7 runs S7's campaign instead (SPEC v2 §8 S7, see bench/a30_remote.sh) and downloads
+# results/{s7_a30.json,e12_s7_a30.{json,md}}, a30_s7_env.txt and results/a30_s7_run.log.
+#
+# Usage: bench/a30.sh [--campaign p11|s7] [--id MACHINE_ID] [--keep] [--destroy]
 # Needs: jl (logged in, an SSH key added) and data/hi_small.blzg. MAX_WAIT_MIN (default 120)
 # bounds the wait for the remote run; past it the run counts as failed and the instance is paused.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-ID="" KEEP=0 DESTROY=0
+ID="" KEEP=0 DESTROY=0 CAMPAIGN=p11
 while [ $# -gt 0 ]; do
   case $1 in
+    --campaign) CAMPAIGN=$2; shift 2 ;;
     --id) ID=$2; shift 2 ;;
     --keep) KEEP=1; shift ;;
     --destroy) DESTROY=1; shift ;;
-    *) echo "usage: $0 [--id MACHINE_ID] [--keep] [--destroy]" >&2; exit 2 ;;
+    *) echo "usage: $0 [--campaign p11|s7] [--id MACHINE_ID] [--keep] [--destroy]" >&2; exit 2 ;;
   esac
 done
+case $CAMPAIGN in
+  p11) OUTPUTS="p11_a30.json e12_gpu_a30.json e11_ablation_a30.json e11_ablation_a30.md e11_a30_skipped.txt a30_p11_env.txt" ;;
+  s7) OUTPUTS="s7_a30.json e12_s7_a30.json e12_s7_a30.md a30_s7_env.txt" ;;
+  *) echo "unknown campaign $CAMPAIGN" >&2; exit 2 ;;
+esac
 [ -f data/hi_small.blzg ] || { echo "missing data/hi_small.blzg (blz prepare)" >&2; exit 1; }
 W=/home/blz
 TMP=$(mktemp -d)
-LOG=results/a30_p11_run.log
+LOG=results/a30_${CAMPAIGN}_run.log
 MAX_WAIT_MIN=${MAX_WAIT_MIN:-120}
 json() { python3 -c "import json,sys; d=json.load(sys.stdin); print(d$1)"; }
 
@@ -60,7 +69,7 @@ stop_instance() {
 trap 'rc=$?; if [ $rc -ne 0 ]; then echo "a30.sh failed ($rc)" >&2; stop_instance; fi; rm -rf "$TMP"' EXIT
 
 if [ -z "$ID" ]; then
-  ID=$(jl create --gpu A30 --storage 50 --name blz-p11 --yes --json | json '["machine_id"]')
+  ID=$(jl create --gpu A30 --storage 50 --name "blz-$CAMPAIGN" --yes --json | json '["machine_id"]')
   echo "created A30 instance $ID"
 fi
 jl exec "$ID" -- mkdir -p "$W"
@@ -69,7 +78,7 @@ jl exec "$ID" -- mkdir -p "$W"
 git ls-files -co --exclude-standard -z | tar --null -czf "$TMP/repo.tgz" -T -
 dirty=0
 [ -n "$(git status --porcelain)" ] && dirty=1
-printf 'BLZ_GIT_SHA=%s\nBLZ_GIT_DIRTY=%s\n' "$(git rev-parse HEAD)" "$dirty" > "$TMP/source.env"
+printf 'BLZ_GIT_SHA=%s\nBLZ_GIT_DIRTY=%s\nBLZ_CAMPAIGN=%s\n' "$(git rev-parse HEAD)" "$dirty" "$CAMPAIGN" > "$TMP/source.env"
 jl upload "$ID" "$TMP/repo.tgz" "$W/repo.tgz"
 jl upload "$ID" "$TMP/source.env" "$W/source.env"
 jl upload "$ID" data/hi_small.blzg "$W/hi_small.blzg"
@@ -92,8 +101,7 @@ jl run logs "$RUN" --tail 400 > "$LOG" 2>&1 || true
 echo "run $RUN exited with $code (log: $LOG)"
 
 mkdir -p "$TMP/out"
-for f in p11_a30.json e12_gpu_a30.json e11_ablation_a30.json e11_ablation_a30.md e11_a30_skipped.txt \
-  a30_p11_env.txt; do
+for f in $OUTPUTS; do
   if jl download "$ID" "$W/repo/results/$f" "$TMP/out/$f" 2>/dev/null; then
     cp "$TMP/out/$f" results/
   else
@@ -103,4 +111,4 @@ done
 [ "$code" = 0 ] || exit 1
 stop_instance ok
 trap 'rm -rf "$TMP"' EXIT
-echo "done; render with bench/e12_report.py results/e12_gpu_a30.json"
+if [ "$CAMPAIGN" = p11 ]; then echo "done; render with bench/e12_report.py results/e12_gpu_a30.json"; else echo done; fi
