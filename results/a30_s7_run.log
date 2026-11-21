@@ -1,0 +1,404 @@
+--- run r_ddf03fcc | machine 582682 | succeeded (exit 0) ---
+
+tcyc     H=all  kernels median   0.2874 s (light 0.2872, heavy 0.0000, bucket 0.0000), d2h 0.0084 s, pack 0.0000 s, 0 heavy triggers
+wrote results/e12_s7_a30.json (/runs/dg2_wc/fuse)
+index built in 0.43 s; graph upload median 0.029 s (329 MB)
+fan_in+deg_in H=0    kernels median   0.0127 s (light 0.0000, heavy 0.0122, bucket 0.0000), d2h 0.0176 s, pack 0.0008 s, 5078345 heavy triggers
+fan_in+deg_in H=8    kernels median   0.0108 s (light 0.0015, heavy 0.0072, bucket 0.0016), d2h 0.0171 s, pack 0.0008 s, 2566021 heavy triggers
+fan_in+deg_in H=16   kernels median   0.0072 s (light 0.0033, heavy 0.0016, bucket 0.0016), d2h 0.0167 s, pack 0.0008 s, 543958 heavy triggers
+fan_in+deg_in H=32   kernels median   0.0064 s (light 0.0040, heavy 0.0001, bucket 0.0017), d2h 0.0167 s, pack 0.0008 s, 19490 heavy triggers
+fan_in+deg_in H=64   kernels median   0.0066 s (light 0.0041, heavy 0.0000, bucket 0.0018), d2h 0.0167 s, pack 0.0008 s, 2703 heavy triggers
+fan_in+deg_in H=128  kernels median   0.0069 s (light 0.0043, heavy 0.0000, bucket 0.0018), d2h 0.0167 s, pack 0.0008 s, 1257 heavy triggers
+fan_in+deg_in H=256  kernels median   0.0071 s (light 0.0045, heavy 0.0000, bucket 0.0019), d2h 0.0168 s, pack 0.0008 s, 717 heavy triggers
+fan_in+deg_in H=1024 kernels median   0.0075 s (light 0.0047, heavy 0.0000, bucket 0.0020), d2h 0.0168 s, pack 0.0008 s, 0 heavy triggers
+fan_in+deg_in H=all  kernels median   0.0057 s (light 0.0048, heavy 0.0000, bucket 0.0000), d2h 0.0166 s, pack 0.0008 s, 0 heavy triggers
+fan_out+deg_out H=0    kernels median   0.0681 s (light 0.0000, heavy 0.0676, bucket 0.0000), d2h 0.0176 s, pack 0.0008 s, 5078345 heavy triggers
+fan_out+deg_out H=8    kernels median   0.0643 s (light 0.0009, heavy 0.0615, bucket 0.0013), d2h 0.0176 s, pack 0.0008 s, 3203500 heavy triggers
+fan_out+deg_out H=16   kernels median   0.0589 s (light 0.0018, heavy 0.0553, bucket 0.0013), d2h 0.0173 s, pack 0.0008 s, 2044908 heavy triggers
+fan_out+deg_out H=32   kernels median   0.0519 s (light 0.0030, heavy 0.0471, bucket 0.0013), d2h 0.0174 s, pack 0.0008 s, 968026 heavy triggers
+fan_out+deg_out H=64   kernels median   0.0467 s (light 0.0037, heavy 0.0412, bucket 0.0013), d2h 0.0168 s, pack 0.0008 s, 496835 heavy triggers
+fan_out+deg_out H=128  kernels median   0.0456 s (light 0.0037, heavy 0.0401, bucket 0.0013), d2h 0.0171 s, pack 0.0008 s, 448142 heavy triggers
+fan_out+deg_out H=256  kernels median   0.0457 s (light 0.0038, heavy 0.0401, bucket 0.0013), d2h 0.0169 s, pack 0.0008 s, 446034 heavy triggers
+fan_out+deg_out H=1024 kernels median   0.0458 s (light 0.0040, heavy 0.0400, bucket 0.0013), d2h 0.0168 s, pack 0.0008 s, 434514 heavy triggers
+fan_out+deg_out H=all  kernels median   0.3719 s (light 0.3714, heavy 0.0000, bucket 0.0000), d2h 0.0175 s, pack 0.0008 s, 0 heavy triggers
+sg       H=0    kernels median   0.0872 s (light 0.0000, heavy 0.0870, bucket 0.0000), d2h 0.0083 s, pack 0.0003 s, 10156690 heavy triggers
+sg       H=8    kernels median   0.0645 s (light 0.0102, heavy 0.0526, bucket 0.0015), d2h 0.0080 s, pack 0.0003 s, 3048876 heavy triggers
+sg       H=16   kernels median   0.0539 s (light 0.0207, heavy 0.0315, bucket 0.0015), d2h 0.0080 s, pack 0.0003 s, 1075675 heavy triggers
+sg       H=32   kernels median   0.0524 s (light 0.0278, heavy 0.0229, bucket 0.0015), d2h 0.0078 s, pack 0.0003 s, 365353 heavy triggers
+sg       H=64   kernels median   0.0547 s (light 0.0338, heavy 0.0192, bucket 0.0015), d2h 0.0081 s, pack 0.0003 s, 181859 heavy triggers
+sg       H=128  kernels median   0.0562 s (light 0.0365, heavy 0.0179, bucket 0.0015), d2h 0.0083 s, pack 0.0003 s, 146285 heavy triggers
+sg       H=256  kernels median   0.0623 s (light 0.0425, heavy 0.0180, bucket 0.0015), d2h 0.0083 s, pack 0.0003 s, 113137 heavy triggers
+sg       H=1024 kernels median   0.0967 s (light 0.0818, heavy 0.0132, bucket 0.0015), d2h 0.0086 s, pack 0.0003 s, 2852 heavy triggers
+sg       H=all  kernels median   0.1701 s (light 0.1698, heavy 0.0000, bucket 0.0000), d2h 0.0087 s, pack 0.0003 s, 0 heavy triggers
+tcyc     H=0    kernels median   0.3140 s (light 0.0000, heavy 0.3138, bucket 0.0000), d2h 0.0068 s, pack 0.0003 s, 5078345 heavy triggers
+tcyc     H=8    kernels median   0.2922 s (light 0.0039, heavy 0.2873, bucket 0.0009), d2h 0.0069 s, pack 0.0003 s, 1139892 heavy triggers
+tcyc     H=16   kernels median   0.2808 s (light 0.0087, heavy 0.2710, bucket 0.0009), d2h 0.0069 s, pack 0.0003 s, 488083 heavy triggers
+tcyc     H=32   kernels median   0.2560 s (light 0.0166, heavy 0.2383, bucket 0.0009), d2h 0.0068 s, pack 0.0003 s, 113178 heavy triggers
+tcyc     H=64   kernels median   0.1849 s (light 0.0292, heavy 0.1547, bucket 0.0009), d2h 0.0069 s, pack 0.0003 s, 9442 heavy triggers
+tcyc     H=128  kernels median   0.1695 s (light 0.0301, heavy 0.1385, bucket 0.0009), d2h 0.0068 s, pack 0.0003 s, 2889 heavy triggers
+tcyc     H=256  kernels median   0.1680 s (light 0.0305, heavy 0.1364, bucket 0.0009), d2h 0.0068 s, pack 0.0003 s, 2871 heavy triggers
+tcyc     H=1024 kernels median   0.1666 s (light 0.0303, heavy 0.1352, bucket 0.0009), d2h 0.0067 s, pack 0.0003 s, 2852 heavy triggers
+tcyc     H=all  kernels median   0.2846 s (light 0.2844, heavy 0.0000, bucket 0.0000), d2h 0.0068 s, pack 0.0003 s, 0 heavy triggers
+wrote results/e12_s7_a30.json (/runs/dg2_wc/fuse_pack)
+ 07:32:27 up 186 days, 22:14,  0 users,  load average: 6.24, 9.37, 11.55
+index built in 0.43 s; graph upload median 0.029 s (329 MB)
+fan_in   H=0    kernels median   0.0110 s (light 0.0000, heavy 0.0107, bucket 0.0000), d2h 0.0108 s, pack 0.0000 s, 5078345 heavy triggers
+fan_in   H=8    kernels median   0.0035 s (light 0.0018, heavy 0.0002, bucket 0.0011), d2h 0.0106 s, pack 0.0000 s, 93122 heavy triggers
+fan_in   H=16   kernels median   0.0033 s (light 0.0019, heavy 0.0001, bucket 0.0011), d2h 0.0105 s, pack 0.0000 s, 26007 heavy triggers
+fan_in   H=32   kernels median   0.0033 s (light 0.0019, heavy 0.0000, bucket 0.0011), d2h 0.0106 s, pack 0.0000 s, 12151 heavy triggers
+fan_in   H=64   kernels median   0.0033 s (light 0.0019, heavy 0.0000, bucket 0.0011), d2h 0.0108 s, pack 0.0000 s, 2459 heavy triggers
+fan_in   H=128  kernels median   0.0033 s (light 0.0019, heavy 0.0000, bucket 0.0011), d2h 0.0107 s, pack 0.0000 s, 1221 heavy triggers
+fan_in   H=256  kernels median   0.0033 s (light 0.0019, heavy 0.0000, bucket 0.0011), d2h 0.0106 s, pack 0.0000 s, 480 heavy triggers
+fan_in   H=1024 kernels median   0.0033 s (light 0.0019, heavy 0.0000, bucket 0.0011), d2h 0.0106 s, pack 0.0000 s, 0 heavy triggers
+fan_in   H=all  kernels median   0.0022 s (light 0.0019, heavy 0.0000, bucket 0.0000), d2h 0.0107 s, pack 0.0000 s, 0 heavy triggers
+fan_out  H=0    kernels median   0.0319 s (light 0.0000, heavy 0.0316, bucket 0.0000), d2h 0.0109 s, pack 0.0000 s, 5078345 heavy triggers
+fan_out  H=8    kernels median   0.0148 s (light 0.0016, heavy 0.0118, bucket 0.0010), d2h 0.0108 s, pack 0.0000 s, 902595 heavy triggers
+fan_out  H=16   kernels median   0.0117 s (light 0.0018, heavy 0.0085, bucket 0.0010), d2h 0.0108 s, pack 0.0000 s, 477329 heavy triggers
+fan_out  H=32   kernels median   0.0114 s (light 0.0018, heavy 0.0082, bucket 0.0010), d2h 0.0107 s, pack 0.0000 s, 449414 heavy triggers
+fan_out  H=64   kernels median   0.0114 s (light 0.0018, heavy 0.0082, bucket 0.0010), d2h 0.0108 s, pack 0.0000 s, 448914 heavy triggers
+fan_out  H=128  kernels median   0.0114 s (light 0.0018, heavy 0.0082, bucket 0.0010), d2h 0.0107 s, pack 0.0000 s, 447894 heavy triggers
+fan_out  H=256  kernels median   0.0114 s (light 0.0019, heavy 0.0082, bucket 0.0010), d2h 0.0107 s, pack 0.0000 s, 441840 heavy triggers
+fan_out  H=1024 kernels median   0.0111 s (light 0.0034, heavy 0.0064, bucket 0.0010), d2h 0.0107 s, pack 0.0000 s, 318154 heavy triggers
+fan_out  H=all  kernels median   0.0406 s (light 0.0403, heavy 0.0000, bucket 0.0000), d2h 0.0109 s, pack 0.0000 s, 0 heavy triggers
+deg_in   H=0    kernels median   0.0108 s (light 0.0000, heavy 0.0105, bucket 0.0000), d2h 0.0110 s, pack 0.0000 s, 5078345 heavy triggers
+deg_in   H=8    kernels median   0.0033 s (light 0.0016, heavy 0.0002, bucket 0.0011), d2h 0.0108 s, pack 0.0000 s, 93122 heavy triggers
+deg_in   H=16   kernels median   0.0031 s (light 0.0016, heavy 0.0001, bucket 0.0011), d2h 0.0108 s, pack 0.0000 s, 26007 heavy triggers
+deg_in   H=32   kernels median   0.0031 s (light 0.0017, heavy 0.0000, bucket 0.0011), d2h 0.0107 s, pack 0.0000 s, 12151 heavy triggers
+deg_in   H=64   kernels median   0.0031 s (light 0.0017, heavy 0.0000, bucket 0.0011), d2h 0.0108 s, pack 0.0000 s, 2459 heavy triggers
+deg_in   H=128  kernels median   0.0031 s (light 0.0017, heavy 0.0000, bucket 0.0011), d2h 0.0109 s, pack 0.0000 s, 1221 heavy triggers
+deg_in   H=256  kernels median   0.0031 s (light 0.0017, heavy 0.0000, bucket 0.0011), d2h 0.0109 s, pack 0.0000 s, 480 heavy triggers
+deg_in   H=1024 kernels median   0.0031 s (light 0.0017, heavy 0.0000, bucket 0.0011), d2h 0.0108 s, pack 0.0000 s, 0 heavy triggers
+deg_in   H=all  kernels median   0.0020 s (light 0.0016, heavy 0.0000, bucket 0.0000), d2h 0.0107 s, pack 0.0000 s, 0 heavy triggers
+deg_out  H=0    kernels median   0.0147 s (light 0.0000, heavy 0.0144, bucket 0.0000), d2h 0.0102 s, pack 0.0000 s, 5078345 heavy triggers
+deg_out  H=8    kernels median   0.0074 s (light 0.0014, heavy 0.0047, bucket 0.0010), d2h 0.0103 s, pack 0.0000 s, 902595 heavy triggers
+deg_out  H=16   kernels median   0.0062 s (light 0.0015, heavy 0.0034, bucket 0.0010), d2h 0.0102 s, pack 0.0000 s, 477329 heavy triggers
+deg_out  H=32   kernels median   0.0062 s (light 0.0016, heavy 0.0033, bucket 0.0010), d2h 0.0104 s, pack 0.0000 s, 449414 heavy triggers
+deg_out  H=64   kernels median   0.0062 s (light 0.0016, heavy 0.0033, bucket 0.0010), d2h 0.0101 s, pack 0.0000 s, 448914 heavy triggers
+deg_out  H=128  kernels median   0.0062 s (light 0.0016, heavy 0.0033, bucket 0.0010), d2h 0.0102 s, pack 0.0000 s, 447894 heavy triggers
+deg_out  H=256  kernels median   0.0062 s (light 0.0016, heavy 0.0033, bucket 0.0010), d2h 0.0103 s, pack 0.0000 s, 441840 heavy triggers
+deg_out  H=1024 kernels median   0.0065 s (light 0.0024, heavy 0.0028, bucket 0.0010), d2h 0.0101 s, pack 0.0000 s, 318154 heavy triggers
+deg_out  H=all  kernels median   0.0241 s (light 0.0238, heavy 0.0000, bucket 0.0000), d2h 0.0103 s, pack 0.0000 s, 0 heavy triggers
+sg       H=0    kernels median   0.0925 s (light 0.0000, heavy 0.0922, bucket 0.0000), d2h 0.0091 s, pack 0.0000 s, 10156690 heavy triggers
+sg       H=8    kernels median   0.0713 s (light 0.0098, heavy 0.0598, bucket 0.0015), d2h 0.0087 s, pack 0.0000 s, 3484258 heavy triggers
+sg       H=16   kernels median   0.0598 s (light 0.0214, heavy 0.0366, bucket 0.0015), d2h 0.0089 s, pack 0.0000 s, 1427572 heavy triggers
+sg       H=32   kernels median   0.0576 s (light 0.0304, heavy 0.0255, bucket 0.0015), d2h 0.0090 s, pack 0.0000 s, 494617 heavy triggers
+sg       H=64   kernels median   0.0603 s (light 0.0384, heavy 0.0202, bucket 0.0015), d2h 0.0089 s, pack 0.0000 s, 230521 heavy triggers
+sg       H=128  kernels median   0.0624 s (light 0.0420, heavy 0.0187, bucket 0.0015), d2h 0.0090 s, pack 0.0000 s, 177379 heavy triggers
+sg       H=256  kernels median   0.0682 s (light 0.0480, heavy 0.0184, bucket 0.0015), d2h 0.0090 s, pack 0.0000 s, 144206 heavy triggers
+sg       H=1024 kernels median   0.1137 s (light 0.0999, heavy 0.0121, bucket 0.0015), d2h 0.0091 s, pack 0.0000 s, 2852 heavy triggers
+sg       H=all  kernels median   0.1856 s (light 0.1853, heavy 0.0000, bucket 0.0000), d2h 0.0092 s, pack 0.0000 s, 0 heavy triggers
+tcyc     H=0    kernels median   1.0254 s (light 0.0000, heavy 1.0252, bucket 0.0000), d2h 0.0083 s, pack 0.0000 s, 5078345 heavy triggers
+tcyc     H=8    kernels median   1.0010 s (light 0.0086, heavy 0.9912, bucket 0.0009), d2h 0.0082 s, pack 0.0000 s, 1438230 heavy triggers
+tcyc     H=16   kernels median   0.9833 s (light 0.0134, heavy 0.9687, bucket 0.0009), d2h 0.0083 s, pack 0.0000 s, 884758 heavy triggers
+tcyc     H=32   kernels median   0.9449 s (light 0.0260, heavy 0.9177, bucket 0.0009), d2h 0.0083 s, pack 0.0000 s, 370060 heavy triggers
+tcyc     H=64   kernels median   0.9076 s (light 0.0498, heavy 0.8567, bucket 0.0009), d2h 0.0082 s, pack 0.0000 s, 88567 heavy triggers
+tcyc     H=128  kernels median   0.6036 s (light 0.0669, heavy 0.5355, bucket 0.0009), d2h 0.0083 s, pack 0.0000 s, 9016 heavy triggers
+tcyc     H=256  kernels median   0.5676 s (light 0.0707, heavy 0.4958, bucket 0.0009), d2h 0.0082 s, pack 0.0000 s, 2903 heavy triggers
+tcyc     H=1024 kernels median   0.5667 s (light 0.0707, heavy 0.4947, bucket 0.0009), d2h 0.0082 s, pack 0.0000 s, 2852 heavy triggers
+tcyc     H=all  kernels median   0.8669 s (light 0.8666, heavy 0.0000, bucket 0.0000), d2h 0.0083 s, pack 0.0000 s, 0 heavy triggers
+wrote results/e12_s7_a30.json (/runs/dg2_wb/base)
+index built in 0.44 s; graph upload median 0.030 s (329 MB)
+fan_in   H=0    kernels median   0.0110 s (light 0.0000, heavy 0.0107, bucket 0.0000), d2h 0.0093 s, pack 0.0004 s, 5078345 heavy triggers
+fan_in   H=8    kernels median   0.0035 s (light 0.0018, heavy 0.0002, bucket 0.0011), d2h 0.0080 s, pack 0.0004 s, 93122 heavy triggers
+fan_in   H=16   kernels median   0.0034 s (light 0.0019, heavy 0.0001, bucket 0.0011), d2h 0.0079 s, pack 0.0004 s, 26007 heavy triggers
+fan_in   H=32   kernels median   0.0033 s (light 0.0019, heavy 0.0000, bucket 0.0011), d2h 0.0082 s, pack 0.0004 s, 12151 heavy triggers
+fan_in   H=64   kernels median   0.0033 s (light 0.0019, heavy 0.0000, bucket 0.0011), d2h 0.0079 s, pack 0.0004 s, 2459 heavy triggers
+fan_in   H=128  kernels median   0.0033 s (light 0.0019, heavy 0.0000, bucket 0.0011), d2h 0.0080 s, pack 0.0004 s, 1221 heavy triggers
+fan_in   H=256  kernels median   0.0038 s (light 0.0020, heavy 0.0000, bucket 0.0014), d2h 0.0080 s, pack 0.0004 s, 480 heavy triggers
+fan_in   H=1024 kernels median   0.0039 s (light 0.0020, heavy 0.0000, bucket 0.0014), d2h 0.0079 s, pack 0.0004 s, 0 heavy triggers
+fan_in   H=all  kernels median   0.0025 s (light 0.0021, heavy 0.0000, bucket 0.0000), d2h 0.0080 s, pack 0.0004 s, 0 heavy triggers
+fan_out  H=0    kernels median   0.0371 s (light 0.0000, heavy 0.0367, bucket 0.0000), d2h 0.0090 s, pack 0.0004 s, 5078345 heavy triggers
+fan_out  H=8    kernels median   0.0149 s (light 0.0016, heavy 0.0119, bucket 0.0010), d2h 0.0079 s, pack 0.0004 s, 902595 heavy triggers
+fan_out  H=16   kernels median   0.0117 s (light 0.0018, heavy 0.0085, bucket 0.0010), d2h 0.0079 s, pack 0.0004 s, 477329 heavy triggers
+fan_out  H=32   kernels median   0.0114 s (light 0.0018, heavy 0.0082, bucket 0.0010), d2h 0.0080 s, pack 0.0004 s, 449414 heavy triggers
+fan_out  H=64   kernels median   0.0114 s (light 0.0018, heavy 0.0082, bucket 0.0010), d2h 0.0079 s, pack 0.0004 s, 448914 heavy triggers
+fan_out  H=128  kernels median   0.0114 s (light 0.0018, heavy 0.0082, bucket 0.0010), d2h 0.0080 s, pack 0.0004 s, 447894 heavy triggers
+fan_out  H=256  kernels median   0.0114 s (light 0.0019, heavy 0.0082, bucket 0.0010), d2h 0.0079 s, pack 0.0004 s, 441840 heavy triggers
+fan_out  H=1024 kernels median   0.0112 s (light 0.0034, heavy 0.0064, bucket 0.0010), d2h 0.0079 s, pack 0.0004 s, 318154 heavy triggers
+fan_out  H=all  kernels median   0.0406 s (light 0.0403, heavy 0.0000, bucket 0.0000), d2h 0.0088 s, pack 0.0004 s, 0 heavy triggers
+deg_in   H=0    kernels median   0.0108 s (light 0.0000, heavy 0.0105, bucket 0.0000), d2h 0.0080 s, pack 0.0004 s, 5078345 heavy triggers
+deg_in   H=8    kernels median   0.0033 s (light 0.0016, heavy 0.0002, bucket 0.0011), d2h 0.0080 s, pack 0.0004 s, 93122 heavy triggers
+deg_in   H=16   kernels median   0.0031 s (light 0.0016, heavy 0.0001, bucket 0.0011), d2h 0.0079 s, pack 0.0004 s, 26007 heavy triggers
+deg_in   H=32   kernels median   0.0031 s (light 0.0017, heavy 0.0000, bucket 0.0011), d2h 0.0080 s, pack 0.0004 s, 12151 heavy triggers
+deg_in   H=64   kernels median   0.0031 s (light 0.0017, heavy 0.0000, bucket 0.0011), d2h 0.0079 s, pack 0.0004 s, 2459 heavy triggers
+deg_in   H=128  kernels median   0.0033 s (light 0.0017, heavy 0.0000, bucket 0.0012), d2h 0.0080 s, pack 0.0004 s, 1221 heavy triggers
+deg_in   H=256  kernels median   0.0033 s (light 0.0017, heavy 0.0000, bucket 0.0013), d2h 0.0079 s, pack 0.0004 s, 480 heavy triggers
+deg_in   H=1024 kernels median   0.0034 s (light 0.0017, heavy 0.0000, bucket 0.0013), d2h 0.0082 s, pack 0.0004 s, 0 heavy triggers
+deg_in   H=all  kernels median   0.0021 s (light 0.0017, heavy 0.0000, bucket 0.0000), d2h 0.0079 s, pack 0.0004 s, 0 heavy triggers
+deg_out  H=0    kernels median   0.0208 s (light 0.0000, heavy 0.0204, bucket 0.0000), d2h 0.0080 s, pack 0.0004 s, 5078345 heavy triggers
+deg_out  H=8    kernels median   0.0088 s (light 0.0015, heavy 0.0058, bucket 0.0012), d2h 0.0082 s, pack 0.0004 s, 902595 heavy triggers
+deg_out  H=16   kernels median   0.0074 s (light 0.0016, heavy 0.0042, bucket 0.0012), d2h 0.0079 s, pack 0.0004 s, 477329 heavy triggers
+deg_out  H=32   kernels median   0.0073 s (light 0.0017, heavy 0.0041, bucket 0.0012), d2h 0.0079 s, pack 0.0004 s, 449414 heavy triggers
+deg_out  H=64   kernels median   0.0073 s (light 0.0017, heavy 0.0041, bucket 0.0012), d2h 0.0079 s, pack 0.0004 s, 448914 heavy triggers
+deg_out  H=128  kernels median   0.0073 s (light 0.0017, heavy 0.0041, bucket 0.0012), d2h 0.0079 s, pack 0.0004 s, 447894 heavy triggers
+deg_out  H=256  kernels median   0.0073 s (light 0.0017, heavy 0.0041, bucket 0.0012), d2h 0.0082 s, pack 0.0004 s, 441840 heavy triggers
+deg_out  H=1024 kernels median   0.0078 s (light 0.0027, heavy 0.0035, bucket 0.0012), d2h 0.0080 s, pack 0.0004 s, 318154 heavy triggers
+deg_out  H=all  kernels median   0.0243 s (light 0.0239, heavy 0.0000, bucket 0.0000), d2h 0.0088 s, pack 0.0004 s, 0 heavy triggers
+sg       H=0    kernels median   0.0925 s (light 0.0000, heavy 0.0922, bucket 0.0000), d2h 0.0080 s, pack 0.0003 s, 10156690 heavy triggers
+sg       H=8    kernels median   0.0713 s (light 0.0097, heavy 0.0598, bucket 0.0015), d2h 0.0073 s, pack 0.0003 s, 3484258 heavy triggers
+sg       H=16   kernels median   0.0598 s (light 0.0214, heavy 0.0367, bucket 0.0015), d2h 0.0080 s, pack 0.0003 s, 1427572 heavy triggers
+sg       H=32   kernels median   0.0576 s (light 0.0304, heavy 0.0255, bucket 0.0015), d2h 0.0080 s, pack 0.0003 s, 494617 heavy triggers
+sg       H=64   kernels median   0.0601 s (light 0.0384, heavy 0.0199, bucket 0.0015), d2h 0.0080 s, pack 0.0003 s, 230521 heavy triggers
+sg       H=128  kernels median   0.0625 s (light 0.0420, heavy 0.0187, bucket 0.0015), d2h 0.0078 s, pack 0.0003 s, 177379 heavy triggers
+sg       H=256  kernels median   0.0681 s (light 0.0480, heavy 0.0183, bucket 0.0015), d2h 0.0079 s, pack 0.0003 s, 144206 heavy triggers
+sg       H=1024 kernels median   0.1139 s (light 0.1000, heavy 0.0122, bucket 0.0015), d2h 0.0084 s, pack 0.0003 s, 2852 heavy triggers
+sg       H=all  kernels median   0.1847 s (light 0.1844, heavy 0.0000, bucket 0.0000), d2h 0.0081 s, pack 0.0003 s, 0 heavy triggers
+tcyc     H=0    kernels median   1.0344 s (light 0.0000, heavy 1.0341, bucket 0.0000), d2h 0.0068 s, pack 0.0003 s, 5078345 heavy triggers
+tcyc     H=8    kernels median   0.9949 s (light 0.0086, heavy 0.9853, bucket 0.0009), d2h 0.0068 s, pack 0.0003 s, 1438230 heavy triggers
+tcyc     H=16   kernels median   0.9933 s (light 0.0134, heavy 0.9787, bucket 0.0009), d2h 0.0070 s, pack 0.0003 s, 884758 heavy triggers
+tcyc     H=32   kernels median   0.9562 s (light 0.0260, heavy 0.9291, bucket 0.0009), d2h 0.0070 s, pack 0.0003 s, 370060 heavy triggers
+tcyc     H=64   kernels median   0.8963 s (light 0.0499, heavy 0.8452, bucket 0.0009), d2h 0.0068 s, pack 0.0003 s, 88567 heavy triggers
+tcyc     H=128  kernels median   0.5988 s (light 0.0668, heavy 0.5308, bucket 0.0009), d2h 0.0067 s, pack 0.0003 s, 9016 heavy triggers
+tcyc     H=256  kernels median   0.5681 s (light 0.0709, heavy 0.4964, bucket 0.0009), d2h 0.0067 s, pack 0.0003 s, 2903 heavy triggers
+tcyc     H=1024 kernels median   0.5673 s (light 0.0708, heavy 0.4954, bucket 0.0009), d2h 0.0068 s, pack 0.0003 s, 2852 heavy triggers
+tcyc     H=all  kernels median   0.8508 s (light 0.8506, heavy 0.0000, bucket 0.0000), d2h 0.0068 s, pack 0.0003 s, 0 heavy triggers
+wrote results/e12_s7_a30.json (/runs/dg2_wb/pack)
+index built in 0.44 s; graph upload median 0.030 s (329 MB)
+fan_in+deg_in H=0    kernels median   0.0161 s (light 0.0000, heavy 0.0153, bucket 0.0000), d2h 0.0232 s, pack 0.0000 s, 5078345 heavy triggers
+fan_in+deg_in H=8    kernels median   0.0050 s (light 0.0025, heavy 0.0003, bucket 0.0016), d2h 0.0207 s, pack 0.0000 s, 93122 heavy triggers
+fan_in+deg_in H=16   kernels median   0.0048 s (light 0.0026, heavy 0.0001, bucket 0.0016), d2h 0.0207 s, pack 0.0000 s, 26007 heavy triggers
+fan_in+deg_in H=32   kernels median   0.0048 s (light 0.0026, heavy 0.0000, bucket 0.0016), d2h 0.0207 s, pack 0.0000 s, 12151 heavy triggers
+fan_in+deg_in H=64   kernels median   0.0048 s (light 0.0026, heavy 0.0000, bucket 0.0016), d2h 0.0207 s, pack 0.0000 s, 2459 heavy triggers
+fan_in+deg_in H=128  kernels median   0.0050 s (light 0.0027, heavy 0.0000, bucket 0.0016), d2h 0.0209 s, pack 0.0000 s, 1221 heavy triggers
+fan_in+deg_in H=256  kernels median   0.0050 s (light 0.0027, heavy 0.0000, bucket 0.0017), d2h 0.0210 s, pack 0.0000 s, 480 heavy triggers
+fan_in+deg_in H=1024 kernels median   0.0050 s (light 0.0027, heavy 0.0000, bucket 0.0017), d2h 0.0214 s, pack 0.0000 s, 0 heavy triggers
+fan_in+deg_in H=all  kernels median   0.0033 s (light 0.0027, heavy 0.0000, bucket 0.0000), d2h 0.0213 s, pack 0.0000 s, 0 heavy triggers
+fan_out+deg_out H=0    kernels median   0.0262 s (light 0.0000, heavy 0.0253, bucket 0.0000), d2h 0.0211 s, pack 0.0000 s, 5078345 heavy triggers
+fan_out+deg_out H=8    kernels median   0.0148 s (light 0.0021, heavy 0.0108, bucket 0.0013), d2h 0.0209 s, pack 0.0000 s, 902595 heavy triggers
+fan_out+deg_out H=16   kernels median   0.0128 s (light 0.0024, heavy 0.0085, bucket 0.0013), d2h 0.0208 s, pack 0.0000 s, 477329 heavy triggers
+fan_out+deg_out H=32   kernels median   0.0126 s (light 0.0024, heavy 0.0083, bucket 0.0013), d2h 0.0208 s, pack 0.0000 s, 449414 heavy triggers
+fan_out+deg_out H=64   kernels median   0.0126 s (light 0.0025, heavy 0.0083, bucket 0.0013), d2h 0.0208 s, pack 0.0000 s, 448914 heavy triggers
+fan_out+deg_out H=128  kernels median   0.0126 s (light 0.0025, heavy 0.0083, bucket 0.0013), d2h 0.0209 s, pack 0.0000 s, 447894 heavy triggers
+fan_out+deg_out H=256  kernels median   0.0126 s (light 0.0025, heavy 0.0083, bucket 0.0013), d2h 0.0207 s, pack 0.0000 s, 441840 heavy triggers
+fan_out+deg_out H=1024 kernels median   0.0140 s (light 0.0046, heavy 0.0075, bucket 0.0013), d2h 0.0209 s, pack 0.0000 s, 318154 heavy triggers
+fan_out+deg_out H=all  kernels median   0.0708 s (light 0.0702, heavy 0.0000, bucket 0.0000), d2h 0.0209 s, pack 0.0000 s, 0 heavy triggers
+sg       H=0    kernels median   0.0923 s (light 0.0000, heavy 0.0921, bucket 0.0000), d2h 0.0094 s, pack 0.0000 s, 10156690 heavy triggers
+sg       H=8    kernels median   0.0714 s (light 0.0098, heavy 0.0599, bucket 0.0015), d2h 0.0092 s, pack 0.0000 s, 3484258 heavy triggers
+sg       H=16   kernels median   0.0598 s (light 0.0214, heavy 0.0366, bucket 0.0015), d2h 0.0094 s, pack 0.0000 s, 1427572 heavy triggers
+sg       H=32   kernels median   0.0576 s (light 0.0304, heavy 0.0255, bucket 0.0015), d2h 0.0093 s, pack 0.0000 s, 494617 heavy triggers
+sg       H=64   kernels median   0.0600 s (light 0.0384, heavy 0.0198, bucket 0.0015), d2h 0.0093 s, pack 0.0000 s, 230521 heavy triggers
+sg       H=128  kernels median   0.0623 s (light 0.0420, heavy 0.0186, bucket 0.0015), d2h 0.0093 s, pack 0.0000 s, 177379 heavy triggers
+sg       H=256  kernels median   0.0679 s (light 0.0480, heavy 0.0182, bucket 0.0015), d2h 0.0092 s, pack 0.0000 s, 144206 heavy triggers
+sg       H=1024 kernels median   0.1137 s (light 0.0999, heavy 0.0121, bucket 0.0015), d2h 0.0092 s, pack 0.0000 s, 2852 heavy triggers
+sg       H=all  kernels median   0.1852 s (light 0.1850, heavy 0.0000, bucket 0.0000), d2h 0.0094 s, pack 0.0000 s, 0 heavy triggers
+tcyc     H=0    kernels median   1.0270 s (light 0.0000, heavy 1.0267, bucket 0.0000), d2h 0.0085 s, pack 0.0000 s, 5078345 heavy triggers
+tcyc     H=8    kernels median   0.9953 s (light 0.0086, heavy 0.9857, bucket 0.0009), d2h 0.0083 s, pack 0.0000 s, 1438230 heavy triggers
+tcyc     H=16   kernels median   0.9808 s (light 0.0134, heavy 0.9662, bucket 0.0009), d2h 0.0084 s, pack 0.0000 s, 884758 heavy triggers
+tcyc     H=32   kernels median   0.9515 s (light 0.0260, heavy 0.9244, bucket 0.0009), d2h 0.0084 s, pack 0.0000 s, 370060 heavy triggers
+tcyc     H=64   kernels median   0.8910 s (light 0.0499, heavy 0.8400, bucket 0.0009), d2h 0.0085 s, pack 0.0000 s, 88567 heavy triggers
+tcyc     H=128  kernels median   0.6021 s (light 0.0671, heavy 0.5339, bucket 0.0009), d2h 0.0082 s, pack 0.0000 s, 9016 heavy triggers
+tcyc     H=256  kernels median   0.5673 s (light 0.0709, heavy 0.4950, bucket 0.0009), d2h 0.0084 s, pack 0.0000 s, 2903 heavy triggers
+tcyc     H=1024 kernels median   0.5669 s (light 0.0708, heavy 0.4949, bucket 0.0009), d2h 0.0083 s, pack 0.0000 s, 2852 heavy triggers
+tcyc     H=all  kernels median   0.8547 s (light 0.8544, heavy 0.0000, bucket 0.0000), d2h 0.0084 s, pack 0.0000 s, 0 heavy triggers
+wrote results/e12_s7_a30.json (/runs/dg2_wb/fuse)
+index built in 0.44 s; graph upload median 0.030 s (329 MB)
+fan_in+deg_in H=0    kernels median   0.0116 s (light 0.0000, heavy 0.0110, bucket 0.0000), d2h 0.0170 s, pack 0.0008 s, 5078345 heavy triggers
+fan_in+deg_in H=8    kernels median   0.0050 s (light 0.0025, heavy 0.0003, bucket 0.0016), d2h 0.0167 s, pack 0.0008 s, 93122 heavy triggers
+fan_in+deg_in H=16   kernels median   0.0050 s (light 0.0027, heavy 0.0001, bucket 0.0016), d2h 0.0166 s, pack 0.0008 s, 26007 heavy triggers
+fan_in+deg_in H=32   kernels median   0.0051 s (light 0.0027, heavy 0.0001, bucket 0.0017), d2h 0.0168 s, pack 0.0008 s, 12151 heavy triggers
+fan_in+deg_in H=64   kernels median   0.0053 s (light 0.0028, heavy 0.0000, bucket 0.0018), d2h 0.0169 s, pack 0.0008 s, 2459 heavy triggers
+fan_in+deg_in H=128  kernels median   0.0055 s (light 0.0029, heavy 0.0000, bucket 0.0018), d2h 0.0170 s, pack 0.0008 s, 1221 heavy triggers
+fan_in+deg_in H=256  kernels median   0.0057 s (light 0.0030, heavy 0.0000, bucket 0.0019), d2h 0.0170 s, pack 0.0008 s, 480 heavy triggers
+fan_in+deg_in H=1024 kernels median   0.0060 s (light 0.0031, heavy 0.0000, bucket 0.0020), d2h 0.0166 s, pack 0.0008 s, 0 heavy triggers
+fan_in+deg_in H=all  kernels median   0.0041 s (light 0.0032, heavy 0.0000, bucket 0.0000), d2h 0.0168 s, pack 0.0008 s, 0 heavy triggers
+fan_out+deg_out H=0    kernels median   0.0311 s (light 0.0000, heavy 0.0304, bucket 0.0000), d2h 0.0177 s, pack 0.0008 s, 5078345 heavy triggers
+fan_out+deg_out H=8    kernels median   0.0167 s (light 0.0023, heavy 0.0124, bucket 0.0014), d2h 0.0175 s, pack 0.0008 s, 902595 heavy triggers
+fan_out+deg_out H=16   kernels median   0.0130 s (light 0.0024, heavy 0.0087, bucket 0.0013), d2h 0.0171 s, pack 0.0008 s, 477329 heavy triggers
+fan_out+deg_out H=32   kernels median   0.0128 s (light 0.0025, heavy 0.0085, bucket 0.0013), d2h 0.0172 s, pack 0.0008 s, 449414 heavy triggers
+fan_out+deg_out H=64   kernels median   0.0128 s (light 0.0025, heavy 0.0085, bucket 0.0013), d2h 0.0181 s, pack 0.0008 s, 448914 heavy triggers
+fan_out+deg_out H=128  kernels median   0.0128 s (light 0.0025, heavy 0.0085, bucket 0.0013), d2h 0.0173 s, pack 0.0008 s, 447894 heavy triggers
+fan_out+deg_out H=256  kernels median   0.0134 s (light 0.0026, heavy 0.0089, bucket 0.0013), d2h 0.0173 s, pack 0.0008 s, 441840 heavy triggers
+fan_out+deg_out H=1024 kernels median   0.0148 s (light 0.0049, heavy 0.0080, bucket 0.0013), d2h 0.0173 s, pack 0.0008 s, 318154 heavy triggers
+fan_out+deg_out H=all  kernels median   0.0708 s (light 0.0702, heavy 0.0000, bucket 0.0000), d2h 0.0177 s, pack 0.0008 s, 0 heavy triggers
+sg       H=0    kernels median   0.0924 s (light 0.0000, heavy 0.0921, bucket 0.0000), d2h 0.0085 s, pack 0.0003 s, 10156690 heavy triggers
+sg       H=8    kernels median   0.0714 s (light 0.0097, heavy 0.0599, bucket 0.0015), d2h 0.0079 s, pack 0.0003 s, 3484258 heavy triggers
+sg       H=16   kernels median   0.0600 s (light 0.0214, heavy 0.0368, bucket 0.0015), d2h 0.0083 s, pack 0.0003 s, 1427572 heavy triggers
+sg       H=32   kernels median   0.0577 s (light 0.0304, heavy 0.0255, bucket 0.0015), d2h 0.0083 s, pack 0.0003 s, 494617 heavy triggers
+sg       H=64   kernels median   0.0603 s (light 0.0384, heavy 0.0202, bucket 0.0015), d2h 0.0083 s, pack 0.0003 s, 230521 heavy triggers
+sg       H=128  kernels median   0.0625 s (light 0.0420, heavy 0.0187, bucket 0.0015), d2h 0.0083 s, pack 0.0003 s, 177379 heavy triggers
+sg       H=256  kernels median   0.0681 s (light 0.0480, heavy 0.0184, bucket 0.0015), d2h 0.0075 s, pack 0.0003 s, 144206 heavy triggers
+sg       H=1024 kernels median   0.1139 s (light 0.0999, heavy 0.0121, bucket 0.0015), d2h 0.0086 s, pack 0.0003 s, 2852 heavy triggers
+sg       H=all  kernels median   0.1838 s (light 0.1835, heavy 0.0000, bucket 0.0000), d2h 0.0083 s, pack 0.0003 s, 0 heavy triggers
+tcyc     H=0    kernels median   1.0324 s (light 0.0000, heavy 1.0322, bucket 0.0000), d2h 0.0070 s, pack 0.0003 s, 5078345 heavy triggers
+tcyc     H=8    kernels median   0.9963 s (light 0.0086, heavy 0.9867, bucket 0.0009), d2h 0.0070 s, pack 0.0003 s, 1438230 heavy triggers
+tcyc     H=16   kernels median   0.9851 s (light 0.0134, heavy 0.9705, bucket 0.0009), d2h 0.0070 s, pack 0.0003 s, 884758 heavy triggers
+tcyc     H=32   kernels median   0.9496 s (light 0.0260, heavy 0.9226, bucket 0.0009), d2h 0.0070 s, pack 0.0003 s, 370060 heavy triggers
+tcyc     H=64   kernels median   0.9027 s (light 0.0500, heavy 0.8513, bucket 0.0009), d2h 0.0073 s, pack 0.0003 s, 88567 heavy triggers
+tcyc     H=128  kernels median   0.5998 s (light 0.0668, heavy 0.5318, bucket 0.0009), d2h 0.0070 s, pack 0.0003 s, 9016 heavy triggers
+tcyc     H=256  kernels median   0.5653 s (light 0.0708, heavy 0.4931, bucket 0.0009), d2h 0.0069 s, pack 0.0003 s, 2903 heavy triggers
+tcyc     H=1024 kernels median   0.5671 s (light 0.0705, heavy 0.4954, bucket 0.0009), d2h 0.0070 s, pack 0.0003 s, 2852 heavy triggers
+tcyc     H=all  kernels median   0.8398 s (light 0.8396, heavy 0.0000, bucket 0.0000), d2h 0.0070 s, pack 0.0003 s, 0 heavy triggers
+wrote results/e12_s7_a30.json (/runs/dg2_wb/fuse_pack)
+ 07:36:50 up 186 days, 22:18,  0 users,  load average: 7.01, 8.47, 10.68
+index built in 0.44 s; graph upload median 0.030 s (329 MB)
+fan_in   H=32   kernels median   0.0034 s (light 0.0020, heavy 0.0000, bucket 0.0011), d2h 0.0078 s, pack 0.0004 s, 12544 heavy triggers
+fan_out  H=32   kernels median   0.0193 s (light 0.0020, heavy 0.0160, bucket 0.0010), d2h 0.0079 s, pack 0.0004 s, 455162 heavy triggers
+deg_in   H=32   kernels median   0.0032 s (light 0.0017, heavy 0.0000, bucket 0.0011), d2h 0.0079 s, pack 0.0004 s, 12544 heavy triggers
+deg_out  H=32   kernels median   0.0118 s (light 0.0020, heavy 0.0080, bucket 0.0014), d2h 0.0078 s, pack 0.0004 s, 455162 heavy triggers
+sg       H=32   kernels median   0.0165 s (light 0.0090, heavy 0.0053, bucket 0.0019), d2h 0.0072 s, pack 0.0003 s, 81138 heavy triggers
+tcyc     H=32   kernels median   0.0390 s (light 0.0074, heavy 0.0305, bucket 0.0008), d2h 0.0064 s, pack 0.0003 s, 3489 heavy triggers
+wrote results/e12_s7_a30.json (/default_wait_policy/v1_default/pack)
+# E12 delta for S7: packed D2H and multi-pattern fusion (a30)
+
+- GPU: NVIDIA A30 (compute capability 8.0, 56 SMs); CUDA build: nvcc 12.6.77, sm 80, -O3 -DNDEBUG
+- CPU: AMD EPYC 7542 32-Core Processor (the host widening of packed rows runs on its OpenMP team, `OMP_WAIT_POLICY=passive`)
+- Git: 0d52172ad4af (dirty)
+- Each cell: median of 5 timed runs after 1 warm-up, every trigger of HI-Small, H swept over 0, 8, 16, 32, 64, 128, 256, 1024, all.
+- Variants: **base** (S6's backend), **pack** (`--pack`: each block crosses PCIe as uint8 or uint16 when its largest cell fits, and the host widens it back), **fuse** (`--fuse`: each compiled fusion's blocks in one kernel), **fuse + pack**.
+- D2H is the copy (with packing: the pipelined copy of the narrow rows and their widening, host clock); pack is the pack kernels and the read-back of the block's largest cell.
+- T = graph upload (once) + kernels + pack + D2H over the profile's blocks, at the variant's tuned H (smallest summed kernel time, as E12).
+
+## v1_default
+
+Hashes: every variant's equal: **yes**; equal to the reference (P10 oracle): **yes**.
+
+| variant | tuned H | kernels (ms) | pack (ms) | D2H (ms) | D2H bytes | T (ms) | vs base |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| base | 64 | 84.9 | 0.0 | 58.1 | 4 B/cell | 176.7 | +0.0 % |
+| pack | 64 | 85.4 | 2.2 | 48.8 | 340 MB | 166.4 | +5.8 % |
+| fuse | 64 | 75.1 | 0.0 | 58.6 | 4 B/cell | 165.5 | +6.4 % |
+| fuse + pack | 64 | 76.5 | 2.2 | 49.6 | 340 MB | 158.0 | +10.6 % |
+
+Packed widths (bytes per cell): deg_in 1, deg_out 1, fan_in 1, fan_out 1, sg 1, tcyc 1.
+
+| fusion | base: kernels / D2H (ms) | fuse: kernels / D2H | fuse + pack: kernels / pack + D2H | kernels saved by fusion |
+|---|---:|---:|---:|---:|
+| fan_in+deg_in | 6.6 / 20.6 | 4.7 / 20.7 | 6.2 / 17.6 | +28.0 % |
+| fan_out+deg_out | 27.3 / 20.7 | 19.3 / 20.8 | 19.3 / 17.8 | +29.1 % |
+
+## sg_ordered_v1w
+
+Hashes: every variant's equal: **yes**; equal to the reference (P10 oracle): **yes**.
+
+| variant | tuned H | kernels (ms) | pack (ms) | D2H (ms) | D2H bytes | T (ms) | vs base |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| base | 64 | 91.7 | 0.0 | 68.9 | 4 B/cell | 190.2 | +0.0 % |
+| pack | 64 | 92.5 | 2.5 | 53.8 | 391 MB | 179.6 | +5.6 % |
+| fuse | 32 | 81.9 | 0.0 | 67.0 | 4 B/cell | 179.5 | +5.6 % |
+| fuse + pack | 32 | 82.6 | 2.5 | 54.0 | 391 MB | 170.1 | +10.5 % |
+
+Packed widths (bytes per cell): deg_in 1, deg_out 1, fan_in 1, fan_out 1, sg 1, sg_ord 1, tcyc 1.
+
+| fusion | base: kernels / D2H (ms) | fuse: kernels / D2H | fuse + pack: kernels / pack + D2H | kernels saved by fusion |
+|---|---:|---:|---:|---:|
+| fan_in+deg_in | 6.6 / 21.4 | 4.7 / 20.7 | 5.5 / 17.2 | +27.8 % |
+| fan_out+deg_out | 27.3 / 21.3 | 19.4 / 20.5 | 19.4 / 17.7 | +29.1 % |
+
+## sg_ordered_tsvis
+
+Hashes: every variant's equal: **yes**; equal to the reference (P10 oracle): **yes**.
+
+| variant | tuned H | kernels (ms) | pack (ms) | D2H (ms) | D2H bytes | T (ms) | vs base |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| base | 64 | 101.4 | 0.0 | 67.7 | 4 B/cell | 199.7 | +0.0 % |
+| pack | 64 | 101.2 | 2.5 | 54.4 | 391 MB | 188.4 | +5.7 % |
+| fuse | 32 | 89.7 | 0.0 | 67.7 | 4 B/cell | 187.8 | +6.0 % |
+| fuse + pack | 32 | 90.6 | 2.5 | 55.2 | 391 MB | 177.9 | +10.9 % |
+
+Packed widths (bytes per cell): deg_in 1, deg_out 1, fan_in 1, fan_out 1, sg 1, sg_ord 1, tcyc 1.
+
+| fusion | base: kernels / D2H (ms) | fuse: kernels / D2H | fuse + pack: kernels / pack + D2H | kernels saved by fusion |
+|---|---:|---:|---:|---:|
+| fan_in+deg_in | 7.9 / 21.2 | 5.5 / 20.7 | 6.4 / 17.5 | +31.2 % |
+| fan_out+deg_out | 29.5 / 21.0 | 20.5 / 20.8 | 20.5 / 17.2 | +30.5 % |
+
+## dg2_v1
+
+Hashes: every variant's equal: **yes**; equal to the reference (E12 A30): **yes**.
+
+| variant | tuned H | kernels (ms) | pack (ms) | D2H (ms) | D2H bytes | T (ms) | vs base |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| base | 128 | 309.6 | 0.0 | 60.3 | 4 B/cell | 399.8 | +0.0 % |
+| pack | 128 | 310.2 | 2.1 | 48.3 | 340 MB | 390.5 | +2.3 % |
+| fuse | 128 | 292.8 | 0.0 | 59.3 | 4 B/cell | 381.5 | +4.6 % |
+| fuse + pack | 128 | 296.0 | 2.2 | 49.8 | 340 MB | 377.6 | +5.5 % |
+
+Packed widths (bytes per cell): deg_in 1, deg_out 1, fan_in 1, fan_out 1, sg 1, tcyc 1.
+
+| fusion | base: kernels / D2H (ms) | fuse: kernels / D2H | fuse + pack: kernels / pack + D2H | kernels saved by fusion |
+|---|---:|---:|---:|---:|
+| fan_in+deg_in | 8.5 / 21.5 | 6.4 / 20.8 | 7.9 / 17.5 | +24.9 % |
+| fan_out+deg_out | 61.8 / 21.2 | 46.9 / 21.0 | 46.8 / 17.9 | +24.1 % |
+
+## dg2_wc
+
+Hashes: every variant's equal: **yes**; equal to the reference (E12 A30): **yes**.
+
+| variant | tuned H | kernels (ms) | pack (ms) | D2H (ms) | D2H bytes | T (ms) | vs base |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| base | 128 | 292.6 | 0.0 | 59.9 | 4 B/cell | 382.4 | +0.0 % |
+| pack | 128 | 292.6 | 2.1 | 47.2 | 340 MB | 371.9 | +2.8 % |
+| fuse | 128 | 277.3 | 0.0 | 59.2 | 4 B/cell | 366.0 | +4.3 % |
+| fuse + pack | 128 | 278.3 | 2.1 | 48.9 | 340 MB | 358.5 | +6.2 % |
+
+Packed widths (bytes per cell): deg_in 1, deg_out 1, fan_in 1, fan_out 1, sg 1, tcyc 1.
+
+| fusion | base: kernels / D2H (ms) | fuse: kernels / D2H | fuse + pack: kernels / pack + D2H | kernels saved by fusion |
+|---|---:|---:|---:|---:|
+| fan_in+deg_in | 7.0 / 21.3 | 5.5 / 20.8 | 6.9 / 17.5 | +20.6 % |
+| fan_out+deg_out | 59.3 / 21.1 | 45.6 / 21.0 | 45.6 / 17.9 | +23.1 % |
+
+## dg2_wb
+
+Hashes: every variant's equal: **yes**; equal to the reference (E12 A30): **yes**.
+
+| variant | tuned H | kernels (ms) | pack (ms) | D2H (ms) | D2H bytes | T (ms) | vs base |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| base | 256 | 659.9 | 0.0 | 59.7 | 4 B/cell | 749.0 | +0.0 % |
+| pack | 256 | 662.2 | 2.2 | 46.7 | 340 MB | 740.6 | +1.1 % |
+| fuse | 256 | 652.8 | 0.0 | 59.3 | 4 B/cell | 742.5 | +0.9 % |
+| fuse + pack | 256 | 652.6 | 2.2 | 48.7 | 340 MB | 733.7 | +2.0 % |
+
+Packed widths (bytes per cell): deg_in 1, deg_out 1, fan_in 1, fan_out 1, sg 1, tcyc 1.
+
+| fusion | base: kernels / D2H (ms) | fuse: kernels / D2H | fuse + pack: kernels / pack + D2H | kernels saved by fusion |
+|---|---:|---:|---:|---:|
+| fan_in+deg_in | 6.4 / 21.5 | 5.0 / 21.0 | 5.7 / 17.8 | +22.3 % |
+| fan_out+deg_out | 17.6 / 21.0 | 12.6 / 20.7 | 13.4 / 18.0 | +28.3 % |
+
+## libgomp's default wait policy
+
+The same `--pack` run of v1_default at H = 32 without `OMP_WAIT_POLICY` (10 timed runs): D2H per run.
+
+| block | D2H min / median / max (ms) | widening median (ms) |
+|---|---:|---:|
+| deg_in | 7.8 / 7.9 / 9.8 | 7.6 |
+| deg_out | 7.8 / 7.8 / 9.6 | 7.5 |
+| fan_in | 7.7 / 7.8 / 8.7 | 7.5 |
+| fan_out | 7.7 / 7.9 / 9.2 | 7.6 |
+| sg | 6.9 / 7.2 / 8.1 | 6.9 |
+| tcyc | 5.9 / 6.4 / 6.9 | 6.1 |
+
+## Checks
+
+- v1_default: measured: **pass**
+- v1_default: every variant ran: **pass**
+- v1_default: every variant's hashes equal: **pass**
+- v1_default: hashes = reference: **pass**
+- sg_ordered_v1w: measured: **pass**
+- sg_ordered_v1w: every variant ran: **pass**
+- sg_ordered_v1w: every variant's hashes equal: **pass**
+- sg_ordered_v1w: hashes = reference: **pass**
+- sg_ordered_tsvis: measured: **pass**
+- sg_ordered_tsvis: every variant ran: **pass**
+- sg_ordered_tsvis: every variant's hashes equal: **pass**
+- sg_ordered_tsvis: hashes = reference: **pass**
+- dg2_v1: measured: **pass**
+- dg2_v1: every variant ran: **pass**
+- dg2_v1: every variant's hashes equal: **pass**
+- dg2_v1: hashes = reference: **pass**
+- dg2_wc: measured: **pass**
+- dg2_wc: every variant ran: **pass**
+- dg2_wc: every variant's hashes equal: **pass**
+- dg2_wc: hashes = reference: **pass**
+- dg2_wb: measured: **pass**
+- dg2_wb: every variant ran: **pass**
+- dg2_wb: every variant's hashes equal: **pass**
+- dg2_wb: hashes = reference: **pass**
+
+++ date +%s
++ echo 'a30_remote (s7): done in 25 min'
+a30_remote (s7): done in 25 min
++ exit 0
+
+--- succeeded | exit code: 0 | log: /home/jl-runs/r_ddf03fcc/output.log ---

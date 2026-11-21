@@ -1704,6 +1704,56 @@ As implemented (S7):
       so only the per-slot test sees it);
     - 256 packed as uint8;
     - a staging copy issued before its buffer was widened.
+- **Outcome** (the E12 delta: `results/e12_s7_{local,a30}.{json,md}`, `bench/s7.sh`,
+  `bench/s7_report.py`; the A30 run: `results/s7_a30.json`, `bench/a30.sh --campaign s7`):
+  - **Bit-exact.**
+    - On both GPUs and for each of the six E12 profiles, every block's hash is the same in all
+      four variants. It equals the reference: P10's oracle hashes for v1_default and the two
+      sg_ordered profiles, and E12's A30 hashes for the DG-2 profiles.
+    - On the A30 (sm_80), `blz fuzz-diff --backend cuda --fuse --pack` on 10,000 graphs at H = 0,
+      4 and `all` finds 0 differing rows, for every registered block and for `sg_ordered_tsvis`.
+      The fast tests pass there.
+    - HI-Small `blz mine --fuse --pack` under v1_default gives AC-V2-0's six hashes on both GPUs.
+    - On HI-Small, every block of every profile fits uint8.
+  - **T per profile** (graph upload once + kernels + pack + D2H, at each variant's tuned H, median
+    of 5; "both" is fuse + pack):
+
+    | profile | 1650S base | pack | fuse | both | A30 base | pack | fuse | both |
+    |---|---:|---:|---:|---:|---:|---:|---:|---:|
+    | v1_default | 755 ms | 731 | 672 | 650 (−13.9 %) | 177 ms | 166 | 166 | 158 (−10.6 %) |
+    | sg_ordered_v1w | 828 ms | 802 | 745 | 712 (−14.1 %) | 190 ms | 180 | 180 | 170 (−10.5 %) |
+    | sg_ordered_tsvis | 938 ms | 911 | 818 | 811 (−13.6 %) | 200 ms | 188 | 188 | 178 (−10.9 %) |
+    | dg2_v1 | 1.83 s | 1.79 | 1.66 | 1.64 (−10.4 %) | 400 ms | 391 | 382 | 378 (−5.5 %) |
+    | dg2_wc | 1.64 s | 1.61 | 1.56 | 1.52 (−7.0 %) | 382 ms | 372 | 366 | 359 (−6.2 %) |
+    | dg2_wb | 2.51 s | 2.49 | 2.39 | 2.41 (−4.1 %) | 749 ms | 741 | 743 | 734 (−2.0 %) |
+
+    dg2_wb's fuse + pack on the 1650S is within noise of fuse alone (−5.0 %).
+  - **Fusion.** At each profile's tuned H, the fused fan and degree kernels take 16–37 % less
+    than their two blocks on the 1650S, and 21–31 % less on the A30. The gain in T is larger on
+    the 1650S, where fan and degree are a larger share of the kernels. The profile-wide H that
+    E12 tunes (32 to 256, set by tcyc and sg) is not the fusions' own best. At H = 0 on the
+    1650S, fan_in + deg_in fused takes 48 ms, against 80 ms for its two blocks at H = 0.
+    Reported, not chased: a per-unit H would gain more.
+  - **Packing.** D2H (copy and widening) goes from 101–119 ms to 70–83 ms per profile on the
+    1650S, and from 58–69 ms to 47–55 ms on the A30, plus 2–11 ms of pack kernels. PCIe carries a
+    quarter of the bytes, but the widening now bounds the gain, because the uint32 rows must still
+    be written to host memory. Per 61 M-cell block that is 11.8 ms on the Ryzen 5 3600 and 7.6 ms
+    on the A30's EPYC 7542, against about 10 ms for the plain uint32 copy over the A30's PCIe.
+    F11's premise holds here: on the A30, v1_default's D2H is 58 ms against 85 ms of kernels.
+    Reported, not chased:
+    - narrower host rows would remove that bound, but they would change the `.npy` contract;
+    - under libgomp's default wait policy, the widening on the shared desktop has outliers (up
+      to 48 ms against a 12 ms median). With `OMP_WAIT_POLICY=passive` (the E12 runs), or on the
+      idle A30 (at most 9.8 ms), they are gone.
+  - **The runs.**
+    - Local: the 1650S with the Ryzen 5 3600. Four local invocations were re-run: v1_default
+      fuse and fuse + pack, and sg_ordered_v1w base and pack. A stray second bench process had
+      shared the GPU with them for 3 minutes, and two of their times had doubled. The re-runs
+      replaced them.
+    - The A30 run was approved by the user on 2026-11-21 and ran next to the local one. It used
+      27 min of instance time ($0.19), and the instance was destroyed.
+    - Both runs record 0d52172 (dirty only because results files were being written, untracked).
+      Its code is ac0fd3d's; 0d52172 only adds the campaign mode to `bench/a30*.sh`.
 
 ### S8 — streaming replay and end-to-end throughput
 
@@ -2228,7 +2278,9 @@ is done with D-37's deviation (§8 S2 addendum). S3 is done with D-38's tie devi
 limit (§8 S3 addendum). DG-3 is resolved (P8). On 2026-11-15 the user asked for S4, which is done
 with D-40 (§8 S4 addendum). On 2026-11-19 the user asked for S5, which is done with D-41's scope
 and D-42's semantics (§8 S5 addendum). On 2026-11-19 the user asked for S6, which is done with
-D-43's pruning and D-44's hybrid (§8 S6 addendum); E13 ran on the 1650S only. S7–S9 wait for their
+D-43's pruning and D-44's hybrid (§8 S6 addendum); E13 ran on the 1650S only. On 2026-11-21 the user
+asked for S7, which is done with D-45's packing and D-46's scan fusion (§8 S7 addendum); its E12 delta
+ran on the 1650S and, with the user's go-ahead, on the A30 (27 min, $0.19). S8 and S9 wait for their
 gates and the user.
 
 ---

@@ -1,0 +1,110 @@
+created A30 instance 582682
+Executing on 582682: mkdir -p /home/blz
+Uploading to 582682: /tmp/tmp.cSzIh9yFsq/repo.tgz -> /home/blz/repo.tgz
+Uploading to 582682: /tmp/tmp.cSzIh9yFsq/source.env -> /home/blz/source.env
+Uploading to 582682: /home/daryl/Projects/blazingaml/data/hi_small.blzg -> 
+/home/blz/hi_small.blzg
+run r_ddf03fcc started on 582682
+--- run r_ddf03fcc | machine 582682 | running ---
+
++ '[' 12 -gt 12 ']'
++ '[' 12 -eq 12 ']'
++ '[' 6 -ge 4 ']'
++ g++-12 --version
++ head -1
+g++-12 (Ubuntu 12.3.0-1ubuntu1~22.04.3) 12.3.0
++ /usr/local/cuda/bin/nvcc --version
++ tail -2
+Cuda compilation tools, release 12.6, V12.6.77
+Build cuda_12.6.r12.6/compiler.34841621_0
++ cmake --version
++ head -1
+cmake version 4.4.5
++ cmake --preset rel-cuda -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc -DCMAKE_CUDA_ARCHITECTURES=80 -DBLZ_WITH_XGBOOST=OFF -DCMAKE_CXX_COMPILER=g++-12 -DCMAKE_CUDA_HOST_COMPILER=g++-12
+-- The CXX compiler identification is GNU 12.3.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/g++-12 - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+
+--- still running | log: /home/jl-runs/r_ddf03fcc/output.log ---
+[252/257] Linking CXX static library libblz_core.a
+[253/257] Building CXX object tests/CMakeFiles/blz_unit_tests.dir/unit/test_coverage.cpp.o
+[254/257] Linking CXX executable tests/blz_unit_tests
+        Start  36: cuda bucketing sends every trigger to one kernel per pattern
+ 33/147 Test  #36: cuda bucketing sends every trigger to one kernel per pattern ............................................   Passed    0.55 sec
+        Start  37: cuda: metamorphic tests on 200 fuzz graphs, every threshold (SPEC v2 §3.4)
+        Start  59: gt-join: row statuses, rules, attempts, splits and unlisted positives
+ 56/147 Test  #59: gt-join: row statuses, rules, attempts, splits and unlisted positives ...................................   Passed    0.00 sec
+        Start  60: hybrid: rows equal the oracle's on 150 fuzz graphs, every split (SPEC v2 §8 S6)
+        Start 112: registry: the library's thirteen patterns, one block each, sg from two
+109/147 Test #112: registry: the library's thirteen patterns, one block each, sg from two ..................................   Passed    0.01 sec
+        Start 113: set ops: fan_oneway_out <= fan_out and fan_total >= fan_in on fuzz graphs, often strictly
+        Start 181: cuda_smoke
+144/147 Test #181: cuda_smoke ..............................................................................................   Passed    0.97 sec
+145/147 Test #134: vstats: CPU = CUDA, bit for bit .........................................................................   Passed   21.91 sec
++ '[' s7 = s7 ']'
++ R=results/s7_a30.json
++ build/rel-cuda/blz fuzz-diff --backend cuda --fuse --pack --seeds 0:10000 --report results/s7_a30.json --name fuzz_diff/registry
++ '[' s7 = s7 ']'
++ R=results/s7_a30.json
++ build/rel-cuda/blz fuzz-diff --backend cuda --fuse --pack --seeds 0:10000 --report results/s7_a30.json --name fuzz_diff/registry
++ '[' s7 = s7 ']'
++ R=results/s7_a30.json
++ build/rel-cuda/blz fuzz-diff --backend cuda --fuse --pack --seeds 0:10000 --report results/s7_a30.json --name fuzz_diff/registry
++ build/rel-cuda/blz fuzz-diff --backend cuda --fuse --pack --seeds 0:10000 --report results/s7_a30.json --name fuzz_diff/registry
+fuzz-diff cuda vs oracle, seeds 0:10000: 10000 graphs, 2053897 edges, 0 mismatching rows (232.6 s)
++ build/rel-cuda/blz fuzz-diff --backend cuda --fuse --pack --seeds 0:10000 --profile configs/profiles/sg_ordered_tsvis.yaml --report results/s7_a30.json --name fuzz_diff/sg_ordered_tsvis
++ build/rel-cuda/blz fuzz-diff --backend cuda --fuse --pack --seeds 0:10000 --report results/s7_a30.json --name fuzz_diff/registry
+fuzz-diff cuda vs oracle, seeds 0:10000: 10000 graphs, 2053897 edges, 0 mismatching rows (232.6 s)
++ build/rel-cuda/blz fuzz-diff --backend cuda --fuse --pack --seeds 0:10000 --profile configs/profiles/sg_ordered_tsvis.yaml --report results/s7_a30.json --name fuzz_diff/sg_ordered_tsvis
+fan_out+deg_out H=all  kernels median   0.1325 s (light 0.1319, heavy 0.0000, bucket 0.0000), d2h 0.0207 s, pack 0.0000 s, 0 heavy triggers
+sg       H=0    kernels median   0.0366 s (light 0.0000, heavy 0.0363, bucket 0.0000), d2h 0.0089 s, pack 0.0000 s, 10156690 heavy triggers
+sg       H=8    kernels median   0.0126 s (light 0.0062, heavy 0.0047, bucket 0.0015), d2h 0.0088 s, pack 0.0000 s, 147363 heavy triggers
+deg_out  H=8    kernels median   0.0128 s (light 0.0012, heavy 0.0101, bucket 0.0011), d2h 0.0085 s, pack 0.0004 s, 1623592 heavy triggers
+deg_out  H=16   kernels median   0.0089 s (light 0.0015, heavy 0.0060, bucket 0.0010), d2h 0.0085 s, pack 0.0004 s, 675028 heavy triggers
+deg_out  H=32   kernels median   0.0082 s (light 0.0016, heavy 0.0052, bucket 0.0010), d2h 0.0080 s, pack 0.0004 s, 455162 heavy triggers
+fan_out  H=0    kernels median   0.0558 s (light 0.0000, heavy 0.0555, bucket 0.0000), d2h 0.0105 s, pack 0.0000 s, 5078345 heavy triggers
+fan_out  H=8    kernels median   0.0341 s (light 0.0016, heavy 0.0308, bucket 0.0014), d2h 0.0105 s, pack 0.0000 s, 1638922 heavy triggers
+fan_out  H=16   kernels median   0.0234 s (light 0.0022, heavy 0.0196, bucket 0.0014), d2h 0.0105 s, pack 0.0000 s, 678602 heavy triggers
+tcyc     H=64   kernels median   0.0408 s (light 0.0080, heavy 0.0316, bucket 0.0009), d2h 0.0082 s, pack 0.0000 s, 2885 heavy triggers
+tcyc     H=128  kernels median   0.0410 s (light 0.0081, heavy 0.0318, bucket 0.0009), d2h 0.0083 s, pack 0.0000 s, 2876 heavy triggers
+tcyc     H=256  kernels median   0.0412 s (light 0.0082, heavy 0.0319, bucket 0.0009), d2h 0.0083 s, pack 0.0000 s, 2871 heavy triggers
+tcyc     H=32   kernels median   0.2696 s (light 0.0177, heavy 0.2507, bucket 0.0009), d2h 0.0083 s, pack 0.0000 s, 113178 heavy triggers
+tcyc     H=64   kernels median   0.1960 s (light 0.0310, heavy 0.1641, bucket 0.0009), d2h 0.0083 s, pack 0.0000 s, 9442 heavy triggers
+tcyc     H=128  kernels median   0.1733 s (light 0.0316, heavy 0.1406, bucket 0.0009), d2h 0.0082 s, pack 0.0000 s, 2889 heavy triggers
+sg       H=64   kernels median   0.0640 s (light 0.0396, heavy 0.0223, bucket 0.0019), d2h 0.0091 s, pack 0.0000 s, 182005 heavy triggers
+sg       H=128  kernels median   0.0661 s (light 0.0429, heavy 0.0211, bucket 0.0019), d2h 0.0091 s, pack 0.0000 s, 146298 heavy triggers
+sg       H=256  kernels median   0.0736 s (light 0.0502, heavy 0.0212, bucket 0.0019), d2h 0.0092 s, pack 0.0000 s, 113168 heavy triggers
+fan_out  H=32   kernels median   0.0536 s (light 0.0019, heavy 0.0504, bucket 0.0010), d2h 0.0104 s, pack 0.0000 s, 968026 heavy triggers
+fan_out  H=64   kernels median   0.0447 s (light 0.0023, heavy 0.0411, bucket 0.0010), d2h 0.0106 s, pack 0.0000 s, 496835 heavy triggers
+fan_out  H=128  kernels median   0.0432 s (light 0.0023, heavy 0.0396, bucket 0.0010), d2h 0.0106 s, pack 0.0000 s, 448142 heavy triggers
+tcyc     H=32   kernels median   0.2536 s (light 0.0166, heavy 0.2359, bucket 0.0009), d2h 0.0068 s, pack 0.0003 s, 113178 heavy triggers
+tcyc     H=64   kernels median   0.1860 s (light 0.0292, heavy 0.1558, bucket 0.0009), d2h 0.0068 s, pack 0.0003 s, 9442 heavy triggers
+tcyc     H=128  kernels median   0.1700 s (light 0.0301, heavy 0.1389, bucket 0.0009), d2h 0.0069 s, pack 0.0003 s, 2889 heavy triggers
+sg       H=256  kernels median   0.0623 s (light 0.0425, heavy 0.0180, bucket 0.0015), d2h 0.0083 s, pack 0.0003 s, 113137 heavy triggers
+sg       H=1024 kernels median   0.0967 s (light 0.0818, heavy 0.0132, bucket 0.0015), d2h 0.0086 s, pack 0.0003 s, 2852 heavy triggers
+sg       H=all  kernels median   0.1701 s (light 0.1698, heavy 0.0000, bucket 0.0000), d2h 0.0087 s, pack 0.0003 s, 0 heavy triggers
+tcyc     H=16   kernels median   0.9833 s (light 0.0134, heavy 0.9687, bucket 0.0009), d2h 0.0083 s, pack 0.0000 s, 884758 heavy triggers
+tcyc     H=32   kernels median   0.9449 s (light 0.0260, heavy 0.9177, bucket 0.0009), d2h 0.0083 s, pack 0.0000 s, 370060 heavy triggers
+tcyc     H=64   kernels median   0.9076 s (light 0.0498, heavy 0.8567, bucket 0.0009), d2h 0.0082 s, pack 0.0000 s, 88567 heavy triggers
+tcyc     H=8    kernels median   0.9949 s (light 0.0086, heavy 0.9853, bucket 0.0009), d2h 0.0068 s, pack 0.0003 s, 1438230 heavy triggers
+tcyc     H=16   kernels median   0.9933 s (light 0.0134, heavy 0.9787, bucket 0.0009), d2h 0.0070 s, pack 0.0003 s, 884758 heavy triggers
+tcyc     H=32   kernels median   0.9562 s (light 0.0260, heavy 0.9291, bucket 0.0009), d2h 0.0070 s, pack 0.0003 s, 370060 heavy triggers
+tcyc     H=8    kernels median   0.9953 s (light 0.0086, heavy 0.9857, bucket 0.0009), d2h 0.0083 s, pack 0.0000 s, 1438230 heavy triggers
+tcyc     H=16   kernels median   0.9808 s (light 0.0134, heavy 0.9662, bucket 0.0009), d2h 0.0084 s, pack 0.0000 s, 884758 heavy triggers
+tcyc     H=32   kernels median   0.9515 s (light 0.0260, heavy 0.9244, bucket 0.0009), d2h 0.0084 s, pack 0.0000 s, 370060 heavy triggers
+tcyc     H=8    kernels median   0.9963 s (light 0.0086, heavy 0.9867, bucket 0.0009), d2h 0.0070 s, pack 0.0003 s, 1438230 heavy triggers
+tcyc     H=16   kernels median   0.9851 s (light 0.0134, heavy 0.9705, bucket 0.0009), d2h 0.0070 s, pack 0.0003 s, 884758 heavy triggers
+tcyc     H=32   kernels median   0.9496 s (light 0.0260, heavy 0.9226, bucket 0.0009), d2h 0.0070 s, pack 0.0003 s, 370060 heavy triggers
++ echo 'a30_remote (s7): done in 25 min'
+a30_remote (s7): done in 25 min
++ exit 0
+run r_ddf03fcc exited with 0 (log: results/a30_s7_run.log)
+{
+  "success": true,
+  "machine_id": 582682
+}
+done
+EXIT=0
