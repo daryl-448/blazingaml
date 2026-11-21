@@ -71,7 +71,13 @@ struct CudaBlockTiming {
   double kernel_seconds = 0;  // zeroing + bucketing + light + heavy kernels, every pattern (cudaEvents)
   double bucket_seconds = 0;  // work estimates, partition, and the read-back of the heavy count
   double light_seconds = 0, heavy_seconds = 0;
-  double d2h_seconds = 0;     // the block's rows to the host (cudaEvents)
+  // The block's rows to the host. Unpacked: the copy (cudaEvents). Packed (SPEC v2 §8 S7): from the
+  // first narrow chunk's copy to the last row widened into the host buffer (host clock).
+  double d2h_seconds = 0;
+  double pack_seconds = 0;    // packed: the pack kernels and the read-back of the block's maximum (cudaEvents)
+  double widen_seconds = 0;   // packed: the host's widening, summed over the chunks (inside d2h_seconds)
+  std::uint32_t d2h_width = 4;  // bytes per cell over PCIe: 1, 2 or 4
+  std::uint64_t d2h_bytes = 0;  // bytes over PCIe
   double h2d_seconds = 0;     // mine_subset: the trigger list to the device (cudaEvents)
   double split_seconds = 0;   // mine_split: the CPU's triggers found and copied to the host (cudaEvents)
   std::uint64_t cpu_triggers = 0;  // mine_split: how many
@@ -99,9 +105,31 @@ class CudaMiner {
                        std::uint64_t last, std::uint32_t heavy_threshold, std::uint32_t* host_out);
   // The same with the patterns `pats` (a profile's list for the block, SPEC v2 §3.1) under
   // visibility `vis` (the profile's, SPEC v2 §6.1).
+  //
+  // `pack` (SPEC v2 §8 S7) copies the rows as uint8 when every cell is <= 255, else as uint16 when
+  // every cell is <= 65535, else as uint32, and widens them on the host: the same rows, fewer bytes
+  // over PCIe. A pack kernel writes the uint8 copy and the block's maximum (the saturation flag); the
+  // host reads the maximum before any row is copied, so a block that overflows uint8 is packed again
+  // as uint16 (or copied as uint32) and never crosses PCIe twice.
   CudaBlockTiming mine(const DeviceGraph& g, std::span<const PatternInfo* const> pats, const BlockParams& p,
                        Visibility vis, std::uint64_t first, std::uint64_t last, std::uint32_t heavy_threshold,
-                       std::uint32_t* host_out);
+                       std::uint32_t* host_out, bool pack = false);
+  // A fusion's blocks at once (SPEC v2 §8 S7): one kernel runs every member of `f` for each trigger
+  // in [first, last). params[s] and host_out[s] are slot s's block parameters and rows ((last - first)
+  // rows of params[s]->bins.size() columns, overwritten); member k runs with params[f.slots[k]]'s
+  // window. The work estimate of a trigger is the largest of its members'. `group` holds the kernel
+  // times and the trigger counts (each trigger once), `slots[s]` slot s's pack, D2H and saturation;
+  // group's d2h, pack, widen, bytes and saturated are the slots' sums.
+  struct FusedTiming {
+    CudaBlockTiming group;
+    std::vector<CudaBlockTiming> slots;
+  };
+  FusedTiming mine_fused(const DeviceGraph& g, const FusionInfo& f, std::span<const BlockParams* const> params,
+                         Visibility vis, std::uint64_t first, std::uint64_t last, std::uint32_t heavy_threshold,
+                         std::span<std::uint32_t* const> host_out, bool pack = false);
+  // For tests: uploads `values` as one block's device rows and copies them to host_out as mine()
+  // does with `pack`.
+  CudaBlockTiming fetch_for_test(std::span<const std::uint32_t> values, std::uint32_t* host_out, bool pack);
   // The hybrid's GPU side (SPEC v2 §8 S6): the same, but only for the triggers `subset` (ascending
   // eids in [first, last)), which are uploaded first (h2d_seconds). All (last - first) rows are
   // still written to host_out; the rows of the other triggers are zero.
@@ -127,7 +155,7 @@ class CudaMiner {
   CudaBlockTiming run(const DeviceGraph& g, std::span<const PatternInfo* const> pats, const BlockParams& p,
                       Visibility vis, std::uint64_t first, std::uint64_t last,
                       const std::span<const std::uint32_t>* subset, const Split* split,
-                      std::uint32_t heavy_threshold, std::uint32_t* host_out);
+                      std::uint32_t heavy_threshold, std::uint32_t* host_out, bool pack);
   struct Impl;
   std::unique_ptr<Impl> impl_;
 };

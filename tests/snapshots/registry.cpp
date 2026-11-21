@@ -24,6 +24,14 @@
 
 namespace blz {
 
+// The fusions' launchers (fused_<id>_cuda.cu, SPEC v2 §8 S7).
+namespace gen {
+void fused_fan_in__deg_in_cuda_bucket(const GraphView& g, const FusedParams& p, std::uint64_t first, std::uint32_t count, std::uint32_t threshold, std::uint8_t* flags, void* stream);
+void fused_fan_in__deg_in_cuda(const GraphView& g, const FusedParams& p, const FusedRun& run);
+void fused_fan_out__deg_out_cuda_bucket(const GraphView& g, const FusedParams& p, std::uint64_t first, std::uint32_t count, std::uint32_t threshold, std::uint8_t* flags, void* stream);
+void fused_fan_out__deg_out_cuda(const GraphView& g, const FusedParams& p, const FusedRun& run);
+}  // namespace gen
+
 namespace {
 
 constexpr ConstInfo kConsts_lcyc[] = {{"K_MAX", 10}};
@@ -46,9 +54,21 @@ constexpr PatternInfo kPatterns[] = {
   {"tcyc", "tcyc", "patterns/tcyc.yaml:4:8", "patterns/tcyc.yaml", "358a52a3a2586bebe94c850db11132d84506aeed5a7d5021644023cb49a852b3", "", "", "delta_cyc", kConsts_tcyc, &gen::tcyc_cpu, &gen::tcyc_work, BLZ_CUDA_FN(gen::tcyc_cuda_bucket), BLZ_CUDA_FN(gen::tcyc_cuda), false, true},
 };
 
+constexpr const PatternInfo* kFusionMembers_0[] = {&kPatterns[2], &kPatterns[0]};
+constexpr std::uint32_t kFusionSlots_0[] = {0, 1};
+constexpr const PatternInfo* kFusionMembers_1[] = {&kPatterns[4], &kPatterns[1]};
+constexpr std::uint32_t kFusionSlots_1[] = {0, 1};
+
+constexpr FusionInfo kFusions[] = {
+  {"fan_in+deg_in", kFusionMembers_0, kFusionSlots_0, BLZ_CUDA_FN(gen::fused_fan_in__deg_in_cuda_bucket), BLZ_CUDA_FN(gen::fused_fan_in__deg_in_cuda)},
+  {"fan_out+deg_out", kFusionMembers_1, kFusionSlots_1, BLZ_CUDA_FN(gen::fused_fan_out__deg_out_cuda_bucket), BLZ_CUDA_FN(gen::fused_fan_out__deg_out_cuda)},
+};
+
 }  // namespace
 
 std::span<const PatternInfo> registered_patterns() { return kPatterns; }
+
+std::span<const FusionInfo> registered_fusions() { return kFusions; }
 
 std::span<const char* const> disabled_optimizations() { return {}; }
 

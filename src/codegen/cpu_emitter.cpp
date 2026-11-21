@@ -61,7 +61,9 @@ const char* dir_name(Dir d) { return d == Dir::out ? "out" : "in"; }
 
 class CpuEmitter {
  public:
-  explicit CpuEmitter(const ir::Pattern& p) : p_(p) {
+  // `scope` prefixes every identifier made from a DSL name (scan fusion, SPEC v2 §8 S7: member k's
+  // names are m<k>_..., so that the members' names do not meet in one function).
+  explicit CpuEmitter(const ir::Pattern& p, std::string scope = "") : p_(p), scope_(std::move(scope)) {
     if (p.name.find('[') != std::string::npos)
       unsupported(p.name_loc, "pattern '" + p.name + "' names C++ functions; it must be a plain identifier");
     for (const Expr& f : p.trigger_filters) collect(f);
@@ -239,6 +241,47 @@ class CpuEmitter {
     return w.str();
   }
 
+  // Scan fusion (SPEC v2 §8 S7): this pattern as member k of a fused body that scans one trigger
+  // list for every member. Its only stage is the sweep plan's root count (Plan::sweep), whose
+  // window has the visibility as its only upper bound. The parts, all with this emitter's scope:
+  //   scan_decls: the trigger nodes, the window span (p.member[k]) and the element filter keep(y);
+  //   scan_lower: the window's inclusive lower bound;
+  //   scan_test:  whether list entry j (neighbour y) enters the count, given the window start lo;
+  //   scan_emit:  the trigger filters and the emit of the count, into `out`.
+  const Stage& scan_stage() const { return *p_.find_stage(p_.plan.sweep_stage); }
+  void scan_decls(Writer& w, std::size_t k, bool with_keep) {
+    const Stage& s = scan_stage();
+    const Operand& o = s.operands[0];
+    w.line("// member " + std::to_string(k) + ": " + p_.name + ", stage " + s.id + " (" + op_name(s) + ") over " +
+           o.node + "." + dir_name(o.dir));
+    w.line("[[maybe_unused]] const std::uint32_t " + node(p_.src_var) + " = g.src[e];");
+    w.line("[[maybe_unused]] const std::uint32_t " + node(p_.dst_var) + " = g.dst[e];");
+    w.line("const std::int64_t " + id("p_", p_.span_param) + " = p.member[" + std::to_string(k) + "].span;");
+    if (!with_keep) return;
+    const std::string elem = s.element_var.empty() ? "" : " " + node(s.element_var);
+    w.line("const auto " + scope_ + "keep = [&]([[maybe_unused]] std::uint32_t" + elem + ") { return " +
+           (s.filters.empty() ? std::string("true") : "!(" + any_of(s.filters) + ")") + "; };");
+  }
+  std::string scan_lower() { return lo_of(scan_stage().operands[0].lo_incl); }
+  std::string scan_count() { return id("i_", scan_stage().output_var); }
+  std::string scan_test(const std::string& list, const std::string& j, const std::string& y, const std::string& lo) {
+    const bool distinct = scan_stage().multiplicity == Mult::distinct;
+    return j + " >= " + lo + (distinct ? " && " + list + ".distinct_first(" + j + ", " + lo + ")" : "") + " && " +
+           scope_ + "keep(" + y + ")";
+  }
+  void scan_emit(Writer& w, const std::string& sink) {
+    const Stage& s = scan_stage();
+    w.open("[&](Sink& out) {  // " + p_.name + ": its trigger filters, then its emit");
+    for (const Expr& f : p_.trigger_filters) w.line("if (" + cx(f) + ") return;");
+    if (s.emit) {
+      w.line("const bool " + id("ok_", s.id) + " = " + scan_count() + " != 0;");
+      emit_stmt(w, *s.emit, id("ok_", s.id));
+    } else {
+      w.line("(void)out;");
+    }
+    w.close("}(" + sink + ");");
+  }
+
   // The CUDA heavy kernel's body (SPEC §7.5): <pattern>_trigger_warp, device code.
   std::string warp_fn() {
     Writer w;
@@ -261,7 +304,7 @@ class CpuEmitter {
   std::string id(const std::string& prefix, const std::string& name, const Loc& loc = {}) {
     const std::string key = prefix + '\x1f' + name;
     if (auto it = names_.find(key); it != names_.end()) return it->second;
-    std::string c = prefix;
+    std::string c = scope_ + prefix;
     for (char ch : name)
       if (ch != ']') c += ch == '[' ? '_' : ch;
     if (!taken_.insert(c).second)
@@ -818,6 +861,7 @@ class CpuEmitter {
   }
 
   const ir::Pattern& p_;
+  const std::string scope_;
   std::map<std::string, std::string> names_;
   std::set<std::string> taken_;
   std::set<std::string> used_;
@@ -840,6 +884,69 @@ std::vector<GeneratedFile> emit_cpu(const ir::Pattern& p, const std::string& ste
 namespace detail {
 
 std::string warp_trigger_fn(const ir::Pattern& p) { return CpuEmitter(p).warp_fn(); }
+
+std::string scan_fusion_fns(const std::string& name, const std::vector<const ir::Pattern*>& members,
+                            const std::vector<std::uint32_t>& slots) {
+  std::vector<CpuEmitter> em;
+  em.reserve(members.size());
+  for (std::size_t k = 0; k < members.size(); ++k) em.emplace_back(*members[k], "m" + std::to_string(k) + "_");
+  const ir::Operand& o = em[0].scan_stage().operands[0];
+  const ir::Pattern& p0 = *members[0];
+  const std::string role = o.node == p0.src_var ? "src" : "dst";
+  const std::string list = tcsr(o.dir);
+  const std::string scan = role + "." + dir_name(o.dir);
+  // The prologue both functions share: t, the visibility, every member's names (and its element
+  // filter, for the scan), the shared list up to the visibility bound, and each member's window
+  // start in it.
+  const auto prologue = [&](Writer& w, bool with_keep) {
+    w.line("const std::int64_t t = g.ts[e];");
+    w.line("// visibility (SPEC v2 §6.1): the profile's, so the same for every member");
+    w.line("const std::uint32_t vis_e = p.member[0].ts_visibility ? kAnyEid : e;");
+    w.line("const std::int64_t vis_t = p.member[0].ts_visibility ? t : kNoUpper;");
+    for (std::size_t k = 0; k < em.size(); ++k) em[k].scan_decls(w, k, with_keep);
+    w.line("// the shared list: the trigger's " + scan + " up to the visibility bound; each member's window starts at its own lower bound");
+    w.line("const Range head = " + list + ".head_range(g." + role + "[e], vis_t, vis_e);");
+    for (std::size_t k = 0; k < em.size(); ++k)
+      w.line("const std::uint32_t m" + std::to_string(k) + "_lo = " + list + ".first_ts_at_least(head.lo, head.hi, " +
+             em[k].scan_lower() + ");");
+    w.line("std::uint32_t lo = m0_lo;");
+    for (std::size_t k = 1; k < em.size(); ++k) {
+      const std::string lo = "m" + std::to_string(k) + "_lo";
+      w.line("if (" + lo + " < lo) lo = " + lo + ";");
+    }
+  };
+  Writer w;
+  w.line("// The scan fusion's body (SPEC v2 §8 S7): one scan of the trigger's " + scan + " counts for every");
+  w.line("// member, each over its own window, with its own element filters and multiplicity, exactly as its");
+  w.line("// <pattern>_trigger counts. Lane `lane` of `stride` takes every stride-th entry; with stride > 1 the");
+  w.line("// warp sums the raw counts before any use (all 32 lanes call) and lane 0 emits.");
+  w.line("template <class Sink>");
+  w.open("__device__ inline void " + name +
+         "_trigger(const GraphView& g, const FusedParams& p, std::uint32_t e, std::uint32_t lane, std::uint32_t stride, "
+         "Sink* sinks) {");
+  prologue(w, true);
+  for (CpuEmitter& m : em) w.line("std::int64_t " + m.scan_count() + " = 0;");
+  w.open("for (std::uint32_t j = lo + lane; j < head.hi; j += stride) {");
+  w.line("const std::uint32_t y = " + list + ".nbr[j];");
+  for (std::size_t k = 0; k < em.size(); ++k)
+    w.line("if (" + em[k].scan_test(list, "j", "y", "m" + std::to_string(k) + "_lo") + ") ++" + em[k].scan_count() +
+           ";");
+  w.close();
+  w.open("if (stride > 1) {");
+  for (CpuEmitter& m : em) w.line(m.scan_count() + " = cuda::warp_sum(" + m.scan_count() + ");");
+  w.close();
+  w.line("if (lane != 0) return;");
+  for (std::size_t k = 0; k < em.size(); ++k) em[k].scan_emit(w, "sinks[" + std::to_string(slots[k]) + "]");
+  w.close();
+  w.line();
+  w.line("// Work estimate: the shared scan's size, from the earliest member window start (the largest of the");
+  w.line("// members' estimates).");
+  w.open("__device__ inline std::uint32_t " + name + "_work(const GraphView& g, const FusedParams& p, std::uint32_t e) {");
+  prologue(w, false);  // the emitters keep their names, so this prologue names everything as the first
+  w.line("return head.hi - lo;");
+  w.close();
+  return w.str();
+}
 
 }  // namespace detail
 

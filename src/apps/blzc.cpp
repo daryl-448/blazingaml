@@ -12,6 +12,10 @@
 //   --const NAME=VALUE overrides a const of the spec (e.g. --const K_MAX=5).
 //   --disable OPT[,OPT...] plans and generates without these optimizations (SPEC v2 §7.2): find_start,
 //   distinct_first, degree_order, count_only, sweep. The E11 ablation variants; CPU code only.
+//   --fuse P1,P2[,...] (repeatable) also generates d/fused_<P1>__<P2>_cuda.cu, one CUDA kernel body
+//   that counts the patterns with one scan of their trigger list (SPEC v2 §8 S7), and lists it in
+//   the registry.
+#include <algorithm>
 #include <charconv>
 #include <cstdio>
 #include <filesystem>
@@ -47,6 +51,7 @@ int main(int argc, char** argv) {
   std::string out_dir, snap_dir;
   std::vector<std::string> const_args;
   std::string disable;
+  std::vector<std::string> fuse_args;
   bool check_only = false, dump_ir = false, expand = false, update = false;
   app.add_option("specs", specs, "pattern specs (patterns/*.yaml)")->required()->check(CLI::ExistingFile);
   app.add_option("--out", out_dir, "output directory");
@@ -55,6 +60,10 @@ int main(int argc, char** argv) {
   app.add_option("--const", const_args, "override a const: NAME=VALUE");
   app.add_option("--disable", disable,
                  "switch optimizations off (comma-separated): find_start, distinct_first, degree_order, count_only, sweep");
+  app.add_option("--fuse", fuse_args, "fuse these patterns into one CUDA kernel (comma-separated; repeatable)")
+      ->expected(1)
+      ->allow_extra_args(false)  // one group per --fuse: the spec paths after it stay positional
+      ->multi_option_policy(CLI::MultiOptionPolicy::TakeAll);
   auto* c = app.add_flag("--check-only", check_only, "run the front end and report diagnostics");
   auto* d = app.add_flag("--dump-ir", dump_ir, "write the planned IR");
   auto* e = app.add_flag("--expand", expand, "write the spec after repeat expansion");
@@ -85,6 +94,10 @@ int main(int argc, char** argv) {
   const bool codegen = !check_only && !dump_ir && !expand;
   if (codegen && out_dir.empty() == snap_dir.empty()) {
     std::fprintf(stderr, "blzc: code generation needs exactly one of --out and --snapshots\n");
+    return 2;
+  }
+  if (!codegen && !fuse_args.empty()) {
+    std::fprintf(stderr, "blzc: --fuse is checked when generating code (--out or --snapshots)\n");
     return 2;
   }
   if (!out_dir.empty()) std::filesystem::create_directories(out_dir);
@@ -132,7 +145,18 @@ int main(int argc, char** argv) {
       for (auto& f : blz::codegen::emit_cpu(patterns[i], stems[i])) files.push_back(std::move(f));
       files.push_back(blz::codegen::emit_cuda(patterns[i], stems[i]));
     }
-    files.push_back(blz::codegen::emit_registry(patterns, stems));
+    std::vector<std::vector<std::string>> groups;
+    for (const std::string& a : fuse_args) {
+      std::vector<std::string>& g = groups.emplace_back();
+      for (std::size_t q = 0; q <= a.size();) {
+        const std::size_t r = std::min(a.find(',', q), a.size());
+        g.push_back(a.substr(q, r - q));
+        q = r + 1;
+      }
+    }
+    const std::vector<blz::codegen::Fusion> fusions = blz::codegen::plan_fusions(patterns, groups);
+    for (const auto& f : fusions) files.push_back(blz::codegen::emit_fused_cuda(f, patterns));
+    files.push_back(blz::codegen::emit_registry(patterns, stems, fusions));
   } catch (const blz::dsl::CompileError& err) {
     std::fprintf(stderr, "%s\n", err.what());
     return 1;

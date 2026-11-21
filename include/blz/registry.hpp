@@ -131,6 +131,47 @@ struct PatternInfo {
 // Every pattern blzc compiled into this build, in the order of its spec arguments.
 std::span<const PatternInfo> registered_patterns();
 
+// Fusions (blzc --fuse, SPEC v2 §8 S7, D-46): one CUDA kernel body counts several sweep-shaped
+// patterns with one scan of the trigger list they share. Each member writes its block's rows; the
+// members' distinct blocks are the fusion's slots.
+inline constexpr std::uint32_t kMaxFusedMembers = 4;
+inline constexpr std::uint32_t kMaxFusedSlots = 4;
+
+// Per member: its parameters (its block's window, the profile's visibility).
+struct FusedParams {
+  Params member[kMaxFusedMembers];
+};
+
+// One launch of a fusion's light or heavy kernel over a trigger list, adding into every slot's rows
+// (row r of slot s belongs to trigger eid first + r). Every pointer is a device pointer.
+struct FusedRun {
+  std::uint32_t* out[kMaxFusedSlots] = {};
+  const std::uint32_t* bins[kMaxFusedSlots] = {};
+  std::uint32_t nbins[kMaxFusedSlots] = {};
+  std::uint64_t first = 0;
+  unsigned long long* saturated = nullptr;  // kMaxFusedSlots counters: emits lost to saturation, per slot
+  const std::uint32_t* triggers = nullptr;
+  std::uint32_t count = 0;
+  bool heavy = false;
+  void* stream = nullptr;
+};
+// fused_<id>_cuda_bucket: flags[i] = (the largest member work estimate of trigger first + i >= threshold).
+using FusedBucketFn = void (*)(const GraphView& g, const FusedParams& p, std::uint64_t first, std::uint32_t count,
+                               std::uint32_t threshold, std::uint8_t* flags, void* stream);
+// fused_<id>_cuda: the light or heavy kernel over run.triggers.
+using FusedFn = void (*)(const GraphView& g, const FusedParams& p, const FusedRun& run);
+
+struct FusionInfo {
+  const char* name;                             // the members' names joined by '+'
+  std::span<const PatternInfo* const> members;  // in fusion order, entries of registered_patterns()
+  std::span<const std::uint32_t> slots;         // per member: its block's slot
+  FusedBucketFn cuda_bucket;                    // null in a build without CUDA
+  FusedFn cuda;                                 // null in a build without CUDA
+};
+
+// Every fusion blzc compiled into this build (its --fuse groups), in that order.
+std::span<const FusionInfo> registered_fusions();
+
 // The optimizations this build's patterns were compiled without (`blzc --disable`, SPEC v2 §7.2);
 // empty for the fully optimized build.
 std::span<const char* const> disabled_optimizations();

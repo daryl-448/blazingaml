@@ -43,6 +43,7 @@
 #include "runtime/coverage.hpp"
 #include "runtime/cpu_backend.hpp"
 #include "runtime/cuda_backend.hpp"
+#include "runtime/fusion.hpp"
 #include "runtime/features.hpp"
 #include "runtime/fuzz_diff.hpp"
 #include "runtime/hybrid.hpp"
@@ -285,8 +286,9 @@ std::string threshold_name(std::uint32_t h) { return h == blz::kAllLight ? "all"
 int mine(const std::string& graph, const std::string& profile_path, const std::string& backend, int threads,
          const std::string& schedule_opt, std::uint32_t heavy, std::uint32_t cpu_heavy, bool reach_prune,
          const std::string& blocks_opt, const std::string& triggers, std::uint64_t edges, std::uint64_t work_limit,
-         const std::string& out) {
+         bool fuse, bool pack, const std::string& out) {
   const blz::Backend be = blz::parse_backend(backend);
+  if ((fuse || pack) && be != blz::Backend::cuda) throw std::runtime_error("--fuse and --pack are for the cuda backend");
   // hybrid (SPEC v2 §8 S6): the cuda backend's device and rows, plus the cpu backend's index.
   const bool hybrid = be == blz::Backend::hybrid;
   const bool cpu = be == blz::Backend::cpu, gpu = be == blz::Backend::cuda || hybrid;
@@ -366,6 +368,10 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
   if (cpu || hybrid) jbe["schedule"] = blz::schedule_name(schedule);
   if (cpu || hybrid) jbe["reach_prune"] = reach_prune;
   if (gpu) jbe["heavy_threshold"] = threshold_name(heavy);
+  if (be == blz::Backend::cuda) {  // SPEC v2 §8 S7: the same rows either way
+    jbe["fuse"] = fuse;
+    jbe["pack"] = pack;
+  }
   if (hybrid) jbe["cpu_threshold"] = threshold_name(cpu_heavy);
   meta["backend"] = jbe;
   meta["triggers"] = sel.json();
@@ -397,7 +403,71 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
 
   const std::uint64_t rows = sel.rows();
   std::uint64_t total_saturated = 0;
-  for (const blz::ProfileBlock* pb : blocks) {
+  // A block's file and manifest entry, once its rows are in `data`.
+  const auto finish = [&](const blz::ProfileBlock& pb, const blz::BlockParams& p, std::span<const std::uint32_t> data,
+                          double mine_s, std::uint64_t sat, nlohmann::json j) {
+    const blz::Block b = pb.block;
+    const std::string file = std::string(blz::block_name(b)) + ".npy";
+    blz::write_npy_u32(out + "/" + file, data, rows, p.bins.size());
+    j.update(block_params_json(p, b));
+    if (b == blz::Block::lcyc) j["work_limit"] = p.work_limit;  // bindings per trigger; no row reached it
+    j["file"] = file;
+    j["columns"] = blz::column_names(b, p.bins);
+    j["mine_seconds"] = mine_s;
+    nlohmann::json pats = nlohmann::json::array();
+    for (const blz::PatternInfo* pi : pb.patterns) pats.push_back(pi->name);
+    j["patterns"] = pats;
+    j["output_fnv1a"] = fnv1a(data);
+    j["saturated"] = sat;
+    meta["blocks"][std::string(blz::block_name(b))] = j;
+    meta["peak_rss_mb"] = peak_rss_mb();
+    total_saturated += sat;
+    std::fprintf(stderr, "%-8s %8.1f s  saturated=%llu  fnv1a=%llu\n", std::string(blz::block_name(b)).c_str(), mine_s,
+                 (unsigned long long)sat, (unsigned long long)j["output_fnv1a"].get<std::uint64_t>());
+    std::ofstream(meta_path) << meta.dump(1) << '\n';
+  };
+  const auto cuda_json_of = [&](const blz::CudaBlockTiming& ctm, const blz::CudaBlockTiming& d2h) {
+    nlohmann::json c = {{"kernel_seconds", ctm.kernel_seconds}, {"bucket_seconds", ctm.bucket_seconds},
+                        {"light_seconds", ctm.light_seconds},   {"heavy_seconds", ctm.heavy_seconds},
+                        {"d2h_seconds", d2h.d2h_seconds},       {"light_triggers", ctm.light},
+                        {"heavy_triggers", ctm.heavy}};
+    if (pack)
+      c["pack"] = {{"pack_seconds", d2h.pack_seconds}, {"widen_seconds", d2h.widen_seconds},
+                   {"width", d2h.d2h_width},           {"bytes", d2h.d2h_bytes}};
+    return c;
+  };
+  // The CUDA backend mines a fusion's blocks together (SPEC v2 §8 S7); the others one by one.
+  const std::vector<blz::CudaUnit> units = blz::cuda_units(blocks, fuse && be == blz::Backend::cuda);
+  for (const blz::CudaUnit& unit : units) {
+    if (unit.fusion) {
+      const std::size_t nslots = unit.blocks.size();
+      std::vector<blz::BlockParams> params;
+      std::vector<const blz::BlockParams*> param_ptrs;
+      std::vector<std::unique_ptr<blz::PinnedBuffer>> bufs;
+      std::vector<std::uint32_t*> outs;
+      params.reserve(nslots);
+      for (const blz::ProfileBlock* pb : unit.blocks) {
+        params.push_back(pb->params);
+        params.back().work_limit = work_limit;
+        bufs.push_back(std::make_unique<blz::PinnedBuffer>(std::max<std::uint64_t>(rows * pb->params.bins.size(), 1)));
+        outs.push_back(bufs.back()->data());
+      }
+      for (const blz::BlockParams& bp : params) param_ptrs.push_back(&bp);
+      auto t1 = Clock::now();
+      const blz::CudaMiner::FusedTiming ftm =
+          miner->mine_fused(*dgraph, *unit.fusion, param_ptrs, prof.visibility, sel.first, sel.last, heavy, outs, pack);
+      const double mine_s = secs(t1);
+      for (std::size_t sl = 0; sl < nslots; ++sl) {
+        nlohmann::json j;
+        j["cuda"] = cuda_json_of(ftm.group, ftm.slots[sl]);
+        // The kernel times and trigger counts are the fusion's, shared by its blocks.
+        j["cuda"]["fused"] = unit.fusion->name;
+        finish(*unit.blocks[sl], params[sl], std::span<const std::uint32_t>(outs[sl], rows * params[sl].bins.size()),
+               mine_s, ftm.slots[sl].saturated, std::move(j));
+      }
+      continue;
+    }
+    const blz::ProfileBlock* pb = unit.blocks.front();
     const blz::Block b = pb->block;
     blz::BlockParams p = pb->params;
     p.work_limit = work_limit;  // a run over it stops with an error (SPEC v2 §8 S3)
@@ -424,7 +494,7 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
                              cpu_heavy, heavy, schedule, pinned->data());
       sat = htm.saturated;
     } else if (gpu) {
-      ctm = miner->mine(*dgraph, pb->patterns, p, prof.visibility, sel.first, sel.last, heavy, pinned->data());
+      ctm = miner->mine(*dgraph, pb->patterns, p, prof.visibility, sel.first, sel.last, heavy, pinned->data(), pack);
       sat = ctm.saturated;
     } else if (sel.sampled) {
       sat = oracle->mine(b, p, prof.k_max, sel.eids, feats.data());
@@ -432,15 +502,9 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
       sat = oracle->mine(b, p, prof.k_max, sel.first, sel.last, feats.data());
     }
     const double mine_s = secs(t1);
-    const std::string file = std::string(blz::block_name(b)) + ".npy";
     const std::span<const std::uint32_t> data =
         gpu ? std::span<const std::uint32_t>(pinned->data(), cells) : std::span<const std::uint32_t>(feats);
-    blz::write_npy_u32(out + "/" + file, data, rows, p.bins.size());
-    auto j = block_params_json(p, b);
-    if (b == blz::Block::lcyc) j["work_limit"] = p.work_limit;  // bindings per trigger; no row reached it
-    j["file"] = file;
-    j["columns"] = blz::column_names(b, p.bins);
-    j["mine_seconds"] = mine_s;
+    nlohmann::json j = nlohmann::json::object();
     // A sweep (SPEC v2 §7.1) walks every list entry whatever the sample, so its time is not scaled.
     // Batch mode computes every batch that holds a sampled row, so rows do not scale it: no estimate.
     if (sel.sampled && rows > 0 && !layout)
@@ -458,22 +522,8 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
                      {"cpu_triggers", htm.cpu_triggers},       {"gpu_triggers", htm.gpu_triggers},
                      {"gpu_split_seconds", htm.gpu.split_seconds}, {"cpu_plans", cpu_plans_json(*pb)}};
     }
-    if (gpu)
-      j["cuda"] = {{"kernel_seconds", ctm.kernel_seconds}, {"bucket_seconds", ctm.bucket_seconds},
-                   {"light_seconds", ctm.light_seconds},   {"heavy_seconds", ctm.heavy_seconds},
-                   {"d2h_seconds", ctm.d2h_seconds},       {"light_triggers", ctm.light},
-                   {"heavy_triggers", ctm.heavy}};
-    nlohmann::json pats = nlohmann::json::array();
-    for (const blz::PatternInfo* pi : pb->patterns) pats.push_back(pi->name);
-    j["patterns"] = pats;
-    j["output_fnv1a"] = fnv1a(data);
-    j["saturated"] = sat;
-    meta["blocks"][std::string(blz::block_name(b))] = j;
-    meta["peak_rss_mb"] = peak_rss_mb();
-    total_saturated += sat;
-    std::fprintf(stderr, "%-8s %8.1f s  saturated=%llu  fnv1a=%llu\n", std::string(blz::block_name(b)).c_str(), mine_s,
-                 (unsigned long long)sat, (unsigned long long)j["output_fnv1a"].get<std::uint64_t>());
-    std::ofstream(meta_path) << meta.dump(1) << '\n';
+    if (gpu) j["cuda"] = cuda_json_of(ctm, ctm);
+    finish(*pb, p, data, mine_s, sat, std::move(j));
   }
   if (total_saturated > 0) std::fprintf(stderr, "warning: %llu saturated counts\n",
                                         (unsigned long long)total_saturated);
@@ -1038,8 +1088,11 @@ nlohmann::json summary(const std::vector<double>& v) {
 // CUDA backend over every trigger. Every run's rows, at every threshold, must equal the block's
 // first run (determinism, SPEC §8). The graph upload is timed separately, as `reps` fresh uploads
 // after one warm-up upload, and T_BlazingAML(block) = median upload + kernels + D2H (SPEC §11.2).
+// SPEC v2 §8 S7: with `fuse`, a fusion's blocks are one unit, timed together (its kernels run once
+// for all of them); with `pack`, D2H is packed and T adds the pack kernels. Units are keyed by the
+// fusion's name or the block's.
 int bench_cuda(const std::string& graph, const std::string& config, int reps, const std::string& heavy_opt,
-               const std::string& blocks_opt, const std::string& out, const std::string& name) {
+               const std::string& blocks_opt, bool fuse, bool pack, const std::string& out, const std::string& name) {
   if (reps < 1) throw std::runtime_error("--reps must be >= 1");
   const blz::Profile prof = blz::load_profile(config);
   blz::check_profile_backend(prof, blz::Backend::cuda);
@@ -1051,6 +1104,7 @@ int bench_cuda(const std::string& graph, const std::string& config, int reps, co
   env["nvidia_smi"] = run_command("nvidia-smi -q 2>/dev/null");
   nlohmann::json res = {{"env", env}, {"cuda", cuda_json()}, {"backend", "cuda"},
                         {"graph", graph}, {"reps", reps}, {"warmup", 1}, {"heavy_thresholds", hs},
+                        {"fuse", fuse}, {"pack", pack},
                         {"profile", {{"name", prof.name}, {"id", prof.id()}}}};
 
   blz::BlzgView g(graph);
@@ -1074,52 +1128,90 @@ int bench_cuda(const std::string& graph, const std::string& config, int reps, co
   blz::CudaMiner miner;
   const std::uint64_t m = g.m();
   nlohmann::json runs = nlohmann::json::object();
-  for (const blz::ProfileBlock* pb : blocks) {
-    const blz::BlockParams& p = pb->params;
-    const std::string bname(blz::block_name(pb->block));
-    const std::uint64_t cells = m * p.bins.size();
-    blz::PinnedBuffer buf(cells);
-    std::vector<std::uint32_t> ref;
-    nlohmann::json jb = {{"patterns", nlohmann::json::array()}, {"window", p.window}, {"bins", p.bins}};
-    for (const blz::PatternInfo* pi : pb->patterns) jb["patterns"].push_back(pi->name);
+  for (const blz::CudaUnit& unit : blz::cuda_units(blocks, fuse)) {
+    const std::string uname = unit.name();
+    const std::size_t nslots = unit.blocks.size();
+    std::vector<std::unique_ptr<blz::PinnedBuffer>> bufs;
+    std::vector<std::uint32_t*> outs;
+    std::vector<const blz::BlockParams*> params;
+    std::vector<std::vector<std::uint32_t>> ref(nslots);
+    nlohmann::json jb = {{"patterns", nlohmann::json::array()}, {"blocks", nlohmann::json::array()},
+                         {"fusion", unit.fusion ? nlohmann::json(unit.fusion->name) : nlohmann::json(nullptr)}};
+    for (const blz::ProfileBlock* pb : unit.blocks) {
+      bufs.push_back(std::make_unique<blz::PinnedBuffer>(std::max<std::uint64_t>(m * pb->params.bins.size(), 1)));
+      outs.push_back(bufs.back()->data());
+      params.push_back(&pb->params);
+      jb["blocks"].push_back(std::string(blz::block_name(pb->block)));
+      for (const blz::PatternInfo* pi : pb->patterns) jb["patterns"].push_back(pi->name);
+    }
+    if (!unit.fusion) {
+      jb["window"] = params[0]->window;
+      jb["bins"] = params[0]->bins;
+    }
     for (std::uint32_t h : thresholds) {
-      std::vector<double> kernel, d2h, total, bucket, light, heavy, wall;
+      std::vector<double> kernel, d2h, packs, widen, total, bucket, light, heavy, wall;
       blz::CudaBlockTiming tm;
+      std::vector<blz::CudaBlockTiming> slot_tm;
       for (int r = 0; r <= reps; ++r) {  // r == 0 is the warm-up
-        tm = miner.mine(dg, pb->patterns, p, prof.visibility, 0, m, h, buf.data());
-        const std::span<const std::uint32_t> got(buf.data(), cells);
-        if (ref.empty()) {
-          ref.assign(got.begin(), got.end());
-          jb["output_fnv1a"] = fnv1a(ref);
-          jb["saturated"] = tm.saturated;
-        } else if (!std::equal(got.begin(), got.end(), ref.begin())) {
-          throw std::runtime_error("bench: " + bname + " output differs at heavy threshold " + threshold_name(h) +
-                                   " (SPEC §8)");
+        if (unit.fusion) {
+          blz::CudaMiner::FusedTiming ft =
+              miner.mine_fused(dg, *unit.fusion, params, prof.visibility, 0, m, h, outs, pack);
+          tm = ft.group;
+          slot_tm = std::move(ft.slots);
+        } else {
+          tm = miner.mine(dg, unit.blocks[0]->patterns, *params[0], prof.visibility, 0, m, h, outs[0], pack);
+          slot_tm = {tm};
+        }
+        for (std::size_t sl = 0; sl < nslots; ++sl) {
+          const std::string bname(blz::block_name(unit.blocks[sl]->block));
+          const std::span<const std::uint32_t> got(outs[sl], m * params[sl]->bins.size());
+          if (ref[sl].empty()) {
+            ref[sl].assign(got.begin(), got.end());
+            jb["outputs"][bname] = {{"output_fnv1a", fnv1a(ref[sl])}, {"saturated", slot_tm[sl].saturated}};
+          } else if (!std::equal(got.begin(), got.end(), ref[sl].begin())) {
+            throw std::runtime_error("bench: " + bname + " output differs at heavy threshold " + threshold_name(h) +
+                                     " (SPEC §8)");
+          }
         }
         if (r == 0) continue;
         kernel.push_back(tm.kernel_seconds);
         d2h.push_back(tm.d2h_seconds);
-        total.push_back(upload_med + tm.kernel_seconds + tm.d2h_seconds);
+        packs.push_back(tm.pack_seconds);
+        widen.push_back(tm.widen_seconds);
+        total.push_back(upload_med + tm.kernel_seconds + tm.pack_seconds + tm.d2h_seconds);
         bucket.push_back(tm.bucket_seconds);
         light.push_back(tm.light_seconds);
         heavy.push_back(tm.heavy_seconds);
         wall.push_back(tm.wall_seconds);
       }
+      if (!unit.fusion) {  // v1's keys
+        jb["output_fnv1a"] = jb["outputs"].begin().value()["output_fnv1a"];
+        jb["saturated"] = jb["outputs"].begin().value()["saturated"];
+      }
+      nlohmann::json widths = nlohmann::json::object();
+      for (std::size_t sl = 0; sl < nslots; ++sl)
+        widths[std::string(blz::block_name(unit.blocks[sl]->block))] = slot_tm[sl].d2h_width;
       nlohmann::json jh = {{"total", summary(total)},     {"kernel", summary(kernel)},
                            {"d2h", summary(d2h)},         {"bucket_median", summary(bucket)["median"]},
                            {"light_median", summary(light)["median"]},
                            {"heavy_median", summary(heavy)["median"]},
                            {"wall_median", summary(wall)["median"]},
                            {"light_triggers", tm.light},  {"heavy_triggers", tm.heavy}};
+      if (pack) {
+        jh["pack"] = summary(packs);
+        jh["widen_median"] = summary(widen)["median"];
+        jh["d2h_bytes"] = tm.d2h_bytes;
+        jh["d2h_width"] = widths;
+      }
       std::fprintf(stderr, "%-8s H=%-4s kernels median %8.4f s (light %.4f, heavy %.4f, bucket %.4f), d2h %.4f s, "
-                   "%llu heavy triggers\n",
-                   bname.c_str(), threshold_name(h).c_str(), jh["kernel"]["median"].get<double>(),
+                   "pack %.4f s, %llu heavy triggers\n",
+                   uname.c_str(), threshold_name(h).c_str(), jh["kernel"]["median"].get<double>(),
                    jh["light_median"].get<double>(), jh["heavy_median"].get<double>(),
                    jh["bucket_median"].get<double>(), jh["d2h"]["median"].get<double>(),
-                   (unsigned long long)tm.heavy);
+                   summary(packs)["median"].get<double>(), (unsigned long long)tm.heavy);
       jb["by_threshold"][threshold_name(h)] = jh;
     }
-    runs[bname] = jb;
+    runs[uname] = jb;
   }
   res["blocks"] = runs;
   res["peak_rss_mb"] = peak_rss_mb();
@@ -1333,10 +1425,11 @@ void merge_report(const std::string& report, const std::string& name, const nloh
 // profile's blocks, patterns and k_max; without, every registered pattern (v1).
 int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::string& backend,
               const std::string& heavy_opt, const std::string& cpu_heavy_opt, const std::string& profile_path,
-              std::uint64_t work_limit, const std::string& report, const std::string& name) {
+              std::uint64_t work_limit, bool fuse, bool pack, const std::string& report, const std::string& name) {
   const auto [s0, s1] = parse_range(seeds);
   const bool hybrid = backend == "hybrid";
   const bool gpu = backend == "cuda" || hybrid;
+  if ((fuse || pack) && backend != "cuda") throw std::runtime_error("--fuse and --pack are for --backend cuda");
   const blz::Profile prof = profile_path.empty() ? blz::registry_profile() : blz::load_profile(profile_path);
   blz::check_profile_backend(prof, blz::Backend::oracle);
   blz::check_profile_backend(prof, blz::parse_backend(backend));
@@ -1346,7 +1439,7 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
   auto t0 = Clock::now();
   const blz::FuzzDiff d =
       hybrid ? blz::fuzz_diff_hybrid(prof, s0, s1, bins, thresholds, cpu_thresholds, work_limit)
-      : gpu  ? blz::fuzz_diff_cuda(prof, s0, s1, bins, thresholds, work_limit)
+      : gpu  ? blz::fuzz_diff_cuda(prof, s0, s1, bins, thresholds, work_limit, {fuse, pack})
              : blz::fuzz_diff_cpu(prof, s0, s1, bins, work_limit);
   nlohmann::json per_block = nlohmann::json::object();
   std::uint64_t bad = 0;
@@ -1377,6 +1470,10 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
     nlohmann::json hs = nlohmann::json::array();
     for (std::uint32_t h : thresholds) hs.push_back(threshold_name(h));
     res["heavy_thresholds"] = hs;
+    if (!hybrid) {  // SPEC v2 §8 S7
+      res["fuse"] = fuse;
+      res["pack"] = pack;
+    }
     if (hybrid) {
       nlohmann::json cs = nlohmann::json::array();
       for (std::uint32_t h : cpu_thresholds) cs.push_back(threshold_name(h));
@@ -1662,6 +1759,9 @@ int main(int argc, char** argv) {
   mn->add_option("--edges", edges, "mine on the stream prefix [0, k) only: later edges do not exist (SPEC v2 §4.4 R5)");
   std::uint64_t work_limit = blz::kDefaultWorkLimit;
   mn->add_option("--work-limit", work_limit, "lcyc: bindings per trigger; past it the run stops with an error (SPEC v2 §8 S3)");
+  bool fuse = false, pack = false;
+  mn->add_flag("--fuse", fuse, "cuda backend: mine each compiled fusion's blocks in one kernel (SPEC v2 §8 S7), same rows");
+  mn->add_flag("--pack", pack, "cuda backend: copy the rows as uint8 or uint16 where they fit (SPEC v2 §8 S7), same rows");
   mn->add_option("--out", out)->required();
 
   std::string a_npy, b_npy, report, name;
@@ -1730,6 +1830,8 @@ int main(int argc, char** argv) {
   std::string bn_cpu_heavy = "0,64,128,256,512,1024,all", bn_prune = "off,on";
   bn->add_option("--cpu-threshold", bn_cpu_heavy, "hybrid: comma-separated CPU thresholds (SPEC v2 §8 S6)");
   bn->add_option("--prune", bn_prune, "hybrid: reachability pruning on the CPU side: off, on or off,on");
+  bn->add_flag("--fuse", fuse, "cuda: time each compiled fusion's blocks as one unit (SPEC v2 §8 S7)");
+  bn->add_flag("--pack", pack, "cuda: packed D2H (SPEC v2 §8 S7)");
   bn->add_option("--out", out, "merge the result into this JSON file")->required();
   bn->add_option("--name", bench_name, "key (JSON pointer path) in --out; default: the backend");
 
@@ -1743,6 +1845,8 @@ int main(int argc, char** argv) {
   fd->add_option("--cpu-threshold", fd_cpu_heavy, "hybrid: CPU thresholds, each run with every --heavy (SPEC v2 §8 S6)");
   fd->add_option("--profile", profile, "blocks, patterns and k_max (SPEC v2 §10); windows come from the graphs");
   fd->add_option("--work-limit", work_limit, "lcyc: bindings per trigger; a graph past it is reported, its stop eid compared");
+  fd->add_flag("--fuse", fuse, "cuda: run each compiled fusion's blocks in one kernel (SPEC v2 §8 S7)");
+  fd->add_flag("--pack", pack, "cuda: packed D2H (SPEC v2 §8 S7)");
   fd->add_option("--report", report, "merge the summary into this JSON file");
   fd->add_option("--name", name, "key (JSON pointer path) in --report")->needs("--report");
 
@@ -1789,10 +1893,11 @@ int main(int argc, char** argv) {
       const std::vector<std::uint32_t> cpu_h = parse_thresholds(cpu_heavy_opt);
       if (cpu_h.size() != 1) throw std::runtime_error("mine --cpu-threshold takes one value");
       return mine(graph, profile, backend, threads, schedule, heavy, cpu_h[0], reach_prune, blocks, triggers, edges,
-                  work_limit, out);
+                  work_limit, fuse, pack, out);
     }
     if (*bn) {
       if (bench_name.empty()) bench_name = backend;
+      if ((fuse || pack) && backend != "cuda") throw std::runtime_error("--fuse and --pack are for --backend cuda");
       if (backend == "hybrid") {
         const std::string nt = *bn->get_option("--threads") ? threads_list : "0";
         if (nt.find(',') != std::string::npos) throw std::runtime_error("bench --backend hybrid takes one --threads value");
@@ -1805,14 +1910,15 @@ int main(int argc, char** argv) {
       if (backend == "cuda") {
         if (*bn->get_option("--threads") || *bn->get_option("--schedule"))
           throw std::runtime_error("bench --backend cuda takes --heavy, not --threads or --schedule");
-        return bench_cuda(graph, profile, reps, heavy_list.empty() ? std::to_string(blz::kDefaultHeavyThreshold) : heavy_list, blocks, out, bench_name);
+        return bench_cuda(graph, profile, reps, heavy_list.empty() ? std::to_string(blz::kDefaultHeavyThreshold) : heavy_list,
+                          blocks, fuse, pack, out, bench_name);
       }
       if (!heavy_list.empty()) throw std::runtime_error("--heavy is for --backend cuda");
       return bench(graph, profile, backend, threads_list, reps, schedules, blocks, out, bench_name);
     }
     if (*fd) {
       if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");
-      return fuzz_diff(seeds, fd_bins, fd_backend, fd_heavy, fd_cpu_heavy, profile, work_limit, report, name);
+      return fuzz_diff(seeds, fd_bins, fd_backend, fd_heavy, fd_cpu_heavy, profile, work_limit, fuse, pack, report, name);
     }
     if (*mt) {
       if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");

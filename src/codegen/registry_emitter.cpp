@@ -21,7 +21,8 @@ std::string quoted(const std::string& s) {
 
 }  // namespace
 
-GeneratedFile emit_registry(const std::vector<ir::Pattern>& patterns, const std::vector<std::string>& stems) {
+GeneratedFile emit_registry(const std::vector<ir::Pattern>& patterns, const std::vector<std::string>& stems,
+                            const std::vector<Fusion>& fusions) {
   std::map<std::string, const ir::Pattern*> seen;
   for (const ir::Pattern& p : patterns) {
     auto [it, fresh] = seen.emplace(p.name, &p);
@@ -45,6 +46,18 @@ GeneratedFile emit_registry(const std::vector<ir::Pattern>& patterns, const std:
   w.line();
   w.line("namespace blz {");
   w.line();
+  if (!fusions.empty()) {
+    w.line("// The fusions' launchers (fused_<id>_cuda.cu, SPEC v2 §8 S7).");
+    w.line("namespace gen {");
+    for (const Fusion& f : fusions) {
+      w.line("void fused_" + f.id +
+             "_cuda_bucket(const GraphView& g, const FusedParams& p, std::uint64_t first, std::uint32_t count, "
+             "std::uint32_t threshold, std::uint8_t* flags, void* stream);");
+      w.line("void fused_" + f.id + "_cuda(const GraphView& g, const FusedParams& p, const FusedRun& run);");
+    }
+    w.line("}  // namespace gen");
+    w.line();
+  }
   w.line("namespace {");
   w.line();
   for (const ir::Pattern& p : patterns) {
@@ -78,10 +91,35 @@ GeneratedFile emit_registry(const std::vector<ir::Pattern>& patterns, const std:
     w.line();
     w.line("constexpr const char* kDisabled[] = {" + list + "};");
   }
+  for (std::size_t i = 0; i < fusions.size(); ++i) {
+    const Fusion& f = fusions[i];
+    std::string members, slots;
+    for (std::size_t k = 0; k < f.members.size(); ++k) {
+      members += (k ? ", " : "") + std::string("&kPatterns[") + std::to_string(f.members[k]) + "]";
+      slots += (k ? ", " : "") + std::to_string(f.slots[k]);
+    }
+    if (i == 0) w.line();
+    w.line("constexpr const PatternInfo* kFusionMembers_" + std::to_string(i) + "[] = {" + members + "};");
+    w.line("constexpr std::uint32_t kFusionSlots_" + std::to_string(i) + "[] = {" + slots + "};");
+  }
+  if (!fusions.empty()) {
+    w.line();
+    w.open("constexpr FusionInfo kFusions[] = {");
+    for (std::size_t i = 0; i < fusions.size(); ++i) {
+      const Fusion& f = fusions[i];
+      const std::string n = std::to_string(i);
+      w.line("{" + quoted(f.name) + ", kFusionMembers_" + n + ", kFusionSlots_" + n + ", BLZ_CUDA_FN(gen::fused_" +
+             f.id + "_cuda_bucket), BLZ_CUDA_FN(gen::fused_" + f.id + "_cuda)},");
+    }
+    w.close("};");
+  }
   w.line();
   w.line("}  // namespace");
   w.line();
   w.line("std::span<const PatternInfo> registered_patterns() { return kPatterns; }");
+  w.line();
+  w.line(fusions.empty() ? "std::span<const FusionInfo> registered_fusions() { return {}; }"
+                         : "std::span<const FusionInfo> registered_fusions() { return kFusions; }");
   w.line();
   w.line(off.empty() ? "std::span<const char* const> disabled_optimizations() { return {}; }"
                      : "std::span<const char* const> disabled_optimizations() { return kDisabled; }");

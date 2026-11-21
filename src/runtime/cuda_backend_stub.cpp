@@ -34,9 +34,15 @@ CudaBlockTiming CudaMiner::mine(const DeviceGraph&, Block, const BlockParams&, s
   no_cuda();
 }
 CudaBlockTiming CudaMiner::mine(const DeviceGraph&, std::span<const PatternInfo* const>, const BlockParams&,
-                                Visibility, std::uint64_t, std::uint64_t, std::uint32_t, std::uint32_t*) {
+                                Visibility, std::uint64_t, std::uint64_t, std::uint32_t, std::uint32_t*, bool) {
   no_cuda();
 }
+CudaMiner::FusedTiming CudaMiner::mine_fused(const DeviceGraph&, const FusionInfo&, std::span<const BlockParams* const>,
+                                             Visibility, std::uint64_t, std::uint64_t, std::uint32_t,
+                                             std::span<std::uint32_t* const>, bool) {
+  no_cuda();
+}
+CudaBlockTiming CudaMiner::fetch_for_test(std::span<const std::uint32_t>, std::uint32_t*, bool) { no_cuda(); }
 CudaBlockTiming CudaMiner::mine_subset(const DeviceGraph&, std::span<const PatternInfo* const>, const BlockParams&,
                                        Visibility, std::uint64_t, std::uint64_t, std::span<const std::uint32_t>,
                                        std::uint32_t, std::uint32_t*) {

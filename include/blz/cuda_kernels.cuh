@@ -19,6 +19,16 @@
 // CPU. An aborted trigger's eid goes to run.aborted (atomicMin); the host turns it into an error.
 // A trigger with a larger eid than run.aborted is skipped, so the report is the smallest aborted
 // eid, as on the CPU and in the oracle.
+//
+// Fusions (blzc --fuse, SPEC v2 §8 S7): a generated fused_<id>_cuda.cu defines a struct F whose
+// trigger, warp and work count every member in one scan of their shared trigger list (D-46), member
+// k with p.member[k], emitting into its slot's sink; F::kSlots is the number of slots. Both fused
+// kernels give each slot a RowSink on the trigger's row of that slot. In the heavy kernel the lanes
+// split the scan and lane 0 alone emits (each member's count is summed over the warp first), so a
+// member emits exactly as it does alone, and members that share a slot add into the same row. Counts are non-negative and
+// saturate at UINT32_MAX, so the row is min(sum of emits, UINT32_MAX) whatever the order or the
+// kernel, as in the unfused run. No member counts work (blzc refuses work_limit patterns), so the
+// fused kernels have no abort.
 #include <cstdint>
 
 #include <cuda/atomic>
@@ -141,6 +151,67 @@ void launch(const GraphView& g, const Params& p, const CudaRun& r) {
   } else {
     const unsigned blocks = (r.count + kLightThreads - 1) / kLightThreads;
     light_kernel<K><<<blocks, kLightThreads, 0, s>>>(g, p, r);
+  }
+}
+
+// --- fusions (SPEC v2 §8 S7) -------------------------------------------------------------------
+
+template <class F>
+__global__ void fused_bucket_kernel(GraphView g, FusedParams p, std::uint64_t first, std::uint32_t count,
+                                    std::uint32_t threshold, std::uint8_t* flags) {
+  const std::uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < count) flags[i] = F::work(g, p, std::uint32_t(first + i)) >= threshold;
+}
+
+template <class F>
+__global__ void fused_light_kernel(GraphView g, FusedParams p, FusedRun r) {
+  const std::uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i >= r.count) return;
+  const std::uint32_t e = r.triggers[i];
+  RowSink sink[F::kSlots];
+#pragma unroll
+  for (std::uint32_t s = 0; s < F::kSlots; ++s)
+    sink[s] = RowSink{r.out[s] + (e - r.first) * r.nbins[s], r.bins[s], r.nbins[s], 0};
+  F::trigger(g, p, e, sink);
+#pragma unroll
+  for (std::uint32_t s = 0; s < F::kSlots; ++s)
+    if (sink[s].saturated) atomicAdd(r.saturated + s, (unsigned long long)sink[s].saturated);
+}
+
+template <class F>
+__global__ void fused_heavy_kernel(GraphView g, FusedParams p, FusedRun r) {
+  const std::uint32_t lane = threadIdx.x % kWarpSize, warp = threadIdx.x / kWarpSize;
+  const std::uint64_t w = std::uint64_t(blockIdx.x) * (blockDim.x / kWarpSize) + warp;
+  if (w >= r.count) return;  // the same for every lane of the warp
+  const std::uint32_t e = r.triggers[w];
+  RowSink sink[F::kSlots];
+#pragma unroll
+  for (std::uint32_t s = 0; s < F::kSlots; ++s)
+    sink[s] = RowSink{r.out[s] + (e - r.first) * r.nbins[s], r.bins[s], r.nbins[s], 0};
+  F::warp(g, p, e, lane, sink);  // every lane scans; only lane 0 emits
+#pragma unroll
+  for (std::uint32_t s = 0; s < F::kSlots; ++s)
+    if (sink[s].saturated) atomicAdd(r.saturated + s, (unsigned long long)sink[s].saturated);
+}
+
+template <class F>
+void launch_fused_bucket(const GraphView& g, const FusedParams& p, std::uint64_t first, std::uint32_t count,
+                         std::uint32_t threshold, std::uint8_t* flags, void* stream) {
+  if (count == 0) return;
+  const unsigned blocks = (count + kBucketThreads - 1) / kBucketThreads;
+  fused_bucket_kernel<F><<<blocks, kBucketThreads, 0, cudaStream_t(stream)>>>(g, p, first, count, threshold, flags);
+}
+
+template <class F>
+void launch_fused(const GraphView& g, const FusedParams& p, const FusedRun& r) {
+  if (r.count == 0) return;
+  const cudaStream_t s = cudaStream_t(r.stream);
+  if (r.heavy) {
+    const unsigned blocks = (r.count + kHeavyWarps - 1) / kHeavyWarps;
+    fused_heavy_kernel<F><<<blocks, kHeavyWarps * kWarpSize, 0, s>>>(g, p, r);
+  } else {
+    const unsigned blocks = (r.count + kLightThreads - 1) / kLightThreads;
+    fused_light_kernel<F><<<blocks, kLightThreads, 0, s>>>(g, p, r);
   }
 }
 

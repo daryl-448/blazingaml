@@ -11,6 +11,7 @@
 #include "oracle/oracle.hpp"
 #include "runtime/batch.hpp"
 #include "runtime/cuda_backend.hpp"
+#include "runtime/fusion.hpp"
 #include "runtime/hybrid.hpp"
 
 namespace blz {
@@ -125,18 +126,22 @@ FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, 
 }
 
 FuzzDiff fuzz_diff_cuda(const Profile& prof, std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
-                        std::span<const std::uint32_t> thresholds, std::uint64_t work_limit) {
-  return fuzz_diff_hybrid(prof, s0, s1, bins, thresholds, {}, work_limit);
+                        std::span<const std::uint32_t> thresholds, std::uint64_t work_limit, CudaOptions opts) {
+  return fuzz_diff_hybrid(prof, s0, s1, bins, thresholds, {}, work_limit, opts);
 }
 
 FuzzDiff fuzz_diff_hybrid(const Profile& prof, std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
                           std::span<const std::uint32_t> thresholds, std::span<const std::uint32_t> cpu_thresholds,
-                          std::uint64_t work_limit) {
+                          std::uint64_t work_limit, CudaOptions opts) {
   const int k_max = prof.k_max;
   std::array<std::vector<std::uint32_t>, kAllBlocks.size()> block_bins;
   for (const ProfileBlock& pb : prof.blocks) block_bins[int(pb.block)] = fuzz_bins(pb, bins);
   FuzzDiff res;
   const bool hybrid = !cpu_thresholds.empty();
+  if (hybrid && (opts.fuse || opts.pack)) throw std::invalid_argument("fuzz-diff: the hybrid neither fuses nor packs");
+  std::vector<const ProfileBlock*> blocks;
+  for (const ProfileBlock& pb : prof.blocks) blocks.push_back(&pb);
+  const std::vector<CudaUnit> units = cuda_units(blocks, opts.fuse);
   CudaMiner miner(hybrid);
   // The plain CUDA runs have one pass per GPU threshold; the hybrid one per (GPU, CPU) pair.
   const std::uint32_t plain[] = {0};
@@ -173,36 +178,55 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, std::uint64_t s0, std::uint64_t s
       const std::uint64_t m = it.fg.src.size();
       const DeviceGraph dg(it.index->view());
       bool any = false, limited = false;
-      for (const ProfileBlock& pb : prof.blocks)
+      // One block's rows (or stop eid) against the oracle's.
+      const auto check = [&](Block b, const std::vector<std::uint32_t>& got, std::uint64_t got_stop) {
+        if (it.stop[int(b)] != UINT64_MAX || got_stop != UINT64_MAX) {
+          limited = limited || it.stop[int(b)] != UINT64_MAX;
+          if (got_stop != it.stop[int(b)]) {
+            ++res.mismatched_rows[int(b)];
+            any = true;
+          }
+          return;
+        }
+        const std::size_t nb = block_bins[int(b)].size();
+        const auto& want = it.want[int(b)];
+        for (std::uint64_t e = 0; e < m; ++e)
+          if (!std::equal(got.begin() + e * nb, got.begin() + (e + 1) * nb, want.begin() + e * nb)) {
+            ++res.mismatched_rows[int(b)];
+            any = true;
+          }
+      };
+      for (const CudaUnit& unit : units)
         for (std::uint32_t h : thresholds)
           for (std::uint32_t hc : splits) {
-            const Block b = pb.block;
-            BlockParams p{it.fg.window, block_bins[int(b)]};
-            p.work_limit = work_limit;
-            p.reach_prune = hybrid;  // the hybrid's CPU side prunes where it can (SPEC v2 §8 S6)
-            const std::size_t nb = p.bins.size();
-            std::vector<std::uint32_t> got(m * nb);
-            const std::uint64_t got_stop = stop_eid([&] {
-              if (hybrid)
-                mine_hybrid(it.index->view(), dg, miner, pb.patterns, p, prof.visibility, 0, m, hc, h, Schedule::sorted,
-                            got.data());
-              else
-                miner.mine(dg, pb.patterns, p, prof.visibility, 0, m, h, got.data());
-            });
-            if (it.stop[int(b)] != UINT64_MAX || got_stop != UINT64_MAX) {
-              limited = limited || it.stop[int(b)] != UINT64_MAX;
-              if (got_stop != it.stop[int(b)]) {
-                ++res.mismatched_rows[int(b)];
-                any = true;
+            std::vector<BlockParams> params;
+            for (const ProfileBlock* pb : unit.blocks) {
+              BlockParams& p = params.emplace_back(BlockParams{it.fg.window, block_bins[int(pb->block)]});
+              p.work_limit = work_limit;
+              p.reach_prune = hybrid;  // the hybrid's CPU side prunes where it can (SPEC v2 §8 S6)
+            }
+            std::vector<std::vector<std::uint32_t>> got(unit.blocks.size());
+            for (std::size_t sl = 0; sl < got.size(); ++sl) got[sl].assign(m * params[sl].bins.size(), 0xdeadbeefu);
+            if (unit.fusion) {  // no fused pattern counts work, so a fused run never stops
+              std::vector<const BlockParams*> pp;
+              std::vector<std::uint32_t*> outs;
+              for (std::size_t sl = 0; sl < got.size(); ++sl) {
+                pp.push_back(&params[sl]);
+                outs.push_back(got[sl].data());
               }
+              miner.mine_fused(dg, *unit.fusion, pp, prof.visibility, 0, m, h, outs, opts.pack);
+              for (std::size_t sl = 0; sl < got.size(); ++sl) check(unit.blocks[sl]->block, got[sl], UINT64_MAX);
               continue;
             }
-            const auto& want = it.want[int(b)];
-            for (std::uint64_t e = 0; e < m; ++e)
-              if (!std::equal(got.begin() + e * nb, got.begin() + (e + 1) * nb, want.begin() + e * nb)) {
-                ++res.mismatched_rows[int(b)];
-                any = true;
-              }
+            const ProfileBlock& pb = *unit.blocks.front();
+            const std::uint64_t got_stop = stop_eid([&] {
+              if (hybrid)
+                mine_hybrid(it.index->view(), dg, miner, pb.patterns, params[0], prof.visibility, 0, m, hc, h,
+                            Schedule::sorted, got[0].data());
+              else
+                miner.mine(dg, pb.patterns, params[0], prof.visibility, 0, m, h, got[0].data(), opts.pack);
+            });
+            check(pb.block, got[0], got_stop);
           }
       ++res.graphs;
       res.edges += m;

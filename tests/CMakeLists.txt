@@ -30,12 +30,13 @@ add_executable(blz_unit_tests
   unit/test_gt_join.cpp
   unit/test_coverage.cpp
   unit/test_sweep.cpp
-  unit/test_reach.cpp)
+  unit/test_reach.cpp
+  unit/test_fusion.cpp)
 if(BLZ_WITH_XGBOOST)
   target_sources(blz_unit_tests PRIVATE unit/test_xgb.cpp)
 endif()
 if(BLZ_ENABLE_CUDA)
-  target_sources(blz_unit_tests PRIVATE unit/test_cuda_backend.cpp unit/test_hybrid.cpp)
+  target_sources(blz_unit_tests PRIVATE unit/test_cuda_backend.cpp unit/test_hybrid.cpp unit/test_pack_fuse.cpp)
 endif()
 target_link_libraries(blz_unit_tests PRIVATE blz_core blz_codegen Catch2::Catch2WithMain)
 # The vertex-statistics reference must round as vstats.cpp does (SPEC v2 §8 S2).
@@ -49,10 +50,12 @@ catch_discover_tests(blz_unit_tests PROPERTIES LABELS fast)
 add_test(NAME blzc_check_library COMMAND blzc --check-only ${BLZ_PATTERN_SPECS})
 set_tests_properties(blzc_check_library PROPERTIES LABELS fast)
 
-# SPEC §13.4: the generated code equals tests/snapshots/. After reviewing a change, update with
-#   (cd <source> && blzc patterns/*.yaml --snapshots tests/snapshots --update-snapshots)
+# SPEC §13.4: the generated code equals tests/snapshots/, the fusions included (SPEC v2 §8 S7).
+# After reviewing a change, update with
+#   (cd <source> && blzc --fuse fan_in,deg_in --fuse fan_out,deg_out patterns/*.yaml
+#      --snapshots tests/snapshots --update-snapshots)
 add_test(NAME blzc_snapshots
-  COMMAND blzc ${BLZ_PATTERN_SPECS_REL} --snapshots tests/snapshots
+  COMMAND blzc ${BLZ_FUSE_ARGS} ${BLZ_PATTERN_SPECS_REL} --snapshots tests/snapshots
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
 set_tests_properties(blzc_snapshots PROPERTIES LABELS fast)
 
@@ -85,6 +88,14 @@ if(BLZ_ENABLE_CUDA)
   # Nine runs per graph on tiny graphs: two OpenMP threads spin less than twelve (about 8 min each).
   set_tests_properties(fuzz_diff_hybrid_10k fuzz_diff_hybrid_tsvis_10k PROPERTIES LABELS slow
     ENVIRONMENT OMP_NUM_THREADS=2 TIMEOUT 3000)
+endif()
+
+if(BLZ_ENABLE_CUDA)
+  # SPEC v2 §8 S7: fused kernels and packed D2H, H = 0, 4 and all, under both visibilities.
+  add_test(NAME fuzz_diff_cuda_s7_10k COMMAND blz fuzz-diff --backend cuda --fuse --pack --seeds 0:10000)
+  add_test(NAME fuzz_diff_cuda_s7_tsvis_10k COMMAND blz fuzz-diff --backend cuda --fuse --pack --seeds 0:10000
+    --profile ${PROJECT_SOURCE_DIR}/configs/profiles/sg_ordered_tsvis.yaml)
+  set_tests_properties(fuzz_diff_cuda_s7_10k fuzz_diff_cuda_s7_tsvis_10k PROPERTIES LABELS slow)
 endif()
 
 # SPEC v2 §3.6: the DG-2 ledger's budget, stop rule and entry checks.

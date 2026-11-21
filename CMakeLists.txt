@@ -68,6 +68,7 @@ add_library(blz_codegen
   src/codegen/cpu_emitter.cpp
   src/codegen/cuda_emitter.cpp
   src/codegen/registry_emitter.cpp)
+target_include_directories(blz_codegen PUBLIC include)  # blz/registry.hpp: the fusion limits
 target_link_libraries(blz_codegen PUBLIC blz_dsl)
 
 add_executable(blzc src/apps/blzc.cpp)
@@ -80,6 +81,21 @@ target_link_libraries(blzc PRIVATE blz_codegen CLI11::CLI11)
 file(GLOB BLZ_PATTERN_SPECS CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/patterns/*.yaml)
 list(SORT BLZ_PATTERN_SPECS)
 set(BLZ_GEN_DIR ${PROJECT_BINARY_DIR}/generated)
+# The fusions (SPEC v2 §8 S7, D-46): each group becomes one CUDA kernel, fused_<a>__<b>_cuda.cu.
+# The snapshot test (tests/CMakeLists.txt) generates with the same groups. An E11 variant is
+# CPU-only (and --disable sweep leaves no member in the sweep shape), so it compiles no fusion.
+set(BLZ_FUSIONS fan_in,deg_in fan_out,deg_out)
+set(BLZ_FUSE_ARGS)
+set(BLZ_BUILD_FUSE_ARGS)
+set(BLZ_FUSED_FILES)
+foreach(group IN LISTS BLZ_FUSIONS)
+  string(REPLACE "," "__" id ${group})
+  list(APPEND BLZ_FUSE_ARGS --fuse ${group})
+  if(NOT BLZ_DISABLE_OPTS)
+    list(APPEND BLZ_BUILD_FUSE_ARGS --fuse ${group})
+    list(APPEND BLZ_FUSED_FILES ${BLZ_GEN_DIR}/fused_${id}_cuda.cu)
+  endif()
+endforeach()
 set(BLZ_PATTERN_SPECS_REL)
 set(BLZ_GEN_OUTPUTS ${BLZ_GEN_DIR}/registry.cpp)
 set(BLZ_GEN_SOURCES ${BLZ_GEN_DIR}/registry.cpp)
@@ -93,12 +109,16 @@ foreach(spec IN LISTS BLZ_PATTERN_SPECS)
     list(APPEND BLZ_GEN_SOURCES ${BLZ_GEN_DIR}/${stem}_cuda.cu)
   endif()
 endforeach()
+list(APPEND BLZ_GEN_OUTPUTS ${BLZ_FUSED_FILES})
+if(BLZ_ENABLE_CUDA)
+  list(APPEND BLZ_GEN_SOURCES ${BLZ_FUSED_FILES})
+endif()
 set(BLZ_DISABLE_ARGS)
 if(BLZ_DISABLE_OPTS)
   set(BLZ_DISABLE_ARGS --disable ${BLZ_DISABLE_OPTS})
 endif()
 add_custom_command(OUTPUT ${BLZ_GEN_OUTPUTS}
-  COMMAND blzc ${BLZ_PATTERN_SPECS_REL} --out ${BLZ_GEN_DIR} ${BLZ_DISABLE_ARGS}
+  COMMAND blzc ${BLZ_PATTERN_SPECS_REL} --out ${BLZ_GEN_DIR} ${BLZ_DISABLE_ARGS} ${BLZ_BUILD_FUSE_ARGS}
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
   DEPENDS blzc ${BLZ_PATTERN_SPECS}
   COMMENT "blzc: generating the pattern library"
@@ -133,6 +153,8 @@ add_library(blz_core
   src/runtime/coverage.cpp
   src/runtime/batch.cpp
   src/runtime/vstats.cpp
+  src/runtime/fusion.cpp
+  src/runtime/widen.cpp
   src/oracle/oracle.cpp
   src/oracle/batch_oracle.cpp
   src/ml/metrics.cpp)

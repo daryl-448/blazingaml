@@ -25,6 +25,8 @@ constexpr const char* kDisabled[] = {"find_start"};
 
 std::span<const PatternInfo> registered_patterns() { return kPatterns; }
 
+std::span<const FusionInfo> registered_fusions() { return {}; }
+
 std::span<const char* const> disabled_optimizations() { return kDisabled; }
 
 }  // namespace blz

@@ -1644,6 +1644,67 @@ As implemented (S6):
   sg_gather + sg_scatter) are fused into one kernel body that writes several blocks.
 - **AC:** bit-exact; E12 delta reported (F11: D2H equals kernel time on the A30).
 
+As implemented (S7):
+
+- **Packing** (D-45), `CudaMiner`'s `fetch` in `src/runtime/cuda_backend.cu`, opt-in at run time
+  (`--pack` on `blz mine`, `bench` and `fuzz-diff`, CUDA backend only).
+  - After a block's kernels, a pack kernel writes the block's cells as uint8 into a device buffer
+    and takes their maximum (a warp max, then one `atomicMax`).
+  - The host reads the maximum back before any copy. A block whose maximum is at most 255 crosses
+    PCIe as uint8; at most 65,535, the kernel packs it again as uint16; otherwise it is copied as
+    uint32, as without packing. So no block crosses PCIe twice, and the rows are always lossless.
+  - A narrow block is copied in 4 MiB chunks through two pinned staging buffers. While one chunk
+    copies, the host widens the previous one into the uint32 rows (`src/runtime/widen.cpp`: the
+    OpenMP team, AVX2 conversions, streaming stores). The next copy into a buffer is issued only
+    after that buffer has been widened.
+  - The timing splits the pack kernels and the read-back (`pack_seconds`) from the copy and the
+    widening (`d2h_seconds`, host clock; `widen_seconds` is the widening alone). The manifest and
+    `blz bench` record each block's width and bytes.
+- **Fusion** (D-46).
+  - `blzc --fuse a,b[,...]` (2 to 4 patterns per group; the build passes `fan_in,deg_in` and
+    `fan_out,deg_out`, `BLZ_FUSIONS` in `CMakeLists.txt`) generates `fused_<a>__<b>_cuda.cu`.
+    Every member must have the sweep shape (`Plan::sweep`: its only stage is a root count over the
+    trigger's src.out or dst.in, bounded by the window alone), and all members must scan the same
+    list. blzc rejects anything else, a `work_limit` member, and members that pin different
+    visibilities.
+  - The fused body (`detail::scan_fusion_fns` in `src/codegen/cpu_emitter.cpp`) takes the trigger's
+    list up to the visibility bound once. Each member's window start is a binary search in it.
+    One loop from the earliest start counts for every member, each with its own window, element
+    filter and multiplicity (distinct-first against its own start, or edges). Then each member
+    applies its trigger filters and emits into its own block. The members' names carry a
+    `m<k>_` prefix (the emitter's scope).
+  - In the heavy kernel the lanes split the loop and the warp sums every member's count. Then lane
+    0 alone emits, writing the trigger's rows directly (one `RowSink` per slot, as in the light
+    kernel). So the fused heavy kernel needs no shared histogram and takes as many bins per block
+    as `mine()` does. The work estimate is the shared scan's size, which is the largest of the
+    members' estimates.
+  - The per-pattern generated files are unchanged. A fused file includes only
+    `include/blz/cuda_kernels.cuh`.
+  - The registry lists the fusions (`registered_fusions()`, `FusionInfo`). At run time `--fuse`
+    (CUDA only) groups the selected blocks into units (`cuda_units`, `src/runtime/fusion.cpp`). A
+    fusion applies when, for each of its slots, a selected block's patterns are exactly that
+    slot's members; every other block runs alone. `CudaMiner::mine_fused` lays every slot's rows
+    out in one device buffer and buckets each trigger once. It runs the fused light and heavy
+    kernels (`include/blz/cuda_kernels.cuh`), then fetches each slot (packed or not).
+  - An E11 variant (`BLZ_DISABLE_OPTS`) is CPU-only and compiles no fusion.
+- **Tests.**
+  - `tests/unit/test_pack_fuse.cpp` (CUDA builds):
+    - every width boundary (255/256, 65,535/65,536, UINT32_MAX), sizes not divisible by 4, rows
+      across staging chunks, and an unaligned host row;
+    - the oracle on 300 fuzz graphs under both visibilities for fuse + pack, fuse and pack, at
+      H = 0, 2 and `all`;
+    - each fusion against the CPU blocks, with a different window and bins per slot, two trigger
+      ranges, and both packing modes.
+  - `tests/unit/test_fusion.cpp`: blzc's plan, its rejections and the generated text, and
+    `cuda_units`.
+  - The slow `fuzz_diff_cuda_s7_10k` and `fuzz_diff_cuda_s7_tsvis_10k` run fuse + pack on 10,000
+    graphs at H = 0, 4 and `all`.
+  - Mutation checks, each caught by a fast test:
+    - every member counting from member 0's window start (fuzz graphs give every block one window,
+      so only the per-slot test sees it);
+    - 256 packed as uint8;
+    - a staging copy issued before its buffer was widened.
+
 ### S8 — streaming replay and end-to-end throughput
 
 - **Incremental index:** per-node append-only adjacency in chunks, plus a pair map for P-CSR runs.
@@ -1777,6 +1838,9 @@ As implemented (S3): `blz mine --work-limit`, `blz fuzz-diff --work-limit`, `blz
 As implemented (S6): `blz mine --backend hybrid [--cpu-threshold n] [--reach-prune]` (`--reach-prune`
 also on `--backend cpu`), `blz bench --backend hybrid --cpu-threshold a,b,... --prune off,on`, and
 `blz fuzz-diff --backend hybrid --cpu-threshold a,b,...` (§8 S6).
+
+As implemented (S7): `blzc --fuse a,b`, and `--fuse` and `--pack` on `blz mine`, `bench` and
+`fuzz-diff` with `--backend cuda` (§8 S7).
 
 As implemented (P9): `blz coverage --graph g [--gt results/gt_join.json] --profile p --features
 <dir> [--pred <u8[m] npy>] [--eligibility <coverage_gfp.json>] --out <json>`. It checks the
@@ -2274,3 +2338,5 @@ are in `tests/golden/gfp_lcyc_probes.json`: 16 cases, 13 `rule` cases where they
 | D-42 | S5's semantics. gs's B includes W, unlike the draft (which excluded x and w from both sides): the trigger is itself a scatter edge, and B is then fan_out's set, so gs ≤ fan_out. A excludes W, as the draft says, and is cut at t (strictly earlier sources); B is not ordered against A. gs has fan's open lower bound. tchain counts one instance per node sequence (all nodes distinct, V included, so never a cycle), each hop strictly earlier than the next, with tcyc's closed lower bound and bins; like tcyc, its rows do not depend on the visibility. |
 | D-43 | S6's reachability pruning. The planner marks chain patterns only (§8 S6 addendum), and in the library that is tcyc alone. The search runs over walks, not simple paths, in depth + 1 = K_MAX − 1 rounds, each of which finds at least every walk one edge longer: sound for every binding, and one round fewer already gives wrong rows (the mutation check). Pruning is CPU only and opt-in at run time (`reach_prune`, default off), so every earlier timing and snapshot stays as it was. The CUDA kernels do not prune: a per-trigger search does not fit the light kernel's one-thread-per-trigger budget, and in the hybrid the heavy triggers that gain from it go to the CPU. |
 | D-44 | S6's hybrid. The split is computed on the GPU, from the block's first pattern's work estimate, which is the same estimate the sorted schedule and the light/heavy split use. Every pattern of the block runs on the side of its trigger, so the rows are disjoint and the merge is a copy. The CPU side runs the sorted schedule, and E13 times it with pruning. T counts the graph upload, the split and its copy, both sides, and the merge. The default H_cpu of `blz mine --backend hybrid` follows E13's pre-registered rule: the smallest summed median T with pruning on, at H = 32, over v1_default, dg2_wc and dg2_wb. |
+| D-45 | S7's packing. The width is chosen before any copy: the pack kernel takes the block's maximum, and the host picks uint8, uint16 or uint32 from it. The spec's version copies uint8 first and re-copies on overflow; this one never crosses PCIe twice and costs one 4-byte read-back. The host widens the narrow rows back to uint32, so every consumer, the `.npy` files and the hashes stay as they were. Packing is opt-in at run time (`--pack`, default off), so every earlier timing stays as it was. |
+| D-46 | S7's fusion is scan fusion only: one generated body scans a trigger list once and counts for every member. The members must be sweep-shaped counts over the same list, which in the library gives fan_in + deg_in (V.in) and fan_out + deg_out (U.out). sg_gather + sg_scatter, which the spec also lists, are not fused. Their first scans read different lists (X.in and Y.out), so they fail the spec's own rule ("the same operand"), and both have binding stages. Running their bodies in turn in one kernel ("launch fusion") was measured on HI-Small (1650S, 1 run): neutral at v1_default's 6 h sg window (115 ms both ways), but 16 % slower at dg2_wb's 5 days (519 ms against 447 ms at H = 128). The fused bucketing must send a trigger to the heavy kernel when either member is heavy, and the two members' heavy triggers barely overlap. Launch fusion of fan_in + deg_in was slower too (128 ms against 112 ms): the second body re-reads the list from L2. So launch fusion was removed. Fusion is opt-in at run time (`--fuse`, default off). |

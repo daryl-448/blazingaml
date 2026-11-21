@@ -38,15 +38,23 @@ FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, 
 // kAllLight every trigger to the light kernel). mismatched_rows sums over the thresholds.
 FuzzDiff fuzz_diff_cuda(std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
                         std::span<const std::uint32_t> thresholds);
+// SPEC v2 §8 S7: `opts.fuse` mines each compiled fusion's blocks in one kernel (cuda_units), and
+// `opts.pack` copies the rows packed; the rows must not change.
+struct CudaOptions {
+  bool fuse = false;
+  bool pack = false;
+};
 FuzzDiff fuzz_diff_cuda(const Profile& prof, std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
-                        std::span<const std::uint32_t> thresholds, std::uint64_t work_limit = kDefaultWorkLimit);
+                        std::span<const std::uint32_t> thresholds, std::uint64_t work_limit = kDefaultWorkLimit,
+                        CudaOptions opts = {});
 
 // AC1 for the hybrid (SPEC v2 §8 S6): mine_hybrid with reachability pruning on its CPU side and
 // the sorted schedule, once per pair of a GPU light/heavy threshold in `thresholds` and a CPU
 // threshold in `cpu_thresholds` (0: every trigger on the CPU, kAllGpu: every trigger on the GPU).
 // With no CPU threshold it is fuzz_diff_cuda.
+// `opts` is for the plain CUDA runs only (no CPU threshold).
 FuzzDiff fuzz_diff_hybrid(const Profile& prof, std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
                           std::span<const std::uint32_t> thresholds, std::span<const std::uint32_t> cpu_thresholds,
-                          std::uint64_t work_limit = kDefaultWorkLimit);
+                          std::uint64_t work_limit = kDefaultWorkLimit, CudaOptions opts = {});
 
 }  // namespace blz
