@@ -1,0 +1,716 @@
+# BlazingAML — SPEC v3: clean semantics, formal verification, hillclimbing
+
+Status: draft for review · Date: 2026-11-22 · Scope: HI-Small, LI-Small, HI-Medium, TransXion;
+C++20 (OpenMP + CUDA); `local` first, one optional A30 campaign.
+
+This document plans v3. It builds on `SPEC.md` (v1) and `SPEC_V2.md` (v2), which stay the record
+of what was built and measured. Section references without a prefix (§4.6, A28, D-8) point into
+`SPEC.md`; references with a `V2` prefix (V2 §7.1, V2 D-43) point into `SPEC_V2.md`. Where they
+disagree with this document, this document wins for v3 work. MUST / SHOULD / MAY carry their RFC
+2119 meaning. The tags of v1 and v2 still apply ([P] paper, [G] GFP docs, [X] GFP probe, [D]
+decision, [V1] measured, [W] web source, [R] recalled and unchecked), plus:
+
+- **[M3]** measured during v3 planning (2026-11-22). The method is given inline.
+- **[I]** inferred from measured counts or code, not measured itself.
+
+---
+
+## 0. This spec is malleable
+
+**Agents working on v3 have full autonomy over data structures, module boundaries, optimisation
+strategies and implementation sequencing.** Do not preserve a design merely because a previous
+agent proposed it. That includes the designs in `SPEC.md`, `SPEC_V2.md` and this document. The
+algorithm list (§5.3), the phase plan (§7) and every "how" in this spec are starting points. Replace
+them when you find something better, and record the replacement as a decision (Appendix C‴) with
+its evidence.
+
+What is fixed, unless the user changes it:
+
+1. The goals and acceptance criteria (§2).
+2. The clean semantics of §3.2. They change only by a decision that names the quirk or the
+   common-sense argument and the measured effect.
+3. **No speed change lands without its verification (§4.4).** A faster path that is not verified
+   equal to the reference is not done, whatever it measures.
+4. The working rules (§2.5): no tuning on a test split, the shared-desktop timing hygiene, RAM
+   limits, and A30 approval.
+
+---
+
+## 1. Where v2 ended
+
+| # | Fact | Source |
+|---|---|---|
+| F14 | v2 core (P7–P11) and stretch S1–S7 are done. E8 closed DG-2 (verdict GAP by overshoot, frozen recipe 63.1 against the paper's 46.6). The HI-Small test split is spent. | V2 §4.6, memory of the run |
+| F15 | Mining time, HI-Small `v1_default`. EPYC 7542 at 16 threads: 618 ms in all (tcyc 44 %, sg 35 %, fan and degree 21 %). 1650S T = 650 ms with fuse and pack; A30 T = 158 ms (D2H 33 %, tcyc 21 %, fan and degree 19 %, upload 18 %). | [V1] `results/e11_ablation_a30.md`, `results/e12_s7_{local,a30}.md` |
+| F16 | Long windows (`dg2_wb`: fan and degree 12 h, sg 5 d, tcyc 20 d) move the weight to tcyc and sg: EPYC 16 threads sg 928 ms, tcyc 1.61 s; 1650S tcyc 1,687 ms of 2,379 ms of kernels. | [V1] `results/e12_gpu_a30.md`, `results/e12_s7_local.json` |
+| F17 | The work is out of proportion to the output. HI-Small `v1_default` has 1,125 tcyc instances and 808 sg instances. Finding them costs 34.1 M range calls (tcyc) and 40.1 M range calls plus 15.8 M pair probes (sg). | [M3] operation-counting replica of the generated loop nests, which reproduces E10's instance counts and E5/E12's heavy-trigger counts exactly |
+| F18 | Self-loops are about 11.6 % of HI-Small rows (591,212 under `blz prepare`'s (bank, account) key, `src/graph/prepare.cpp:134`), about 11.6 % of LI-Small, 8.0 % of HI-Medium and 39 rows of TransXion. The non-HI-Small figures are a raw `awk` survey; the prepare invariants of §6.1 use counts under the exact key. | [M3] |
+| F19 | The IBM datasets have one-minute timestamps. Every row of HI-Small, LI-Small and HI-Medium shares its timestamp with another row (15,018 distinct timestamps in HI-Small). TransXion has one-second timestamps; 12.2 % of its rows share one. | [M3] |
+| F20 | New datasets are in `dataset/`. LI-Small: 6,924,049 rows (Table 1 says 6,924,055 edges), 3,565 positives. HI-Medium: 31,898,238 rows (Table 1: 31,898,238), 35,230 positives. TransXion: `tx.csv` 3,029,170 rows over 2025, 47,526 accounts, 4,641 positives, 4 payment formats, 97 % CNY, plus `person.csv` (46,399) and `merchant.csv` (1,329) keyed by `bank_account_number`. | [M3] |
+| F21 | v1 and v2 copy GFP behaviour that is not common sense (§3.1). The largest are file-order tie handling, per-pattern window bounds and self-loops in SG. | [M3] code sweep, Appendix A, V2 Appendix A′ |
+| F22 | Four verification tools were prototyped on the same two targets before this spec was written (§4.2). | [M3] |
+
+---
+
+## 2. Goals, scope, acceptance
+
+### 2.1 Goals
+
+- **G12. Clean semantics.** A new semantic profile family, `clean`, that drops every GFP quirk in
+  favour of the common-sense rule (§3). The clean profile becomes the default.
+- **G13. Formal verification where it pays.** Verify the algorithms and the compiler's output where
+  a bug would silently change features and tests rarely reach the case (§4). Not every module.
+- **G14. Hillclimb mining speed** with new algorithms, each one verified equal to the reference
+  semantics (§5).
+- **G15. New datasets.** LI-Small, HI-Medium and TransXion load, mine and train (§6). HI-Medium is
+  the hillclimb's target workload.
+
+### 2.2 Out of scope
+
+- **Streaming replay (V2 S8) is postponed.** v3 is offline mining only. The clean semantics are
+  chosen so that a later replay can emit a timestamp's rows once that timestamp closes (§3.2 R3).
+- FraudGT; LI-Large, HI-Large and the other Large and Medium sets; multi-GPU; GNN classifiers.
+- Reopening DG-2 or rescoring the HI-Small test split.
+- Unbounded verification of `blzc` itself. Section 4.3 says why.
+
+### 2.3 Acceptance criteria
+
+| ID | Criterion |
+|---|---|
+| AC-V3-0 | **No silent change to legacy outputs.** While the legacy profiles exist (§3.4), `v1_default` gives the AC-V2-0 hashes and `v1_parity` the parity hashes of `results/ac1_cpu_p11_run.log` (fan_in 231040277472725923, fan_out 6330076044337963426, deg_in 6366489652548864147, deg_out 10227089942834718195, sg 2140027548842065401, tcyc 3161311333401399936). A legacy profile resolves its blocks to the pattern specs it was frozen with (by spec hash), so a new pattern never joins a legacy block. Retiring a legacy profile is a decision with the user's approval, and its recorded results stay in `results/`. |
+| AC-V3-1 | **Clean semantics.** The clean reference (§3.2) exists as an oracle written straight from the rules. The oracle, the CPU backend and the CUDA backend give bit-identical clean rows on HI-Small, LI-Small, TransXion and 10,000 fuzz graphs, including a sparse-time fuzz setting (§4.4). HI-Medium matches between the oracle and the CPU backend, mined in trigger ranges. The metamorphic suite includes tie-permutation invariance (§3.2 R3). |
+| AC-V3-2 | **Quirk ledger.** Every row of §3.1 is resolved: implemented, kept with a reason, or moved to `tools/gfp`. E16 reports each change's effect on instance counts, active rows and validation F1. |
+| AC-V3-3 | **Verification stack.** The tools of §4.3 are pinned and run by one command each. Two kinds of planted break are recorded separately: **proof mutations** (a wrong lemma or model, which the proof checker must reject) and **code mutations** (a one-line change to the compiled C++, which L2 or L3 must catch; an unchanged proof cannot see these). Each project-local verify skill (§4.5) was run once on a mutation of the artifact it checks and caught it: a proof mutation for the proof skill, a code mutation in the real C++ for the code skill. Every target in §4.1 has a passing check, its stated bound or scope, evidence that the check exercised the path it covers (§4.4), and a coverage record. |
+| AC-V3-4 | **Hillclimb.** §5's stop predicate is met, or the run stopped under §5.6 with the remaining ideas listed. Every kept change has its §4.4 evidence. `decision.tsv` lists every attempt, kept or reverted. |
+| AC-V3-5 | **Datasets.** Each new dataset passes its `blz prepare` invariants and has E17 rows (mining time, peak RSS) and E18 rows (validation F1; test F1 once, after the freeze, §6.4). |
+
+### 2.4 Tiers
+
+- **v3 core** = P12–P17 (§7). v3 is done when AC-V3-0 … AC-V3-5 hold.
+- Anything else an agent wants to add is a stretch item that needs the user's approval first.
+
+### 2.5 Working rules
+
+The v2 rules stand (V2 §2.5), with these changes and additions:
+
+- **No tuning on test, per dataset.** Each new dataset gets its own validation split. Its test split
+  is scored once, after a committed freeze (§6.4). The HI-Small test split stays spent.
+- **Bit-exact backends; same-machine ratios only.**
+- **Shared desktop.** Check `ps --sort=-pcpu` and `free -g` before a timing run and wait for an
+  idle window. Never stop the user's jobs. Log foreign load during the run. Keep peak RSS under
+  about 3 GB per process on `local` unless the preflight shows more is free.
+- **A30.** At most one campaign, at the end, with the user's approval (§7 P17).
+- **Preflight before anything large** (V2 §2.5). HI-Medium always preflights.
+- **Report the gap, then move on.** When a number disagrees with the paper or with an estimate in
+  this spec, record it and continue.
+
+---
+
+## 3. Clean semantics
+
+### 3.1 Quirk ledger
+
+Each row is a behaviour that v1 or v2 copied from GFP (or kept for GFP's sake) and the clean rule
+that replaces it. "Where" points at the code as of `1b5123d`.
+
+| # | GFP / v2 behaviour | Where | Clean rule | Decision (clean rule replaces the quirk, or keep the current behaviour) |
+|---|---|---|---|---|
+| Q1 | **Self-loops in SG.** An endpoint joins the intermediate set through its own self-loop: s ∈ I via s→s in the gather role (A10), w ∈ I via w→w in the scatter role (A30). The exclusion depends on the role. | `patterns/sg_gather.yaml:22`, `sg_scatter.yaml:22`, `src/oracle/oracle.cpp:81-91`, `src/runtime/batch.cpp:186-191` | Self-loops take no part in any pattern (R1). | Clean rule (the user's example). |
+| Q2 | **Self-loops elsewhere, inconsistently.** Fan and degree drop them (A14); vertex statistics count them on both sides (A43); self-loop triggers emit nothing for patterns (A13) but get vstats rows; in batch mode self-loop triggers do search SG (A41). | every `skip_if: "U == V"` and `Y != U` filter in `patterns/*.yaml`; `src/runtime/vstats.hpp:65-93`; `src/oracle/batch_oracle.cpp:57` | One rule (R1): the mining graph has no self-loops. | Clean rule. |
+| Q3 | **Window bounds differ by pattern.** Open `t' > t − δ` for fan, degree, gs and the S4 set ops; closed `t' ≥ t − δ` for sg, tcyc, lcyc and tchain (A2, A3, A7, A20). The rule is written twice. | `src/runtime/features.hpp:32-34`; each spec's `window.lower`, lowered at `src/ir/lower.cpp:531-550`; `batch.cpp:68` | One half-open window `(t − δ, t]` for every pattern (R2). | Clean rule. |
+| Q4 | **Stream visibility.** A trigger sees edges with eid ≤ e, so same-timestamp rows depend on file order (A4, A15). Every IBM row shares its minute (F19). | `oracle.cpp:34-36`, `features.hpp:36-39`, `src/ir/plan.cpp:63-70`; the order is D-4's stable sort | Timestamp visibility: a trigger sees every edge with ts ≤ t (R3). | Clean rule, confirmed by the user on 2026-11-22. |
+| Q5 | **Strict time order in chains.** tcyc and tchain need t_1 < t_2 < … < t, so a cycle or chain with two hops in the same minute is lost (A19). | `patterns/tcyc.yaml`, `tchain.yaml`; `oracle.cpp:173-175, 270-271` | Non-decreasing order, t_1 ≤ … ≤ t (R4). | Clean rule, confirmed by the user on 2026-11-22. |
+| Q6 | **lcyc ties.** GFP decides a tie edge by its node insertion rank (A49); `blz` drops every tie edge instead (D-38). | `patterns/lcyc.yaml:20-52` (`break_if: "*.t >= t"`), `oracle.cpp:200-210` | Every visible window edge counts, ties included (R5). | Clean rule. |
+| Q7 | **Unordered SG.** An SG instance has no order inside the window (A6), so the scatter role counts money forwarded before it was received. | `sg_gather.yaml`, `sg_scatter.yaml`, `oracle.cpp:66-92` | Both variants, as two blocks: `sg` stays unordered (R6a) and `sg_ord` adds the order, each intermediate receiving from s no later than it sends to w (R6b). | Both kept, the user's choice on 2026-11-22. |
+| Q8 | **Scalar counts as one-hot histograms.** Fan, degree, fan_total, fan_oneway_out and gs emit one instance per trigger into bins, so a block of 12 columns carries one number, and counts 0 and 1 give the same all-zero row (A1, min size 2). | `emit: {size: n}` in those specs; `oracle.cpp:63, 336-339` | A count block emits the count as one integer column (R7). | Clean rule. |
+| Q9 | **Vertex statistics' window.** v2 copies GFP's window: the node's edges with ts ≥ ts[e − 1] − W, anchored at the previous edge, where W is GFP's time_window, the largest *pattern* window (A43). (GFP's running-sum drift after eviction, A45, was never copied: v2 already computes each window exactly, D-37.) | `src/runtime/vstats.hpp:7-11, 96-98`; `blz vstats --window` | The node's visible edges in `(t − W_vs, t]` with the block's own W_vs, computed exactly (R8). | Clean rule. |
+| Q10 | **Vertex statistics' guards and time base.** A variance below 10⁻⁵·mean² is reported as 0 with its skew and kurtosis (A44). Time statistics use absolute timestamps (plus D-12's +1 in parity runs only), so with mean ts near 7.6·10⁵ s the guard zeroes ts variance on any side that spans under about 40 minutes, and the threshold grows with stream time. | `vstats.hpp:35-37, 54, 70, 78` | Time statistics are over ages t − ts'. No threshold guard; the only zeroing is R8's rule for equal values and a computed m2 of 0. | Clean rule. |
+| Q11 | **GFP batch mode and `credit: participants`.** Rows depend on batch boundaries (A28, A34–A42, D-36), with `k_max: 33` to match GFP's uncapped cycles. | `src/runtime/batch.*`, `src/oracle/batch_oracle.cpp`, `src/runtime/profile.*` (batch fields), `configs/profiles/{dg2_g1,batch_b4,batch_b32}.yaml` | Not part of clean. Out of the default build and the clean path: deleted, or isolated behind legacy tooling (§3.4, P12). | Clean rule. |
+| Q12 | **GFP harness leaks into the runtime.** `VstatsParams::ts_offset` and `blz vstats --ts-offset` (D-12's +1), `blz fuzz --vstats` hard-coding 1.0, the fuzz generator aimed at GFP's variance guard, batch-only fuzz and coverage plumbing. | `vstats.hpp:32`, `src/apps/blz.cpp:549, 605, 707-768, 1607-1692, 1788-1799`, `src/runtime/fuzz_gen.hpp:20-23` | GFP-only workarounds live in `tools/gfp` or are deleted with their feature. | Clean rule. |
+| Q13 | **Input range fixed to HI-Small.** Epoch 2022-09-01 and `kMaxTimestamp = 1,527,480` are hard-coded. | `src/io/csv.cpp:18, 46`, `src/io/csv.hpp:29` | A dataset descriptor gives the schema; the epoch is the first row's day; the range is checked against int32 (§6.1). | Clean rule. |
+| Q14 | **GFP's bin rule** (first bin with S ≤ b_i, A38). | `tools/gfp/gfp_common.py:27-41` | Harness only. `blz` keeps `[b_i, b_{i+1})`. | Keep as is. |
+| Q15 | **Trigger credit re-reports unchanged instances.** A parallel or repeated trigger re-emits the same SG pair or cycle (A5, A8). | `oracle.cpp:87-91, 178-181` | Kept: a row counts the instances its edge completes, and a parallel edge completes them again. | Keep (R9). |
+| Q16 | **Min size 2.** | `features.hpp:75-79`, `include/blz/registry.hpp:26`, `lower.cpp:565` | Kept for histogram blocks: an SG with one intermediate is not a scatter-gather, and a cycle has two or more edges. Count blocks (R7) have no minimum. | Keep for histograms. |
+| Q17 | **Windows and `k_max` copied from GFP's setup** (D-8; `dg2_wb` uses GFP's library defaults, F7). | `configs/profiles/*.yaml` | Parameters, not semantics. The clean profiles take their windows from the data (§3.3). | Re-choose on validation. |
+
+The ledger is a starting point. An agent who finds another quirk adds a row, with its effect
+measured in E16.
+
+### 3.2 The clean rules (normative)
+
+These rules define every profile of the `clean` family. The clean oracle implements them literally,
+with no optimisation, and is the reference for every check in §4.
+
+- **R1. The mining graph has no self-loops.** An edge u→u is not inserted into any mining index and
+  is never a hop, a neighbour, a witness or a vertex-statistics value. A self-loop trigger's pattern
+  rows are all zero. Its vertex-statistics row is computed like any other trigger's, over u's
+  non-loop edges. Its raw attributes stay classifier inputs.
+- **R2. One window.** Pattern P with span δ_P sees `W_P(e) = { e' ∈ Vis(e) : t − δ_P < t' ≤ t }` for
+  trigger e at time t. This holds for every pattern and every vertex-statistics block.
+- **R3. Timestamp visibility.** `Vis(e) = { e' : t' ≤ t }`. Consequences, each a metamorphic test:
+  (a) permuting the rows within one timestamp changes no feature row (a row moves with its edge);
+  (b) two edges with the same (u, v, t) have the same pattern rows; (c) a replay can emit a
+  timestamp's rows once the next timestamp arrives.
+- **R4. Non-decreasing order.** Where a pattern orders its hops (tcyc, tchain, ordered sg), the
+  order is `≤`, and the trigger is a latest edge of its instance. For tcyc, the node sequence
+  `(c_0 = v, …, c_{k−1} = u)` of distinct nodes counts when there are window edges
+  `c_{i−1} → c_i` at times `t − δ < t_1 ≤ t_2 ≤ … ≤ t_{k−1} ≤ t`. The earliest-witness rule holds
+  with "earliest at or after the previous hop" (§4.2, proved for the strict version and to be
+  re-proved for this one).
+- **R5. lcyc.** The simple node cycles through the trigger edge, of length 2 to L, whose other
+  edges are all in the window, in any time order. Ties count.
+- **R6. Scatter-gather, two blocks.** An instance is a pair (s, w), s ≠ w, sized by its set of
+  intermediates I(s, w), and reported when |I(s, w)| ≥ 2.
+  - **R6a. `sg`, unordered.** `I(s, w) = (N_out(s) ∩ N_in(w)) \ {s, w}` over the window. With R1
+    the two endpoints are excluded the same way in both roles, which removes Q1's role-dependent
+    exclusion. Both of v1's roles report (§4.5): a trigger x → w reports (s, w) for each source
+    s ∈ N_in(x) \ {x, w} (gather), and a trigger s → x reports (s, w) for each sink
+    w ∈ N_out(x) \ {s, x} (scatter). The two roles never yield the same pair for one trigger, so
+    the block is their sum, as in v1.
+  - **R6b. `sg_ord`, ordered.** `I(s, w) = { y ∉ {s, w} : ∃ s→y at t_1, y→w at t_2 in the window,
+    t_1 ≤ t_2 }`. A trigger e = (x → w) reports, for each source s with an edge s→x in the window,
+    the instance (s, w) (x is always in I, through s→x and the trigger). Only gather edges report:
+    under R4 a scatter edge s→y at t whose y→w is also at t has that gather edge as a co-latest
+    edge, which reports it. This is V2's `sg_ordered` (D-27, D-28) under R2–R4.
+  - Every R6b instance's I is a subset of its R6a I, so `sg_ord` never exceeds what `sg`'s gather
+    role reports for the same trigger. Both blocks share their scans, so a backend MAY compute
+    them in one pass.
+- **R7. Count blocks.** These emit their count as one `uint32` column, 0 included, for every
+  trigger (a self-loop trigger gets 0, R1). Each definition is the v1 or v2 one with R1–R3 applied:
+  - fan_in = |N_in(v)|, fan_out = |N_out(u)| (distinct neighbours, the trigger's included; §4.3);
+  - deg_in, deg_out = the window edges into v, out of u, parallel edges and the trigger included
+    (§4.4);
+  - fan_total = |N_in(v) ∪ N_out(v)|, fan_oneway_out = |N_out(u) \ N_in(u)| (V2 S4);
+  - gs (V2 S5, D-42) for a trigger x → w: A = the distinct sources s ∉ {x, w} with s → x in the
+    window and ts ≤ t (ties included, R4; v2 used ts < t); B = fan_out's set for the trigger;
+    gs = min(|A|, |B|).
+  Bins remain a profile option for anyone who wants a histogram of a count; the clean default emits
+  counts.
+- **R8. Vertex statistics.** For each side (u's out-edges, v's in-edges) in `W(e)` and each value
+  column (Amount Received, as V2's F1 used, and the age t − ts' in seconds): fan, degree,
+  ratio = degree / fan, and the sum, mean, population variance, skew = m3 / m2^1.5 and kurtosis =
+  m4 / m2² (not excess) of the values. Outputs are float64.
+  - **Order independence.** The values of a side are accumulated in ascending order of
+    (value, ts), never in eid order, and in two passes (mean = sum / n, then central moments). Rows
+    are then a function of the side's multiset of (value, ts) pairs, so R3's tie-permutation test
+    holds bit for bit.
+  - **One arithmetic.** The oracle, the CPU backend and the CUDA backend run the same sequence of
+    IEEE-754 float64 operations in that order: round to nearest, no FMA contraction, no fast-math
+    (CUDA builds this code with `-fmad=false`).
+  - **Small sides.** n = 0: every column 0. n = 1: sum = mean = the value, variance = skew =
+    kurtosis = 0, fan = degree = 1, ratio = 1. When every value of the side is equal (min = max,
+    tested on the values, not on the computed variance, which rounding can leave positive),
+    variance = skew = kurtosis = 0. Otherwise the variance is the computed m2, even when rounding
+    makes it 0 (distinct values such as 10⁻²⁰⁰ and 2·10⁻²⁰⁰); whenever the computed m2 is 0, skew
+    and kurtosis are 0, never 0/0. No other guard.
+- **R9. Credit.** A row holds the instances its trigger edge completes (D-5). Which edges complete
+  an instance is part of each pattern's definition: every trigger for count blocks (R7); the
+  trigger as a latest edge for tcyc and tchain (R4); the trigger as one of the cycle's edges for
+  lcyc (R5); both roles for `sg` (R6a); gather edges only for `sg_ord` (R6b), so a scatter edge
+  never reports an ordered instance even when it is a latest edge.
+- **R10. Sizes and saturation.** Each histogram block's size is defined per pattern: SG = |I|
+  (distinct intermediates); tcyc and lcyc = the number of cycle edges (= nodes); tchain = the
+  number of chain edges (V2 S5, D-42: a simple node path ending in the trigger, each hop no later
+  than the next under R4, one instance per node sequence, lengths 2 to `k_max`). Counts saturate at
+  `UINT32_MAX` with a global saturation counter, as in v1.
+- **R11. Work limits are resource guards.** In clean profiles, a per-trigger work limit (V2 D-39)
+  is not semantics: reaching it aborts the run with an error and no rows. A pruning change may let
+  a run complete that used to abort, but must never change a completed row. A case that hits a
+  **work limit** on any side is **inconclusive**: it never counts toward a parity gate, a coverage
+  claim or a mutant kill. (A certificate rejection, §4.4 V-cert, is different: it is the expected
+  failure that kills a mutant.) Each gate states its case count and meets it with cases that every
+  compared implementation completed on the same inputs; for AC-V3-1, fuzz graphs completed by the
+  oracle, the CPU backend and the CUDA backend. Legacy profiles keep D-39's behaviour.
+
+### 3.3 Clean profiles
+
+- **`clean_default`.** R1–R11, the v1 windows (fan and degree 24 h, sg and sg_ord 6 h, tcyc 24 h),
+  `k_max` 10, v1's histogram bins for sg, sg_ord and tcyc. The regression and hillclimb anchor.
+- **`clean_wc`.** The same with W-C windows (V2 D-25: p90 of the fit split's complete attempt spans
+  per pattern group, rounded up to the hour, capped at 20 days), computed per IBM dataset from its
+  `Patterns.txt` join (V2 §3.5; P15 runs the joins for LI-Small and HI-Medium). A pattern group with
+  no complete fit attempt keeps `clean_default`'s window for that group. TransXion has no attempt
+  file, so it uses HI-Small's W-C windows, labelled as borrowed. This is the long-window workload of
+  the hillclimb and the classifier's first candidate.
+- An agent MAY add profiles. Each gets a content-derived id (V2 D-23).
+
+### 3.4 Legacy profiles and what is deleted
+
+- **Subtract first (P12):** GFP batch mode (Q11) and the GFP plumbing in the runtime (Q12) leave the
+  default build and the clean path: deleted, or isolated behind legacy tooling where a parity
+  helper still needs them, with every caller migrated or retired. The S1 results and E8's verdict
+  stand in `results/`. If batch mode is deleted, the frozen DG-2 recipe can no longer be recomputed
+  in C++; that is acceptable (DG-2 is closed, the test split is spent).
+- **Keep, frozen:** `v1_default`, `v1_parity` and the other non-batch v2 profiles, so AC-V3-0's
+  hashes and the GFP parity tooling keep working. They run through the existing generated code and
+  the existing oracle. **New fast paths need not support legacy semantics**: a legacy profile MAY
+  fall back to the v2 path.
+- **Gate G-LEGACY (end of P16):** if keeping the legacy semantics costs complexity in the code that
+  the hillclimb touches, propose retiring them (keeping the recorded hashes and golden files) and
+  ask the user.
+
+### 3.5 Choices the user should confirm
+
+Q4 (timestamp visibility), Q5 (non-decreasing order) and Q7 (SG order) change what a feature
+means, not only how it is computed. On 2026-11-22 the user confirmed Q4 and Q5, and chose to keep
+both SG variants for Q7 (R6a and R6b). E16 still measures each change separately on validation.
+
+### 3.6 E16: what the clean semantics change
+
+On HI-Small's fit and validation rows (§6.3), and on TransXion's once P15 loads it: each quirk that
+changes values (Q1–Q10), turned on one at a time over the legacy profile that has the affected
+block (`v1_default` for the six v1 blocks, `lcyc_f2` for Q6, a vertex-statistics profile with
+V2 F1's windows for Q9 and Q10), and then all together in `clean_e16`, which is `clean_default`
+plus lcyc and that vertex-statistics block, so every ablated block is present. Its legacy
+comparison is `v1_e16`: `v1_default` plus `lcyc_f2`'s lcyc block and the same vertex-statistics
+block under legacy semantics, with the same windows. Per block: instances,
+active rows and the share of positive rows that are active; then validation F1 with the v2
+classifier settings (V2 R0's XGBoost parameters). Harness-only and upstream-only rows (Q12, Q14,
+and GFP facts such as A29 and A33 that `blz` never copied) are marked not applicable. Output:
+`results/e16_clean.{json,md}`. E16 informs §3.5 only.
+
+---
+
+## 4. Formal verification
+
+### 4.1 What deserves verification
+
+The rule from `/create-formal-verification-skill`: verify a promise the code makes where a break
+silently harms users and tests rarely reach the case that breaks it.
+
+| Target | Promise | Why tests are not enough |
+|---|---|---|
+| T1 | The generated `<pattern>_trigger` of every spec in `patterns/`, as compiled, equals the oracle of its own profile family (clean specs against the clean oracle, legacy specs against the legacy oracle) on every graph within a stated bound, and on sampled larger graphs (translation validation of `blzc`'s output; the unbounded part is T3's). | Fuzz graphs are small, dense and random. Boundary cases (an edge exactly at t − δ, ties, parallel edges, a binding excluded by two filters) are rare in them. |
+| T2 | Every optimised path equals the unoptimised one: the sweep lowering (V2 D-29), scan fusion (D-46), packing (D-45), and every hillclimb algorithm (§5.3). | A speedup that drops one row in a million is invisible to a hash on one dataset until it changes a classifier. |
+| T3 | The algorithmic lemmas the generated code and the optimisations rely on: the earliest-witness rule (§4.6, R4) and its latest-witness mirror (`pair_latest`), pruning soundness (V2 D-43 or its replacement), the slab lemmas of §5.3, interval-sum and wedge identities. | They must hold at every size; a bound is not enough. |
+| T4 | Index primitives' contracts: `range`, `distinct_first` (`prev_same`), `pair_exists`, and the index builder that establishes them. | Every pattern's correctness proof assumes them. |
+| T5 | Runtime certificates for results computed by unverified code (e.g. SCC labels, §5.3 H1). | A certificate checked on every run is cheaper than a proof of the producer. |
+
+Not verified, on purpose: CSV parsing and `blz prepare` (asserted invariants), the classifier and
+XGBoost glue, the CLI, reports, the Python tools and the GFP harness, CUDA scheduling and OpenMP
+drivers (covered by the bit-exact differential checks), and `blzc`'s front end and planner as
+programs (their output is validated per spec instead, T1).
+
+### 4.2 Tool evaluation
+
+Each tool was prototyped on the same two targets on 2026-11-22: **T-code**, the real generated
+`sg_gather_trigger` (`tests/snapshots/sg_gather.hpp` with the real `include/blz/primitives.hpp`)
+against §4.5's gather role, and **T-algo**, §4.6's earliest-witness rule. Each prototype had to
+catch planted mutations. The prototypes are throwaway, kept outside the repository (Appendix E).
+
+| | Lean 4 (core) | Dafny | CBMC | Property-based testing |
+|---|---|---|---|---|
+| Version, install | 4.36.0 via elan; 608 MB download, 3.1 GB on disk, 27 s, no Mathlib | 4.11.0; 65 MB self-contained zip (bundled .NET and Z3), 4 s | CBMC 6.11.0, 73 MB .deb unpacked without dpkg, 212 MB, 4 s; ESBMC 8.7.0 also tried (302 MB, static binary) | RapidCheck at commit `2c3c4365` (untagged; pin the SHA); 2 MB source, builds in 7 s, runs inside Catch2 v3 |
+| Reads the real C++ | No | No (C++ backend emits code, it does not read it) | CBMC: not as shipped. It needed 5 mechanical lowerings of the real headers, one on the emitter's `const TCsrView& L = c ? a : b` idiom that every intersection uses. ESBMC parses everything unchanged | Yes: calls the real templated trigger functions over the real `GraphIndex` |
+| T-algo | Proved for all sizes (143 lines). Also proved: V2 D-43 pruning soundness against a 3-fact search contract, a hand model of `sg_gather_trigger` equal to §4.5, wedge-counting SG and a sliding-window degree sweep (about 470 lines in all) | Proved both directions over T-CSR-shaped arrays (130 lines); a machine-typed copy also proves no int32/uint32/int64 overflow | Bounded, value-symbolic, fast when "exists" is a nondeterministic choice: 9 hops in 0.9 s, 32 hops in 244 s, ts up to 2·10⁹ | Sampled, not proved: 200,000 random hop lists against exhaustive search |
+| T-code | Hand model only; links to the C++ by human comparison and goes stale when `blzc` changes | Hand model only (121 lines), same limit | Every graph with ≤ 5 edges (n = 4, ts < 4, both visibilities, every trigger): pass, 7,528 CPU s at m = 5, about 2 CPU days extrapolated for m = 6. ESBMC ran out of memory under 2 GB at m = 3. **Plain enumeration in compiled C++ of the unmodified code covers the same m = 5 domain (58.7 M graphs, 2.94 G trigger checks) in 133 s on one thread** | Real code against a 30-line naive §4.5 reference, both visibilities; plus a reference-free check of optimised against `blzc --disable` builds |
+| Check time | 1.1 s clean build of all proofs | 4–9 s per file | T-code m = 4: 278 CPU s; the SAT solver is the whole cost (symex 0.9 s, solving 291 s) | about 50 µs a case; 10,000 cases in 0.4–0.8 s per property |
+| Mutants caught | 13/13 (4 at a brittle proof step, not at the false claim) | 12/12, with line-level errors | 7/7 on T-code at m = 4, 3/3 on T-algo in under 0.2 s; its built-in bounds, overflow and conversion checks caught a planted underflow and an off-by-one read; no false alarms | 12/13, each in a median of 27–65 cases, shrunk to 3–5 edges (18 for a sort-stability bug). Missed a length-10-cycle bug in 200,000 cases until hop and δ ranges were widened together. The existing `fuzz_diff` runs found all 13, but as 156–278-edge seed graphs with no shrinking; its AC1 run missed the timestamp-visibility mutant and the timestamp share missed an eid-tie mutant; the metamorphic suite caught 4 |
+| Friction | Proofs follow the model's syntax; toolchain deprecations need small repairs | First draft hit Z3's 30 s timeout until restructured; batch mode timed out on one mutant | C++ front end gaps (no C++17 nested namespaces, no `using` aliases, crashes on conditional references); a wrong `malloc` declaration gave 241 bogus failures; `--unwindset` cannot name loops in member functions; cannot read CUDA or check OpenMP | Generator ranges must be derived from the spec constants (K_MAX, bins) or whole bug classes go unseen; needs `OMP_NUM_THREADS=1` per case |
+
+### 4.3 The chosen stack
+
+The prototypes agree on the shape: no single tool both reads the shipped C++ and proves claims for
+every size. The stack therefore has one tool per job, and each layer covers the gap of the one
+above it.
+
+| Layer | Tool | Job | Why this tool |
+|---|---|---|---|
+| L1 proof | **Lean 4, core only, pinned toolchain** | V-proof for T3: every algorithmic lemma, for all sizes, against a Lean model of §3.2's rules. Each lemma states the contracts it assumes of the code (as the prototype's 3-fact search contract did for V2 D-43). | Proved every prototype target plus two new algorithms in about 470 lines; 1.1 s to check; kernel-checked, so no solver timeouts. Dafny did the same algorithm work equally well but hit Z3 timeouts, and a second proof language would double the upkeep. |
+| L2 bounded code check | **Exhaustive enumeration in compiled C++** | V-code for T1, T2, T4: the real, unmodified generated code (and every optimised path) against the clean oracle, or optimised against unoptimised, on **every** graph within a stated bound, every trigger, both visibilities where they exist. A second pass of the same harness under ASan and UBSan at a smaller bound gives the memory and overflow checks. | The CBMC prototype proved m ≤ 5 in 7,528 CPU s; enumeration covered the same domain in 133 s on one thread, on code CBMC could not read unmodified. The harness is ordinary C++ that every agent can read and extend. |
+| L3 always-on | **RapidCheck** properties in `blz_unit_tests`, plus the existing `fuzz_diff` and metamorphic suites | V-diff beyond L2's bound: larger graphs, long cycles, every pattern through the registry, every `blzc --disable` variant against the full build (reference-free), CPU and CUDA. Fixed seeds in CI, random nightly, shrinking for every failure. | Found 12 of 13 planted bugs in 27–65 cases with 3–5-edge counterexamples; `fuzz_diff` found all 13 but as 156–278-edge graphs. Generator ranges must come from the spec constants (the missed length-10 bug). |
+| L4 value lemmas | **CBMC**, plain C, optional | Lemmas over full-width integers that enumeration cannot reach: slab and window arithmetic at int32/int64 extremes, interval endpoints, saturation. | Bounded but value-symbolic: 32 hops with ts up to 2·10⁹ in minutes. Use only where L1's unbounded integers abstract away a machine-width question. |
+| L5 runtime certificates | the code itself | V-cert (T5): checks that run on every mine and abort on failure. | Verifies a result from unverified code without verifying the code. |
+
+**The exhaustive layer is the main code-level check.** Its domain is every edge list with up to
+m edges over n nodes with timestamps in [0, T), every span up to T and every trigger. The prototype
+reached m = 5, n = 4, T = 4 in 133 s on one thread. An agent SHOULD push the bound with symmetry
+reduction (canonical node relabelling, compressed timestamps) and threads, but no exhaustive bound
+reaches every case: at `k_max` = 10, ten-edge cycles alone give trillions of lists after
+relabelling. So each pattern's check has two parts:
+- an **exhaustive core** at a bound that stays within a few minutes, stated in the harness, and at
+  least the smallest instance of the pattern (4 edges for SG, 2 for a 2-cycle) plus one edge;
+- **targeted generators** (L3) for what the core cannot reach: maximum-length cycles and chains
+  (`k_max` hops), the last histogram bin and saturation, arithmetic extremes (int32 timestamps
+  near the limits, δ near the span), packing widths and chunk boundaries.
+Each planted code mutation must be caught by one of the two, and the harness records which.
+
+Not adopted:
+- **Dafny.** It proved the algorithm targets as well as Lean did, and a machine-typed copy proved
+  no overflow. But it cannot read C++, its C++ backend needs workarounds, and Z3 timeouts needed
+  proof restructuring. Lean covers its proving role and L2/L4 its overflow role.
+- **CBMC as the main code checker.** It needed five lowerings of the real headers, one on an idiom
+  every intersection uses, and was about 60× slower than enumeration over the same domain.
+  ESBMC parsed the code unchanged but ran out of memory at m = 3 under 2 GB.
+- **Verifying `blzc` itself.** A Lean or Dafny model of the IR and the lowering would take weeks
+  (the prototypes' estimate) and would still trust the C++ emitter text. Validating each
+  generated output (L2, L3) checks what ships.
+
+An agent MAY replace any layer's tool with evidence, recorded as a decision.
+
+### 4.4 What "verified" means for a speed change
+
+A change to how rows are computed (a new algorithm, lowering, layout or kernel) is verified when
+all of these hold, each shown able to fail on a planted break:
+
+1. **V-proof.** The algorithm's identity or soundness lemma is proved for all sizes, against the
+   clean reference model, with the assumptions it makes on the code stated as contracts.
+2. **V-code.** The real C++ of the new path, as compiled, is checked against the reference path
+   on every input within a stated bound, and the contracts of V-proof are checked on the code.
+3. **V-cert.** Where the algorithm consumes a result from code that V-proof and V-code do not
+   cover (a graph labelling, a partition, a set of marks), either that producer is itself proved
+   and checked like the algorithm, or a cheap certificate is checked on every run and failure
+   aborts the run. A filter whose producer has neither MUST NOT land: a dropped mark silently
+   zeroes a valid row.
+4. **V-diff.** Bit-exact rows against the clean oracle on HI-Small, TransXion and 10,000 fuzz graphs
+   per backend, including a **sparse-time fuzz setting** with δ well below the time span (so that
+   slab and window boundaries are crossed and graphs hold several components), plus the
+   metamorphic suite.
+5. **V-mut.** A recorded list of planted code mutations, each caught by at least one of the
+   above.
+6. **Path hit.** Every executable check (L2, L3, V-diff) records evidence that the new path
+   actually ran: counters of the triggers, bindings or lists it handled, nonzero in the check's
+   runs. A proof (L1) has no runtime; its coverage record names the code each lemma describes, and
+   the executable checks carry the path hits. A planner can silently
+   decline a path (V2 D-43's reachability pruning is accepted only for strict-order chains, the
+   registry's default profile omits `lcyc`, and the `--disable` ablation builds are CPU only), so
+   each check names the profile and build that enables the path, and CUDA-only paths are checked
+   on a CUDA build. Clean test profiles enable every pattern in `patterns/`.
+
+A legacy-profile fast path (§3.4) needs the same evidence against the legacy oracle.
+
+### 4.5 Project-local verify skills
+
+P14 runs `/create-formal-verification-skill` once per verification area. The intended areas:
+
+- **verify-algorithms**: the proof project of §4.3 (T3), one module per lemma, the mutant runner,
+  and a coverage record mapping each lemma to the code it justifies.
+- **verify-codegen**: the bounded code checks (T1, T2, T4), one harness per pattern and per
+  optimisation, generated from the pattern list, not written by hand per pattern.
+
+Each skill records the files and functions it covers and the commit at which the coverage was last
+confirmed. An agent changing covered code reruns the check, and moves the sync commit only after
+confirming the verification still describes the code. `/maintain-formal-verification-skill`
+brings a skill back in line after changes that skipped it. An agent MAY merge, split or rename the
+skills.
+
+---
+
+## 5. Hillclimb
+
+### 5.1 Metric
+
+- **Metric M.** Median wall time of mining every block of a clean profile on a dataset, from the
+  loaded `.blzg` in memory to the delivery of every logical row to a **bounded host sink**: rows
+  arrive in trigger-range chunks of a fixed size, are decoded to the row contract (one `uint32`
+  per count column, the histogram bins, float64 vertex statistics), hashed, and dropped. Baseline
+  and candidates use the same sink, contract and hashes. M includes every index, slab, label or
+  auxiliary structure the algorithm builds, chunk assembly and decoding, and the certificate
+  checks. It excludes CSV parsing, `blz prepare` and file writes, which are reported beside it.
+  Lower is better.
+- **Samples and noise.** Median of 5 runs on an idle machine; min and max are kept. A change is kept
+  only when its median beats the incumbent's by more than the incumbent's min-to-max spread. A
+  workload counts as regressed when its median exceeds its baseline's max by more than 5 %.
+- **Each run prints** its error count, the triggers mined, the instances emitted, and the row hash
+  per block, so a fast run that did less work is visible.
+
+### 5.2 Workloads and target
+
+| Workload | Role |
+|---|---|
+| HI-Medium, `clean_default`, CPU 12 threads on `local` | **Target.** The stop predicate is measured here. |
+| HI-Medium, `clean_wc` | Long-window target (tcyc and sg dominate, F16). |
+| HI-Small, both profiles | Development loop; fast to rerun. |
+| TransXion, `clean_default` | A different shape: 47,526 accounts for 3.0 M edges (mean degree about 64, merchant hubs). Guards against tuning to the IBM generator. |
+| 1650S, HI-Small, both profiles; HI-Medium in trigger-range chunks | Secondary backend and guard. |
+
+The two HI-Medium CPU rows are the **primary** workloads; the others are **guards**. A workload a
+backend cannot hold (memory) is recorded as a capacity limit, not a failure. The capacity
+exclusions are frozen with the baseline: a candidate that cannot complete a workload the baseline
+completed has regressed on it.
+
+**Stop predicate.** All of:
+1. M on both primary workloads is at least 4× lower than the clean baseline (P15's measurement of
+   P13's implementation, which uses v2's algorithms);
+2. every seeded hypothesis H1–H4 was attempted, or ruled out by a recorded measurement, so a lucky
+   early win cannot end the run;
+3. no guard workload regressed (§5.1);
+4. every kept change is verified (§4.4).
+The 1650S goal, 3× on HI-Small `clean_default`, is reported but does not gate. These targets come
+from §5.3's inferred estimates; if the user names others, use theirs.
+
+### 5.3 Seed hypotheses
+
+Two independent surveys (Opus and Codex, 2026-11-22) ranked candidates from the measured timings
+and, for the Opus survey, an operation-counting replica of the generated code. The list below merges
+them. Counts are [M3] from that replica; gains are [I].
+
+| # | Hypothesis | Mechanism | Evidence | Verification obligation |
+|---|---|---|---|---|
+| H1 | **Slab SCC filter** for tcyc and lcyc (CPU and CUDA). | Cut time into slabs of width δ. Graph k holds the edges with ts in [(k−1)δ, (k+1)δ), which contains every window of a trigger in slab k. Label graph k's strongly connected components. Skip a trigger whose endpoints are in different components, and a binding whose node is in a different component from u. | HI-Small: 2,387 / 67,639 / 221,352 of 4.49 M triggers survive at 24 h / 89 h / 20 d (99.95 %, 98.5 %, 95.1 % cut); HI-Medium 15,593 / 411,425 / 2,704,941 of 29.3 M. 0 rows differ from the unpruned DFS. 398 bindings left at 24 h on HI-Small. Inferred tcyc 10–30× on CPU. | V-proof: the slab contains the window (int64 floor division, negative t); a closed walk has one label when labels never increase along an edge; a filter every instance passes leaves the rows unchanged. V-cert: check label monotonicity on every slab edge each run (a split component fails, a merged one is still sound). V-code: slab index and eid ranges at boundaries. lcyc's work limit becomes a resource guard (R11), so a run that aborted unpruned may complete. |
+| H2 | **Pair marks for SG.** | In each slab graph, count 2-paths s→y→w per s and keep the pairs with two or more distinct y; a trigger runs only when its edge is a leg of a kept pair, a binding only when its pair is kept. Cheaper fallback with a local proof: a gather trigger x → w runs only when w has at least two distinct in-neighbours other than w in the window, and a binding (s, w) only when s has at least two distinct out-neighbours other than s and w and w at least two distinct in-neighbours other than s and w (necessary for \|I\| ≥ 2). R6's ordered instances are a subset of unordered ones, so marks built without order stay complete. | HI-Small 6 h: 3,053 of 15.5 M bindings survive, 0 instances lost; the fallback filters keep 669 K. Risk: 2-paths grow faster than edges (476 M on HI-Medium against 21 M). | V-proof: an instance implies a mark. The mark builder has no cheap certificate, so under §4.4 V-cert it needs its own completeness proof (V-proof) and V-code check; if that is not done, use only the fallback filters, whose producers are the verified window primitives. |
+| H3 | **Count blocks without per-trigger scans** (R7 makes them scalars). | Degree is a difference of two range ranks. Fan is an interval sum: each list entry counts for a contiguous range of triggers, so a difference array and one prefix sum give every count (CUDA); the CPU sweep (V2 D-29) already does this in order. | fan_out windows sum to 4.32 G entries at 24 h on HI-Small; 1650S fused fan and degree kernels 206 ms, inferred 15–30 ms. | V-proof: interval-sum identity with `prev_same`; prefix-sum identity. V-code: the interval endpoints against `count_distinct`. |
+| H4 | **Compact output.** | Count blocks send one integer per row; histogram blocks send sparse rows (788 nonzero sg rows and 1,109 tcyc rows of 5.08 M on HI-Small). | A30 D2H is 33 % of T; host widening bounds packed D2H. | V-proof: encode/decode identity. V-code: boundary bins, saturation, row order, chunk offsets. |
+| H5 | **Shared hop-bounded reachability labels** for tcyc (Codex's first). | Latest-departure labels to u per (u, time slab), reused across triggers. | Likely subsumed by H1 (398 bindings left at 24 h); try only if H1 leaves heavy residue at 20 d (939 K bindings). | V-proof by induction on hops (the shape of V2 D-43's proof). |
+| H6 | **CPU two-phase emission** for count blocks. | Count in list order, write rows in eid order with streaming stores. | Inferred bound: one random row write per trigger. Profile first. | Permutation lemma; V-diff. |
+| H7 | **Mining in trigger ranges** for HI-Medium. | Rows for a range of eids at a time, with the index resident. | HI-Medium rows are 8.55 GB at 67 dense columns; R7 brings `clean_default` to 33 columns (4 counts, sg 10, sg_ord 10, tcyc 9), about 4.2 GB. Needed for the 1650S's 4 GB. | Range-split identity (rows depend only on the trigger); V-diff. |
+
+Subtract as you go: if H1 lands, V2 D-43's reachability pruning and V2 D-44's hybrid split may have
+no measured job left (at 24 h all 2,876 heavy tcyc triggers fail H1's root test). Measure, and
+delete them if so; that also removes their verification burden. H3 retires the CUDA light/heavy
+split for count blocks.
+
+Considered and not seeded, with the reason: row sharing for duplicate (u, v, t) triggers (2.0 % of
+rows); 2SCENT, temporal Johnson, path bundling, meet-in-the-middle and hop-constrained search (after
+H1 nothing is left to prune at 24 h; revisit at 20 d if H1 leaves enough); index compression,
+bitsets, merge-path and warp-cooperative intersection (no measured bound after H1–H3). An agent MAY
+revive any of them with a measurement.
+
+### 5.4 After the algorithms
+
+Once H1–H3 land, output rows bound every backend (inferred). R7 and H4 are the levers: fewer
+columns and fewer bytes per row. A change to the row contract (what `blz mine` hands to the
+classifier) is a decision, not a hillclimb step.
+
+### 5.5 Loop
+
+The pstack Hillclimb playbook, with this spec's rules:
+
+1. P16 starts from the harness (§5.1) and the baseline M for every workload in §5.2, both frozen
+   once in P15 after range mining is verified, and records a green regression gate (`ctest -L
+   fast`, the AC-V3-1 differential checks, the verify skills).
+2. One hypothesis per attempt, from §5.3 or a new one grounded in a profile or a counter. Order
+   them by measured share of M.
+3. Each attempt: implement, run its §4.4 verification, measure M, keep or revert in full. One commit
+   per kept change on `main`. Log every attempt in `decision.tsv` (outside the tree): id,
+   hypothesis, change, before, after, delta, verification, verdict, note.
+4. Independent hypotheses MAY run in parallel worktrees. Timing runs never overlap each other or a
+   build.
+
+### 5.6 Stop
+
+Stop when §5.2's predicate holds, or when the remaining ideas are marginal and each costs more than
+it can save. Never relax the predicate to meet it. If stuck, report the profile and the ideas left.
+
+---
+
+## 6. Datasets
+
+### 6.1 Loading
+
+- A **dataset descriptor** (one small file per dataset) names the transaction file, its column
+  mapping, its timestamp format, and optional node-attribute tables. `blz prepare` reads it instead
+  of the hard-coded IBM layout (Q13).
+- IBM files (HI-Small, LI-Small, HI-Medium): `YYYY/MM/DD HH:MM`, columns Timestamp, From Bank,
+  Account, To Bank, Account, Amount Received, Receiving Currency, Amount Paid, Payment Currency,
+  Payment Format, Is Laundering. Nodes are (bank, account) strings (D-2).
+- TransXion `tx.csv`: `YYYY-MM-DD HH:MM:SS`, columns Timestamp, From Bank, From Account, To Bank,
+  To Account, then the IBM order. `person.csv` and `merchant.csv` attach attributes to accounts by
+  (`bank`, `bank_account_number`). Check that every account in `tx.csv` resolves, and report the
+  ones that do not.
+- The epoch is midnight of the first row's day; timestamps stay int32 seconds and `blz prepare`
+  rejects a range that does not fit. The stable sort, dense ids and `.blzg` cache stay as in v1/v2
+  unless an agent changes them.
+- Invariants per dataset: row and node counts (Table 1 for the IBM sets; F20 records LI-Small's
+  6-row difference from Table 1, reported, not chased), self-loops, distinct timestamps and
+  positives. The gate uses counts under `blz prepare`'s exact (bank, account) key only: HI-Small's
+  are the existing invariants (591,212 self-loops); for each new dataset P15 measures them once,
+  checks them by an independent count over the CSV, and pins them. F18/F19's survey figures are
+  estimates and are not gate values.
+
+### 6.2 HI-Medium preflight
+
+HI-Medium has 31.9 M rows.
+
+- **Prepare runs in bounded memory.** Today's parser holds every raw column in memory, about
+  4.24 GB on HI-Medium before sorting (`src/io/csv.cpp:68`). P15 makes `blz prepare` stream the CSV
+  (for example two passes, or chunks with an external merge) under a stated memory cap, and
+  measures its peak on HI-Small and LI-Small before running it on HI-Medium. A trigger sample
+  cannot preflight this step.
+- **Separate budgets.** The preflight estimates, and the run records, peak host RSS for each of:
+  index construction (T-CSR, P-CSR including its distinct-pair metadata, not only the
+  ≈ 0.47 GB edge-run floor), auxiliary structures (slabs, labels, marks), the row chunks in
+  flight, and training; and peak device memory for the graph upload, scratch and output chunks on
+  the 1650S. A step whose estimate exceeds what is free is aborted and recorded, never truncated.
+- Expected sizes [I]: T-CSR both directions without self-loops ≈ 0.94 GB; `clean_default` rows
+  ≈ 4.2 GB in all, so rows are always delivered in chunks (§5.1), never held whole.
+- Training runs from a batched `QuantileDMatrix`. If it does not fit on `local`, the preflight
+  result goes to the user with the options (fewer negative rows for training only, a rented
+  instance).
+
+### 6.3 Splits
+
+- **New datasets:** temporal 60/20/20, with V2 D-17's boundary rule at both cuts (the first eid at
+  or after ⌊0.6·m⌋ that starts a new timestamp, and the same at ⌊0.8·m⌋), so no timestamp
+  straddles a cut and R3 cannot let a validation row see a test edge of its own timestamp.
+- **HI-Small keeps its legacy split** (fit < 3,047,216 ≤ validation < 4,062,676 ≤ test, V2 §3.3);
+  its test rows stay spent. If eid 4,062,676 does not start a new timestamp, clean validation on
+  HI-Small ends at the first eid of the timestamp that holds it, and those rows are scored nowhere.
+
+### 6.4 Evaluation protocol
+
+The new datasets' test splits are unspent. Per dataset:
+
+1. Select the classifier recipe (feature profile among the clean ones, XGBoost settings) on that
+   dataset's validation split only, with V2 D-19's rule, within a budget of 12 fits per dataset.
+2. Commit the frozen recipe.
+3. Score the test split once. Report F1 ×100, precision, recall and PR-AUC, next to the paper's
+   Table 2 numbers where they exist.
+4. No change after the test run.
+
+TransXion MAY add its person and merchant attributes as raw classifier columns; mining ignores
+them. With and without the attributes is a validation-only comparison inside step 1's budget; only
+the frozen winner is scored on test.
+
+---
+
+## 7. Phases
+
+Phases land on `main` in order. Each ends in a check. Within a phase the agent orders the work.
+
+```
+P12 subtract ──► P13 clean semantics ──► P14 verification stack ──► P16 hillclimb ──► P17 exit
+                       │                                                ▲
+                       └──────────────► P15 datasets ───────────────────┘
+```
+
+P14 and P15 are independent once P13 lands. P16 needs both.
+
+### P12 — Subtract
+
+- [ ] Depends on: nothing.
+- [ ] Change: take GFP batch mode and `credit: participants` (Q11) and the GFP plumbing in the
+      runtime (Q12) out of the default build and the clean code path: delete them, or isolate them
+      behind legacy tooling if a GFP parity helper still needs them. Either way, migrate or retire
+      each caller in the same change (for example `tools/gfp/vstats_vs_gfp.py` runs
+      `blz fuzz --vstats`, and the coverage and DG-2 tools read batch recipes).
+- [ ] Result: the clean path and the default build have no batch mode and no GFP-only flags; every
+      remaining GFP tool still runs or is recorded as retired.
+- [ ] Unit: `ctest -L fast` passes.
+- [ ] Live: `bench/ac1_cpu.sh` and, when built, `bench/ac1_cuda.sh` pass; AC-V3-0's hashes hold for
+      `v1_default` and `v1_parity`.
+- [ ] Perf: none (no row computation changes).
+
+### P13 — Clean semantics
+
+- [ ] Depends on: P12.
+- [ ] Change: the clean oracle (R1–R11, literal), the compiler and runtime support for the clean
+      profiles (R1's loop-free index, R2's single window, R3's timestamp-only ranges, R4's order,
+      R6's two sg blocks, R7's count blocks, R8's statistics), `clean_default` and `clean_wc`, and the
+      new metamorphic relations (tie permutation, duplicate (u, v, t)).
+- [ ] Result: `blz mine --profile clean_default` runs on HI-Small on every backend.
+- [ ] Unit: oracle unit tests written from §3.2's rules, one per rule, each with a hand-checked
+      graph; the metamorphic suite.
+- [ ] Live: AC-V3-1's HI-Small and fuzz parts (CPU, CUDA at the default thresholds, the
+      sparse-time setting); E16's HI-Small part.
+- [ ] Perf: none gating; timings here are informal (the harness and baseline are frozen in P15).
+
+### P14 — Verification stack
+
+- [ ] Depends on: P13 (the clean reference to verify against).
+- [ ] Change: pin the tools of §4.3; run `/create-formal-verification-skill` for each area of §4.5;
+      re-prove R4's earliest-witness rule and its latest-witness mirror (`pair_latest`,
+      V2 `witness: latest`) for the non-strict order; cover T1 for every pattern in `patterns/`, T2
+      for the existing optimisations (sweep lowering, scan fusion, packing, reachability pruning:
+      note that V2's planner applies pruning only to strict-order chains, so under R4 either extend
+      and re-prove it or record it as legacy-only) and T4.
+- [ ] Result: each verify skill runs with one command and reports pass with its bounds.
+- [ ] Unit: each check fails on its planted breaks (V-mut) and passes on the real code.
+- [ ] Live: following each generated skill cold, on a scratch mutation of the artifact it checks (the proof project for the proof skill, the real C++ for the code skill), catches it.
+- [ ] Perf: the full verification run time, recorded (target: short enough to run on every
+      relevant change).
+
+### P15 — Datasets
+
+- [ ] Depends on: P13.
+- [ ] Change: dataset descriptors, bounded-memory `blz prepare` (§6.2) for both schemas and
+      TransXion's node tables, per-dataset epoch and range checks (Q13), the `Patterns.txt` joins
+      for LI-Small and HI-Medium and their W-C windows (§3.3; the join is preflighted on its own,
+      since today's `blz` join scans the whole CSV and allocates a per-row inverse index, and it is
+      made bounded-memory if it exceeds the cap), the HI-Medium preflight, and
+      trigger-range mining with the bounded sink (§5.1, H7).
+- [ ] Result: `.blzg` caches for LI-Small, HI-Medium and TransXion; clean rows for each.
+- [ ] Unit: prepare invariants per dataset (§6.1); trigger-range mining equals whole-graph mining
+      on HI-Small, by row hash, for several chunk sizes.
+- [ ] Live: AC-V3-1's dataset parts: oracle = CPU = CUDA on LI-Small and TransXion, oracle = CPU on
+      HI-Medium in ranges; E16's TransXion part; E17.
+- [ ] Perf: E17 records M and the §6.2 budgets per dataset and backend. **The harness (§5.1, the
+      bounded sink included) and the clean baseline M for every §5.2 workload are frozen here,
+      once**, after range mining is verified against §4.4, as the hillclimb's starting point.
+
+### P16 — Hillclimb
+
+- [ ] Depends on: P14 and P15.
+- [ ] Change: §5's loop until §5.6.
+- [ ] Result: `decision.tsv`, one commit per kept change, `results/e19_hillclimb.{json,md}`.
+- [ ] Unit / live: §4.4 for every kept change; the regression gate green after each.
+- [ ] Perf: M per workload, baseline to final, with spread and limiter.
+- [ ] Gate G-LEGACY (§3.4).
+
+### P17 — Exit
+
+- [ ] Depends on: P16.
+- [ ] Change: E18 (§6.4) per dataset; an optional A30 campaign (CUDA parity on sm_80 and E19 on the
+      A30) with the user's approval; the status of this spec.
+- [ ] Unit: `ctest -L fast`; every verify skill green at the final commit.
+- [ ] Live: AC-V3-0 … AC-V3-5 checked and recorded.
+- [ ] Perf: E19 final table.
+
+---
+
+## 8. Experiments
+
+| ID | What | Output |
+|---|---|---|
+| E16 | Effect of each quirk change alone, and of `clean_e16` against `v1_e16` (§3.6) | `results/e16_clean.{json,md}` |
+| E17 | Datasets: prepare invariants, mining M and peak RSS per backend | `results/e17_datasets_<host>.{json,md}` |
+| E18 | Classifier per new dataset: validation selection, frozen recipe, one test score | `results/e18_<dataset>.{json,md}` |
+| E19 | Hillclimb: baseline and final M per workload; the decision log summarised | `results/e19_hillclimb_<host>.{json,md}` |
+| E20 | Verification: per check, bounds, run time, mutants caught | `results/e20_verification.{json,md}` |
+
+---
+
+## 9. Risks and gates
+
+| ID | Risk | Rule |
+|---|---|---|
+| R14 | A clean rule makes a feature fire far more (R4 with minute ties, R5 with ties) or far less (R6b), and the cost or the classifier moves a lot. | E16 measures each rule alone; §3.5 lets the user flip it. Preflight on a 1 % sample before a full run. |
+| R15 | HI-Medium does not fit in `local`'s RAM or the 1650S's memory. | §6.2 preflight; trigger-range mining (H7); report and ask before renting. |
+| R16 | A bounded code check passes because the bound is too small to reach the failing case. | V-mut: every check must catch planted breaks; record the bound and the smallest graph each mutant needs. |
+| R17 | A proof proves the hand model, not the code. | Each proof states its contracts; V-code checks the contracts on the real code; the coverage record pins the code it describes. |
+| R18 | Fuzz graphs miss slab and window boundaries (dense, short time spans). | The sparse-time fuzz setting of §4.4. |
+| R19 | The verification run becomes too slow to run on every change. | E20 tracks it; split the fast subset into `ctest -L fast` and keep the rest for phase exits. |
+| R20 | H2's 2-path counts explode on HI-Medium hubs. | Degree-ordered enumeration or a heavy/light split of centres, or the fallback filters; measure before committing. |
+
+---
+
+## Appendix C‴ — decisions added by v3
+
+| ID | Decision |
+|---|---|
+| D-47 | SPEC v3 is malleable (§0): agents own data structures, module boundaries, optimisation strategies and sequencing, and replace any earlier design with a recorded decision. |
+| D-48 | `clean` is the default semantic family (R1–R11). Legacy profiles stay frozen; new fast paths need not support them (§3.4). |
+| D-49 | GFP batch mode and `credit: participants` leave the default build and the clean path, deleted or isolated behind legacy tooling with their callers migrated or retired (Q11, P12); S1's results stand. |
+| D-50 | Streaming replay (V2 S8) is postponed out of v3. |
+| D-51 | The verification stack is Lean 4 (proofs), exhaustive enumeration of the real compiled code (bounded code checks), RapidCheck with `fuzz_diff` and the metamorphic suite (always-on), optional CBMC (machine-width lemmas) and runtime certificates (§4.3). |
+| D-52 | A speed change is verified only with V-proof, V-code, V-cert where applicable, V-diff and V-mut (§4.4). |
+| D-53 | The new datasets' test splits are scored once each, after a committed per-dataset freeze (§6.4). |
+| D-54 | The user confirmed timestamp visibility (Q4, R3) and non-decreasing hop order (Q5, R4) on 2026-11-22, and chose to keep both SG variants for Q7: unordered `sg` (R6a) and ordered `sg_ord` (R6b), as two blocks of the clean profiles. |
+
+## Appendix E — planning prototypes (not normative)
+
+Built on 2026-11-22 to settle §4.2 and §5.3; throwaway, outside the repository, and they may be
+gone. An agent may reuse them or ignore them.
+
+Copied to `~/.cache/blz-fv/prototypes-2026-11-22/` (tool installs stay in `~/.cache/blz-fv/<tool>/`):
+
+- `lean/`: the five Lean modules (earliest witness, pruning soundness, the sg hand model, wedge
+  counting, the degree sweep), `mutate.py` (13 mutants) and `check.sh`.
+- `dafny/`: `tcyc_greedy.dfy`, `greedy_native.dfy`, `sg_gather.dfy`, `mutants.py`, `run.sh`.
+- `cbmc/`: `tcode.cpp`, `index_cf.hpp`, `talgo.c`, `tsweep.cpp`, the lowering script `prep.sh`, and
+  **`exh.cpp`, the exhaustive enumeration harness that L2 starts from**, with `diff_index.cpp`.
+- `pbt/`: `pbt.cpp` (six RapidCheck properties, including the reference-free `flags` property),
+  `mutate.py`, `rerun.sh`, `results/`.
+- `algos/`: both speed surveys (`opus.md`, `codex.md`), the operation-counting replica
+  `scripts/work.cpp` and the HI-Medium counters `scripts/scc_csv.cpp`, `scripts/bfly_csv.cpp`, with
+  their outputs. These produced every [M3] count in §1 and §5.3.
