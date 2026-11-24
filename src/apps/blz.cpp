@@ -451,16 +451,21 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
                     {"device_graph_bytes", dgraph->bytes()}};
   meta["index_build_seconds"] = build_s;
   if (!meta.contains("blocks")) meta["blocks"] = nlohmann::json::object();
-  if (sel.sampled) {
-    blz::write_npy_u32(out + "/triggers.npy", sel.eids, sel.eids.size(), 1);
-    meta["triggers"]["file"] = "triggers.npy";
-  }
+  if (sel.sampled) meta["triggers"]["file"] = "triggers.npy";
+  // The sample's eids, written with the first block (SPEC v3 R11: after lcyc, so a run that aborts
+  // leaves `out` as it was).
+  bool triggers_written = !sel.sampled;
+  const auto write_triggers = [&] {
+    if (!triggers_written) blz::write_npy_u32(out + "/triggers.npy", sel.eids, sel.eids.size(), 1);
+    triggers_written = true;
+  };
 
   const std::uint64_t rows = sel.rows();
   std::uint64_t total_saturated = 0;
   // A block's file and manifest entry, once its rows are in `data`.
   const auto finish = [&](const blz::ProfileBlock& pb, const blz::BlockParams& p, std::span<const std::uint32_t> data,
                           double mine_s, std::uint64_t sat, nlohmann::json j) {
+    write_triggers();
     const blz::Block b = pb.block;
     const std::string file = std::string(blz::block_name(b)) + ".npy";
     blz::write_npy_u32(out + "/" + file, data, rows, blz::block_cols(p));
@@ -492,7 +497,12 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
     return c;
   };
   // The CUDA backend mines a fusion's blocks together (SPEC v2 §8 S7); the others one by one.
-  const std::vector<blz::CudaUnit> units = blz::cuda_units(blocks, fuse && be == blz::Backend::cuda);
+  std::vector<blz::CudaUnit> units = blz::cuda_units(blocks, fuse && be == blz::Backend::cuda);
+  // SPEC v3 R11: a clean run that reaches the work limit aborts with an error and no rows. lcyc is
+  // the one block that counts work, so it runs first: an abort comes before any block is written.
+  if (prof.family == blz::Family::clean)
+    std::stable_partition(units.begin(), units.end(),
+                          [](const blz::CudaUnit& u) { return u.blocks.front()->block == blz::Block::lcyc; });
   for (const blz::CudaUnit& unit : units) {
     if (unit.fusion) {
       const std::size_t nslots = unit.blocks.size();
@@ -577,6 +587,7 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
   }
   if (want_vstats) {
     // SPEC v3 R8. The cuda backend and the hybrid compute it on the GPU.
+    write_triggers();
     const std::int32_t window = prof.vstats->window;
     auto t1 = Clock::now();
     std::optional<blz::CleanVstats> vs;
