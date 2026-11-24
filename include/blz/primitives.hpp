@@ -32,13 +32,14 @@ struct Range {
 
 // T-CSR, one direction (SPEC §5.1). Node x's entries are off[x]..off[x+1], sorted by eid and
 // therefore by ts. Out-lists hold dst as nbr, in-lists src. prev_same[j] is the absolute position
-// of the previous entry of the same list with the same nbr, or -1. Self-loops are kept.
+// of the previous entry of the same list with the same nbr, or -1. Self-loops are kept, unless the
+// index drops them (SelfLoops::drop, SPEC v3 R1).
 struct TCsrView {
   const std::uint32_t* off = nullptr;  // n + 1
-  const std::uint32_t* nbr = nullptr;  // m
-  const std::int32_t* ts = nullptr;    // m
-  const std::uint32_t* eid = nullptr;  // m
-  const std::int32_t* prev_same = nullptr;  // m
+  const std::uint32_t* nbr = nullptr;  // off[n]
+  const std::int32_t* ts = nullptr;    // off[n]
+  const std::uint32_t* eid = nullptr;  // off[n]
+  const std::int32_t* prev_same = nullptr;  // off[n]
 
   // x's entries with lo_ts <= ts <= hi_ts and eid <= max_eid (stream visibility). The bounds are
   // inclusive; strict bounds are normalized by the planner (SPEC §7.2). The lower end is the
@@ -101,8 +102,8 @@ struct PCsrView {
   const std::uint32_t* off = nullptr;   // n + 1
   const std::uint32_t* nbr = nullptr;   // pairs
   const std::uint32_t* run = nullptr;   // pairs + 1
-  const std::int32_t* run_ts = nullptr;    // m
-  const std::uint32_t* run_eid = nullptr;  // m
+  const std::int32_t* run_ts = nullptr;    // run[pairs], the T-CSR list length
+  const std::uint32_t* run_eid = nullptr;  // run[pairs]
 
   // The earliest ts of an edge between x and y in this direction (x -> y for out, y -> x for in)
   // with lo_ts <= ts <= hi_ts and eid <= max_eid, or kNoTs. Two binary searches: the first run
@@ -167,7 +168,9 @@ struct PCsrView {
 };
 
 // The indexed graph (SPEC §5): the edge arrays in stream order plus both directions of T-CSR
-// and P-CSR. Plain pointers, so the view can be copied to the device as is.
+// and P-CSR. Plain pointers, so the view can be copied to the device as is. m is the stream's edge
+// count (the trigger domain); a direction's list length is its off[n], less than m when the index
+// drops self-loops.
 struct GraphView {
   std::uint32_t m = 0, n = 0;
   const std::uint32_t* src = nullptr;

@@ -141,29 +141,31 @@ TEST_CASE("cuda backend under timestamp visibility: oracle parity and metamorphi
   CHECK(r.bad_seeds.empty());
 }
 
-// SPEC §8: CUDA rows equal the CPU's, for any trigger range and threshold, and repeat exactly.
+// SPEC §8: CUDA rows equal the CPU's, for any trigger range and threshold, and repeat exactly. On
+// an index without self-loops (SPEC v3 R1) too, whose lists are shorter than m.
 TEST_CASE("cuda backend rows equal the cpu backend's for any trigger range and threshold") {
   CudaMiner miner;
-  for (std::uint64_t seed = 100; seed < 130; ++seed) {
-    const FuzzGraph fg = fuzz_graph(seed);
-    const GraphIndex idx(fg.src, fg.dst, fg.ts, fg.n);
-    const DeviceGraph dg(idx.view());
-    const std::uint64_t m = fg.src.size(), mid = m / 3;
-    const BlockParams p{fg.window, {2, 3, 4, 5, 6, 8}};
-    for (Block b : kAllBlocks) {
-      if (b == Block::lcyc) continue;  // needs a work limit: the next test
-      std::vector<std::uint32_t> cpu(m * p.bins.size(), 0);
-      mine_cpu(idx.view(), b, p, 0, m, Schedule::dynamic, cpu.data());
-      for (std::uint32_t h : kThresholds) {
-        INFO("seed " << seed << " " << block_name(b) << " H=" << h);
-        CHECK(mine_gpu(miner, dg, b, p, 0, m, h) == cpu);
-        CHECK(mine_gpu(miner, dg, b, p, 0, m, h) == cpu);
-        const auto tail = mine_gpu(miner, dg, b, p, mid, m, h);
-        CHECK(std::equal(tail.begin(), tail.end(), cpu.begin() + std::ptrdiff_t(mid * p.bins.size())));
-        CHECK(mine_gpu(miner, dg, b, p, mid, mid, h).empty());
+  for (std::uint64_t seed = 100; seed < 130; ++seed)
+    for (const SelfLoops sl : {SelfLoops::keep, SelfLoops::drop}) {
+      const FuzzGraph fg = fuzz_graph(seed);
+      const GraphIndex idx(fg.src, fg.dst, fg.ts, fg.n, sl);
+      const DeviceGraph dg(idx.view());
+      const std::uint64_t m = fg.src.size(), mid = m / 3;
+      const BlockParams p{fg.window, {2, 3, 4, 5, 6, 8}};
+      for (Block b : kAllBlocks) {
+        if (b == Block::lcyc) continue;  // needs a work limit: the next test
+        std::vector<std::uint32_t> cpu(m * p.bins.size(), 0);
+        mine_cpu(idx.view(), b, p, 0, m, Schedule::dynamic, cpu.data());
+        for (std::uint32_t h : kThresholds) {
+          INFO("seed " << seed << " drop " << (sl == SelfLoops::drop) << " " << block_name(b) << " H=" << h);
+          CHECK(mine_gpu(miner, dg, b, p, 0, m, h) == cpu);
+          CHECK(mine_gpu(miner, dg, b, p, 0, m, h) == cpu);
+          const auto tail = mine_gpu(miner, dg, b, p, mid, m, h);
+          CHECK(std::equal(tail.begin(), tail.end(), cpu.begin() + std::ptrdiff_t(mid * p.bins.size())));
+          CHECK(mine_gpu(miner, dg, b, p, mid, mid, h).empty());
+        }
       }
     }
-  }
 }
 
 // SPEC v2 §8 S3: lcyc's CUDA rows equal the CPU's at every threshold, and a run over the work

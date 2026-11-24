@@ -187,20 +187,23 @@ DeviceGraph::DeviceGraph(const GraphView& h) : impl_(std::make_unique<Impl>()) {
     put(d.src, h.src, m);
     put(d.dst, h.dst, m);
     put(d.ts, h.ts, m);
+    // The lists hold off[n] entries: m, less the self-loops of an index that drops them (SPEC v3 R1).
     for (auto [dv, hv] : {std::pair{&d.out, &h.out}, std::pair{&d.in, &h.in}}) {
+      const std::uint64_t len = hv->off[n];
       put(dv->off, hv->off, n + 1);
-      put(dv->nbr, hv->nbr, m);
-      put(dv->ts, hv->ts, m);
-      put(dv->eid, hv->eid, m);
-      put(dv->prev_same, hv->prev_same, m);
+      put(dv->nbr, hv->nbr, len);
+      put(dv->ts, hv->ts, len);
+      put(dv->eid, hv->eid, len);
+      put(dv->prev_same, hv->prev_same, len);
     }
     for (auto [dv, hv, pairs] :
          {std::tuple{&d.pout, &h.pout, pairs_out}, std::tuple{&d.pin, &h.pin, pairs_in}}) {
+      const std::uint64_t len = hv->run[pairs];
       put(dv->off, hv->off, n + 1);
       put(dv->nbr, hv->nbr, pairs);
       put(dv->run, hv->run, pairs + 1);
-      put(dv->run_ts, hv->run_ts, m);
-      put(dv->run_eid, hv->run_eid, m);
+      put(dv->run_ts, hv->run_ts, len);
+      put(dv->run_eid, hv->run_eid, len);
     }
   };
   layout();

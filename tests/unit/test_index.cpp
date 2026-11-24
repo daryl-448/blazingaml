@@ -27,11 +27,19 @@ struct Entry {
   std::int32_t ts;
   std::uint32_t eid;
 };
-std::vector<Entry> naive_list(const FuzzGraph& g, std::uint32_t x, bool out) {
+// `drop`: without the self-loops (SelfLoops::drop, SPEC v3 R1).
+std::vector<Entry> naive_list(const FuzzGraph& g, std::uint32_t x, bool out, bool drop = false) {
   std::vector<Entry> l;
   for (std::uint32_t e = 0; e < g.src.size(); ++e)
-    if ((out ? g.src[e] : g.dst[e]) == x) l.push_back({out ? g.dst[e] : g.src[e], g.ts[e], e});
+    if ((out ? g.src[e] : g.dst[e]) == x && !(drop && g.src[e] == g.dst[e]))
+      l.push_back({out ? g.dst[e] : g.src[e], g.ts[e], e});
   return l;
+}
+
+std::uint64_t self_loops(const FuzzGraph& g) {
+  std::uint64_t k = 0;
+  for (std::uint32_t e = 0; e < g.src.size(); ++e) k += g.src[e] == g.dst[e];
+  return k;
 }
 
 bool in_bounds(const Entry& en, std::int64_t lo, std::int64_t hi, std::uint32_t max_eid) {
@@ -40,58 +48,65 @@ bool in_bounds(const Entry& en, std::int64_t lo, std::int64_t hi, std::uint32_t 
 
 }  // namespace
 
+// Under SelfLoops::drop the lists are the same without the self-loops, and m stays the stream's.
 TEST_CASE("index: T-CSR lists are the eid-ordered incident edges, prev_same links equal neighbours") {
-  for (std::uint64_t seed = 0; seed < 200; ++seed) {
-    const FuzzGraph fg = fuzz_graph(seed);
-    const GraphIndex idx(fg.src, fg.dst, fg.ts, fg.n);
-    const GraphView& g = idx.view();
-    REQUIRE(g.m == fg.src.size());
-    for (bool out : {true, false}) {
-      const TCsrView& t = out ? g.out : g.in;
-      REQUIRE(t.off[fg.n] == fg.src.size());
-      for (std::uint32_t x = 0; x < fg.n; ++x) {
-        const auto want = naive_list(fg, x, out);
-        REQUIRE(t.off[x + 1] - t.off[x] == want.size());
-        for (std::uint32_t k = 0; k < want.size(); ++k) {
-          const std::uint32_t j = t.off[x] + k;
-          INFO("seed " << seed << " x " << x << " k " << k);
-          CHECK(t.nbr[j] == want[k].nbr);
-          CHECK(t.ts[j] == want[k].ts);
-          CHECK(t.eid[j] == want[k].eid);
-          std::int32_t prev = -1;
-          for (std::uint32_t q = 0; q < k; ++q)
-            if (want[q].nbr == want[k].nbr) prev = std::int32_t(t.off[x] + q);
-          CHECK(t.prev_same[j] == prev);
+  for (std::uint64_t seed = 0; seed < 200; ++seed)
+    for (const SelfLoops sl : {SelfLoops::keep, SelfLoops::drop}) {
+      const bool drop = sl == SelfLoops::drop;
+      const FuzzGraph fg = fuzz_graph(seed);
+      const GraphIndex idx(fg.src, fg.dst, fg.ts, fg.n, sl);
+      const GraphView& g = idx.view();
+      REQUIRE(g.m == fg.src.size());
+      for (bool out : {true, false}) {
+        const TCsrView& t = out ? g.out : g.in;
+        REQUIRE(t.off[fg.n] == fg.src.size() - (drop ? self_loops(fg) : 0));
+        for (std::uint32_t x = 0; x < fg.n; ++x) {
+          const auto want = naive_list(fg, x, out, drop);
+          REQUIRE(t.off[x + 1] - t.off[x] == want.size());
+          for (std::uint32_t k = 0; k < want.size(); ++k) {
+            const std::uint32_t j = t.off[x] + k;
+            INFO("seed " << seed << " drop " << drop << " x " << x << " k " << k);
+            CHECK(t.nbr[j] == want[k].nbr);
+            CHECK(t.ts[j] == want[k].ts);
+            CHECK(t.eid[j] == want[k].eid);
+            std::int32_t prev = -1;
+            for (std::uint32_t q = 0; q < k; ++q)
+              if (want[q].nbr == want[k].nbr) prev = std::int32_t(t.off[x] + q);
+            CHECK(t.prev_same[j] == prev);
+          }
         }
       }
     }
-  }
 }
 
 TEST_CASE("index: P-CSR holds each node's distinct neighbours by id, each with its eid-ordered run") {
-  for (std::uint64_t seed = 0; seed < 200; ++seed) {
-    const FuzzGraph fg = fuzz_graph(seed);
-    const GraphIndex idx(fg.src, fg.dst, fg.ts, fg.n);
-    for (bool out : {true, false}) {
-      const PCsrView& p = out ? idx.view().pout : idx.view().pin;
-      for (std::uint32_t x = 0; x < fg.n; ++x) {
-        std::map<std::uint32_t, std::vector<Entry>> want;
-        for (const Entry& en : naive_list(fg, x, out)) want[en.nbr].push_back(en);
-        REQUIRE(p.off[x + 1] - p.off[x] == want.size());
-        std::uint32_t pair = p.off[x];
-        for (const auto& [y, run] : want) {
-          INFO("seed " << seed << " x " << x << " y " << y);
-          CHECK(p.nbr[pair] == y);
-          REQUIRE(p.run[pair + 1] - p.run[pair] == run.size());
-          for (std::uint32_t k = 0; k < run.size(); ++k) {
-            CHECK(p.run_ts[p.run[pair] + k] == run[k].ts);
-            CHECK(p.run_eid[p.run[pair] + k] == run[k].eid);
+  for (std::uint64_t seed = 0; seed < 200; ++seed)
+    for (const SelfLoops sl : {SelfLoops::keep, SelfLoops::drop}) {
+      const bool drop = sl == SelfLoops::drop;
+      const FuzzGraph fg = fuzz_graph(seed);
+      const GraphIndex idx(fg.src, fg.dst, fg.ts, fg.n, sl);
+      for (bool out : {true, false}) {
+        const PCsrView& p = out ? idx.view().pout : idx.view().pin;
+        REQUIRE(p.run[p.off[fg.n]] == fg.src.size() - (drop ? self_loops(fg) : 0));
+        for (std::uint32_t x = 0; x < fg.n; ++x) {
+          std::map<std::uint32_t, std::vector<Entry>> want;
+          for (const Entry& en : naive_list(fg, x, out, drop)) want[en.nbr].push_back(en);
+          REQUIRE(p.off[x + 1] - p.off[x] == want.size());
+          if (drop) CHECK(p.pair_exists(x, x, INT64_MIN, kNoUpper, kAnyEid) == kNoTs);
+          std::uint32_t pair = p.off[x];
+          for (const auto& [y, run] : want) {
+            INFO("seed " << seed << " drop " << drop << " x " << x << " y " << y);
+            CHECK(p.nbr[pair] == y);
+            REQUIRE(p.run[pair + 1] - p.run[pair] == run.size());
+            for (std::uint32_t k = 0; k < run.size(); ++k) {
+              CHECK(p.run_ts[p.run[pair] + k] == run[k].ts);
+              CHECK(p.run_eid[p.run[pair] + k] == run[k].eid);
+            }
+            ++pair;
           }
-          ++pair;
         }
       }
     }
-  }
 }
 
 TEST_CASE("primitives: range, distinct_first, pair_exists, pair_latest and the counts equal naive scans") {

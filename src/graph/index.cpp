@@ -8,7 +8,7 @@
 namespace blz {
 
 GraphIndex::GraphIndex(std::span<const std::uint32_t> src, std::span<const std::uint32_t> dst,
-                       std::span<const std::int32_t> ts, std::uint64_t n) {
+                       std::span<const std::int32_t> ts, std::uint64_t n, SelfLoops self_loops) {
   const std::uint64_t m = src.size();
   if (dst.size() != m || ts.size() != m) throw std::invalid_argument("index: src/dst/ts sizes differ");
   // Positions are u32 and prev_same is i32 (SPEC §5).
@@ -19,8 +19,8 @@ GraphIndex::GraphIndex(std::span<const std::uint32_t> src, std::span<const std::
     if (src[e] >= n || dst[e] >= n) throw std::invalid_argument("index: node id >= n");
     if (e > 0 && ts[e] < ts[e - 1]) throw std::invalid_argument("index: ts not sorted (SPEC §3.3)");
   }
-  build_tcsr(out_, src, dst, ts, n);
-  build_tcsr(in_, dst, src, ts, n);
+  build_tcsr(out_, src, dst, ts, n, self_loops);
+  build_tcsr(in_, dst, src, ts, n, self_loops);
   build_pcsr(pout_, out_, n);
   build_pcsr(pin_, in_, n);
 
@@ -44,17 +44,21 @@ GraphIndex::GraphIndex(std::span<const std::uint32_t> src, std::span<const std::
 // Counting sort of the edges by `key` (src for out-lists, dst for in-lists). Edges are visited in
 // eid order, so every list is sorted by eid, hence by ts.
 void GraphIndex::build_tcsr(TCsr& t, std::span<const std::uint32_t> key, std::span<const std::uint32_t> nbr,
-                            std::span<const std::int32_t> ts, std::uint64_t n) {
+                            std::span<const std::int32_t> ts, std::uint64_t n, SelfLoops self_loops) {
   const std::uint64_t m = key.size();
+  const bool drop = self_loops == SelfLoops::drop;
   t.off.assign(n + 1, 0);
-  for (std::uint64_t e = 0; e < m; ++e) ++t.off[key[e] + 1];
+  for (std::uint64_t e = 0; e < m; ++e)
+    if (!drop || key[e] != nbr[e]) ++t.off[key[e] + 1];
   std::partial_sum(t.off.begin(), t.off.end(), t.off.begin());
-  t.nbr.resize(m);
-  t.eid.resize(m);
-  t.ts.resize(m);
-  t.prev_same.resize(m);
+  const std::uint64_t len = t.off[n];
+  t.nbr.resize(len);
+  t.eid.resize(len);
+  t.ts.resize(len);
+  t.prev_same.resize(len);
   std::vector<std::uint32_t> cursor(t.off.begin(), t.off.end() - 1);
   for (std::uint64_t e = 0; e < m; ++e) {
+    if (drop && key[e] == nbr[e]) continue;
     const std::uint32_t j = cursor[key[e]]++;
     t.nbr[j] = nbr[e];
     t.eid[j] = std::uint32_t(e);
