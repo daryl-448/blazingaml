@@ -156,6 +156,7 @@ add_library(blz_core
   src/runtime/metamorphic.cpp
   src/runtime/coverage.cpp
   src/runtime/vstats.cpp
+  src/runtime/clean_vstats.cpp
   src/runtime/fusion.cpp
   src/runtime/widen.cpp
   src/oracle/oracle.cpp
@@ -164,10 +165,12 @@ add_library(blz_core
   src/ml/metrics.cpp)
 # SPEC v2 §8 S2, SPEC v3 R8: no fused multiply-add in the vertex statistics, so CPU = CUDA = the
 # clean oracle bit for bit.
-set_source_files_properties(src/runtime/vstats.cpp src/oracle/clean_oracle.cpp PROPERTIES COMPILE_OPTIONS -ffp-contract=off)
+set_source_files_properties(src/runtime/vstats.cpp src/runtime/clean_vstats.cpp src/oracle/clean_oracle.cpp
+  PROPERTIES COMPILE_OPTIONS -ffp-contract=off)
 if(BLZ_ENABLE_CUDA)
-  target_sources(blz_core PRIVATE src/runtime/vstats_cuda.cu)
-  set_source_files_properties(src/runtime/vstats_cuda.cu PROPERTIES COMPILE_OPTIONS --fmad=false)
+  target_sources(blz_core PRIVATE src/runtime/vstats_cuda.cu src/runtime/clean_vstats_cuda.cu)
+  set_source_files_properties(src/runtime/vstats_cuda.cu src/runtime/clean_vstats_cuda.cu PROPERTIES COMPILE_OPTIONS
+    --fmad=false)
   target_sources(blz_core PRIVATE src/runtime/cuda_backend.cu)
 else()
   target_sources(blz_core PRIVATE src/runtime/cuda_backend_stub.cpp)
