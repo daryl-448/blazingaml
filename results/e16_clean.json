@@ -1,0 +1,5432 @@
+{
+ "experiment": "E16",
+ "spec": "SPEC v3 \u00a73.6",
+ "dataset": "HI-Small",
+ "git": {
+  "sha": "bfb6691e489924225615b2ea8e7869854d0a541d",
+  "dirty": true
+ },
+ "machine": "local (archlinux, AMD Ryzen 5 3600 6-Core Processor, 12 threads, 15910 MB)",
+ "started": "2026-11-24T19:32:12+00:00",
+ "blzg_sha256": "9ac57fd28ffab886fde92191f8672a83f4da9ea6d0c2a0b93d54498fa04002c1",
+ "split": {
+  "m": 5078345,
+  "fit": [
+   0,
+   3047216
+  ],
+  "val": [
+   3047216,
+   4062463
+  ],
+  "fit_positives": 2299,
+  "val_positives": 1080,
+  "eid_4062676_starts_a_timestamp": false,
+  "note": "Eid 4,062,676 does not start a timestamp: ts 663,120 holds eids [4,062,463, 4,062,781), so clean validation ends at 4,062,463 (SPEC v3 \u00a76.3). Its 213 rows below 4,062,676 (1 positive) are scored nowhere; every fit here, legacy ones included, uses the same range."
+ },
+ "vstats_window": 86400,
+ "runs": {
+  "clean": {
+   "dir": "features/e16/clean",
+   "profile": "clean_e16",
+   "quirks": "none",
+   "profile_id": "e4a517e1a417f72e",
+   "wall_s": 174.3,
+   "peak_rss_mb": 420,
+   "load_before": "01:59:18 up 14:37,  1 user,  load average: 0.82, 0.77, 6.60"
+  },
+  "Q1": {
+   "dir": "features/e16/q1",
+   "profile": "clean_e16",
+   "quirks": "Q1",
+   "profile_id": "e4a517e1a417f72e",
+   "wall_s": 175.3,
+   "peak_rss_mb": 420,
+   "load_before": "02:06:48 up 14:45,  1 user,  load average: 6.68, 7.85, 8.04"
+  },
+  "Q2": {
+   "dir": "features/e16/q2",
+   "profile": "clean_e16",
+   "quirks": "Q2",
+   "profile_id": "e4a517e1a417f72e",
+   "wall_s": 174.8,
+   "peak_rss_mb": 420,
+   "load_before": "02:09:44 up 14:47,  1 user,  load average: 10.17, 9.29, 8.60"
+  },
+  "Q3": {
+   "dir": "features/e16/q3",
+   "profile": "clean_e16",
+   "quirks": "Q3",
+   "profile_id": "e4a517e1a417f72e",
+   "wall_s": 176.8,
+   "peak_rss_mb": 419,
+   "load_before": "02:12:39 up 14:50,  1 user,  load average: 9.45, 9.85, 8.97"
+  },
+  "Q4": {
+   "dir": "features/e16/q4",
+   "profile": "clean_e16",
+   "quirks": "Q4",
+   "profile_id": "e4a517e1a417f72e",
+   "wall_s": 176.0,
+   "peak_rss_mb": 420,
+   "load_before": "02:15:35 up 14:53,  1 user,  load average: 11.89, 10.77, 9.48"
+  },
+  "Q5": {
+   "dir": "features/e16/q5",
+   "profile": "clean_e16",
+   "quirks": "Q5",
+   "profile_id": "e4a517e1a417f72e",
+   "wall_s": 177.6,
+   "peak_rss_mb": 419,
+   "load_before": "02:18:31 up 14:56,  1 user,  load average: 12.65, 11.62, 10.03"
+  },
+  "Q6": {
+   "dir": "features/e16/q6",
+   "profile": "clean_e16",
+   "quirks": "Q6",
+   "profile_id": "e4a517e1a417f72e",
+   "wall_s": 177.8,
+   "peak_rss_mb": 420,
+   "load_before": "02:21:29 up 14:59,  1 user,  load average: 11.42, 11.63, 10.32"
+  },
+  "Q7": {
+   "dir": "features/e16/q7",
+   "profile": "clean_e16_q7",
+   "quirks": "none",
+   "profile_id": "a72df4f93f0c6602",
+   "wall_s": 172.1,
+   "peak_rss_mb": 419,
+   "load_before": "02:24:27 up 15:02,  1 user,  load average: 12.12, 11.88, 10.65"
+  },
+  "Q8": {
+   "dir": "features/e16/q8",
+   "profile": "clean_e16_q8",
+   "quirks": "none",
+   "profile_id": "c4bb497f30e6c36b",
+   "wall_s": 178.3,
+   "peak_rss_mb": 458,
+   "load_before": "02:27:19 up 15:05,  1 user,  load average: 11.19, 11.73, 10.81"
+  },
+  "Q9": {
+   "dir": "features/e16/q9",
+   "profile": "clean_e16",
+   "quirks": "Q9",
+   "profile_id": "e4a517e1a417f72e",
+   "wall_s": 175.1,
+   "peak_rss_mb": 422,
+   "load_before": "02:30:17 up 15:08,  1 user,  load average: 12.21, 11.93, 11.05"
+  },
+  "Q10": {
+   "dir": "features/e16/q10",
+   "profile": "clean_e16",
+   "quirks": "Q10",
+   "profile_id": "e4a517e1a417f72e",
+   "wall_s": 148.6,
+   "peak_rss_mb": 426,
+   "load_before": "02:33:12 up 15:11,  1 user,  load average: 11.88, 11.82, 11.15"
+  },
+  "all": {
+   "dir": "features/e16/all",
+   "profile": "clean_e16",
+   "quirks": "all",
+   "profile_id": "e4a517e1a417f72e",
+   "wall_s": 146.2,
+   "peak_rss_mb": 426,
+   "load_before": "02:35:41 up 15:13,  1 user,  load average: 11.19, 11.55, 11.15"
+  },
+  "all+Q8": {
+   "dir": "features/e16/all_q8",
+   "profile": "clean_e16_q8",
+   "quirks": "all",
+   "profile_id": "c4bb497f30e6c36b",
+   "wall_s": 147.4,
+   "peak_rss_mb": 458,
+   "load_before": "02:03:47 up 14:42,  1 user,  load average: 10.03, 6.80, 7.73"
+  },
+  "v1_e16": {
+   "dir": "features/e16/v1_e16",
+   "profile": "v1_e16",
+   "quirks": "legacy path",
+   "profile_id": "e37411d6ff76022d",
+   "wall_s": 94.9,
+   "peak_rss_mb": 437,
+   "load_before": "02:02:12 up 14:40,  1 user,  load average: 11.16, 5.47, 7.44",
+   "vstats": {
+    "dir": "features/e16/v1_e16_vstats",
+    "command": "blz vstats --window 86400 --backend cpu",
+    "wall_s": 11.8,
+    "peak_rss_mb": 684,
+    "load_before": "02:03:35 up 14:41,  1 user,  load average: 11.67, 7.00, 7.80"
+   }
+  }
+ },
+ "blocks": {
+  "clean": {
+   "deg_in": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 18211911083083195014,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 8799063,
+     "active_ge2": 1944976,
+     "active_ge2_pos": 1513,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.6581
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 3865939,
+     "active_ge2": 838673,
+     "active_ge2_pos": 733,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.6787
+    }
+   },
+   "deg_out": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 9524113901528553380,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 2228461801,
+     "active_ge2": 2055232,
+     "active_ge2_pos": 1179,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.5128
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 1071767514,
+     "active_ge2": 899965,
+     "active_ge2_pos": 646,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.5981
+    }
+   },
+   "fan_in": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 989329027223035354,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 4351359,
+     "active_ge2": 958882,
+     "active_ge2_pos": 1282,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.5576
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 1592828,
+     "active_ge2": 340119,
+     "active_ge2_pos": 621,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.575
+    }
+   },
+   "fan_out": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 11183728284829485247,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 977466931,
+     "active_ge2": 1492715,
+     "active_ge2_pos": 1066,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.4637
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 444144722,
+     "active_ge2": 663664,
+     "active_ge2_pos": 585,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.5417
+    }
+   },
+   "lcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 7087469534045282803,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 618,
+     "active_pos": 82,
+     "instances": 637,
+     "active_pos_share": 0.0357
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 254,
+     "active_pos": 39,
+     "instances": 262,
+     "active_pos_share": 0.0361
+    }
+   },
+   "sg": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 884033388477590431,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 467,
+     "active_pos": 2,
+     "instances": 483,
+     "active_pos_share": 0.0009
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 108,
+     "active_pos": 0,
+     "instances": 108,
+     "active_pos_share": 0.0
+    }
+   },
+   "sg_ord": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 3889885039108109068,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 138,
+     "active_pos": 1,
+     "instances": 151,
+     "active_pos_share": 0.0004
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 31,
+     "active_pos": 0,
+     "instances": 31,
+     "active_pos_share": 0.0
+    }
+   },
+   "tcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 11166385018636528593,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 599,
+     "active_pos": 81,
+     "instances": 610,
+     "active_pos_share": 0.0352
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 251,
+     "active_pos": 36,
+     "instances": 253,
+     "active_pos_share": 0.0333
+    }
+   },
+   "vstats": {
+    "kind": "vstats",
+    "columns": 52,
+    "hash": 17116854999687057760,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2680775,
+     "active_pos": 2299,
+     "nan": 0,
+     "clipped": 0,
+     "active_pos_share": 1.0
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 1014434,
+     "active_pos": 1080,
+     "nan": 0,
+     "clipped": 0,
+     "active_pos_share": 1.0
+    }
+   }
+  },
+  "Q1": {
+   "deg_in": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 18211911083083195014,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 8799063,
+     "active_ge2": 1944976,
+     "active_ge2_pos": 1513,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.6581
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 3865939,
+     "active_ge2": 838673,
+     "active_ge2_pos": 733,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.6787
+    }
+   },
+   "deg_out": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 9524113901528553380,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 2228461801,
+     "active_ge2": 2055232,
+     "active_ge2_pos": 1179,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.5128
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 1071767514,
+     "active_ge2": 899965,
+     "active_ge2_pos": 646,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.5981
+    }
+   },
+   "fan_in": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 989329027223035354,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 4351359,
+     "active_ge2": 958882,
+     "active_ge2_pos": 1282,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.5576
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 1592828,
+     "active_ge2": 340119,
+     "active_ge2_pos": 621,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.575
+    }
+   },
+   "fan_out": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 11183728284829485247,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 977466931,
+     "active_ge2": 1492715,
+     "active_ge2_pos": 1066,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.4637
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 444144722,
+     "active_ge2": 663664,
+     "active_ge2_pos": 585,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.5417
+    }
+   },
+   "lcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 7087469534045282803,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 618,
+     "active_pos": 82,
+     "instances": 637,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0357
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 254,
+     "active_pos": 39,
+     "instances": 262,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0361
+    }
+   },
+   "sg": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 5308224323152256920,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 548,
+     "active_pos": 2,
+     "instances": 568,
+     "changed": 81,
+     "changed_pos": 0,
+     "active_pos_share": 0.0009
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 108,
+     "active_pos": 0,
+     "instances": 108,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "sg_ord": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 4681218689460242986,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 144,
+     "active_pos": 1,
+     "instances": 161,
+     "changed": 6,
+     "changed_pos": 0,
+     "active_pos_share": 0.0004
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 31,
+     "active_pos": 0,
+     "instances": 31,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "tcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 11166385018636528593,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 599,
+     "active_pos": 81,
+     "instances": 610,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0352
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 251,
+     "active_pos": 36,
+     "instances": 253,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0333
+    }
+   },
+   "vstats": {
+    "kind": "vstats",
+    "columns": 52,
+    "hash": 17116854999687057760,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2680775,
+     "active_pos": 2299,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 0,
+     "changed_pos": 0,
+     "changed_fan_deg_ratio": 0,
+     "changed_time": 0,
+     "changed_amount": 0,
+     "active_pos_share": 1.0
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 1014434,
+     "active_pos": 1080,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 0,
+     "changed_pos": 0,
+     "changed_fan_deg_ratio": 0,
+     "changed_time": 0,
+     "changed_amount": 0,
+     "active_pos_share": 1.0
+    }
+   }
+  },
+  "Q2": {
+   "deg_in": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 18211911083083195014,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 8799063,
+     "active_ge2": 1944976,
+     "active_ge2_pos": 1513,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.6581
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 3865939,
+     "active_ge2": 838673,
+     "active_ge2_pos": 733,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.6787
+    }
+   },
+   "deg_out": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 9524113901528553380,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 2228461801,
+     "active_ge2": 2055232,
+     "active_ge2_pos": 1179,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.5128
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 1071767514,
+     "active_ge2": 899965,
+     "active_ge2_pos": 646,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.5981
+    }
+   },
+   "fan_in": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 989329027223035354,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 4351359,
+     "active_ge2": 958882,
+     "active_ge2_pos": 1282,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.5576
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 1592828,
+     "active_ge2": 340119,
+     "active_ge2_pos": 621,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.575
+    }
+   },
+   "fan_out": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 11183728284829485247,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 977466931,
+     "active_ge2": 1492715,
+     "active_ge2_pos": 1066,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.4637
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 444144722,
+     "active_ge2": 663664,
+     "active_ge2_pos": 585,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.5417
+    }
+   },
+   "lcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 7087469534045282803,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 618,
+     "active_pos": 82,
+     "instances": 637,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0357
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 254,
+     "active_pos": 39,
+     "instances": 262,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0361
+    }
+   },
+   "sg": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 884033388477590431,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 467,
+     "active_pos": 2,
+     "instances": 483,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0009
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 108,
+     "active_pos": 0,
+     "instances": 108,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "sg_ord": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 3889885039108109068,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 138,
+     "active_pos": 1,
+     "instances": 151,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0004
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 31,
+     "active_pos": 0,
+     "instances": 31,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "tcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 11166385018636528593,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 599,
+     "active_pos": 81,
+     "instances": 610,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0352
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 251,
+     "active_pos": 36,
+     "instances": 253,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0333
+    }
+   },
+   "vstats": {
+    "kind": "vstats",
+    "columns": 52,
+    "hash": 16903887920953114133,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 3047216,
+     "active_pos": 2299,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 1432535,
+     "changed_pos": 1194,
+     "changed_fan_deg_ratio": 1432535,
+     "changed_time": 1137191,
+     "changed_amount": 1432535,
+     "active_pos_share": 1.0
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 1015247,
+     "active_pos": 1080,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 83787,
+     "changed_pos": 500,
+     "changed_fan_deg_ratio": 83787,
+     "changed_time": 82248,
+     "changed_amount": 83787,
+     "active_pos_share": 1.0
+    }
+   }
+  },
+  "Q3": {
+   "deg_in": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 18211911083083195014,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 8799063,
+     "active_ge2": 1944976,
+     "active_ge2_pos": 1513,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.6581
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 3865939,
+     "active_ge2": 838673,
+     "active_ge2_pos": 733,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.6787
+    }
+   },
+   "deg_out": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 9524113901528553380,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 2228461801,
+     "active_ge2": 2055232,
+     "active_ge2_pos": 1179,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.5128
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 1071767514,
+     "active_ge2": 899965,
+     "active_ge2_pos": 646,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.5981
+    }
+   },
+   "fan_in": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 989329027223035354,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 4351359,
+     "active_ge2": 958882,
+     "active_ge2_pos": 1282,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.5576
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 1592828,
+     "active_ge2": 340119,
+     "active_ge2_pos": 621,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.575
+    }
+   },
+   "fan_out": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 11183728284829485247,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 977466931,
+     "active_ge2": 1492715,
+     "active_ge2_pos": 1066,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.4637
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 444144722,
+     "active_ge2": 663664,
+     "active_ge2_pos": 585,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.5417
+    }
+   },
+   "lcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 9717565363251746754,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 619,
+     "active_pos": 82,
+     "instances": 638,
+     "changed": 1,
+     "changed_pos": 0,
+     "active_pos_share": 0.0357
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 254,
+     "active_pos": 39,
+     "instances": 262,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0361
+    }
+   },
+   "sg": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 17992083997742264766,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 469,
+     "active_pos": 2,
+     "instances": 485,
+     "changed": 2,
+     "changed_pos": 0,
+     "active_pos_share": 0.0009
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 109,
+     "active_pos": 0,
+     "instances": 109,
+     "changed": 1,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "sg_ord": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 16129678163985004972,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 138,
+     "active_pos": 1,
+     "instances": 151,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0004
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 31,
+     "active_pos": 0,
+     "instances": 31,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "tcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 7737672036140136160,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 600,
+     "active_pos": 81,
+     "instances": 611,
+     "changed": 1,
+     "changed_pos": 0,
+     "active_pos_share": 0.0352
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 251,
+     "active_pos": 36,
+     "instances": 253,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0333
+    }
+   },
+   "vstats": {
+    "kind": "vstats",
+    "columns": 52,
+    "hash": 17116854999687057760,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2680775,
+     "active_pos": 2299,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 0,
+     "changed_pos": 0,
+     "changed_fan_deg_ratio": 0,
+     "changed_time": 0,
+     "changed_amount": 0,
+     "active_pos_share": 1.0
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 1014434,
+     "active_pos": 1080,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 0,
+     "changed_pos": 0,
+     "changed_fan_deg_ratio": 0,
+     "changed_time": 0,
+     "changed_amount": 0,
+     "active_pos_share": 1.0
+    }
+   }
+  },
+  "Q4": {
+   "deg_in": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 14871500217657456369,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 8723769,
+     "active_ge2": 1929300,
+     "active_ge2_pos": 1504,
+     "changed": 68584,
+     "changed_pos": 55,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.6542
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 3835741,
+     "active_ge2": 833506,
+     "active_ge2_pos": 731,
+     "changed": 27360,
+     "changed_pos": 15,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.6769
+    }
+   },
+   "deg_out": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 5995181483340669076,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 2227351070,
+     "active_ge2": 2045383,
+     "active_ge2_pos": 1179,
+     "changed": 229662,
+     "changed_pos": 264,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.5128
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 1071376198,
+     "active_ge2": 897447,
+     "active_ge2_pos": 646,
+     "changed": 95249,
+     "changed_pos": 99,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.5981
+    }
+   },
+   "fan_in": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 17954502949444648770,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 4331741,
+     "active_ge2": 957690,
+     "active_ge2_pos": 1277,
+     "changed": 13560,
+     "changed_pos": 46,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.5555
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 1585107,
+     "active_ge2": 339809,
+     "active_ge2_pos": 621,
+     "changed": 5128,
+     "changed_pos": 13,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.575
+    }
+   },
+   "fan_out": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 17198597561476074526,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 977093869,
+     "active_ge2": 1491831,
+     "active_ge2_pos": 1066,
+     "changed": 114103,
+     "changed_pos": 167,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.4637
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 444053348,
+     "active_ge2": 663475,
+     "active_ge2_pos": 585,
+     "changed": 39308,
+     "changed_pos": 54,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.5417
+    }
+   },
+   "lcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 7087469534045282803,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 618,
+     "active_pos": 82,
+     "instances": 637,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0357
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 254,
+     "active_pos": 39,
+     "instances": 262,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0361
+    }
+   },
+   "sg": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 14748830167310990431,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 465,
+     "active_pos": 2,
+     "instances": 481,
+     "changed": 2,
+     "changed_pos": 0,
+     "active_pos_share": 0.0009
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 108,
+     "active_pos": 0,
+     "instances": 108,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "sg_ord": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 14534956927128151276,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 137,
+     "active_pos": 1,
+     "instances": 150,
+     "changed": 1,
+     "changed_pos": 0,
+     "active_pos_share": 0.0004
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 31,
+     "active_pos": 0,
+     "instances": 31,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "tcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 11166385018636528593,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 599,
+     "active_pos": 81,
+     "instances": 610,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0352
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 251,
+     "active_pos": 36,
+     "instances": 253,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0333
+    }
+   },
+   "vstats": {
+    "kind": "vstats",
+    "columns": 52,
+    "hash": 908637852355168524,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2676142,
+     "active_pos": 2299,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 288914,
+     "changed_pos": 313,
+     "changed_fan_deg_ratio": 288914,
+     "changed_time": 272018,
+     "changed_amount": 288914,
+     "active_pos_share": 1.0
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 1013767,
+     "active_pos": 1080,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 117361,
+     "changed_pos": 115,
+     "changed_fan_deg_ratio": 117361,
+     "changed_time": 113486,
+     "changed_amount": 117361,
+     "active_pos_share": 1.0
+    }
+   }
+  },
+  "Q5": {
+   "deg_in": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 18211911083083195014,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 8799063,
+     "active_ge2": 1944976,
+     "active_ge2_pos": 1513,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.6581
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 3865939,
+     "active_ge2": 838673,
+     "active_ge2_pos": 733,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.6787
+    }
+   },
+   "deg_out": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 9524113901528553380,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 2228461801,
+     "active_ge2": 2055232,
+     "active_ge2_pos": 1179,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.5128
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 1071767514,
+     "active_ge2": 899965,
+     "active_ge2_pos": 646,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.5981
+    }
+   },
+   "fan_in": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 989329027223035354,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 4351359,
+     "active_ge2": 958882,
+     "active_ge2_pos": 1282,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.5576
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 1592828,
+     "active_ge2": 340119,
+     "active_ge2_pos": 621,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.575
+    }
+   },
+   "fan_out": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 11183728284829485247,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 977466931,
+     "active_ge2": 1492715,
+     "active_ge2_pos": 1066,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.4637
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 444144722,
+     "active_ge2": 663664,
+     "active_ge2_pos": 585,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.5417
+    }
+   },
+   "lcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 7087469534045282803,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 618,
+     "active_pos": 82,
+     "instances": 637,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0357
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 254,
+     "active_pos": 39,
+     "instances": 262,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0361
+    }
+   },
+   "sg": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 884033388477590431,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 467,
+     "active_pos": 2,
+     "instances": 483,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0009
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 108,
+     "active_pos": 0,
+     "instances": 108,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "sg_ord": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 14398247903834825741,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 135,
+     "active_pos": 1,
+     "instances": 148,
+     "changed": 3,
+     "changed_pos": 0,
+     "active_pos_share": 0.0004
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 31,
+     "active_pos": 0,
+     "instances": 31,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "tcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 11166385018636528593,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 599,
+     "active_pos": 81,
+     "instances": 610,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0352
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 251,
+     "active_pos": 36,
+     "instances": 253,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0333
+    }
+   },
+   "vstats": {
+    "kind": "vstats",
+    "columns": 52,
+    "hash": 17116854999687057760,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2680775,
+     "active_pos": 2299,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 0,
+     "changed_pos": 0,
+     "changed_fan_deg_ratio": 0,
+     "changed_time": 0,
+     "changed_amount": 0,
+     "active_pos_share": 1.0
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 1014434,
+     "active_pos": 1080,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 0,
+     "changed_pos": 0,
+     "changed_fan_deg_ratio": 0,
+     "changed_time": 0,
+     "changed_amount": 0,
+     "active_pos_share": 1.0
+    }
+   }
+  },
+  "Q6": {
+   "deg_in": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 18211911083083195014,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 8799063,
+     "active_ge2": 1944976,
+     "active_ge2_pos": 1513,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.6581
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 3865939,
+     "active_ge2": 838673,
+     "active_ge2_pos": 733,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.6787
+    }
+   },
+   "deg_out": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 9524113901528553380,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 2228461801,
+     "active_ge2": 2055232,
+     "active_ge2_pos": 1179,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.5128
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 1071767514,
+     "active_ge2": 899965,
+     "active_ge2_pos": 646,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.5981
+    }
+   },
+   "fan_in": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 989329027223035354,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 4351359,
+     "active_ge2": 958882,
+     "active_ge2_pos": 1282,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.5576
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 1592828,
+     "active_ge2": 340119,
+     "active_ge2_pos": 621,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.575
+    }
+   },
+   "fan_out": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 11183728284829485247,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 977466931,
+     "active_ge2": 1492715,
+     "active_ge2_pos": 1066,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.4637
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 444144722,
+     "active_ge2": 663664,
+     "active_ge2_pos": 585,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.5417
+    }
+   },
+   "lcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 7087469534045282803,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 618,
+     "active_pos": 82,
+     "instances": 637,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0357
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 254,
+     "active_pos": 39,
+     "instances": 262,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0361
+    }
+   },
+   "sg": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 884033388477590431,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 467,
+     "active_pos": 2,
+     "instances": 483,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0009
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 108,
+     "active_pos": 0,
+     "instances": 108,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "sg_ord": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 3889885039108109068,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 138,
+     "active_pos": 1,
+     "instances": 151,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0004
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 31,
+     "active_pos": 0,
+     "instances": 31,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "tcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 11166385018636528593,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 599,
+     "active_pos": 81,
+     "instances": 610,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0352
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 251,
+     "active_pos": 36,
+     "instances": 253,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0333
+    }
+   },
+   "vstats": {
+    "kind": "vstats",
+    "columns": 52,
+    "hash": 17116854999687057760,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2680775,
+     "active_pos": 2299,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 0,
+     "changed_pos": 0,
+     "changed_fan_deg_ratio": 0,
+     "changed_time": 0,
+     "changed_amount": 0,
+     "active_pos_share": 1.0
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 1014434,
+     "active_pos": 1080,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 0,
+     "changed_pos": 0,
+     "changed_fan_deg_ratio": 0,
+     "changed_time": 0,
+     "changed_amount": 0,
+     "active_pos_share": 1.0
+    }
+   }
+  },
+  "Q7": {
+   "deg_in": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 18211911083083195014,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 8799063,
+     "active_ge2": 1944976,
+     "active_ge2_pos": 1513,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.6581
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 3865939,
+     "active_ge2": 838673,
+     "active_ge2_pos": 733,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.6787
+    }
+   },
+   "deg_out": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 9524113901528553380,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 2228461801,
+     "active_ge2": 2055232,
+     "active_ge2_pos": 1179,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.5128
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 1071767514,
+     "active_ge2": 899965,
+     "active_ge2_pos": 646,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.5981
+    }
+   },
+   "fan_in": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 989329027223035354,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 4351359,
+     "active_ge2": 958882,
+     "active_ge2_pos": 1282,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.5576
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 1592828,
+     "active_ge2": 340119,
+     "active_ge2_pos": 621,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.575
+    }
+   },
+   "fan_out": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 11183728284829485247,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 977466931,
+     "active_ge2": 1492715,
+     "active_ge2_pos": 1066,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.4637
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 444144722,
+     "active_ge2": 663664,
+     "active_ge2_pos": 585,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.5417
+    }
+   },
+   "lcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 7087469534045282803,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 618,
+     "active_pos": 82,
+     "instances": 637,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0357
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 254,
+     "active_pos": 39,
+     "instances": 262,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0361
+    }
+   },
+   "sg": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 884033388477590431,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 467,
+     "active_pos": 2,
+     "instances": 483,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0009
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 108,
+     "active_pos": 0,
+     "instances": 108,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "tcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 11166385018636528593,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 599,
+     "active_pos": 81,
+     "instances": 610,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0352
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 251,
+     "active_pos": 36,
+     "instances": 253,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0333
+    }
+   },
+   "vstats": {
+    "kind": "vstats",
+    "columns": 52,
+    "hash": 17116854999687057760,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2680775,
+     "active_pos": 2299,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 0,
+     "changed_pos": 0,
+     "changed_fan_deg_ratio": 0,
+     "changed_time": 0,
+     "changed_amount": 0,
+     "active_pos_share": 1.0
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 1014434,
+     "active_pos": 1080,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 0,
+     "changed_pos": 0,
+     "changed_fan_deg_ratio": 0,
+     "changed_time": 0,
+     "changed_amount": 0,
+     "active_pos_share": 1.0
+    }
+   }
+  },
+  "Q8": {
+   "deg_in": {
+    "kind": "histogram",
+    "columns": 12,
+    "hash": 14097460695540745779,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 1944976,
+     "active_pos": 1513,
+     "instances": 1944976,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.6581
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 838673,
+     "active_pos": 733,
+     "instances": 838673,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.6787
+    }
+   },
+   "deg_out": {
+    "kind": "histogram",
+    "columns": 12,
+    "hash": 1782235892802320130,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2055232,
+     "active_pos": 1179,
+     "instances": 2055232,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.5128
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 899965,
+     "active_pos": 646,
+     "instances": 899965,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.5981
+    }
+   },
+   "fan_in": {
+    "kind": "histogram",
+    "columns": 12,
+    "hash": 13428913011139905234,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 958882,
+     "active_pos": 1282,
+     "instances": 958882,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.5576
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 340119,
+     "active_pos": 621,
+     "instances": 340119,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.575
+    }
+   },
+   "fan_out": {
+    "kind": "histogram",
+    "columns": 12,
+    "hash": 10334345576759292274,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 1492715,
+     "active_pos": 1066,
+     "instances": 1492715,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.4637
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 663664,
+     "active_pos": 585,
+     "instances": 663664,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.5417
+    }
+   },
+   "lcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 7087469534045282803,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 618,
+     "active_pos": 82,
+     "instances": 637,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0357
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 254,
+     "active_pos": 39,
+     "instances": 262,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0361
+    }
+   },
+   "sg": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 884033388477590431,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 467,
+     "active_pos": 2,
+     "instances": 483,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0009
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 108,
+     "active_pos": 0,
+     "instances": 108,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "sg_ord": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 3889885039108109068,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 138,
+     "active_pos": 1,
+     "instances": 151,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0004
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 31,
+     "active_pos": 0,
+     "instances": 31,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "tcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 11166385018636528593,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 599,
+     "active_pos": 81,
+     "instances": 610,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0352
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 251,
+     "active_pos": 36,
+     "instances": 253,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0333
+    }
+   },
+   "vstats": {
+    "kind": "vstats",
+    "columns": 52,
+    "hash": 17116854999687057760,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2680775,
+     "active_pos": 2299,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 0,
+     "changed_pos": 0,
+     "changed_fan_deg_ratio": 0,
+     "changed_time": 0,
+     "changed_amount": 0,
+     "active_pos_share": 1.0
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 1014434,
+     "active_pos": 1080,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 0,
+     "changed_pos": 0,
+     "changed_fan_deg_ratio": 0,
+     "changed_time": 0,
+     "changed_amount": 0,
+     "active_pos_share": 1.0
+    }
+   }
+  },
+  "Q9": {
+   "deg_in": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 18211911083083195014,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 8799063,
+     "active_ge2": 1944976,
+     "active_ge2_pos": 1513,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.6581
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 3865939,
+     "active_ge2": 838673,
+     "active_ge2_pos": 733,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.6787
+    }
+   },
+   "deg_out": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 9524113901528553380,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 2228461801,
+     "active_ge2": 2055232,
+     "active_ge2_pos": 1179,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.5128
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 1071767514,
+     "active_ge2": 899965,
+     "active_ge2_pos": 646,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.5981
+    }
+   },
+   "fan_in": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 989329027223035354,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 4351359,
+     "active_ge2": 958882,
+     "active_ge2_pos": 1282,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.5576
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 1592828,
+     "active_ge2": 340119,
+     "active_ge2_pos": 621,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.575
+    }
+   },
+   "fan_out": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 11183728284829485247,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 977466931,
+     "active_ge2": 1492715,
+     "active_ge2_pos": 1066,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.4637
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 444144722,
+     "active_ge2": 663664,
+     "active_ge2_pos": 585,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.5417
+    }
+   },
+   "lcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 7087469534045282803,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 618,
+     "active_pos": 82,
+     "instances": 637,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0357
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 254,
+     "active_pos": 39,
+     "instances": 262,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0361
+    }
+   },
+   "sg": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 884033388477590431,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 467,
+     "active_pos": 2,
+     "instances": 483,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0009
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 108,
+     "active_pos": 0,
+     "instances": 108,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "sg_ord": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 3889885039108109068,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 138,
+     "active_pos": 1,
+     "instances": 151,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0004
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 31,
+     "active_pos": 0,
+     "instances": 31,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "tcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 11166385018636528593,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 599,
+     "active_pos": 81,
+     "instances": 610,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0352
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 251,
+     "active_pos": 36,
+     "instances": 253,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0333
+    }
+   },
+   "vstats": {
+    "kind": "vstats",
+    "columns": 52,
+    "hash": 9443627767473624442,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2680776,
+     "active_pos": 2299,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 171008,
+     "changed_pos": 224,
+     "changed_fan_deg_ratio": 171008,
+     "changed_time": 171008,
+     "changed_amount": 171008,
+     "active_pos_share": 1.0
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 1014436,
+     "active_pos": 1080,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 98150,
+     "changed_pos": 133,
+     "changed_fan_deg_ratio": 98150,
+     "changed_time": 98150,
+     "changed_amount": 98150,
+     "active_pos_share": 1.0
+    }
+   }
+  },
+  "Q10": {
+   "deg_in": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 18211911083083195014,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 8799063,
+     "active_ge2": 1944976,
+     "active_ge2_pos": 1513,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.6581
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 3865939,
+     "active_ge2": 838673,
+     "active_ge2_pos": 733,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.6787
+    }
+   },
+   "deg_out": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 9524113901528553380,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 2228461801,
+     "active_ge2": 2055232,
+     "active_ge2_pos": 1179,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.5128
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 1071767514,
+     "active_ge2": 899965,
+     "active_ge2_pos": 646,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.5981
+    }
+   },
+   "fan_in": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 989329027223035354,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 4351359,
+     "active_ge2": 958882,
+     "active_ge2_pos": 1282,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.5576
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 1592828,
+     "active_ge2": 340119,
+     "active_ge2_pos": 621,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.575
+    }
+   },
+   "fan_out": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 11183728284829485247,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 977466931,
+     "active_ge2": 1492715,
+     "active_ge2_pos": 1066,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.4637
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 444144722,
+     "active_ge2": 663664,
+     "active_ge2_pos": 585,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.5417
+    }
+   },
+   "lcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 7087469534045282803,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 618,
+     "active_pos": 82,
+     "instances": 637,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0357
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 254,
+     "active_pos": 39,
+     "instances": 262,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0361
+    }
+   },
+   "sg": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 884033388477590431,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 467,
+     "active_pos": 2,
+     "instances": 483,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0009
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 108,
+     "active_pos": 0,
+     "instances": 108,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "sg_ord": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 3889885039108109068,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 138,
+     "active_pos": 1,
+     "instances": 151,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0004
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 31,
+     "active_pos": 0,
+     "instances": 31,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "tcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 11166385018636528593,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 599,
+     "active_pos": 81,
+     "instances": 610,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0352
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 251,
+     "active_pos": 36,
+     "instances": 253,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0333
+    }
+   },
+   "vstats": {
+    "kind": "vstats",
+    "columns": 52,
+    "hash": 1677314713108881630,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2680775,
+     "active_pos": 2299,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 2675867,
+     "changed_pos": 2299,
+     "changed_fan_deg_ratio": 0,
+     "changed_time": 2675636,
+     "changed_amount": 1761698,
+     "active_pos_share": 1.0
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 1014434,
+     "active_pos": 1080,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 1014434,
+     "changed_pos": 1080,
+     "changed_fan_deg_ratio": 0,
+     "changed_time": 1014434,
+     "changed_amount": 786430,
+     "active_pos_share": 1.0
+    }
+   }
+  },
+  "all": {
+   "deg_in": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 14871500217657456369,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 8723769,
+     "active_ge2": 1929300,
+     "active_ge2_pos": 1504,
+     "changed": 68584,
+     "changed_pos": 55,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.6542
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 3835741,
+     "active_ge2": 833506,
+     "active_ge2_pos": 731,
+     "changed": 27360,
+     "changed_pos": 15,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.6769
+    }
+   },
+   "deg_out": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 5995181483340669076,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 2227351070,
+     "active_ge2": 2045383,
+     "active_ge2_pos": 1179,
+     "changed": 229662,
+     "changed_pos": 264,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.5128
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 1071376198,
+     "active_ge2": 897447,
+     "active_ge2_pos": 646,
+     "changed": 95249,
+     "changed_pos": 99,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.5981
+    }
+   },
+   "fan_in": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 17954502949444648770,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 4331741,
+     "active_ge2": 957690,
+     "active_ge2_pos": 1277,
+     "changed": 13560,
+     "changed_pos": 46,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.5555
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 1585107,
+     "active_ge2": 339809,
+     "active_ge2_pos": 621,
+     "changed": 5128,
+     "changed_pos": 13,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.575
+    }
+   },
+   "fan_out": {
+    "kind": "count",
+    "columns": 1,
+    "hash": 17198597561476074526,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2499332,
+     "active_pos": 2294,
+     "instances": 2499332,
+     "count_sum": 977093869,
+     "active_ge2": 1491831,
+     "active_ge2_pos": 1066,
+     "changed": 114103,
+     "changed_pos": 167,
+     "active_pos_share": 0.9978,
+     "active_ge2_pos_share": 0.4637
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 993362,
+     "active_pos": 1079,
+     "instances": 993362,
+     "count_sum": 444053348,
+     "active_ge2": 663475,
+     "active_ge2_pos": 585,
+     "changed": 39308,
+     "changed_pos": 54,
+     "active_pos_share": 0.9991,
+     "active_ge2_pos_share": 0.5417
+    }
+   },
+   "lcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 9717565363251746754,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 619,
+     "active_pos": 82,
+     "instances": 638,
+     "changed": 1,
+     "changed_pos": 0,
+     "active_pos_share": 0.0357
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 254,
+     "active_pos": 39,
+     "instances": 262,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0361
+    }
+   },
+   "sg": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 18124683238158106329,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 550,
+     "active_pos": 2,
+     "instances": 570,
+     "changed": 87,
+     "changed_pos": 0,
+     "active_pos_share": 0.0009
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 109,
+     "active_pos": 0,
+     "instances": 109,
+     "changed": 1,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "sg_ord": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 8993330698308699435,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 140,
+     "active_pos": 1,
+     "instances": 157,
+     "changed": 10,
+     "changed_pos": 0,
+     "active_pos_share": 0.0004
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 31,
+     "active_pos": 0,
+     "instances": 31,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "tcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 7737672036140136160,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 600,
+     "active_pos": 81,
+     "instances": 611,
+     "changed": 1,
+     "changed_pos": 0,
+     "active_pos_share": 0.0352
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 251,
+     "active_pos": 36,
+     "instances": 253,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0333
+    }
+   },
+   "vstats": {
+    "kind": "vstats",
+    "columns": 52,
+    "hash": 9366988858943248798,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 3047216,
+     "active_pos": 2299,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 3043961,
+     "changed_pos": 2299,
+     "changed_fan_deg_ratio": 1647257,
+     "changed_time": 3035535,
+     "changed_amount": 2542305,
+     "active_pos_share": 1.0
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 1015247,
+     "active_pos": 1080,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 1015247,
+     "changed_pos": 1080,
+     "changed_fan_deg_ratio": 208249,
+     "changed_time": 1015247,
+     "changed_amount": 810341,
+     "active_pos_share": 1.0
+    }
+   }
+  },
+  "all+Q8": {
+   "deg_in": {
+    "kind": "histogram",
+    "columns": 12,
+    "hash": 3321375241280117763,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 1929300,
+     "active_pos": 1504,
+     "instances": 1929300,
+     "changed": 56731,
+     "changed_pos": 40,
+     "active_pos_share": 0.6542
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 833506,
+     "active_pos": 731,
+     "instances": 833506,
+     "changed": 21997,
+     "changed_pos": 11,
+     "active_pos_share": 0.6769
+    }
+   },
+   "deg_out": {
+    "kind": "histogram",
+    "columns": 12,
+    "hash": 3341707662053112211,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2045383,
+     "active_pos": 1179,
+     "instances": 2045383,
+     "changed": 41018,
+     "changed_pos": 1,
+     "active_pos_share": 0.5128
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 897447,
+     "active_pos": 646,
+     "instances": 897447,
+     "changed": 14995,
+     "changed_pos": 0,
+     "active_pos_share": 0.5981
+    }
+   },
+   "fan_in": {
+    "kind": "histogram",
+    "columns": 12,
+    "hash": 10768036772042710147,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 957690,
+     "active_pos": 1277,
+     "instances": 957690,
+     "changed": 6464,
+     "changed_pos": 31,
+     "active_pos_share": 0.5555
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 339809,
+     "active_pos": 621,
+     "instances": 339809,
+     "changed": 2316,
+     "changed_pos": 9,
+     "active_pos_share": 0.575
+    }
+   },
+   "fan_out": {
+    "kind": "histogram",
+    "columns": 12,
+    "hash": 904878896487262018,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 1491831,
+     "active_pos": 1066,
+     "instances": 1491831,
+     "changed": 1804,
+     "changed_pos": 1,
+     "active_pos_share": 0.4637
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 663475,
+     "active_pos": 585,
+     "instances": 663475,
+     "changed": 356,
+     "changed_pos": 0,
+     "active_pos_share": 0.5417
+    }
+   },
+   "lcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 9717565363251746754,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 619,
+     "active_pos": 82,
+     "instances": 638,
+     "changed": 1,
+     "changed_pos": 0,
+     "active_pos_share": 0.0357
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 254,
+     "active_pos": 39,
+     "instances": 262,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0361
+    }
+   },
+   "sg": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 18124683238158106329,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 550,
+     "active_pos": 2,
+     "instances": 570,
+     "changed": 87,
+     "changed_pos": 0,
+     "active_pos_share": 0.0009
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 109,
+     "active_pos": 0,
+     "instances": 109,
+     "changed": 1,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "sg_ord": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 8993330698308699435,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 140,
+     "active_pos": 1,
+     "instances": 157,
+     "changed": 10,
+     "changed_pos": 0,
+     "active_pos_share": 0.0004
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 31,
+     "active_pos": 0,
+     "instances": 31,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "tcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 7737672036140136160,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 600,
+     "active_pos": 81,
+     "instances": 611,
+     "changed": 1,
+     "changed_pos": 0,
+     "active_pos_share": 0.0352
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 251,
+     "active_pos": 36,
+     "instances": 253,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0333
+    }
+   },
+   "vstats": {
+    "kind": "vstats",
+    "columns": 52,
+    "hash": 9366988858943248798,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 3047216,
+     "active_pos": 2299,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 3043961,
+     "changed_pos": 2299,
+     "changed_fan_deg_ratio": 1647257,
+     "changed_time": 3035535,
+     "changed_amount": 2542305,
+     "active_pos_share": 1.0
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 1015247,
+     "active_pos": 1080,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 1015247,
+     "changed_pos": 1080,
+     "changed_fan_deg_ratio": 208249,
+     "changed_time": 1015247,
+     "changed_amount": 810341,
+     "active_pos_share": 1.0
+    }
+   }
+  },
+  "v1_e16": {
+   "deg_in": {
+    "kind": "histogram",
+    "columns": 12,
+    "hash": 3321375241280117763,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 1929300,
+     "active_pos": 1504,
+     "instances": 1929300,
+     "changed": 56731,
+     "changed_pos": 40,
+     "active_pos_share": 0.6542
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 833506,
+     "active_pos": 731,
+     "instances": 833506,
+     "changed": 21997,
+     "changed_pos": 11,
+     "active_pos_share": 0.6769
+    }
+   },
+   "deg_out": {
+    "kind": "histogram",
+    "columns": 12,
+    "hash": 3341707662053112211,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 2045383,
+     "active_pos": 1179,
+     "instances": 2045383,
+     "changed": 41018,
+     "changed_pos": 1,
+     "active_pos_share": 0.5128
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 897447,
+     "active_pos": 646,
+     "instances": 897447,
+     "changed": 14995,
+     "changed_pos": 0,
+     "active_pos_share": 0.5981
+    }
+   },
+   "fan_in": {
+    "kind": "histogram",
+    "columns": 12,
+    "hash": 10768036772042710147,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 957690,
+     "active_pos": 1277,
+     "instances": 957690,
+     "changed": 6464,
+     "changed_pos": 31,
+     "active_pos_share": 0.5555
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 339809,
+     "active_pos": 621,
+     "instances": 339809,
+     "changed": 2316,
+     "changed_pos": 9,
+     "active_pos_share": 0.575
+    }
+   },
+   "fan_out": {
+    "kind": "histogram",
+    "columns": 12,
+    "hash": 904878896487262018,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 1491831,
+     "active_pos": 1066,
+     "instances": 1491831,
+     "changed": 1804,
+     "changed_pos": 1,
+     "active_pos_share": 0.4637
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 663475,
+     "active_pos": 585,
+     "instances": 663475,
+     "changed": 356,
+     "changed_pos": 0,
+     "active_pos_share": 0.5417
+    }
+   },
+   "lcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 9717565363251746754,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 619,
+     "active_pos": 82,
+     "instances": 638,
+     "changed": 1,
+     "changed_pos": 0,
+     "active_pos_share": 0.0357
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 254,
+     "active_pos": 39,
+     "instances": 262,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0361
+    }
+   },
+   "sg": {
+    "kind": "histogram",
+    "columns": 10,
+    "hash": 18124683238158106329,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 550,
+     "active_pos": 2,
+     "instances": 570,
+     "changed": 87,
+     "changed_pos": 0,
+     "active_pos_share": 0.0009
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 109,
+     "active_pos": 0,
+     "instances": 109,
+     "changed": 1,
+     "changed_pos": 0,
+     "active_pos_share": 0.0
+    }
+   },
+   "tcyc": {
+    "kind": "histogram",
+    "columns": 9,
+    "hash": 7737672036140136160,
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 600,
+     "active_pos": 81,
+     "instances": 611,
+     "changed": 1,
+     "changed_pos": 0,
+     "active_pos_share": 0.0352
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 251,
+     "active_pos": 36,
+     "instances": 253,
+     "changed": 0,
+     "changed_pos": 0,
+     "active_pos_share": 0.0333
+    }
+   },
+   "vstats": {
+    "kind": "vstats",
+    "columns": 52,
+    "hash": "6df5058179e28106fb1a034b676d300874b637922ea6320bb3b477018d72095a",
+    "fit": {
+     "rows": 3047216,
+     "positives": 2299,
+     "active": 3047216,
+     "active_pos": 2299,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 3043961,
+     "changed_pos": 2299,
+     "changed_fan_deg_ratio": 1647257,
+     "changed_time": 3035535,
+     "changed_amount": 2542305,
+     "active_pos_share": 1.0
+    },
+    "val": {
+     "rows": 1015247,
+     "positives": 1080,
+     "active": 1015247,
+     "active_pos": 1080,
+     "nan": 0,
+     "clipped": 0,
+     "changed": 1015247,
+     "changed_pos": 1080,
+     "changed_fan_deg_ratio": 208249,
+     "changed_time": 1015247,
+     "changed_amount": 810341,
+     "active_pos_share": 1.0
+    }
+   }
+  }
+ },
+ "v1_check": {
+  "deg_in": {
+   "against": "v1_e16",
+   "equal": true,
+   "by": "output_fnv1a",
+   "hash": 3321375241280117763
+  },
+  "deg_out": {
+   "against": "v1_e16",
+   "equal": true,
+   "by": "output_fnv1a",
+   "hash": 3341707662053112211
+  },
+  "fan_in": {
+   "against": "v1_e16",
+   "equal": true,
+   "by": "output_fnv1a",
+   "hash": 10768036772042710147
+  },
+  "fan_out": {
+   "against": "v1_e16",
+   "equal": true,
+   "by": "output_fnv1a",
+   "hash": 904878896487262018
+  },
+  "lcyc": {
+   "against": "v1_e16",
+   "equal": true,
+   "by": "output_fnv1a",
+   "hash": 9717565363251746754
+  },
+  "sg": {
+   "against": "v1_e16",
+   "equal": true,
+   "by": "output_fnv1a",
+   "hash": 18124683238158106329
+  },
+  "sg_ord": {
+   "against": "features/p10_sg_ordered_v1w_oracle (sg_ordered_v1w, oracle)",
+   "equal": true,
+   "by": "output_fnv1a",
+   "hash": 8993330698308699435
+  },
+  "tcyc": {
+   "against": "v1_e16",
+   "equal": true,
+   "by": "output_fnv1a",
+   "hash": 7737672036140136160
+  },
+  "vstats": {
+   "against": "v1_e16 (blz vstats)",
+   "equal": true,
+   "by": "rows, bit for bit",
+   "rows_differing": 0
+  },
+  "v1_e16 six blocks vs v1_default (AC-V2-0 hashes)": {
+   "equal": true
+  }
+ },
+ "v1_check_summary": "clean_e16_q8 under `--quirks all` (every oracle quirk, plus Q8's histograms) reproduces v1_e16 on every block: the six v1 blocks and lcyc by output hash, the vertex statistics bit for bit against `blz vstats --window 86400`, and sg_ord against V2's sg_ordered (sg_ordered_v1w, oracle). v1_e16's six blocks carry v1_default's AC-V2-0 hashes.",
+ "evidence": {
+  "file_order": {
+   "fit": {
+    "mean_rank_positive": 0.3001,
+    "mean_rank_negative": 0.5002,
+    "positives_by_rank_decile": [
+     1137,
+     123,
+     109,
+     133,
+     112,
+     129,
+     110,
+     112,
+     101,
+     233
+    ]
+   },
+   "val": {
+    "mean_rank_positive": 0.2284,
+    "mean_rank_negative": 0.5003,
+    "positives_by_rank_decile": [
+     677,
+     39,
+     39,
+     35,
+     45,
+     39,
+     40,
+     32,
+     40,
+     94
+    ]
+   }
+  },
+  "self_loops": {
+   "fit": {
+    "self_loops": 547884,
+    "laundering_self_loops": 5,
+    "reinvestment_self_loops": 481056,
+    "laundering_reinvestment": 0
+   },
+   "val": {
+    "self_loops": 21885,
+    "laundering_self_loops": 1,
+    "reinvestment_self_loops": 0,
+    "laundering_reinvestment": 0
+   }
+  },
+  "absolute_time": {
+   "clean": {
+    "column": "vs_u_out_age_mean",
+    "fit_max": 86340.0,
+    "val_share_above_fit_max": 0.0
+   },
+   "Q10": {
+    "column": "vs_u_out_age_mean",
+    "fit_max": 480960.0,
+    "val_share_above_fit_max": 0.8522
+   },
+   "v1_e16": {
+    "column": "vs_src_out_ts_avg",
+    "fit_max": 480960.0,
+    "val_share_above_fit_max": 0.8522
+   }
+  }
+ },
+ "reproduction": {
+  "fit": "v1_default (features/p7_cpu_default) + R3/S2, validation [3,047,216, 4,062,676)",
+  "got": {
+   "tp": 77,
+   "fp": 14,
+   "fn": 1004,
+   "tn": 1014365
+  },
+  "ledger": {
+   "tp": 77,
+   "fp": 14,
+   "fn": 1004,
+   "tn": 1014365
+  },
+  "reproduces": true
+ },
+ "validation": {
+  "clean": {
+   "metrics": {
+    "f1_x100": 9.885386819484241,
+    "precision": 0.21835443037974683,
+    "recall": 0.06388888888888888,
+    "pr_auc": 0.05981053036675464,
+    "tp": 69,
+    "fp": 247,
+    "fn": 1011,
+    "tn": 1013920
+   },
+   "columns": 101,
+   "gain_share_by_block": {
+    "vstats": 0.525,
+    "raw": 0.4744,
+    "fan_out": 0.0003,
+    "ids": 0.0001,
+    "fan_in": 0.0001,
+    "deg_out": 0.0,
+    "tcyc": 0.0,
+    "deg_in": 0.0
+   },
+   "top_gain": [
+    [
+     "vs_v_in_amount_var",
+     437767.781
+    ],
+    [
+     "Payment Format",
+     216728.078
+    ],
+    [
+     "Amount Received",
+     205412.719
+    ],
+    [
+     "vs_u_out_ratio",
+     15720.323
+    ],
+    [
+     "vs_u_out_deg",
+     10454.644
+    ],
+    [
+     "vs_v_in_age_sum",
+     8137.702
+    ],
+    [
+     "vs_u_out_amount_var",
+     4956.893
+    ],
+    [
+     "vs_v_in_age_mean",
+     4835.049
+    ],
+    [
+     "vs_v_in_age_var",
+     4296.713
+    ],
+    [
+     "Amount Sent",
+     3391.509
+    ]
+   ],
+   "base_score_resolved": 0.0007544592,
+   "seconds": 46.2,
+   "peak_rss_mb": 8744,
+   "load_before": "02:40:29 up 15:18,  1 user,  load average: 4.78, 8.39, 10.07",
+   "train_replicates": [
+    {
+     "f1_x100": 23.861171366594363,
+     "precision": 0.5445544554455446,
+     "recall": 0.1527777777777778,
+     "pr_auc": 0.1754771693404881,
+     "tp": 165,
+     "fp": 138,
+     "fn": 915
+    },
+    {
+     "f1_x100": 17.68251841929002,
+     "precision": 0.3196125907990315,
+     "recall": 0.12222222222222222,
+     "pr_auc": 0.09139638425297837,
+     "tp": 132,
+     "fp": 281,
+     "fn": 948
+    },
+    {
+     "f1_x100": 20.056899004267425,
+     "precision": 0.4325153374233129,
+     "recall": 0.13055555555555556,
+     "pr_auc": 0.11787933323172999,
+     "tp": 141,
+     "fp": 185,
+     "fn": 939
+    }
+   ]
+  },
+  "Q1": {
+   "metrics": {
+    "f1_x100": 9.885386819484241,
+    "precision": 0.21835443037974683,
+    "recall": 0.06388888888888888,
+    "pr_auc": 0.05981053036675464,
+    "tp": 69,
+    "fp": 247,
+    "fn": 1011,
+    "tn": 1013920
+   },
+   "columns": 101,
+   "gain_share_by_block": {
+    "vstats": 0.525,
+    "raw": 0.4744,
+    "fan_out": 0.0003,
+    "ids": 0.0001,
+    "fan_in": 0.0001,
+    "deg_out": 0.0,
+    "tcyc": 0.0,
+    "deg_in": 0.0
+   },
+   "top_gain": [
+    [
+     "vs_v_in_amount_var",
+     437767.781
+    ],
+    [
+     "Payment Format",
+     216728.078
+    ],
+    [
+     "Amount Received",
+     205412.719
+    ],
+    [
+     "vs_u_out_ratio",
+     15720.323
+    ],
+    [
+     "vs_u_out_deg",
+     10454.644
+    ],
+    [
+     "vs_v_in_age_sum",
+     8137.702
+    ],
+    [
+     "vs_u_out_amount_var",
+     4956.893
+    ],
+    [
+     "vs_v_in_age_mean",
+     4835.049
+    ],
+    [
+     "vs_v_in_age_var",
+     4296.713
+    ],
+    [
+     "Amount Sent",
+     3391.509
+    ]
+   ],
+   "base_score_resolved": 0.0007544592,
+   "seconds": 48.0,
+   "peak_rss_mb": 8496,
+   "load_before": "02:41:15 up 15:19,  1 user,  load average: 6.97, 8.37, 9.98",
+   "train_replicates": [
+    {
+     "f1_x100": 23.861171366594363,
+     "precision": 0.5445544554455446,
+     "recall": 0.1527777777777778,
+     "pr_auc": 0.1754771693404881,
+     "tp": 165,
+     "fp": 138,
+     "fn": 915
+    },
+    {
+     "f1_x100": 18.686526743398783,
+     "precision": 0.34760705289672544,
+     "recall": 0.12777777777777777,
+     "pr_auc": 0.10824921235725886,
+     "tp": 138,
+     "fp": 259,
+     "fn": 942
+    },
+    {
+     "f1_x100": 20.056899004267425,
+     "precision": 0.4325153374233129,
+     "recall": 0.13055555555555556,
+     "pr_auc": 0.11787933323172999,
+     "tp": 141,
+     "fp": 185,
+     "fn": 939
+    }
+   ],
+   "delta_f1_vs_clean": 0.0,
+   "delta_ci": {
+    "lo95": 0.0,
+    "hi95": 0.0,
+    "sd": 0.0
+   },
+   "delta_f1_train_replicates": [
+    0.0,
+    1.0,
+    0.0
+   ]
+  },
+  "Q2": {
+   "metrics": {
+    "f1_x100": 36.95345557122708,
+    "precision": 0.7751479289940828,
+    "recall": 0.24259259259259258,
+    "pr_auc": 0.3236488892001735,
+    "tp": 262,
+    "fp": 76,
+    "fn": 818,
+    "tn": 1014091
+   },
+   "columns": 101,
+   "gain_share_by_block": {
+    "vstats": 0.7168,
+    "raw": 0.2686,
+    "fan_in": 0.0125,
+    "fan_out": 0.0012,
+    "deg_out": 0.0004,
+    "ids": 0.0004,
+    "tcyc": 0.0001,
+    "deg_in": 0.0,
+    "lcyc": 0.0
+   },
+   "top_gain": [
+    [
+     "vs_u_out_deg",
+     26910.686
+    ],
+    [
+     "vs_v_out_amount_mean",
+     14897.735
+    ],
+    [
+     "Payment Format",
+     12576.716
+    ],
+    [
+     "vs_v_in_amount_sum",
+     11885.45
+    ],
+    [
+     "vs_u_in_age_sum",
+     1227.132
+    ],
+    [
+     "vs_v_out_age_mean",
+     986.312
+    ],
+    [
+     "fan_in",
+     889.833
+    ],
+    [
+     "vs_u_out_age_var",
+     731.051
+    ],
+    [
+     "vs_u_out_amount_kurt",
+     645.748
+    ],
+    [
+     "Amount Sent",
+     616.527
+    ]
+   ],
+   "base_score_resolved": 0.0007544592,
+   "seconds": 43.8,
+   "peak_rss_mb": 8403,
+   "load_before": "02:42:03 up 15:20,  1 user,  load average: 7.57, 8.28, 9.86",
+   "train_replicates": [
+    {
+     "f1_x100": 36.666666666666664,
+     "precision": 0.8433333333333334,
+     "recall": 0.23425925925925925,
+     "pr_auc": 0.36790985502881535,
+     "tp": 253,
+     "fp": 47,
+     "fn": 827
+    },
+    {
+     "f1_x100": 31.254191817572096,
+     "precision": 0.5669099756690997,
+     "recall": 0.21574074074074073,
+     "pr_auc": 0.22385088280764778,
+     "tp": 233,
+     "fp": 178,
+     "fn": 847
+    },
+    {
+     "f1_x100": 30.315500685871054,
+     "precision": 0.5846560846560847,
+     "recall": 0.20462962962962963,
+     "pr_auc": 0.21778744042319148,
+     "tp": 221,
+     "fp": 157,
+     "fn": 859
+    }
+   ],
+   "delta_f1_vs_clean": 27.07,
+   "delta_ci": {
+    "lo95": 23.51,
+    "hi95": 30.6,
+    "sd": 1.81
+   },
+   "delta_f1_train_replicates": [
+    12.81,
+    13.57,
+    10.26
+   ]
+  },
+  "Q3": {
+   "metrics": {
+    "f1_x100": 9.885386819484241,
+    "precision": 0.21835443037974683,
+    "recall": 0.06388888888888888,
+    "pr_auc": 0.05981053036675464,
+    "tp": 69,
+    "fp": 247,
+    "fn": 1011,
+    "tn": 1013920
+   },
+   "columns": 101,
+   "gain_share_by_block": {
+    "vstats": 0.525,
+    "raw": 0.4744,
+    "fan_out": 0.0003,
+    "ids": 0.0001,
+    "fan_in": 0.0001,
+    "deg_out": 0.0,
+    "tcyc": 0.0,
+    "deg_in": 0.0
+   },
+   "top_gain": [
+    [
+     "vs_v_in_amount_var",
+     437767.781
+    ],
+    [
+     "Payment Format",
+     216728.078
+    ],
+    [
+     "Amount Received",
+     205412.719
+    ],
+    [
+     "vs_u_out_ratio",
+     15720.323
+    ],
+    [
+     "vs_u_out_deg",
+     10454.644
+    ],
+    [
+     "vs_v_in_age_sum",
+     8137.702
+    ],
+    [
+     "vs_u_out_amount_var",
+     4956.893
+    ],
+    [
+     "vs_v_in_age_mean",
+     4835.049
+    ],
+    [
+     "vs_v_in_age_var",
+     4296.713
+    ],
+    [
+     "Amount Sent",
+     3391.509
+    ]
+   ],
+   "base_score_resolved": 0.0007544592,
+   "seconds": 48.3,
+   "peak_rss_mb": 7052,
+   "load_before": "02:42:47 up 15:21,  1 user,  load average: 7.49, 8.08, 9.72",
+   "train_replicates": [
+    {
+     "f1_x100": 23.861171366594363,
+     "precision": 0.5445544554455446,
+     "recall": 0.1527777777777778,
+     "pr_auc": 0.1754771693155565,
+     "tp": 165,
+     "fp": 138,
+     "fn": 915
+    },
+    {
+     "f1_x100": 17.68251841929002,
+     "precision": 0.3196125907990315,
+     "recall": 0.12222222222222222,
+     "pr_auc": 0.09139638425297837,
+     "tp": 132,
+     "fp": 281,
+     "fn": 948
+    },
+    {
+     "f1_x100": 19.630156472261735,
+     "precision": 0.4233128834355828,
+     "recall": 0.12777777777777777,
+     "pr_auc": 0.12558899394047582,
+     "tp": 138,
+     "fp": 188,
+     "fn": 942
+    }
+   ],
+   "delta_f1_vs_clean": 0.0,
+   "delta_ci": {
+    "lo95": 0.0,
+    "hi95": 0.0,
+    "sd": 0.0
+   },
+   "delta_f1_train_replicates": [
+    0.0,
+    0.0,
+    -0.43
+   ]
+  },
+  "Q4": {
+   "metrics": {
+    "f1_x100": 21.92429022082019,
+    "precision": 0.7393617021276596,
+    "recall": 0.1287037037037037,
+    "pr_auc": 0.22118368306581146,
+    "tp": 139,
+    "fp": 49,
+    "fn": 941,
+    "tn": 1014118
+   },
+   "columns": 101,
+   "gain_share_by_block": {
+    "raw": 0.4785,
+    "vstats": 0.4778,
+    "fan_out": 0.0296,
+    "deg_out": 0.0089,
+    "ids": 0.0029,
+    "fan_in": 0.0012,
+    "tcyc": 0.0009,
+    "lcyc": 0.0,
+    "deg_in": 0.0
+   },
+   "top_gain": [
+    [
+     "Amount Sent",
+     4039.844
+    ],
+    [
+     "vs_u_out_ratio",
+     2302.375
+    ],
+    [
+     "Payment Format",
+     2292.816
+    ],
+    [
+     "vs_v_in_age_var",
+     1867.217
+    ],
+    [
+     "fan_out",
+     885.594
+    ],
+    [
+     "deg_out",
+     652.859
+    ],
+    [
+     "Amount Received",
+     502.779
+    ],
+    [
+     "vs_u_out_amount_mean",
+     427.478
+    ],
+    [
+     "tcyc[2,3)",
+     122.788
+    ],
+    [
+     "vs_u_out_deg",
+     63.752
+    ]
+   ],
+   "base_score_resolved": 0.0007544592,
+   "seconds": 44.1,
+   "peak_rss_mb": 6130,
+   "load_before": "02:43:35 up 15:21,  1 user,  load average: 7.67, 7.90, 9.57",
+   "train_replicates": [
+    {
+     "f1_x100": 19.307295504789977,
+     "precision": 0.4729241877256318,
+     "recall": 0.12129629629629629,
+     "pr_auc": 0.15163377124280203,
+     "tp": 131,
+     "fp": 146,
+     "fn": 949
+    },
+    {
+     "f1_x100": 17.627118644067796,
+     "precision": 0.3291139240506329,
+     "recall": 0.12037037037037036,
+     "pr_auc": 0.10213000525081964,
+     "tp": 130,
+     "fp": 265,
+     "fn": 950
+    },
+    {
+     "f1_x100": 15.549215406562054,
+     "precision": 0.3385093167701863,
+     "recall": 0.10092592592592593,
+     "pr_auc": 0.08626064928241596,
+     "tp": 109,
+     "fp": 213,
+     "fn": 971
+    }
+   ],
+   "delta_f1_vs_clean": 12.04,
+   "delta_ci": {
+    "lo95": 9.17,
+    "hi95": 14.95,
+    "sd": 1.5
+   },
+   "delta_f1_train_replicates": [
+    -4.55,
+    -0.06,
+    -4.51
+   ]
+  },
+  "Q5": {
+   "metrics": {
+    "f1_x100": 9.885386819484241,
+    "precision": 0.21835443037974683,
+    "recall": 0.06388888888888888,
+    "pr_auc": 0.05981053036675464,
+    "tp": 69,
+    "fp": 247,
+    "fn": 1011,
+    "tn": 1013920
+   },
+   "columns": 101,
+   "gain_share_by_block": {
+    "vstats": 0.525,
+    "raw": 0.4744,
+    "fan_out": 0.0003,
+    "ids": 0.0001,
+    "fan_in": 0.0001,
+    "deg_out": 0.0,
+    "tcyc": 0.0,
+    "deg_in": 0.0
+   },
+   "top_gain": [
+    [
+     "vs_v_in_amount_var",
+     437767.781
+    ],
+    [
+     "Payment Format",
+     216728.078
+    ],
+    [
+     "Amount Received",
+     205412.719
+    ],
+    [
+     "vs_u_out_ratio",
+     15720.323
+    ],
+    [
+     "vs_u_out_deg",
+     10454.644
+    ],
+    [
+     "vs_v_in_age_sum",
+     8137.702
+    ],
+    [
+     "vs_u_out_amount_var",
+     4956.893
+    ],
+    [
+     "vs_v_in_age_mean",
+     4835.049
+    ],
+    [
+     "vs_v_in_age_var",
+     4296.713
+    ],
+    [
+     "Amount Sent",
+     3391.509
+    ]
+   ],
+   "base_score_resolved": 0.0007544592,
+   "seconds": 48.3,
+   "peak_rss_mb": 5151,
+   "load_before": "02:44:19 up 15:22,  1 user,  load average: 7.55, 7.75, 9.43",
+   "train_replicates": [
+    {
+     "f1_x100": 23.861171366594363,
+     "precision": 0.5445544554455446,
+     "recall": 0.1527777777777778,
+     "pr_auc": 0.1754771693404881,
+     "tp": 165,
+     "fp": 138,
+     "fn": 915
+    },
+    {
+     "f1_x100": 17.68251841929002,
+     "precision": 0.3196125907990315,
+     "recall": 0.12222222222222222,
+     "pr_auc": 0.09139638425297837,
+     "tp": 132,
+     "fp": 281,
+     "fn": 948
+    },
+    {
+     "f1_x100": 20.056899004267425,
+     "precision": 0.4325153374233129,
+     "recall": 0.13055555555555556,
+     "pr_auc": 0.11787933323172999,
+     "tp": 141,
+     "fp": 185,
+     "fn": 939
+    }
+   ],
+   "delta_f1_vs_clean": 0.0,
+   "delta_ci": {
+    "lo95": 0.0,
+    "hi95": 0.0,
+    "sd": 0.0
+   },
+   "delta_f1_train_replicates": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "Q6": {
+   "metrics": {
+    "f1_x100": 9.885386819484241,
+    "precision": 0.21835443037974683,
+    "recall": 0.06388888888888888,
+    "pr_auc": 0.05981053036675464,
+    "tp": 69,
+    "fp": 247,
+    "fn": 1011,
+    "tn": 1013920
+   },
+   "columns": 101,
+   "gain_share_by_block": {
+    "vstats": 0.525,
+    "raw": 0.4744,
+    "fan_out": 0.0003,
+    "ids": 0.0001,
+    "fan_in": 0.0001,
+    "deg_out": 0.0,
+    "tcyc": 0.0,
+    "deg_in": 0.0
+   },
+   "top_gain": [
+    [
+     "vs_v_in_amount_var",
+     437767.781
+    ],
+    [
+     "Payment Format",
+     216728.078
+    ],
+    [
+     "Amount Received",
+     205412.719
+    ],
+    [
+     "vs_u_out_ratio",
+     15720.323
+    ],
+    [
+     "vs_u_out_deg",
+     10454.644
+    ],
+    [
+     "vs_v_in_age_sum",
+     8137.702
+    ],
+    [
+     "vs_u_out_amount_var",
+     4956.893
+    ],
+    [
+     "vs_v_in_age_mean",
+     4835.049
+    ],
+    [
+     "vs_v_in_age_var",
+     4296.713
+    ],
+    [
+     "Amount Sent",
+     3391.509
+    ]
+   ],
+   "base_score_resolved": 0.0007544592,
+   "seconds": 48.3,
+   "peak_rss_mb": 4173,
+   "load_before": "02:45:08 up 15:23,  1 user,  load average: 8.01, 7.74, 9.34",
+   "train_replicates": [
+    {
+     "f1_x100": 23.861171366594363,
+     "precision": 0.5445544554455446,
+     "recall": 0.1527777777777778,
+     "pr_auc": 0.1754771693404881,
+     "tp": 165,
+     "fp": 138,
+     "fn": 915
+    },
+    {
+     "f1_x100": 17.68251841929002,
+     "precision": 0.3196125907990315,
+     "recall": 0.12222222222222222,
+     "pr_auc": 0.09139638425297837,
+     "tp": 132,
+     "fp": 281,
+     "fn": 948
+    },
+    {
+     "f1_x100": 20.056899004267425,
+     "precision": 0.4325153374233129,
+     "recall": 0.13055555555555556,
+     "pr_auc": 0.11787933323172999,
+     "tp": 141,
+     "fp": 185,
+     "fn": 939
+    }
+   ],
+   "delta_f1_vs_clean": 0.0,
+   "delta_ci": {
+    "lo95": 0.0,
+    "hi95": 0.0,
+    "sd": 0.0
+   },
+   "delta_f1_train_replicates": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "Q7": {
+   "metrics": {
+    "f1_x100": 9.885386819484241,
+    "precision": 0.21835443037974683,
+    "recall": 0.06388888888888888,
+    "pr_auc": 0.05981053036675464,
+    "tp": 69,
+    "fp": 247,
+    "fn": 1011,
+    "tn": 1013920
+   },
+   "columns": 91,
+   "gain_share_by_block": {
+    "vstats": 0.525,
+    "raw": 0.4744,
+    "fan_out": 0.0003,
+    "ids": 0.0001,
+    "fan_in": 0.0001,
+    "deg_out": 0.0,
+    "tcyc": 0.0,
+    "deg_in": 0.0
+   },
+   "top_gain": [
+    [
+     "vs_v_in_amount_var",
+     437767.781
+    ],
+    [
+     "Payment Format",
+     216728.078
+    ],
+    [
+     "Amount Received",
+     205412.719
+    ],
+    [
+     "vs_u_out_ratio",
+     15720.323
+    ],
+    [
+     "vs_u_out_deg",
+     10454.644
+    ],
+    [
+     "vs_v_in_age_sum",
+     8137.702
+    ],
+    [
+     "vs_u_out_amount_var",
+     4956.893
+    ],
+    [
+     "vs_v_in_age_mean",
+     4835.049
+    ],
+    [
+     "vs_v_in_age_var",
+     4296.713
+    ],
+    [
+     "Amount Sent",
+     3391.509
+    ]
+   ],
+   "base_score_resolved": 0.0007544592,
+   "seconds": 45.0,
+   "peak_rss_mb": 3896,
+   "load_before": "02:45:56 up 15:24,  1 user,  load average: 8.42, 7.79, 9.27",
+   "train_replicates": [
+    {
+     "f1_x100": 23.861171366594363,
+     "precision": 0.5445544554455446,
+     "recall": 0.1527777777777778,
+     "pr_auc": 0.1754771693404881,
+     "tp": 165,
+     "fp": 138,
+     "fn": 915
+    },
+    {
+     "f1_x100": 17.68251841929002,
+     "precision": 0.3196125907990315,
+     "recall": 0.12222222222222222,
+     "pr_auc": 0.09139638425297837,
+     "tp": 132,
+     "fp": 281,
+     "fn": 948
+    },
+    {
+     "f1_x100": 20.056899004267425,
+     "precision": 0.4325153374233129,
+     "recall": 0.13055555555555556,
+     "pr_auc": 0.11787933323172999,
+     "tp": 141,
+     "fp": 185,
+     "fn": 939
+    }
+   ],
+   "delta_f1_vs_clean": 0.0,
+   "delta_ci": {
+    "lo95": 0.0,
+    "hi95": 0.0,
+    "sd": 0.0
+   },
+   "delta_f1_train_replicates": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "Q8": {
+   "metrics": {
+    "f1_x100": 18.37606837606838,
+    "precision": 0.39814814814814814,
+    "recall": 0.11944444444444445,
+    "pr_auc": 0.11743662633034946,
+    "tp": 129,
+    "fp": 195,
+    "fn": 951,
+    "tn": 1013972
+   },
+   "columns": 145,
+   "gain_share_by_block": {
+    "raw": 0.6964,
+    "vstats": 0.299,
+    "fan_in": 0.0032,
+    "fan_out": 0.0009,
+    "deg_out": 0.0003,
+    "ids": 0.0001,
+    "tcyc": 0.0,
+    "deg_in": 0.0
+   },
+   "top_gain": [
+    [
+     "Payment Format",
+     57954.535
+    ],
+    [
+     "vs_v_in_age_mean",
+     17170.529
+    ],
+    [
+     "Amount Received",
+     16234.814
+    ],
+    [
+     "vs_u_out_ratio",
+     6545.403
+    ],
+    [
+     "fan_in[3,4)",
+     5384.698
+    ],
+    [
+     "vs_v_in_age_var",
+     2752.949
+    ],
+    [
+     "vs_v_out_ratio",
+     2056.126
+    ],
+    [
+     "vs_u_out_fan",
+     1275.468
+    ],
+    [
+     "Amount Sent",
+     1031.479
+    ],
+    [
+     "vs_v_in_age_skew",
+     894.035
+    ]
+   ],
+   "base_score_resolved": 0.0007544592,
+   "seconds": 60.0,
+   "peak_rss_mb": 5128,
+   "load_before": "02:46:41 up 15:24,  1 user,  load average: 8.50, 7.79, 9.19",
+   "train_replicates": [
+    {
+     "f1_x100": 20.367751060820368,
+     "precision": 0.4311377245508982,
+     "recall": 0.13333333333333333,
+     "pr_auc": 0.1226487269678066,
+     "tp": 144,
+     "fp": 190,
+     "fn": 936
+    },
+    {
+     "f1_x100": 14.666666666666666,
+     "precision": 0.2619047619047619,
+     "recall": 0.10185185185185185,
+     "pr_auc": 0.07348728183597682,
+     "tp": 110,
+     "fp": 310,
+     "fn": 970
+    },
+    {
+     "f1_x100": 16.364952932657495,
+     "precision": 0.3754152823920266,
+     "recall": 0.10462962962962963,
+     "pr_auc": 0.10334888838744992,
+     "tp": 113,
+     "fp": 188,
+     "fn": 967
+    }
+   ],
+   "delta_f1_vs_clean": 8.49,
+   "delta_ci": {
+    "lo95": 5.61,
+    "hi95": 11.39,
+    "sd": 1.48
+   },
+   "delta_f1_train_replicates": [
+    -3.49,
+    -3.02,
+    -3.69
+   ]
+  },
+  "Q9": {
+   "metrics": {
+    "f1_x100": 14.942528735632186,
+    "precision": 0.3333333333333333,
+    "recall": 0.0962962962962963,
+    "pr_auc": 0.10157110625637895,
+    "tp": 104,
+    "fp": 208,
+    "fn": 976,
+    "tn": 1013959
+   },
+   "columns": 101,
+   "gain_share_by_block": {
+    "raw": 0.6029,
+    "vstats": 0.395,
+    "deg_out": 0.0011,
+    "fan_out": 0.0008,
+    "fan_in": 0.0002,
+    "ids": 0.0,
+    "deg_in": 0.0,
+    "tcyc": 0.0,
+    "lcyc": 0.0
+   },
+   "top_gain": [
+    [
+     "vs_v_out_amount_var",
+     195644.75
+    ],
+    [
+     "Payment Format",
+     115693.531
+    ],
+    [
+     "Amount Received",
+     105324.156
+    ],
+    [
+     "vs_v_in_amount_var",
+     30510.996
+    ],
+    [
+     "vs_u_out_ratio",
+     12021.157
+    ],
+    [
+     "vs_u_out_deg",
+     8254.076
+    ],
+    [
+     "vs_v_in_age_var",
+     2570.655
+    ],
+    [
+     "vs_u_out_amount_kurt",
+     1853.493
+    ],
+    [
+     "Amount Sent",
+     1684.764
+    ],
+    [
+     "fan_out",
+     1453.921
+    ]
+   ],
+   "base_score_resolved": 0.0007544592,
+   "seconds": 45.9,
+   "peak_rss_mb": 4047,
+   "load_before": "02:47:41 up 15:25,  1 user,  load average: 8.53, 7.82, 9.11",
+   "train_replicates": [
+    {
+     "f1_x100": 21.17822520507084,
+     "precision": 0.5440613026819924,
+     "recall": 0.13148148148148148,
+     "pr_auc": 0.15810581719906266,
+     "tp": 142,
+     "fp": 119,
+     "fn": 938
+    },
+    {
+     "f1_x100": 17.173766058147397,
+     "precision": 0.3182957393483709,
+     "recall": 0.1175925925925926,
+     "pr_auc": 0.08714424215852269,
+     "tp": 127,
+     "fp": 272,
+     "fn": 953
+    },
+    {
+     "f1_x100": 17.095205003474632,
+     "precision": 0.3426183844011142,
+     "recall": 0.11388888888888889,
+     "pr_auc": 0.09980668006151405,
+     "tp": 123,
+     "fp": 236,
+     "fn": 957
+    }
+   ],
+   "delta_f1_vs_clean": 5.06,
+   "delta_ci": {
+    "lo95": 2.51,
+    "hi95": 7.6,
+    "sd": 1.29
+   },
+   "delta_f1_train_replicates": [
+    -2.68,
+    -0.51,
+    -2.96
+   ]
+  },
+  "Q10": {
+   "metrics": {
+    "f1_x100": 18.483904465212877,
+    "precision": 0.21040189125295508,
+    "recall": 0.1648148148148148,
+    "pr_auc": 0.08423167253054839,
+    "tp": 178,
+    "fp": 668,
+    "fn": 902,
+    "tn": 1013499
+   },
+   "columns": 101,
+   "gain_share_by_block": {
+    "vstats": 0.9468,
+    "raw": 0.0517,
+    "fan_in": 0.0006,
+    "fan_out": 0.0005,
+    "deg_in": 0.0001,
+    "ids": 0.0001,
+    "deg_out": 0.0001,
+    "tcyc": 0.0001
+   },
+   "top_gain": [
+    [
+     "vs_u_out_amount_sum",
+     26303.645
+    ],
+    [
+     "vs_u_out_age_sum",
+     22676.689
+    ],
+    [
+     "vs_v_in_age_mean",
+     19657.172
+    ],
+    [
+     "vs_u_out_deg",
+     17283.117
+    ],
+    [
+     "vs_v_in_amount_var",
+     14601.948
+    ],
+    [
+     "vs_u_out_ratio",
+     6999.764
+    ],
+    [
+     "vs_v_in_age_var",
+     5440.339
+    ],
+    [
+     "Amount Received",
+     4922.244
+    ],
+    [
+     "Payment Format",
+     2248.552
+    ],
+    [
+     "vs_u_out_age_mean",
+     2034.97
+    ]
+   ],
+   "base_score_resolved": 0.0007544592,
+   "seconds": 47.1,
+   "peak_rss_mb": 4025,
+   "load_before": "02:48:27 up 15:26,  1 user,  load average: 8.52, 7.85, 9.05",
+   "train_replicates": [
+    {
+     "f1_x100": 16.241466043837587,
+     "precision": 0.13270698766881972,
+     "recall": 0.20925925925925926,
+     "pr_auc": 0.0727954810757145,
+     "tp": 226,
+     "fp": 1477,
+     "fn": 854
+    },
+    {
+     "f1_x100": 13.128976286871024,
+     "precision": 0.09545836837678721,
+     "recall": 0.2101851851851852,
+     "pr_auc": 0.04623500263485394,
+     "tp": 227,
+     "fp": 2151,
+     "fn": 853
+    },
+    {
+     "f1_x100": 19.48488241881299,
+     "precision": 0.24645892351274787,
+     "recall": 0.16111111111111112,
+     "pr_auc": 0.08875898973872424,
+     "tp": 174,
+     "fp": 532,
+     "fn": 906
+    }
+   ],
+   "delta_f1_vs_clean": 8.6,
+   "delta_ci": {
+    "lo95": 6.27,
+    "hi95": 11.03,
+    "sd": 1.22
+   },
+   "delta_f1_train_replicates": [
+    -7.62,
+    -4.55,
+    -0.57
+   ]
+  },
+  "all": {
+   "metrics": {
+    "f1_x100": 3.8415828863264063,
+    "precision": 0.0198981798822081,
+    "recall": 0.5537037037037037,
+    "pr_auc": 0.014770963830928971,
+    "tp": 598,
+    "fp": 29455,
+    "fn": 482,
+    "tn": 984712
+   },
+   "columns": 101,
+   "gain_share_by_block": {
+    "vstats": 0.5404,
+    "raw": 0.454,
+    "deg_out": 0.004,
+    "fan_in": 0.0011,
+    "fan_out": 0.0002,
+    "ids": 0.0002,
+    "deg_in": 0.0,
+    "tcyc": 0.0
+   },
+   "top_gain": [
+    [
+     "Payment Format",
+     53166.848
+    ],
+    [
+     "vs_v_out_age_sum",
+     45362.957
+    ],
+    [
+     "vs_u_out_amount_var",
+     28138.172
+    ],
+    [
+     "vs_u_out_ratio",
+     12561.144
+    ],
+    [
+     "vs_v_out_fan",
+     9398.628
+    ],
+    [
+     "Amount Sent",
+     6996.337
+    ],
+    [
+     "vs_v_out_amount_var",
+     2815.632
+    ],
+    [
+     "vs_u_out_fan",
+     1550.727
+    ],
+    [
+     "Amount Received",
+     1272.644
+    ],
+    [
+     "vs_u_in_age_sum",
+     1198.85
+    ]
+   ],
+   "base_score_resolved": 0.0007544592,
+   "seconds": 46.1,
+   "peak_rss_mb": 3999,
+   "load_before": "02:49:14 up 15:27,  1 user,  load average: 8.37, 7.83, 8.98",
+   "train_replicates": [
+    {
+     "f1_x100": 4.791894852135816,
+     "precision": 0.025201612903225805,
+     "recall": 0.4861111111111111,
+     "pr_auc": 0.022657746794470426,
+     "tp": 525,
+     "fp": 20307,
+     "fn": 555
+    },
+    {
+     "f1_x100": 7.753846153846154,
+     "precision": 0.04283632831471588,
+     "recall": 0.4083333333333333,
+     "pr_auc": 0.022453316031548362,
+     "tp": 441,
+     "fp": 9854,
+     "fn": 639
+    },
+    {
+     "f1_x100": 20.531674208144796,
+     "precision": 0.1478013029315961,
+     "recall": 0.33611111111111114,
+     "pr_auc": 0.10763012482752778,
+     "tp": 363,
+     "fp": 2093,
+     "fn": 717
+    }
+   ],
+   "delta_f1_vs_clean": -6.04,
+   "delta_ci": {
+    "lo95": -8.02,
+    "hi95": -4.09,
+    "sd": 1.01
+   },
+   "delta_f1_train_replicates": [
+    -19.07,
+    -9.93,
+    0.47
+   ]
+  },
+  "v1_e16": {
+   "metrics": {
+    "f1_x100": 14.319376472720682,
+    "precision": 0.08902411539328375,
+    "recall": 0.36574074074074076,
+    "pr_auc": 0.05097187649731427,
+    "tp": 395,
+    "fp": 4042,
+    "fn": 685,
+    "tn": 1010125
+   },
+   "columns": 135,
+   "gain_share_by_block": {
+    "raw": 0.8609,
+    "vstats": 0.1249,
+    "deg_out": 0.0137,
+    "ids": 0.0002,
+    "fan_out": 0.0001,
+    "fan_in": 0.0001,
+    "tcyc": 0.0001,
+    "deg_in": 0.0,
+    "lcyc": 0.0
+   },
+   "top_gain": [
+    [
+     "Payment Format",
+     55777.086
+    ],
+    [
+     "Amount Received",
+     12556.572
+    ],
+    [
+     "deg_out[3,4)",
+     5042.682
+    ],
+    [
+     "vs_src_out_ratio",
+     2524.963
+    ],
+    [
+     "vs_src_out_amount_received_var",
+     1424.488
+    ],
+    [
+     "Amount Sent",
+     581.218
+    ],
+    [
+     "vs_src_out_amount_received_avg",
+     507.495
+    ],
+    [
+     "vs_src_in_ts_avg",
+     413.819
+    ],
+    [
+     "vs_src_out_fan",
+     253.313
+    ],
+    [
+     "vs_src_out_ts_avg",
+     153.778
+    ]
+   ],
+   "base_score_resolved": 0.0007544592,
+   "seconds": 54.3,
+   "peak_rss_mb": 4778,
+   "load_before": "02:50:00 up 15:28,  1 user,  load average: 8.36, 7.81, 8.92",
+   "train_replicates": [
+    {
+     "f1_x100": 5.906448202959831,
+     "precision": 0.03180136596471258,
+     "recall": 0.41388888888888886,
+     "pr_auc": 0.10941601591380438,
+     "tp": 447,
+     "fp": 13609,
+     "fn": 633
+    },
+    {
+     "f1_x100": 7.642886942010847,
+     "precision": 0.04199908298945438,
+     "recall": 0.42407407407407405,
+     "pr_auc": 0.02171811073484321,
+     "tp": 458,
+     "fp": 10447,
+     "fn": 622
+    },
+    {
+     "f1_x100": 10.309278350515463,
+     "precision": 0.06039415130324221,
+     "recall": 0.35185185185185186,
+     "pr_auc": 0.04453408593945859,
+     "tp": 380,
+     "fp": 5912,
+     "fn": 700
+    }
+   ],
+   "delta_f1_vs_clean": 4.43,
+   "delta_ci": {
+    "lo95": 2.2,
+    "hi95": 6.77,
+    "sd": 1.16
+   },
+   "delta_f1_train_replicates": [
+    -17.95,
+    -10.04,
+    -9.75
+   ]
+  }
+ },
+ "classifier": {
+  "xgb_config": "configs/xgb_default.yaml",
+  "xgb": "V2 R0's settings: scale_pos_weight 1, max_depth 6, 100 rounds, eta 0.3, hist, base_score estimated from the fit labels",
+  "base_columns": [
+   "src_id",
+   "dst_id",
+   "Amount Sent",
+   "Sent Currency",
+   "Amount Received",
+   "Received Currency",
+   "Payment Format"
+  ],
+  "column_order": [
+   "ids",
+   "raw",
+   "vstats",
+   "fan_in",
+   "fan_out",
+   "deg_in",
+   "deg_out",
+   "tcyc",
+   "sg",
+   "sg_ord",
+   "lcyc"
+  ],
+  "note": "V2 R0's XGBoost settings (`configs/xgb_default.yaml`: library defaults, 100 rounds, threshold 0.5), fit on the fit rows. Every fit has the same base, the DG-2 ladder's carried ids and raw columns: v1 `src_id`, `dst_id` and S2 (Amount Sent, Sent Currency, Amount Received, Received Currency, Payment Format, with Multi-GNN's codes). Then the vertex statistics (52 columns, clipped to the float32 range) and the pattern blocks in v1's order, sg_ord and lcyc last."
+ },
+ "quirks": [
+  {
+   "id": "Q1",
+   "how": "oracle quirk",
+   "changes": "sg and sg_ord see self-loops, with v1's role-dependent endpoint exclusion (A10, A30)",
+   "effect": "sg 81 / 0, sg_ord 6 / 0"
+  },
+  {
+   "id": "Q2",
+   "how": "oracle quirk",
+   "changes": "vertex statistics count self-loops; fan and degree drop them in both, self-loop triggers emit no pattern rows in both, and batch mode (A41) is deleted, so only vstats can change",
+   "effect": "vstats 1,432,535 / 83,787"
+  },
+  {
+   "id": "Q3",
+   "how": "oracle quirk",
+   "changes": "closed lower bound t' >= t - delta for sg, sg_ord, tcyc, lcyc (and tchain, not in clean_e16); fan and degree are open in both",
+   "effect": "lcyc 1 / 0, sg 2 / 1, tcyc 1 / 0"
+  },
+  {
+   "id": "Q4",
+   "how": "oracle quirk",
+   "changes": "stream visibility eid' <= e instead of ts' <= t, every block and vstats",
+   "effect": "deg_in 68,584 / 27,360, deg_out 229,662 / 95,249, fan_in 13,560 / 5,128, fan_out 114,103 / 39,308, sg 2 / 0, sg_ord 1 / 0, vstats 288,914 / 117,361"
+  },
+  {
+   "id": "Q5",
+   "how": "oracle quirk",
+   "changes": "strict time order in tcyc and sg_ord (and tchain and gs's A, not in clean_e16)",
+   "effect": "sg_ord 3 / 0"
+  },
+  {
+   "id": "Q6",
+   "how": "oracle quirk",
+   "changes": "lcyc drops every edge tied with the trigger",
+   "effect": "none"
+  },
+  {
+   "id": "Q7",
+   "how": "profile variant",
+   "changes": "sg only, no sg_ord block (clean_e16_q7)",
+   "effect": "sg_ord removed (its other blocks: none)"
+  },
+  {
+   "id": "Q8",
+   "how": "profile variant",
+   "changes": "fan and degree as v1's one-hot histograms with min size 2, not one count column (clean_e16_q8)",
+   "effect": "fan and degree become histograms (rows changed counted after binning clean's counts: none)"
+  },
+  {
+   "id": "Q9",
+   "how": "oracle quirk",
+   "changes": "vstats window [ts[e-1] - W, t], anchored at the previous edge, closed",
+   "effect": "vstats 171,008 / 98,150"
+  },
+  {
+   "id": "Q10",
+   "how": "oracle quirk",
+   "changes": "vstats over absolute ts, eid-order accumulation, GFP's 1e-5 variance guard (A44)",
+   "effect": "vstats 2,675,867 / 1,014,434"
+  },
+  {
+   "id": "Q11",
+   "how": "not applicable",
+   "changes": "GFP batch mode and credit: participants: deleted in P12 (D-55), no value to compare",
+   "effect": "GFP batch mode and credit: participants: deleted in P12 (D-55), no value to compare"
+  },
+  {
+   "id": "Q12",
+   "how": "not applicable",
+   "changes": "GFP harness plumbing in the runtime (ts_offset, fuzz knobs): harness only, removed in P12",
+   "effect": "GFP harness plumbing in the runtime (ts_offset, fuzz knobs): harness only, removed in P12"
+  },
+  {
+   "id": "Q13",
+   "how": "not applicable",
+   "changes": "input range fixed to HI-Small: an input check, the same rows on HI-Small",
+   "effect": "input range fixed to HI-Small: an input check, the same rows on HI-Small"
+  },
+  {
+   "id": "Q14",
+   "how": "not applicable",
+   "changes": "GFP's bin rule (A38): harness only, blz keeps [b_i, b_(i+1)) in both",
+   "effect": "GFP's bin rule (A38): harness only, blz keeps [b_i, b_(i+1)) in both"
+  },
+  {
+   "id": "Q15",
+   "how": "kept",
+   "changes": "trigger credit re-reports unchanged instances: clean keeps it (R9), nothing to switch",
+   "effect": "trigger credit re-reports unchanged instances: clean keeps it (R9), nothing to switch"
+  },
+  {
+   "id": "Q16",
+   "how": "kept",
+   "changes": "min size 2 for histograms: clean keeps it (R10); count blocks have none, which is Q8",
+   "effect": "min size 2 for histograms: clean keeps it (R10); count blocks have none, which is Q8"
+  },
+  {
+   "id": "Q17",
+   "how": "not applicable",
+   "changes": "windows and k_max copied from GFP's setup: parameters, re-chosen on validation later; clean_e16 and v1_e16 share v1's windows",
+   "effect": "windows and k_max copied from GFP's setup: parameters, re-chosen on validation later; clean_e16 and v1_e16 share v1's windows"
+  }
+ ],
+ "never_copied": [
+  {
+   "id": "A29",
+   "status": "not applicable",
+   "why": "GFP's fit_transform double-counts re-sent edges (snapml >= 1.14.1): blz never copied it"
+  },
+  {
+   "id": "A33",
+   "status": "not applicable",
+   "why": "GFP's ts-0 self-loop artifact in tcyc (D-12's ts + 1): harness only, blz never copied it"
+  },
+  {
+   "id": "A45",
+   "status": "not applicable",
+   "why": "GFP's running-sum drift after eviction in vertex statistics: v2 computes each window exactly (D-37)"
+  }
+ ],
+ "notes": [
+  "Training noise dominates single fits. F1 at threshold 0.5 under R0's settings moves a lot when only the training sample changes: clean_e16's four draws (the unweighted fit, then 3 refits on block-bootstrapped fit rows, 100 chunks, the same weights for every configuration) give F1 9.89, 23.86, 17.68, 20.06. The [95%] column covers only the validation sample's noise. Here a quirk has an effect only when its paired \u0394F1 keeps one sign over all four draws.",
+  "Only Q2 has one. Its \u0394F1 over the four draws is +27.07, +12.81, +13.57, +10.26 and its \u0394PR-AUC +0.264, +0.192, +0.132, +0.100. The fit and validation rows hold 569,769 self-loops, 481,056 of them Reinvestment, and 6 laundering ones (0 Reinvestment). Every Reinvestment edge is a self-loop. Q2 puts each account's reinvestment history into its vertex statistics, and R1 takes it out: R1 keeps self-loops as classifier rows, but no feature carries an account's self-loops into its other rows. Q2's effect is the vstats part only: fan and degree drop self-loops under both semantics, self-loop triggers have zero pattern rows under both, and batch mode (A41) is deleted.",
+  "Q5, Q6, Q7 leave every fit identical to clean's in all four draws, and Q1 and Q3 move F1 by at most 1.00 in one draw. The blocks they change (sg, sg_ord, tcyc, lcyc) hold at most 0.09% of the gain in any fit, and HI-Small barely has a cycle or a scatter-gather with two hops in one minute: Q5 changes 3 sg_ord rows and no tcyc row, and Q6 changes no lcyc row. sg_ord has 138 active fit rows, 1 of them positive, and none of the 13 unweighted fits splits on sg or sg_ord, so Q7 (dropping the block) changes nothing.",
+  "Q4 (stream visibility) changes fan, degree and vstats rows, but its \u0394F1 takes both signs (+12.04, -4.55, -0.06, -4.51). Within a timestamp, file order carries the label: 1,814 of the 3,379 fit and validation positives that share their minute sit in the first tenth of its rows (mean relative rank 0.300 on fit and 0.228 on validation, against 0.500 for negatives). Under stream visibility a row's windows end at its file position, so its features can encode that rank; R3 removes this.",
+  "Q10 (absolute timestamps) puts 85.2% of validation rows above the fit maximum of u_out's time mean (85.2% for v1_e16; clean's ages: 0.0%), so the trees extrapolate on time. Its \u0394F1 takes both signs (+8.60, -7.62, -4.55, -0.57); its PR-AUC is lower in 3 of 4 draws.",
+  "All the oracle quirks together score below clean in 3 of 4 draws on F1 and 4 of 4 on PR-AUC, and v1_e16 in 3 and 4, even though Q2 alone raises both every time. The quirks do not add up, and which of them cancels Q2's gain was not tested. The all-quirks unweighted fit predicts 29,455 false positives.",
+  "Q8 (histograms instead of counts) is information-preserving here (clean's counts, binned, equal Q8's rows exactly), and its \u0394F1 takes both signs (+8.49, -3.49, -3.02, -3.69). So does Q9's (+5.06, -2.68, -0.51, -2.96).",
+  "R0's settings make a weak classifier on these columns, and the absolute levels are not comparable to E8: DG-2's tuned recipe reached F1 53.02 on GFP features. Only the paired differences are read here.",
+  "No test label is read. Labels are sliced to the fit and validation rows, and the evidence above uses those rows only. Each run mines every row, like every other HI-Small run, but no test row is scored.",
+  "Count blocks: instances = rows with a count of at least 1 (one instance per trigger, R7). The \u2265 2 share is what v1's histogram marks active.",
+  "Timings are informal (P13). No foreign process used more than 20% of a core before any run. The load average logged before a run still includes the previous E16 run."
+ ],
+ "finished": "2026-11-24T19:34:07+00:00"
+}
