@@ -1,13 +1,14 @@
 # Semantic profile, clean family: the test profile (SPEC v3 §4.4: a clean test profile enables
-# every pattern). clean_default's blocks, plus lcyc and tchain (86,400 s, tcyc's bins) and the
-# count blocks gs, fan_oneway_out and fan_total (86,400 s). Not a modelling profile: lcyc's
-# unordered search can reach the work limit (R11) on dense graphs.
+# every pattern). clean_default's blocks, plus lcyc and tchain (86,400 s, tcyc's bins), the
+# count blocks gs, fan_oneway_out and fan_total (86,400 s), and R8's vertex statistics (86,400 s).
+# Not a modelling profile: lcyc's unordered search can reach the work limit (R11) on dense graphs.
 version: 2
 profile: clean_all
 family: clean
 visibility: timestamp
 credit: trigger
 k_max: 10
+vstats: {window: 86400}
 blocks:
   fan_in:         {patterns: [clean_fan_in],  window: 86400}
   fan_out:        {patterns: [clean_fan_out], window: 86400}

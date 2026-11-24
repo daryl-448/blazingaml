@@ -216,5 +216,9 @@ TEST_CASE("clean profiles: clean_default, clean_wc_hi_small and clean_all (SPEC 
   for (Block b : {Block::gs, Block::fan_oneway_out, Block::fan_total}) CHECK(a.find(b)->params.bins.empty());
   CHECK(a.find(Block::lcyc)->params.bins == a.find(Block::tcyc)->params.bins);
   CHECK(a.find(Block::tchain)->params.bins == a.find(Block::tcyc)->params.bins);
+  REQUIRE(a.vstats);  // R8; §3.3's clean profiles have none
+  CHECK(a.vstats->window == 86400);
+  CHECK_FALSE(d.vstats);
+  CHECK_FALSE(w.vstats);
   CHECK(d.id() != w.id());
 }
