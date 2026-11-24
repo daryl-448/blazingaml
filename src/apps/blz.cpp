@@ -695,7 +695,6 @@ int fuzz(const std::string& seeds, const std::string& bins_opt, int k_max, bool 
     const blz::FuzzGraph fg = blz::fuzz_graph(seed);
     const std::uint64_t m = fg.src.size();
     if (vstats) {
-      // GFP's time_window is the graph's window (tools/gfp/vstats_vs_gfp.py).
       const std::vector<double> a = blz::fuzz_amounts(seed, m);
       const blz::GraphIndex idx(fg.src, fg.dst, fg.ts, fg.n);
       blz::TriggerSel all;
@@ -1563,7 +1562,6 @@ int coverage(const std::string& graph, const std::string& gt_path, const std::st
   const blz::Profile prof = blz::load_profile(profile_path);   // E403
   blz::check_profile_backend(prof, blz::Backend::oracle);     // E404: eligibility runs the oracle
 
-  // The full mining (activation): a blz manifest of this profile over every edge.
   const nlohmann::json fm = nlohmann::json::parse(std::ifstream(features + "/features.json"));
   if (fm.at("blzg_sha256") != blzg_sha) throw std::runtime_error(features + " was mined from another .blzg");
   if (fm.at("profile").at("id") != prof.id())

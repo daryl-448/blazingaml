@@ -95,7 +95,7 @@ def compare(blz, gfp, evicted):
             "by_column": cols}, bad
 
 
-def fuzz_mode(args):
+def run_fuzz(args):
     t0 = time.time()
     subprocess.run([args.blz, "fuzz", "--seeds", args.seeds, "--vstats", "--out", args.work], check=True)
     t_blz = time.time() - t0
@@ -130,7 +130,7 @@ def fuzz_mode(args):
                     "gfp_ts_offset": 0, "seeds": args.seeds, "graphs": int(len(starts)),
                     "first_mismatches": examples,
                     "seconds": {"blz_fuzz": round(t_blz, 1), "gfp": round(t_gfp, 1)}})
-    return "vstats_vs_gfp_fuzz", summary
+    return summary
 
 
 def main():
@@ -142,10 +142,10 @@ def main():
     ap.add_argument("--work", default=str(root / "data/fuzz_vs"))
     ap.add_argument("--report", default=str(root / "results/s2_vstats.json"))
     args = ap.parse_args()
-    key, summary = fuzz_mode(args)
+    summary = run_fuzz(args)
     report = Path(args.report)
     doc = json.loads(report.read_text()) if report.exists() else {}
-    doc[key] = summary
+    doc["vstats_vs_gfp_fuzz"] = summary
     report.parent.mkdir(parents=True, exist_ok=True)
     report.write_text(json.dumps(doc, indent=1) + "\n")
     print(json.dumps({k: v for k, v in summary.items() if k not in ("by_column", "first_mismatches")}, indent=1))
