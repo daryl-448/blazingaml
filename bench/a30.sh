@@ -14,7 +14,11 @@
 # --campaign s7 runs S7's campaign instead (SPEC v2 §8 S7, see bench/a30_remote.sh) and downloads
 # results/{s7_a30.json,e12_s7_a30.{json,md}}, a30_s7_env.txt and results/a30_s7_run.log.
 #
-# Usage: bench/a30.sh [--campaign p11|s7] [--id MACHINE_ID] [--keep] [--destroy]
+# --campaign p13 runs P13's AC-V3-1 campaign (SPEC v3 P13, see bench/a30_remote.sh) and downloads
+# results/{p13_a30.json,ac_v3_1_a30.json,ac_v3_1_a30_logs.tgz}, a30_p13_env.txt and
+# results/a30_p13_run.log. It runs for hours: set MAX_WAIT_MIN.
+#
+# Usage: bench/a30.sh [--campaign p11|s7|p13] [--id MACHINE_ID] [--keep] [--destroy]
 # Needs: jl (logged in, an SSH key added) and data/hi_small.blzg. MAX_WAIT_MIN (default 120)
 # bounds the wait for the remote run; past it the run counts as failed and the instance is paused.
 set -euo pipefail
@@ -26,12 +30,13 @@ while [ $# -gt 0 ]; do
     --id) ID=$2; shift 2 ;;
     --keep) KEEP=1; shift ;;
     --destroy) DESTROY=1; shift ;;
-    *) echo "usage: $0 [--campaign p11|s7] [--id MACHINE_ID] [--keep] [--destroy]" >&2; exit 2 ;;
+    *) echo "usage: $0 [--campaign p11|s7|p13] [--id MACHINE_ID] [--keep] [--destroy]" >&2; exit 2 ;;
   esac
 done
 case $CAMPAIGN in
   p11) OUTPUTS="p11_a30.json e12_gpu_a30.json e11_ablation_a30.json e11_ablation_a30.md e11_a30_skipped.txt a30_p11_env.txt" ;;
   s7) OUTPUTS="s7_a30.json e12_s7_a30.json e12_s7_a30.md a30_s7_env.txt" ;;
+  p13) OUTPUTS="p13_a30.json ac_v3_1_a30.json ac_v3_1_a30_logs.tgz a30_p13_env.txt" ;;
   *) echo "unknown campaign $CAMPAIGN" >&2; exit 2 ;;
 esac
 [ -f data/hi_small.blzg ] || { echo "missing data/hi_small.blzg (blz prepare)" >&2; exit 1; }

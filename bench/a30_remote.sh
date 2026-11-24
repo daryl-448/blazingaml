@@ -16,6 +16,10 @@
 # --backend cuda --fuse --pack on 10,000 graphs at H = 0, 4 and all, for every registered block
 # and for sg_ordered_tsvis; HI-Small mined with --fuse --pack under v1_default (its hashes and
 # copy widths into results/s7_a30.json); and bench/s7.sh (results/e12_s7_a30.{json,md}).
+# With BLZ_CAMPAIGN=p13 (SPEC v3 P13, AC-V3-1 on sm_80), steps 3-5 are instead: the fast tests;
+# HI-Small mined under clean_default, clean_wc_hi_small and clean_all on the oracle, cpu, cuda and
+# hybrid, each block's hash equal to the oracle's (results/p13_a30.json); and bench/ac_v3_1.sh
+# (results/ac_v3_1_a30.json, its logs in results/ac_v3_1_a30_logs.tgz).
 # Results go to $BLZ_WORK/repo/results/{p11_a30,e12_gpu_a30,e11_ablation_a30}.json (and the E11
 # .md) and a30_p11_env.txt. Exit status: non-zero on the first failure.
 set -euxo pipefail
@@ -115,6 +119,51 @@ PY
   HOST=a30 bench/s7.sh
   echo "a30_remote (s7): done in $(( ($(date +%s) - START) / 60 )) min"
   exit 0
+fi
+
+if [ "$CAMPAIGN" = p13 ]; then
+  # AC-V3-1 on sm_80: HI-Small under the clean profiles on the oracle, cpu, cuda and hybrid
+  # (output_fnv1a per block, vstats included, into results/p13_a30.json), then bench/ac_v3_1.sh.
+  R=results/p13_a30.json
+  for p in clean_default clean_wc_hi_small clean_all; do
+    for be in oracle cpu cuda hybrid; do
+      t0=$(date +%s)
+      "$BLZ" mine --graph data/hi_small.blzg --profile "configs/profiles/$p.yaml" --backend $be --out "features/a30_$p"
+      python3 - "$R" "$p" "$be" "$(( $(date +%s) - t0 ))" "features/a30_$p/features.json" <<'PY'
+import json, os, sys
+path, prof, be, secs, meta = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4]), json.load(open(sys.argv[5]))
+doc = json.load(open(path)) if os.path.exists(path) else {}
+doc.setdefault("hi_small", {}).setdefault(prof, {})[be] = {
+    "profile_id": meta["run"]["profile_id"], "wall_seconds": secs, "peak_rss_mb": meta.get("peak_rss_mb"),
+    "cuda": (meta.get("cuda") or {}).get("env"),
+    "output_fnv1a": {b: v["output_fnv1a"] for b, v in meta["blocks"].items()}}
+doc["git"] = meta["git"]
+open(path, "w").write(json.dumps(doc, indent=1) + "\n")
+PY
+      rm -rf "features/a30_$p"
+    done
+  done
+  python3 - "$R" <<'PY'
+import json, sys
+path = sys.argv[1]
+doc = json.load(open(path))
+ok = True
+for prof, by in doc["hi_small"].items():
+    ref = by["oracle"]["output_fnv1a"]
+    differ = {be: sorted(b for b in set(ref) | set(r["output_fnv1a"]) if ref.get(b) != r["output_fnv1a"].get(b))
+              for be, r in by.items()}
+    differ = {be: d for be, d in differ.items() if d}
+    ok &= not differ
+    print(f"hi_small {prof}: {'equal on ' + ', '.join(by) if not differ else 'DIFFER ' + str(differ)}")
+doc["hi_small_equal"] = ok
+open(path, "w").write(json.dumps(doc, indent=1) + "\n")
+sys.exit(0 if ok else 1)
+PY
+  gates=0
+  BLZ=$BLZ OUT=results/ac_v3_1_a30 bench/ac_v3_1.sh all || gates=$?
+  tar -czf results/ac_v3_1_a30_logs.tgz -C results ac_v3_1_a30
+  echo "a30_remote (p13): done in $(( ($(date +%s) - START) / 60 )) min, gates rc $gates"
+  exit $gates
 fi
 
 R=results/p11_a30.json
