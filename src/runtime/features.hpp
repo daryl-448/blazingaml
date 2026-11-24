@@ -51,6 +51,10 @@ struct BlockParams {
   bool reach_prune = false;  // the CPU's reachability pruning (SPEC v2 §8 S6): a speed option, same rows
 };
 
+// A block's columns: a count block (SPEC v3 R7, no bins) has one, the count; a histogram block one
+// per bin.
+inline std::uint32_t block_cols(const BlockParams& p) { return p.bins.empty() ? 1u : std::uint32_t(p.bins.size()); }
+
 // Thrown when a trigger exceeds the work limit (SPEC v2 §8 S3). `eid` is the smallest such
 // trigger among those that ran (a driver skips the triggers it has not started yet).
 struct WorkLimitExceeded : std::runtime_error {
