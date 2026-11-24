@@ -1,7 +1,7 @@
 # BlazingAML — SPEC v3: clean semantics, formal verification, hillclimbing
 
 Status: draft for review · Date: 2026-11-22 · Scope: HI-Small, LI-Small, HI-Medium, TransXion;
-C++20 (OpenMP + CUDA); `local` first, one optional A30 campaign.
+C++20 (OpenMP + CUDA); `local` first, A30 campaigns with the user's approval.
 
 This document plans v3. It builds on `SPEC.md` (v1) and `SPEC_V2.md` (v2), which stay the record
 of what was built and measured. Section references without a prefix (§4.6, A28, D-8) point into
@@ -99,7 +99,7 @@ The v2 rules stand (V2 §2.5), with these changes and additions:
 - **Shared desktop.** Check `ps --sort=-pcpu` and `free -g` before a timing run and wait for an
   idle window. Never stop the user's jobs. Log foreign load during the run. Keep peak RSS under
   about 3 GB per process on `local` unless the preflight shows more is free.
-- **A30.** At most one campaign, at the end, with the user's approval (§7 P17).
+- **A30.** A campaign runs whenever a phase needs one, with the user's approval (D-59).
 - **Preflight before anything large** (V2 §2.5). HI-Medium always preflights.
 - **Report the gap, then move on.** When a number disagrees with the paper or with an estimate in
   this spec, record it and continue.
@@ -733,6 +733,7 @@ lose the GFP ts offset (D-56).
 | D-54 | The user confirmed timestamp visibility (Q4, R3) and non-decreasing hop order (Q5, R4) on 2026-11-22, and chose to keep both SG variants for Q7: unordered `sg` (R6a) and ordered `sg_ord` (R6b), as two blocks of the clean profiles. |
 | D-55 | P12 deletes GFP batch mode and `credit: participants` instead of isolating them. No GFP parity helper needs them once `fuzz_vs_gfp.py --batch`, `coverage_gfp.py` and E9's G1 path retire. `credit:` stays a required profile key whose only value is `trigger`, so every remaining profile id is unchanged. The frozen DG-2 recipe can no longer be recomputed in C++ (§3.4). |
 | D-56 | The vertex statistics lose D-12's ts offset: `VstatsParams::ts_offset`, `blz vstats --ts-offset`, and the +1 of `blz fuzz --vstats`. `tools/gfp/vstats_vs_gfp.py` sends GFP raw ts. GFP's ts-0 artifact (A33) only drops temporal cycles, and the tool compares no temp-cycle column. The tool's HI-Small mode is retired, because F1 was mined at ts + 1. `fuzz_amounts` stays, because its ties, repeats, tiny values and large values are the cases that R8's equal-value and small-side rules need. |
+| D-59 | On 2026-11-24 the user removed §2.5's limit of one A30 campaign, at the end: a campaign runs whenever a phase needs one, with the user's approval. |
 
 ## Appendix E — planning prototypes (not normative)
 
