@@ -11,15 +11,24 @@
 
 namespace blz {
 
-// The tests of §3.4.
-enum class MetaTest { prefix_closure, relabeling, time_shift, visibility_invariance, order_relaxation };
-inline constexpr std::array<MetaTest, 5> kMetaTests = {MetaTest::prefix_closure, MetaTest::relabeling,
-                                                       MetaTest::time_shift, MetaTest::visibility_invariance,
-                                                       MetaTest::order_relaxation};
+// The tests of §3.4, and SPEC v3 R3's tie permutation and duplicate (u, v, t).
+enum class MetaTest {
+  prefix_closure,
+  relabeling,
+  time_shift,
+  visibility_invariance,
+  order_relaxation,
+  tie_permutation,
+  duplicate_uvt
+};
+inline constexpr std::array<MetaTest, 7> kMetaTests = {
+    MetaTest::prefix_closure,   MetaTest::relabeling,      MetaTest::time_shift,   MetaTest::visibility_invariance,
+    MetaTest::order_relaxation, MetaTest::tie_permutation, MetaTest::duplicate_uvt};
 const char* meta_test_name(MetaTest t);
 
-// Whether test `t` runs for `prof` on `backend`: visibility invariance needs a tcyc or tchain block
-// (every backend runs both visibilities since P10); order relaxation needs an sg_ord block.
+// Whether test `t` runs for `prof` on `backend`: visibility invariance needs a legacy profile with
+// a tcyc or tchain block (every backend runs both visibilities since P10); order relaxation needs an
+// sg_ord block; tie permutation and duplicate (u, v, t) need timestamp visibility (SPEC v3 R3).
 bool meta_test_applies(MetaTest t, const Profile& prof, Backend backend);
 
 struct MetamorphicResult {
@@ -53,7 +62,11 @@ struct MetamorphicResult {
 //     v2 §6.1, §8 S5);
 //   - order relaxation: per row, sg_ord's instance count (the sum over its bins) is at most that
 //     of sg_gather (clean_sg_gather for a clean profile, SPEC v3 R6) mined alone at sg_ord's
-//     window and bins, by the same backend (SPEC v2 §6.3).
+//     window and bins, by the same backend (SPEC v2 §6.3);
+//   - tie permutation (SPEC v3 R3a): a seeded shuffle of the edges inside each timestamp, each row
+//     moving with its edge, leaves every row unchanged;
+//   - duplicate (u, v, t) (SPEC v3 R3b): edges with the same (u, v, t) have the same row in every
+//     block (rows_compared counts the edges after the first of each such group, per block).
 // check_profile_backend(prof, backend) must hold; this throws otherwise.
 MetamorphicResult metamorphic(const Profile& prof, Backend backend, std::uint64_t s0, std::uint64_t s1,
                               std::span<const std::uint32_t> bins, std::span<const std::uint32_t> thresholds,

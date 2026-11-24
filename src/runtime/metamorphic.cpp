@@ -1,11 +1,14 @@
 #include "runtime/metamorphic.hpp"
 
 #include <algorithm>
+#include <map>
 #include <memory>
 #include <numeric>
 #include <optional>
 #include <stdexcept>
 #include <string_view>
+#include <tuple>
+#include <utility>
 
 #include "graph/fuzz_gen.hpp"
 #include "graph/index.hpp"
@@ -103,6 +106,8 @@ const char* meta_test_name(MetaTest t) {
     case MetaTest::time_shift: return "time_shift";
     case MetaTest::visibility_invariance: return "visibility_invariance";
     case MetaTest::order_relaxation: return "order_relaxation";
+    case MetaTest::tie_permutation: return "tie_permutation";
+    case MetaTest::duplicate_uvt: return "duplicate_uvt";
   }
   return "?";
 }
@@ -113,6 +118,13 @@ bool meta_test_applies(MetaTest t, const Profile& prof, [[maybe_unused]] Backend
     case MetaTest::visibility_invariance:
       return prof.family == Family::legacy && (prof.find(Block::tcyc) || prof.find(Block::tchain));
     case MetaTest::order_relaxation: return prof.find(Block::sg_ord) != nullptr;
+    // SPEC v3 R3a, R3b. Under timestamp visibility a trigger at t sees exactly the edges with
+    // t' <= t, so every window is fixed by the timestamps, and every definition, legacy or clean,
+    // reads only the (u, v, t) of the trigger and of its window edges, never the eid order inside a
+    // timestamp. Under stream visibility a trigger sees the edges before it in the stream, so the
+    // order of tied edges changes rows, and of two equal edges the later one sees the earlier.
+    case MetaTest::tie_permutation:
+    case MetaTest::duplicate_uvt: return prof.visibility == Visibility::timestamp;
     default: return true;
   }
 }
@@ -184,9 +196,10 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
     };
     Rng rng{seed ^ 0x6d657461ULL};  // "meta"
     bool bad = false;
-    // Rows of `got` (a graph whose eid e is the base's eid e, for e < rows) vs the base, for the
-    // blocks of `which` (by default, every block the base completed).
-    auto compare = [&](MetaTest test, const Mined& got, std::uint64_t rows, const Profile* which = nullptr) {
+    // Rows of `got` vs the base's, for the blocks of `which` (by default, every block the base
+    // completed): got's eid e < rows is the base's eid base_of[e], or e without `base_of`.
+    auto compare = [&](MetaTest test, const Mined& got, std::uint64_t rows,
+                       const std::vector<std::uint64_t>* base_of = nullptr, const Profile* which = nullptr) {
       for (std::size_t t = 0; t < want.rows.size(); ++t)
         for (const ProfileBlock& pb : (which ? which : &live)->blocks) {
           if (want.limited[int(pb.block)] || got.limited[int(pb.block)]) {
@@ -198,7 +211,7 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
           const std::size_t nb = block_cols(block_bins[int(pb.block)]);
           for (std::uint64_t e = 0; e < rows; ++e)
             if (!std::equal(g.begin() + std::ptrdiff_t(e * nb), g.begin() + std::ptrdiff_t((e + 1) * nb),
-                            w.begin() + std::ptrdiff_t(e * nb))) {
+                            w.begin() + std::ptrdiff_t((base_of ? (*base_of)[e] : e) * nb))) {
               ++out.mismatched_rows[int(test)][int(pb.block)];
               bad = true;
             }
@@ -233,7 +246,7 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
     compare(MetaTest::time_shift, mine(sh, live, block_bins), m);
 
     if (flipped)
-      compare(MetaTest::visibility_invariance, mine(base, *flipped, block_bins), m, &*flipped);
+      compare(MetaTest::visibility_invariance, mine(base, *flipped, block_bins), m, nullptr, &*flipped);
 
     if (gather) {
       // Per row, sg_ordered's instances (the sum over its bins) are at most sg_gather's: ordering
@@ -253,6 +266,46 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
         }
         out.rows_compared[int(MetaTest::order_relaxation)] += m;
       }
+    }
+
+    if (meta_test_applies(MetaTest::tie_permutation, prof, be)) {
+      // SPEC v3 R3a: a seeded shuffle of the edges inside each timestamp, each row moving with its
+      // edge: the shuffled graph's eid e is the base's base_of[e].
+      std::vector<std::uint64_t> base_of(m);
+      std::iota(base_of.begin(), base_of.end(), std::uint64_t(0));
+      for (std::uint64_t a = 0, b; a < m; a = b) {
+        for (b = a + 1; b < m && base.ts[b] == base.ts[a];) ++b;
+        for (std::uint64_t i = b - 1; i > a; --i) std::swap(base_of[i], base_of[a + rng.below(i - a + 1)]);
+      }
+      Graph tie = base;
+      for (std::uint64_t e = 0; e < m; ++e) {
+        tie.src[e] = base.src[base_of[e]];
+        tie.dst[e] = base.dst[base_of[e]];
+      }
+      compare(MetaTest::tie_permutation, mine(tie, live, block_bins), m, &base_of);
+    }
+
+    if (meta_test_applies(MetaTest::duplicate_uvt, prof, be)) {
+      // SPEC v3 R3b: an edge whose (u, v, t) an earlier edge has gets that edge's row, in every block.
+      std::map<std::tuple<std::uint32_t, std::uint32_t, std::int32_t>, std::uint64_t> first;
+      std::vector<std::pair<std::uint64_t, std::uint64_t>> dups;  // (eid, the first eid with its (u, v, t))
+      for (std::uint64_t e = 0; e < m; ++e) {
+        const auto [it, fresh] = first.try_emplace({base.src[e], base.dst[e], base.ts[e]}, e);
+        if (!fresh) dups.emplace_back(e, it->second);
+      }
+      const auto t = std::size_t(MetaTest::duplicate_uvt);
+      for (std::size_t r = 0; r < want.rows.size(); ++r)
+        for (const ProfileBlock& pb : live.blocks) {
+          const auto& w = want.rows[r][int(pb.block)];
+          const std::size_t nb = block_cols(block_bins[int(pb.block)]);
+          for (const auto& [e, f] : dups)
+            if (!std::equal(w.begin() + std::ptrdiff_t(e * nb), w.begin() + std::ptrdiff_t((e + 1) * nb),
+                            w.begin() + std::ptrdiff_t(f * nb))) {
+              ++out.mismatched_rows[t][int(pb.block)];
+              bad = true;
+            }
+          out.rows_compared[t] += dups.size();
+        }
     }
 
     ++out.graphs;
