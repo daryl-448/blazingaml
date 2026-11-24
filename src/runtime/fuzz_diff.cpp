@@ -23,8 +23,6 @@ FuzzDiff fuzz_diff_cuda(std::uint64_t s0, std::uint64_t s1, std::span<const std:
   return fuzz_diff_cuda(registry_profile(), s0, s1, bins, thresholds);
 }
 
-const char* reference_name(Reference r) { return r == Reference::oracle ? "oracle" : "cpu"; }
-
 namespace {
 
 std::array<std::vector<std::uint32_t>, kAllBlocks.size()> all_fuzz_bins(const Profile& prof,

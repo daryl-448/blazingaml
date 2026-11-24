@@ -27,7 +27,6 @@ namespace blz {
 // (a backend-vs-backend check for a profile the oracle cannot run, SPEC v3 clean profiles). With
 // Reference::cpu, fuzz_diff_cpu checks the sorted schedule (and reachability pruning) against it.
 enum class Reference { oracle, cpu };
-const char* reference_name(Reference r);
 
 struct FuzzDiff {
   std::uint64_t graphs = 0, edges = 0;
