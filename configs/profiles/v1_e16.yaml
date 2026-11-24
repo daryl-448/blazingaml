@@ -1,0 +1,17 @@
+# Semantic profile (SPEC v3 §3.6, E16): clean_e16's legacy comparison, v1_default plus lcyc_f2's
+# lcyc block. Stream visibility, trigger credit, each pattern's own window bounds. Its vertex
+# statistics are `blz vstats --window 86400` (GFP's window and guards, Q9 and Q10), since a legacy
+# profile has no vstats key. 76 columns.
+version: 2
+profile: v1_e16
+visibility: stream
+credit: trigger
+k_max: 10
+blocks:                      # output order = listed order
+  fan_in:  {patterns: [fan_in],  window: 86400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50]}
+  fan_out: {patterns: [fan_out], window: 86400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50]}
+  deg_in:  {patterns: [deg_in],  window: 86400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50]}
+  deg_out: {patterns: [deg_out], window: 86400, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 30, 50]}
+  sg:      {patterns: [sg_gather, sg_scatter], window: 21600, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20]}
+  tcyc:    {patterns: [tcyc], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}
+  lcyc:    {patterns: [lcyc], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}
