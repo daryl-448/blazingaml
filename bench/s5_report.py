@@ -84,10 +84,10 @@ def shares(cov):
     return out
 
 
-def with_frozen(cov, frozen):
+def with_frozen(cov, e9_attempts):
     """Per typology: complete attempts eligible for any frozen-recipe block, for any new block, and
-    for either (E9's frozen eligibility per attempt, features/e9/coverage_frozen.json)."""
-    fz = {a["id"]: any(a["eligible"]) for a in frozen["attempts"] if a["status"] == "complete"}
+    for either (E9's frozen eligibility per attempt, results/e9_coverage.json)."""
+    fz = {a["id"]: any(a["frozen"]["eligible"]) for a in e9_attempts if a["status"] == "complete"}
     by = collections.defaultdict(lambda: [0, 0, 0, 0])
     for a in cov["attempts"]:
         if a["status"] != "complete":
@@ -110,7 +110,8 @@ def main():
     g = Blzg(str(ROOT / gt["inputs"]["graph"]))
     if g.csv_sha256 != gt["inputs"]["csv_sha256"]:
         raise SystemExit("results/gt_join.json is not a gt-join of " + gt["inputs"]["graph"])
-    frozen = json.loads((ROOT / "features" / "e9" / "coverage_frozen.json").read_text())
+    e9_doc = json.loads((ROOT / "results" / "e9_coverage.json").read_text())
+    frozen = e9_doc["profiles"]["frozen"]
     e9 = {t: round(100 * v["eligible"]["any"] / v["complete"], 1) for t, v in frozen["by_typology"].items()}
     res["gate"] = {
         "rule": "SPEC v2 §8 S5: E9 shows typology T ineligible for every existing block under the frozen profile, "
@@ -148,7 +149,7 @@ def main():
         br = cov["base_rates"]
         elig[prof] = {"profile_id": cov["profile"]["id"],
                       "windows": {b: v["window"] for b, v in cov["profile"]["resolved"]["blocks"].items()},
-                      "by_typology": shares(cov), "with_frozen": with_frozen(cov, frozen),
+                      "by_typology": shares(cov), "with_frozen": with_frozen(cov, e9_doc["attempts"]),
                       "with_frozen_note": "frozen_any = eligible for a block of E9's frozen recipe ("
                                           + frozen["profile"]["file"] + ", W-C windows) under both profiles here",
                       "nonzero_pct": {b: {"edges": round(100 * v["edges"]["all"] / br["edges"]["all"], 2),
