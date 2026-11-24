@@ -99,7 +99,8 @@ def main():
         o, c = hi[name]["oracle"].get("output_fnv1a"), hi[name]["cpu"].get("output_fnv1a")
         checks[f"{name}: sweep blocks, oracle = cpu"] = o is not None and o == c
         plans = hi[name]["cpu"].get("cpu_plans", {})
-        checks[f"{name}: cpu plan is the sweep"] = all(plans.get(b) == {b: "sweep"} for b in SWEEP)
+        # Per block, {pattern: plan}: fan_in's pattern is fan_in, or clean_fan_in in a clean profile.
+        checks[f"{name}: cpu plan is the sweep"] = all(set(plans.get(b, {}).values()) == {"sweep"} for b in SWEEP)
 
     # AC-V2-0: v1_default, every block, every backend.
     v1 = {}
