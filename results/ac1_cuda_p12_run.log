@@ -1,0 +1,47 @@
+cuda index built in 0.5 s (m=5078345, n=515088); profile features_default (b21580d6e129821a); triggers all: 5078345 rows
+graph uploaded in 0.028 s (329 MB)
+fan_in        0.1 s  saturated=0  fnv1a=10768036772042710147
+fan_out       0.2 s  saturated=0  fnv1a=904878896487262018
+deg_in        0.1 s  saturated=0  fnv1a=3321375241280117763
+deg_out       0.1 s  saturated=0  fnv1a=3341707662053112211
+sg            0.1 s  saturated=0  fnv1a=18124683238158106329
+tcyc          0.2 s  saturated=0  fnv1a=7737672036140136160
+features/oracle_default/fan_in.npy vs features/cuda_default/fan_in.npy: 5078345 x 12, 0 mismatching rows
+features/oracle_default/fan_out.npy vs features/cuda_default/fan_out.npy: 5078345 x 12, 0 mismatching rows
+features/oracle_default/deg_in.npy vs features/cuda_default/deg_in.npy: 5078345 x 12, 0 mismatching rows
+features/oracle_default/deg_out.npy vs features/cuda_default/deg_out.npy: 5078345 x 12, 0 mismatching rows
+features/oracle_default/sg.npy vs features/cuda_default/sg.npy: 5078345 x 10, 0 mismatching rows
+features/oracle_default/tcyc.npy vs features/cuda_default/tcyc.npy: 5078345 x 9, 0 mismatching rows
+cuda index built in 0.4 s (m=5078345, n=515088); profile features_parity (8c8237bf05998d07); triggers all: 5078345 rows
+graph uploaded in 0.028 s (329 MB)
+fan_in        0.1 s  saturated=0  fnv1a=231040277472725923
+fan_out       0.3 s  saturated=0  fnv1a=6330076044337963426
+deg_in        0.1 s  saturated=0  fnv1a=6366489652548864147
+deg_out       0.1 s  saturated=0  fnv1a=10227089942834718195
+sg            0.2 s  saturated=0  fnv1a=2140027548842065401
+tcyc          0.3 s  saturated=0  fnv1a=3161311333401399936
+features/oracle_parity/fan_in.npy vs features/cuda_parity_h0/fan_in.npy: 5078345 x 32, 0 mismatching rows
+features/oracle_parity/fan_out.npy vs features/cuda_parity_h0/fan_out.npy: 5078345 x 32, 0 mismatching rows
+features/oracle_parity/deg_in.npy vs features/cuda_parity_h0/deg_in.npy: 5078345 x 32, 0 mismatching rows
+features/oracle_parity/deg_out.npy vs features/cuda_parity_h0/deg_out.npy: 5078345 x 32, 0 mismatching rows
+features/oracle_parity/sg.npy vs features/cuda_parity_h0/sg.npy: 5078345 x 32, 0 mismatching rows
+features/oracle_parity/tcyc.npy vs features/cuda_parity_h0/tcyc.npy: 5078345 x 32, 0 mismatching rows
+cuda index built in 0.4 s (m=5078345, n=515088); profile features_parity (8c8237bf05998d07); triggers all: 5078345 rows
+graph uploaded in 0.028 s (329 MB)
+fan_in        0.1 s  saturated=0  fnv1a=231040277472725923
+fan_out       0.3 s  saturated=0  fnv1a=6330076044337963426
+deg_in        0.1 s  saturated=0  fnv1a=6366489652548864147
+deg_out       0.2 s  saturated=0  fnv1a=10227089942834718195
+sg            0.2 s  saturated=0  fnv1a=2140027548842065401
+tcyc          0.3 s  saturated=0  fnv1a=3161311333401399936
+features/oracle_parity/fan_in.npy vs features/cuda_parity_light/fan_in.npy: 5078345 x 32, 0 mismatching rows
+features/oracle_parity/fan_out.npy vs features/cuda_parity_light/fan_out.npy: 5078345 x 32, 0 mismatching rows
+features/oracle_parity/deg_in.npy vs features/cuda_parity_light/deg_in.npy: 5078345 x 32, 0 mismatching rows
+features/oracle_parity/deg_out.npy vs features/cuda_parity_light/deg_out.npy: 5078345 x 32, 0 mismatching rows
+features/oracle_parity/sg.npy vs features/cuda_parity_light/sg.npy: 5078345 x 32, 0 mismatching rows
+features/oracle_parity/tcyc.npy vs features/cuda_parity_light/tcyc.npy: 5078345 x 32, 0 mismatching rows
+fuzz-diff cuda vs oracle, seeds 0:10000: 10000 graphs, 2053897 edges, 0 mismatching rows (184.4 s)
+
+real	3m43.782s
+user	4m50.486s
+sys	0m14.534s

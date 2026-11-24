@@ -36,20 +36,26 @@
    33
   ],
   "edges": 2053897,
+  "first_limited_seeds": [],
   "first_mismatched_seeds": [],
   "git": {
    "dirty": true,
-   "sha": "94ed217fd38d2d2999bbf09c8e5302df9f70e864"
+   "sha": "2df9a0c958b087d468736d832e253f46c7399d5b"
   },
   "graphs": 10000,
   "k_max": 10,
+  "limited_graphs": 0,
   "mismatched_rows_by_block": {
    "deg_in": 0,
    "deg_out": 0,
    "fan_in": 0,
+   "fan_oneway_out": 0,
    "fan_out": 0,
+   "fan_total": 0,
+   "gs": 0,
    "sg": 0,
    "sg_ord": 0,
+   "tchain": 0,
    "tcyc": 0
   },
   "mismatched_seeds": 0,
@@ -57,8 +63,9 @@
    "dynamic",
    "sorted"
   ],
-  "seconds": 7.929943834,
-  "seeds": "0:10000"
+  "seconds": 17.39372782,
+  "seeds": "0:10000",
+  "work_limit": 100000000
  },
  "fuzz_cuda_vs_oracle": {
   "backend": "cuda",
@@ -102,17 +109,19 @@
    "device": "NVIDIA GeForce GTX 1650 SUPER",
    "driver_version": 13040,
    "memory_mb": {
-    "free": 3229,
+    "free": 3044,
     "total": 3728
    },
    "runtime_version": 13040,
    "sm_count": 20
   },
   "edges": 2053897,
+  "first_limited_seeds": [],
   "first_mismatched_seeds": [],
+  "fuse": false,
   "git": {
    "dirty": true,
-   "sha": "94ed217fd38d2d2999bbf09c8e5302df9f70e864"
+   "sha": "2df9a0c958b087d468736d832e253f46c7399d5b"
   },
   "graphs": 10000,
   "heavy_thresholds": [
@@ -121,18 +130,25 @@
    "all"
   ],
   "k_max": 10,
+  "limited_graphs": 0,
   "mismatched_rows_by_block": {
    "deg_in": 0,
    "deg_out": 0,
    "fan_in": 0,
+   "fan_oneway_out": 0,
    "fan_out": 0,
+   "fan_total": 0,
+   "gs": 0,
    "sg": 0,
    "sg_ord": 0,
+   "tchain": 0,
    "tcyc": 0
   },
   "mismatched_seeds": 0,
-  "seconds": 69.798308991,
-  "seeds": "0:10000"
+  "pack": false,
+  "seconds": 184.410772242,
+  "seeds": "0:10000",
+  "work_limit": 100000000
  },
  "fuzz_cuda_vs_oracle_a30": {
   "backend": "cuda",

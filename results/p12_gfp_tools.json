@@ -1,0 +1,196 @@
+{
+ "fuzz_vs_gfp": {
+  "generator": "blz fuzz (SPEC \u00a713.3), oracle bins 2..33, tcyc uncapped",
+  "gfp": "snapml==1.17.2, stream mode, fresh instance per graph",
+  "gfp_ts_offset": 1,
+  "seeds": "0:2000",
+  "graphs": 2000,
+  "edges": 403557,
+  "mismatched_rows_by_block": {
+   "fan_in": 0,
+   "fan_out": 0,
+   "deg_in": 0,
+   "deg_out": 0,
+   "sg": 0,
+   "tcyc": 0
+  },
+  "mismatched_seeds": [],
+  "first_mismatches": [],
+  "seconds": {
+   "blz_fuzz": 6.2,
+   "gfp": 40.7
+  }
+ },
+ "vstats_vs_gfp_fuzz": {
+  "rows": 403557,
+  "values": 20984964,
+  "mismatched_values": 196100,
+  "mismatched_int_values": 0,
+  "mismatched_after_eviction": 196100,
+  "mismatched_no_eviction": 0,
+  "rows_with_eviction_side": 159964,
+  "rows_mismatched": 49495,
+  "mismatch_relative_error": {
+   "<=0.0001": 2401,
+   "<=0.01": 3405,
+   "<=1": 24686,
+   "<=inf": 165608
+  },
+  "gfp_negative_variances": 23792,
+  "by_column": {
+   "vs_src_out_amount_received_sum": {
+    "after_eviction": 6,
+    "no_eviction": 0
+   },
+   "vs_src_out_amount_received_var": {
+    "after_eviction": 14905,
+    "no_eviction": 0
+   },
+   "vs_src_out_amount_received_skew": {
+    "after_eviction": 15770,
+    "no_eviction": 0
+   },
+   "vs_src_out_amount_received_kurtosis": {
+    "after_eviction": 16979,
+    "no_eviction": 0
+   },
+   "vs_src_in_amount_received_avg": {
+    "after_eviction": 16,
+    "no_eviction": 0
+   },
+   "vs_src_in_amount_received_sum": {
+    "after_eviction": 315,
+    "no_eviction": 0
+   },
+   "vs_src_in_amount_received_var": {
+    "after_eviction": 16918,
+    "no_eviction": 0
+   },
+   "vs_src_in_amount_received_skew": {
+    "after_eviction": 14861,
+    "no_eviction": 0
+   },
+   "vs_src_in_amount_received_kurtosis": {
+    "after_eviction": 18300,
+    "no_eviction": 0
+   },
+   "vs_dst_out_amount_received_avg": {
+    "after_eviction": 10,
+    "no_eviction": 0
+   },
+   "vs_dst_out_amount_received_sum": {
+    "after_eviction": 367,
+    "no_eviction": 0
+   },
+   "vs_dst_out_amount_received_var": {
+    "after_eviction": 16764,
+    "no_eviction": 0
+   },
+   "vs_dst_out_amount_received_skew": {
+    "after_eviction": 14680,
+    "no_eviction": 0
+   },
+   "vs_dst_out_amount_received_kurtosis": {
+    "after_eviction": 18176,
+    "no_eviction": 0
+   },
+   "vs_dst_in_amount_received_sum": {
+    "after_eviction": 7,
+    "no_eviction": 0
+   },
+   "vs_dst_in_amount_received_var": {
+    "after_eviction": 14943,
+    "no_eviction": 0
+   },
+   "vs_dst_in_amount_received_skew": {
+    "after_eviction": 16001,
+    "no_eviction": 0
+   },
+   "vs_dst_in_amount_received_kurtosis": {
+    "after_eviction": 17082,
+    "no_eviction": 0
+   }
+  },
+  "generator": "blz fuzz --vstats (SPEC \u00a713.3 graphs, fuzz_amounts)",
+  "gfp": "snapml==1.17.2, stream mode, temp-cycle companion, fresh instance per graph",
+  "gfp_ts_offset": 0,
+  "seeds": "0:2000",
+  "graphs": 2000,
+  "first_mismatches": [
+   {
+    "seed": 0,
+    "eid": 241,
+    "column": "vs_src_in_amount_received_kurtosis",
+    "gfp": -96624.86523426234,
+    "blz": 1.0000000000000002
+   },
+   {
+    "seed": 0,
+    "eid": 246,
+    "column": "vs_dst_in_amount_received_var",
+    "gfp": 9.009293888766999,
+    "blz": 331.1956805555556
+   },
+   {
+    "seed": 0,
+    "eid": 248,
+    "column": "vs_src_out_amount_received_var",
+    "gfp": 1.8441639999595285,
+    "blz": 102.44550399999999
+   },
+   {
+    "seed": 0,
+    "eid": 254,
+    "column": "vs_src_out_amount_received_var",
+    "gfp": 2.980438888881853,
+    "blz": 86.8148888888889
+   },
+   {
+    "seed": 0,
+    "eid": 256,
+    "column": "vs_dst_in_amount_received_var",
+    "gfp": 21.756288489572402,
+    "blz": 297.91604848979586
+   },
+   {
+    "seed": 1,
+    "eid": 45,
+    "column": "vs_dst_out_amount_received_var",
+    "gfp": 0.0,
+    "blz": 435.34822499999996
+   },
+   {
+    "seed": 1,
+    "eid": 47,
+    "column": "vs_src_in_amount_received_var",
+    "gfp": -138.24440833320688,
+    "blz": 456.4632249999999
+   },
+   {
+    "seed": 1,
+    "eid": 55,
+    "column": "vs_src_out_amount_received_var",
+    "gfp": 87.69293888829276,
+    "blz": 377.92508888888887
+   },
+   {
+    "seed": 1,
+    "eid": 56,
+    "column": "vs_src_out_amount_received_var",
+    "gfp": 107.13623749930217,
+    "blz": 324.8103499999999
+   },
+   {
+    "seed": 1,
+    "eid": 64,
+    "column": "vs_dst_out_amount_received_var",
+    "gfp": -289.79168333519993,
+    "blz": 0.44046666666666673
+   }
+  ],
+  "seconds": {
+   "blz_fuzz": 6.8,
+   "gfp": 16.3
+  }
+ }
+}

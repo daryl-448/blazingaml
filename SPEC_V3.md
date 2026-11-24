@@ -125,8 +125,8 @@ that replaces it. "Where" points at the code as of `1b5123d`.
 | Q8 | **Scalar counts as one-hot histograms.** Fan, degree, fan_total, fan_oneway_out and gs emit one instance per trigger into bins, so a block of 12 columns carries one number, and counts 0 and 1 give the same all-zero row (A1, min size 2). | `emit: {size: n}` in those specs; `oracle.cpp:63, 336-339` | A count block emits the count as one integer column (R7). | Clean rule. |
 | Q9 | **Vertex statistics' window.** v2 copies GFP's window: the node's edges with ts ≥ ts[e − 1] − W, anchored at the previous edge, where W is GFP's time_window, the largest *pattern* window (A43). (GFP's running-sum drift after eviction, A45, was never copied: v2 already computes each window exactly, D-37.) | `src/runtime/vstats.hpp:7-11, 96-98`; `blz vstats --window` | The node's visible edges in `(t − W_vs, t]` with the block's own W_vs, computed exactly (R8). | Clean rule. |
 | Q10 | **Vertex statistics' guards and time base.** A variance below 10⁻⁵·mean² is reported as 0 with its skew and kurtosis (A44). Time statistics use absolute timestamps (plus D-12's +1 in parity runs only), so with mean ts near 7.6·10⁵ s the guard zeroes ts variance on any side that spans under about 40 minutes, and the threshold grows with stream time. | `vstats.hpp:35-37, 54, 70, 78` | Time statistics are over ages t − ts'. No threshold guard; the only zeroing is R8's rule for equal values and a computed m2 of 0. | Clean rule. |
-| Q11 | **GFP batch mode and `credit: participants`.** Rows depend on batch boundaries (A28, A34–A42, D-36), with `k_max: 33` to match GFP's uncapped cycles. | `src/runtime/batch.*`, `src/oracle/batch_oracle.cpp`, `src/runtime/profile.*` (batch fields), `configs/profiles/{dg2_g1,batch_b4,batch_b32}.yaml` | Not part of clean. Out of the default build and the clean path: deleted, or isolated behind legacy tooling (§3.4, P12). | Clean rule. |
-| Q12 | **GFP harness leaks into the runtime.** `VstatsParams::ts_offset` and `blz vstats --ts-offset` (D-12's +1), `blz fuzz --vstats` hard-coding 1.0, the fuzz generator aimed at GFP's variance guard, batch-only fuzz and coverage plumbing. | `vstats.hpp:32`, `src/apps/blz.cpp:549, 605, 707-768, 1607-1692, 1788-1799`, `src/runtime/fuzz_gen.hpp:20-23` | GFP-only workarounds live in `tools/gfp` or are deleted with their feature. | Clean rule. |
+| Q11 | **GFP batch mode and `credit: participants`.** Rows depend on batch boundaries (A28, A34–A42, D-36), with `k_max: 33` to match GFP's uncapped cycles. | `src/runtime/batch.*`, `src/oracle/batch_oracle.cpp`, `src/runtime/profile.*` (batch fields), `configs/profiles/{dg2_g1,batch_b4,batch_b32}.yaml` | Not part of clean. Out of the default build and the clean path: deleted, or isolated behind legacy tooling (§3.4, P12). | Clean rule. Done in P12: deleted (D-55). |
+| Q12 | **GFP harness leaks into the runtime.** `VstatsParams::ts_offset` and `blz vstats --ts-offset` (D-12's +1), `blz fuzz --vstats` hard-coding 1.0, the fuzz generator aimed at GFP's variance guard, batch-only fuzz and coverage plumbing. | `vstats.hpp:32`, `src/apps/blz.cpp:549, 605, 707-768, 1607-1692, 1788-1799`, `src/runtime/fuzz_gen.hpp:20-23` | GFP-only workarounds live in `tools/gfp` or are deleted with their feature. | Clean rule. Done in P12 (D-55, D-56). `fuzz_amounts` is kept, with its reason in D-56. |
 | Q13 | **Input range fixed to HI-Small.** Epoch 2022-09-01 and `kMaxTimestamp = 1,527,480` are hard-coded. | `src/io/csv.cpp:18, 46`, `src/io/csv.hpp:29` | A dataset descriptor gives the schema; the epoch is the first row's day; the range is checked against int32 (§6.1). | Clean rule. |
 | Q14 | **GFP's bin rule** (first bin with S ≤ b_i, A38). | `tools/gfp/gfp_common.py:27-41` | Harness only. `blz` keeps `[b_i, b_{i+1})`. | Keep as is. |
 | Q15 | **Trigger credit re-reports unchanged instances.** A parallel or repeated trigger re-emits the same SG pair or cycle (A5, A8). | `oracle.cpp:87-91, 178-181` | Kept: a row counts the instances its edge completes, and a parallel edge completes them again. | Keep (R9). |
@@ -578,18 +578,53 @@ P14 and P15 are independent once P13 lands. P16 needs both.
 
 ### P12 — Subtract
 
-- [ ] Depends on: nothing.
-- [ ] Change: take GFP batch mode and `credit: participants` (Q11) and the GFP plumbing in the
+- [x] Depends on: nothing.
+- [x] Change: take GFP batch mode and `credit: participants` (Q11) and the GFP plumbing in the
       runtime (Q12) out of the default build and the clean code path: delete them, or isolate them
       behind legacy tooling if a GFP parity helper still needs them. Either way, migrate or retire
       each caller in the same change (for example `tools/gfp/vstats_vs_gfp.py` runs
       `blz fuzz --vstats`, and the coverage and DG-2 tools read batch recipes).
-- [ ] Result: the clean path and the default build have no batch mode and no GFP-only flags; every
+- [x] Result: the clean path and the default build have no batch mode and no GFP-only flags; every
       remaining GFP tool still runs or is recorded as retired.
-- [ ] Unit: `ctest -L fast` passes.
-- [ ] Live: `bench/ac1_cpu.sh` and, when built, `bench/ac1_cuda.sh` pass; AC-V3-0's hashes hold for
+- [x] Unit: `ctest -L fast` passes.
+- [x] Live: `bench/ac1_cpu.sh` and, when built, `bench/ac1_cuda.sh` pass; AC-V3-0's hashes hold for
       `v1_default` and `v1_parity`.
-- [ ] Perf: none (no row computation changes).
+- [x] Perf: none (no row computation changes).
+
+**Outcome (2026-11-24): done.** Batch mode is deleted, not isolated (D-55). The vertex statistics
+lose the GFP ts offset (D-56).
+- The commits:
+  - 0cd309d: batch mode, `credit: participants`, the GFP path of `blz coverage`, and their callers;
+  - b047934: the ts offset;
+  - 2df9a0c: the comments and one test that the deletions left behind;
+  - 37a8f34: `bench/s5_report.py` reads E9's frozen eligibility from `results/e9_coverage.json`,
+    since nothing writes `features/e9/` any more;
+  - the exit checks' results, committed with this outcome.
+- Retired, and last runnable at 9bdc1ee: `blz fuzz --batch`, `tools/gfp/fuzz_vs_gfp.py --batch`,
+  `blz coverage --eligibility`, `tools/gfp/coverage_gfp.py`, `bench/e9.sh` with `bench/e9/`, the
+  probes A34–A37 and A39–A42 with `tests/golden/gfp_batch_probes.json`, the HI-Small mode of
+  `tools/gfp/vstats_vs_gfp.py`, and the profiles `batch_b4`, `batch_b32` and `dg2_g1`. Their
+  results (S1, S2, E9) stay in `results/`.
+- The checks:
+  - `ctest -L fast` passes, 128 of 128 tests on `rel` (one CUDA-only test skipped) and 144 of
+    144 on `rel-cuda`.
+  - `bench/ac1_cpu.sh` and `bench/ac1_cuda.sh` pass (`results/ac1_cpu_p12_run.log`,
+    `results/ac1_cuda_p12_run.log`). Every block's fnv1a equals P11's, so AC-V3-0 holds for
+    `v1_default` and `v1_parity`.
+  - The binaries of 9bdc1ee and of 2df9a0c were run on the same inputs, giving 122 outputs: the
+    fuzz-diff summary and profile id of each of the 14 remaining profiles and feature configs on
+    cpu and cuda, `blz fuzz`, `blz vstats`, `blz metamorphic`, `blz coverage` of `v1_default`, and
+    `blz mine` manifests and rows. 119 outputs are identical. The other 3 are the intended
+    changes: the ts columns of `blz fuzz --vstats`, whose means move by exactly 1, and the
+    dropped `ts_offset` key in two `blz vstats` manifests.
+  - The GFP tools still run (`results/p12_gfp_tools.json`). `probes.py` writes the remaining
+    golden files byte for byte. `fuzz_vs_gfp.py` finds no mismatch on 2,000 graphs.
+    `vstats_vs_gfp.py` at raw ts gives S2's counts exactly: 196,100 mismatched values, all on
+    sides with evicted edges (A45).
+- The review: sol-loop on gpt-6.2-sol took 2 rounds (max, then xhigh) and approved. Round 1 found
+  that `bench/s5_report.py` still read `features/e9/`, fixed in 37a8f34. Its nit, that
+  `fuzz_vs_gfp.py --report ""` no longer falls back to the default report, was declined because
+  no caller passes an empty report.
 
 ### P13 — Clean semantics
 
@@ -696,6 +731,8 @@ P14 and P15 are independent once P13 lands. P16 needs both.
 | D-52 | A speed change is verified only with V-proof, V-code, V-cert where applicable, V-diff and V-mut (§4.4). |
 | D-53 | The new datasets' test splits are scored once each, after a committed per-dataset freeze (§6.4). |
 | D-54 | The user confirmed timestamp visibility (Q4, R3) and non-decreasing hop order (Q5, R4) on 2026-11-22, and chose to keep both SG variants for Q7: unordered `sg` (R6a) and ordered `sg_ord` (R6b), as two blocks of the clean profiles. |
+| D-55 | P12 deletes GFP batch mode and `credit: participants` instead of isolating them. No GFP parity helper needs them once `fuzz_vs_gfp.py --batch`, `coverage_gfp.py` and E9's G1 path retire. `credit:` stays a required profile key whose only value is `trigger`, so every remaining profile id is unchanged. The frozen DG-2 recipe can no longer be recomputed in C++ (§3.4). |
+| D-56 | The vertex statistics lose D-12's ts offset: `VstatsParams::ts_offset`, `blz vstats --ts-offset`, and the +1 of `blz fuzz --vstats`. `tools/gfp/vstats_vs_gfp.py` sends GFP raw ts. GFP's ts-0 artifact (A33) only drops temporal cycles, and the tool compares no temp-cycle column. The tool's HI-Small mode is retired, because F1 was mined at ts + 1. `fuzz_amounts` stays, because its ties, repeats, tiny values and large values are the cases that R8's equal-value and small-side rules need. |
 
 ## Appendix E — planning prototypes (not normative)
 
