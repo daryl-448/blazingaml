@@ -1483,12 +1483,19 @@ void merge_report(const std::string& report, const std::string& name, const nloh
 }
 
 // Path hit (SPEC v3 §4.4 item 6): what a fuzz run's graphs exercised, as JSON, and one line on stdout.
-nlohmann::json path_hits(const blz::FuzzHits& h, std::span<const std::uint64_t> nonzero, const blz::Profile& prof) {
+// vs_nonzero, vs_sides: a profile with vstats (SPEC v3 R8), its reference's nonzero rows and the
+// distinct sides the backend computed.
+nlohmann::json path_hits(const blz::FuzzHits& h, std::span<const std::uint64_t> nonzero, const blz::Profile& prof,
+                         std::uint64_t vs_nonzero, std::uint64_t vs_sides) {
   nlohmann::json nz = nlohmann::json::object();
   std::string line;
   for (const blz::ProfileBlock& pb : prof.blocks) {
     nz[std::string(blz::block_name(pb.block))] = nonzero[int(pb.block)];
     line += " " + std::string(blz::block_name(pb.block)) + "=" + std::to_string(nonzero[int(pb.block)]);
+  }
+  if (prof.vstats) {
+    nz["vstats"] = vs_nonzero;
+    line += " vstats=" + std::to_string(vs_nonzero) + " (" + std::to_string(vs_sides) + " sides computed)";
   }
   std::printf("  path hits: %llu of %llu graphs with 2+ components (%llu in all); of %llu non-loop triggers, %llu "
               "with a bound edge at t - delta, %llu at t - delta + 1; %llu tied, %llu duplicate (u, v, t) edges\n"
@@ -1504,7 +1511,8 @@ nlohmann::json path_hits(const blz::FuzzHits& h, std::span<const std::uint64_t> 
           {"triggers_with_bound_edge_at_t_minus_delta_plus_1", h.bound_in},
           {"tied_edges", h.tied},
           {"duplicate_uvt_edges", h.duplicated},
-          {"nonzero_rows_by_block", nz}};
+          {"nonzero_rows_by_block", nz},
+          {"vstats_sides", vs_sides}};
 }
 
 // AC1 on fuzz graphs (SPEC §13.3): a generated backend vs the profile's oracle (the clean oracle for
@@ -1546,6 +1554,12 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
     completed[bn] = d.graphs - d.limited_graphs[int(pb.block)];
     limited[bn] = d.limited_graphs[int(pb.block)];
     bad += d.mismatched_rows[int(pb.block)];
+  }
+  if (prof.vstats) {  // SPEC v3 R8: never limited; compared on vstats_graphs graphs (none for --reference cpu on cpu)
+    per_block["vstats"] = d.vstats_mismatched_rows;
+    completed["vstats"] = d.vstats_graphs;
+    limited["vstats"] = 0;
+    bad += d.vstats_mismatched_rows;
   }
   std::vector<std::uint64_t> first_bad(d.bad_seeds.begin(),
                                        d.bad_seeds.begin() + std::ptrdiff_t(std::min<std::size_t>(20, d.bad_seeds.size())));
@@ -1598,7 +1612,7 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
                   "stop eids compared, not their rows)\n",
                   std::string(blz::block_name(pb.block)).c_str(), (unsigned long long)(d.graphs - l),
                   (unsigned long long)l, (unsigned long long)work_limit);
-  res["path_hits"] = path_hits(d.hits, d.nonzero_rows, prof);
+  res["path_hits"] = path_hits(d.hits, d.nonzero_rows, prof, d.vstats_nonzero_rows, d.vstats_sides);
   if (bad) std::printf("%s\n", res.dump(1).c_str());
   merge_report(report, name, res);
   return bad == 0 ? 0 : 2;
@@ -1630,6 +1644,10 @@ int metamorphic(const std::string& seeds, const std::string& bins_opt, const std
       per_block[std::string(blz::block_name(pb.block))] = r.mismatched_rows[int(t)][int(pb.block)];
       tb += r.mismatched_rows[int(t)][int(pb.block)];
     }
+    if (prof.vstats) {
+      per_block["vstats"] = r.vstats_mismatched_rows[int(t)];
+      tb += r.vstats_mismatched_rows[int(t)];
+    }
     bad += tb;
     tests[blz::meta_test_name(t)] = {{"applies", blz::meta_test_applies(t, prof, be)},
                                      {"rows_compared", r.rows_compared[int(t)]},
@@ -1641,6 +1659,10 @@ int metamorphic(const std::string& seeds, const std::string& bins_opt, const std
   for (const blz::ProfileBlock& pb : prof.blocks) {
     completed[std::string(blz::block_name(pb.block))] = r.graphs - r.limited_graphs[int(pb.block)];
     limited[std::string(blz::block_name(pb.block))] = r.limited_graphs[int(pb.block)];
+  }
+  if (prof.vstats) {  // SPEC v3 R8: never limited
+    completed["vstats"] = r.graphs;
+    limited["vstats"] = 0;
   }
   std::vector<std::uint64_t> first_bad(r.bad_seeds.begin(),
                                        r.bad_seeds.begin() + std::ptrdiff_t(std::min<std::size_t>(20, r.bad_seeds.size())));
@@ -1681,7 +1703,7 @@ int metamorphic(const std::string& seeds, const std::string& bins_opt, const std
                   "compared)\n",
                   std::string(blz::block_name(pb.block)).c_str(), (unsigned long long)(r.graphs - l),
                   (unsigned long long)l, (unsigned long long)work_limit);
-  res["path_hits"] = path_hits(r.hits, r.nonzero_rows, prof);
+  res["path_hits"] = path_hits(r.hits, r.nonzero_rows, prof, r.vstats_nonzero_rows, r.vstats_sides);
   if (bad) std::printf("%s\n", res.dump(1).c_str());
   merge_report(report, name, res);
   return bad == 0 ? 0 : 2;

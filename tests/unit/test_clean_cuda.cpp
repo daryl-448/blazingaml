@@ -101,6 +101,8 @@ TEST_CASE("cuda, hybrid: clean_all equals the clean oracle on fuzz graphs, every
       INFO(block_name(pb.block));
       CHECK(d.mismatched_rows[int(pb.block)] == 0);
     }
+    CHECK(d.vstats_graphs == graphs);  // R8, on the GPU
+    CHECK(d.vstats_mismatched_rows == 0);
     CHECK(d.bad_seeds.empty());
   };
   for (const CudaOptions opts : {CudaOptions{false, false}, CudaOptions{true, true}, CudaOptions{false, true}}) {
@@ -115,6 +117,8 @@ TEST_CASE("cuda, hybrid: clean_all equals the clean oracle on fuzz graphs, every
   const auto sparse = [&](const FuzzDiff& d, std::uint64_t graphs) {
     check(all, d, graphs);
     for (const ProfileBlock& pb : all.blocks) CHECK(d.nonzero_rows[int(pb.block)] > 0);
+    CHECK(d.vstats_nonzero_rows > 0);
+    CHECK(d.vstats_sides > 0);
   };
   sparse(fuzz_diff_cuda(all, 0, 300, {}, kThresholds, kDefaultWorkLimit, {true, true}, Reference::oracle,
                         FuzzSetting::sparse),
@@ -138,7 +142,9 @@ TEST_CASE("cuda, hybrid: the metamorphic tests on clean_all, every threshold") {
       INFO(meta_test_name(t));
       CHECK((r.rows_compared[int(t)] > 0) == meta_test_applies(t, all, b));
       for (std::uint64_t n : r.mismatched_rows[int(t)]) CHECK(n == 0);
+      CHECK(r.vstats_mismatched_rows[int(t)] == 0);
     }
+    CHECK(r.vstats_sides > 0);
     CHECK(r.limited_graphs[int(Block::lcyc)] < graphs);
     CHECK(r.bad_seeds.empty());
     // The sparse-time setting (SPEC v3 §4.4).
@@ -148,7 +154,9 @@ TEST_CASE("cuda, hybrid: the metamorphic tests on clean_all, every threshold") {
       INFO(meta_test_name(t));
       CHECK((sp.rows_compared[int(t)] > 0) == meta_test_applies(t, all, b));
       for (std::uint64_t n : sp.mismatched_rows[int(t)]) CHECK(n == 0);
+      CHECK(sp.vstats_mismatched_rows[int(t)] == 0);
     }
     for (const ProfileBlock& pb : all.blocks) CHECK(sp.nonzero_rows[int(pb.block)] > 0);
+    CHECK(sp.vstats_nonzero_rows > 0);
   }
 }

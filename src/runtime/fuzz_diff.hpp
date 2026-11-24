@@ -27,9 +27,12 @@ namespace blz {
 // it counts in no gate, but the backend must stop at the same eid, the smallest over the limit; a
 // backend that stops elsewhere, or not at all, or stops where the reference does not, counts as one
 // mismatched row.
+// A profile with vstats (SPEC v3 R8) also has its vertex statistics compared, bit for bit, at each
+// graph's window with fuzz_amounts(seed): CleanVstats on the backend's device (the GPU for cuda and
+// the hybrid) against the reference's.
 // What the rows are compared against: the oracle, or the CPU backend with the dynamic schedule
 // (backend against backend, cheaper than the oracle). With Reference::cpu, fuzz_diff_cpu checks the
-// sorted schedule (and reachability pruning) against it.
+// sorted schedule (and reachability pruning) against it, and no vstats: the CPU's are the reference.
 enum class Reference { oracle, cpu };
 
 struct FuzzDiff {
@@ -40,6 +43,9 @@ struct FuzzDiff {
   // rows on the graphs it completed.
   FuzzHits hits;
   std::array<std::uint64_t, kAllBlocks.size()> nonzero_rows{};
+  // vstats: the graphs compared, the rows that differ in any bit, the reference's rows with a
+  // nonzero column, and the distinct sides the backend computed (path hit).
+  std::uint64_t vstats_graphs = 0, vstats_mismatched_rows = 0, vstats_nonzero_rows = 0, vstats_sides = 0;
   std::vector<std::uint64_t> bad_seeds;                             // ascending
   std::vector<std::uint64_t> limited_seeds;                         // ascending: limited in some block
 };

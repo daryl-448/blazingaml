@@ -1,13 +1,16 @@
 #include "runtime/fuzz_diff.hpp"
 
 #include <algorithm>
+#include <cstring>
 #include <memory>
 #include <optional>
 #include <stdexcept>
+#include <tuple>
 
 #include "graph/fuzz_gen.hpp"
 #include "graph/index.hpp"
 #include "oracle/profile_oracle.hpp"
+#include "runtime/clean_vstats.hpp"
 #include "runtime/cuda_backend.hpp"
 #include "runtime/fusion.hpp"
 #include "runtime/hybrid.hpp"
@@ -51,6 +54,28 @@ void reference_rows(const ProfileOracle* oracle, const GraphIndex& index, const 
   mine_cpu(index.view(), pb.patterns, q, prof.visibility, all, Schedule::dynamic, out);
 }
 
+// The reference's vstats rows of a graph (SPEC v3 R8): the profile's oracle's, or the CPU's.
+std::vector<double> reference_vstats(const ProfileOracle* oracle, const GraphIndex& index,
+                                     std::span<const double> amount, std::int32_t window, std::uint64_t m) {
+  std::vector<double> out(m * kVstatsCols);
+  TriggerSel all;
+  all.last = m;
+  if (oracle) oracle->vstats(window, all, out.data());
+  else CleanVstats(index.view(), amount, window).rows(all, out.data());
+  return out;
+}
+
+// The rows of `got` whose bits differ from `want`'s, and `want`'s rows with a nonzero column.
+std::pair<std::uint64_t, std::uint64_t> vstats_diff(const std::vector<double>& got, const std::vector<double>& want) {
+  std::uint64_t bad = 0, nonzero = 0;
+  for (std::size_t r = 0; r < want.size() / kVstatsCols; ++r) {
+    const double* w = want.data() + r * kVstatsCols;
+    bad += std::memcmp(got.data() + r * kVstatsCols, w, kVstatsCols * sizeof(double)) != 0;
+    nonzero += std::any_of(w, w + kVstatsCols, [](double x) { return x != 0; });
+  }
+  return {bad, nonzero};
+}
+
 // Runs f; returns UINT64_MAX, or the eid at which the work limit stopped it (SPEC v2 §8 S3).
 template <class F>
 std::uint64_t stop_eid(F&& f) {
@@ -74,10 +99,23 @@ FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, 
   for (std::int64_t si = std::int64_t(s0); si < std::int64_t(s1); ++si) {
     const FuzzGraph fg = fuzz_graph(std::uint64_t(si), setting);
     const std::uint64_t m = fg.src.size();
+    const std::vector<double> amount = fuzz_amounts(std::uint64_t(si), m);
     std::optional<ProfileOracle> oracle;
-    if (ref == Reference::oracle) oracle.emplace(EdgeStream{fg.src, fg.dst, fg.ts, fg.n}, prof);
+    if (ref == Reference::oracle) oracle.emplace(EdgeStream{fg.src, fg.dst, fg.ts, fg.n}, prof, Quirks{}, amount);
     const GraphIndex index(fg.src, fg.dst, fg.ts, fg.n, prof.self_loops());
     std::array<std::uint64_t, kAllBlocks.size()> bad{}, nonzero{};
+    std::uint64_t vs_bad = 0, vs_nonzero = 0, vs_sides = 0;
+    const bool vs = prof.vstats && ref == Reference::oracle;
+    if (vs) {
+      const std::vector<double> want = reference_vstats(&*oracle, index, amount, fg.window, m);
+      std::vector<double> got(m * kVstatsCols);
+      TriggerSel all;
+      all.last = m;
+      CleanVstats cv(index.view(), amount, fg.window);
+      cv.rows(all, got.data());
+      vs_sides = cv.sides();
+      std::tie(vs_bad, vs_nonzero) = vstats_diff(got, want);
+    }
     std::array<bool, kAllBlocks.size()> limited{};
     TriggerSel all;
     all.last = m;
@@ -114,7 +152,11 @@ FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, 
       ++res.graphs;
       res.edges += m;
       res.hits += fuzz_hits(fg);
-      bool any = false, any_limited = false;
+      res.vstats_graphs += vs;
+      res.vstats_mismatched_rows += vs_bad;
+      res.vstats_nonzero_rows += vs_nonzero;
+      res.vstats_sides += vs_sides;
+      bool any = vs_bad != 0, any_limited = false;
       for (std::size_t i = 0; i < bad.size(); ++i) {
         res.mismatched_rows[i] += bad[i];
         res.limited_graphs[i] += limited[i];
@@ -154,9 +196,11 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, std::uint64_t s0, std::uint64_t s
   // Batches: the oracle and the host index in parallel over seeds, then the GPU in seed order.
   struct Item {
     FuzzGraph fg;
+    std::vector<double> amount;
     std::unique_ptr<GraphIndex> index;
     std::array<std::vector<std::uint32_t>, kAllBlocks.size()> want;
     std::array<std::uint64_t, kAllBlocks.size()> stop;  // the oracle's stop eid, or UINT64_MAX
+    std::vector<double> vs_want;
   };
   constexpr std::uint64_t kBatch = 256;
   for (std::uint64_t b0 = s0; b0 < s1; b0 += kBatch) {
@@ -167,9 +211,13 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, std::uint64_t s0, std::uint64_t s
       Item& it = items[std::size_t(i)];
       it.fg = fuzz_graph(b0 + std::uint64_t(i), setting);
       const std::uint64_t m = it.fg.src.size();
+      it.amount = fuzz_amounts(b0 + std::uint64_t(i), m);
       std::optional<ProfileOracle> oracle;
-      if (ref == Reference::oracle) oracle.emplace(EdgeStream{it.fg.src, it.fg.dst, it.fg.ts, it.fg.n}, prof);
+      if (ref == Reference::oracle)
+        oracle.emplace(EdgeStream{it.fg.src, it.fg.dst, it.fg.ts, it.fg.n}, prof, Quirks{}, it.amount);
       it.index = std::make_unique<GraphIndex>(it.fg.src, it.fg.dst, it.fg.ts, it.fg.n, prof.self_loops());
+      if (prof.vstats)
+        it.vs_want = reference_vstats(oracle ? &*oracle : nullptr, *it.index, it.amount, it.fg.window, m);
       it.stop.fill(UINT64_MAX);
       for (const ProfileBlock& pb : prof.blocks) {
         BlockParams p{it.fg.window, block_bins[int(pb.block)]};
@@ -234,6 +282,19 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, std::uint64_t s0, std::uint64_t s
             });
             check(pb.block, got[0], got_stop);
           }
+      if (prof.vstats) {  // on the GPU, for cuda and the hybrid alike
+        std::vector<double> got(m * kVstatsCols);
+        TriggerSel all;
+        all.last = m;
+        CleanVstats cv(it.index->view(), it.amount, it.fg.window, &dg);
+        cv.rows(all, got.data());
+        const auto [bad, nonzero] = vstats_diff(got, it.vs_want);
+        ++res.vstats_graphs;
+        res.vstats_mismatched_rows += bad;
+        res.vstats_nonzero_rows += nonzero;
+        res.vstats_sides += cv.sides();
+        any = any || bad != 0;
+      }
       bool limited = false;
       for (const ProfileBlock& pb : prof.blocks) {
         const bool l = it.stop[int(pb.block)] != UINT64_MAX;

@@ -7,6 +7,7 @@
 
 #include "runtime/fuzz_diff.hpp"
 #include "runtime/metamorphic.hpp"
+#include "runtime/profile.hpp"
 
 using namespace blz;
 
@@ -19,6 +20,7 @@ void check_clean(const MetamorphicResult& r, std::uint64_t graphs, const Profile
     INFO(meta_test_name(t));
     CHECK((r.rows_compared[int(t)] > 0) == meta_test_applies(t, prof, b));
     for (std::uint64_t n : r.mismatched_rows[int(t)]) CHECK(n == 0);
+    CHECK(r.vstats_mismatched_rows[int(t)] == 0);
   }
 }
 
@@ -67,7 +69,27 @@ TEST_CASE("metamorphic: clean_all on the clean oracle and cpu, lcyc limited on s
       CHECK(sp.limited_graphs[int(pb.block)] == 0);
       CHECK(sp.nonzero_rows[int(pb.block)] > 0);
     }
+    CHECK(sp.vstats_nonzero_rows > 0);
+    CHECK((sp.vstats_sides > 0) == (b == Backend::cpu));  // the oracle computes per row
   }
+}
+
+// R8's vstats in every test but visibility invariance and order relaxation: each row once per
+// graph per test on top of the pattern blocks' (prefix closure: per cut).
+TEST_CASE("metamorphic: a clean profile's vstats are compared in every test that applies") {
+  Profile all = load_profile(std::string(BLZ_SOURCE_DIR) + "/configs/profiles/clean_all.yaml");
+  std::erase_if(all.blocks, [](const ProfileBlock& pb) { return pb.block != Block::fan_in; });
+  Profile none = all;
+  none.vstats.reset();
+  const MetamorphicResult with = metamorphic(all, Backend::cpu, 0, 40, {}, {});
+  const MetamorphicResult without = metamorphic(none, Backend::cpu, 0, 40, {}, {});
+  for (MetaTest t : {MetaTest::relabeling, MetaTest::time_shift, MetaTest::tie_permutation})
+    CHECK(with.rows_compared[int(t)] == 2 * without.rows_compared[int(t)]);
+  CHECK(with.rows_compared[int(MetaTest::prefix_closure)] == 2 * without.rows_compared[int(MetaTest::prefix_closure)]);
+  CHECK(with.rows_compared[int(MetaTest::duplicate_uvt)] == 2 * without.rows_compared[int(MetaTest::duplicate_uvt)]);
+  CHECK(without.rows_compared[int(MetaTest::duplicate_uvt)] > 0);
+  CHECK(with.vstats_nonzero_rows > 0);
+  CHECK(without.vstats_nonzero_rows == 0);
 }
 
 TEST_CASE("metamorphic: every row of every block is compared") {

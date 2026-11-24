@@ -157,12 +157,14 @@ TEST_CASE("clean_all: the CPU backend equals the clean oracle on fuzz graphs, bo
   Profile rest = all, lcyc = all;
   std::erase_if(rest.blocks, [](const ProfileBlock& pb) { return pb.block == Block::lcyc; });
   std::erase_if(lcyc.blocks, [](const ProfileBlock& pb) { return pb.block != Block::lcyc; });
-  const auto check = [](const Profile& prof, const FuzzDiff& d, std::uint64_t graphs) {
+  const auto check = [](const Profile& prof, const FuzzDiff& d, std::uint64_t graphs, bool vstats = true) {
     CHECK(d.graphs == graphs);
     for (const ProfileBlock& pb : prof.blocks) {
       INFO(block_name(pb.block));
       CHECK(d.mismatched_rows[int(pb.block)] == 0);
     }
+    CHECK(d.vstats_graphs == (vstats ? graphs : 0));  // R8
+    CHECK(d.vstats_mismatched_rows == 0);
     CHECK(d.bad_seeds.empty());
   };
   const FuzzDiff r = fuzz_diff_cpu(rest, 0, 200, {});
@@ -173,8 +175,9 @@ TEST_CASE("clean_all: the CPU backend equals the clean oracle on fuzz graphs, bo
   CHECK(l.limited_graphs[int(Block::lcyc)] > 0);
   CHECK(l.limited_graphs[int(Block::lcyc)] < 50);
   CHECK(l.limited_graphs[int(Block::lcyc)] == l.limited_seeds.size());
-  // The CPU's sorted schedule against its dynamic one (--reference cpu), every block.
-  check(all, fuzz_diff_cpu(all, 0, 60, {}, 100'000, Reference::cpu), 60);
+  // The CPU's sorted schedule against its dynamic one (--reference cpu), every block; the CPU's
+  // vstats are the reference, so they are not compared.
+  check(all, fuzz_diff_cpu(all, 0, 60, {}, 100'000, Reference::cpu), 60, false);
   // The sparse-time setting (SPEC v3 §4.4), every block, each with nonzero rows (path hit).
   const FuzzDiff sp = fuzz_diff_cpu(all, 0, 1000, {}, kDefaultWorkLimit, Reference::oracle, FuzzSetting::sparse);
   check(all, sp, 1000);
@@ -184,6 +187,8 @@ TEST_CASE("clean_all: the CPU backend equals the clean oracle on fuzz graphs, bo
     INFO(block_name(pb.block));
     CHECK(sp.nonzero_rows[int(pb.block)] > 0);
   }
+  CHECK(sp.vstats_nonzero_rows > 0);
+  CHECK(sp.vstats_sides > 0);
 }
 
 TEST_CASE("clean profiles: clean_default, clean_wc_hi_small and clean_all (SPEC v3 §3.3, F5)") {

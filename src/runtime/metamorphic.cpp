@@ -1,6 +1,7 @@
 #include "runtime/metamorphic.hpp"
 
 #include <algorithm>
+#include <cstring>
 #include <map>
 #include <memory>
 #include <numeric>
@@ -13,6 +14,7 @@
 #include "graph/fuzz_gen.hpp"
 #include "graph/index.hpp"
 #include "oracle/profile_oracle.hpp"
+#include "runtime/clean_vstats.hpp"
 #include "runtime/cpu_backend.hpp"
 #include "runtime/cuda_backend.hpp"
 #include "runtime/hybrid.hpp"
@@ -36,6 +38,7 @@ struct Graph {
   std::vector<std::uint32_t> src, dst;
   std::vector<std::int32_t> ts;
   std::uint32_t n = 0;
+  std::vector<double> amount;  // vstats only
   std::uint64_t m() const { return src.size(); }
 };
 
@@ -51,6 +54,8 @@ using BlockBins = std::array<std::vector<std::uint32_t>, kAllBlocks.size()>;
 struct Mined {
   std::vector<std::array<std::vector<std::uint32_t>, kAllBlocks.size()>> rows;
   std::array<bool, kAllBlocks.size()> limited{};
+  std::vector<double> vs;  // the profile's vstats, once: they have no threshold
+  std::uint64_t vs_sides = 0;
 };
 
 Mined mine_all(const Graph& g, const Profile& prof, Backend be, std::int32_t window, const BlockBins& bins,
@@ -59,12 +64,22 @@ Mined mine_all(const Graph& g, const Profile& prof, Backend be, std::int32_t win
   std::optional<ProfileOracle> oracle;
   std::optional<GraphIndex> index;
   std::optional<DeviceGraph> dg;
-  if (be == Backend::oracle) oracle.emplace(EdgeStream{g.src, g.dst, g.ts, g.n}, prof);
+  if (be == Backend::oracle) oracle.emplace(EdgeStream{g.src, g.dst, g.ts, g.n}, prof, Quirks{}, g.amount);
   else index.emplace(g.src, g.dst, g.ts, g.n, prof.self_loops());
   if (miner) dg.emplace(index->view());
   TriggerSel all;
   all.last = m;
   Mined out;
+  if (prof.vstats) {
+    out.vs.resize(m * kVstatsCols);
+    if (oracle) {
+      oracle->vstats(window, all, out.vs.data());
+    } else {
+      CleanVstats cv(index->view(), g.amount, window, dg ? &*dg : nullptr);
+      cv.rows(all, out.vs.data());
+      out.vs_sides = cv.sides();
+    }
+  }
   out.rows.resize(runs.size());
   for (std::size_t t = 0; t < runs.size(); ++t)
     for (const ProfileBlock& pb : prof.blocks) {
@@ -154,6 +169,7 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
     flipped = prof;
     flipped->visibility = prof.visibility == Visibility::stream ? Visibility::timestamp : Visibility::stream;
     flipped->blocks.clear();
+    flipped->vstats.reset();
     for (Block b : {Block::tcyc, Block::tchain})
       if (const ProfileBlock* pb = prof.find(b)) flipped->blocks.push_back(*pb);
   }
@@ -175,6 +191,7 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
     if (!sg_gather) throw std::runtime_error("metamorphic: order relaxation needs the pattern " + std::string(want));
     gather = prof;
     gather->blocks = {ProfileBlock{Block::sg, {sg_gather}, prof.find(Block::sg_ord)->params, prof.file}};
+    gather->vstats.reset();
     gather_bins[int(Block::sg)] = block_bins[int(Block::sg_ord)];
   }
   MetamorphicResult res;
@@ -183,7 +200,7 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
 
   auto one_graph = [&](std::uint64_t seed, MetamorphicResult& out) {
     const FuzzGraph fg = fuzz_graph(seed, setting);
-    Graph base{fg.src, fg.dst, fg.ts, fg.n};
+    Graph base{fg.src, fg.dst, fg.ts, fg.n, fuzz_amounts(seed, fg.src.size())};
     const std::uint64_t m = base.m();
     CudaMiner* mp = miner ? &*miner : nullptr;
     const Mined want = mine_all(base, prof, be, fg.window, block_bins, work_limit, runs, mp);
@@ -218,6 +235,14 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
             }
           out.rows_compared[int(test)] += rows;
         }
+      if (!(which ? which : &live)->vstats) return;
+      for (std::uint64_t e = 0; e < rows; ++e)
+        if (std::memcmp(got.vs.data() + e * kVstatsCols, want.vs.data() + (base_of ? (*base_of)[e] : e) * kVstatsCols,
+                        kVstatsCols * sizeof(double)) != 0) {
+          ++out.vstats_mismatched_rows[int(test)];
+          bad = true;
+        }
+      out.rows_compared[int(test)] += rows;
     };
 
     for (int cut = 0; cut < 2; ++cut) {
@@ -227,7 +252,8 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
       Graph pre{{base.src.begin(), base.src.begin() + std::ptrdiff_t(k)},
                 {base.dst.begin(), base.dst.begin() + std::ptrdiff_t(k)},
                 {base.ts.begin(), base.ts.begin() + std::ptrdiff_t(k)},
-                base.n};
+                base.n,
+                {base.amount.begin(), base.amount.begin() + std::ptrdiff_t(k)}};
       compare(MetaTest::prefix_closure, mine(pre, live, block_bins), k);
     }
 
@@ -282,6 +308,7 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
       for (std::uint64_t e = 0; e < m; ++e) {
         tie.src[e] = base.src[base_of[e]];
         tie.dst[e] = base.dst[base_of[e]];
+        tie.amount[e] = base.amount[base_of[e]];
       }
       compare(MetaTest::tie_permutation, mine(tie, live, block_bins), m, &base_of);
     }
@@ -307,11 +334,25 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
             }
           out.rows_compared[t] += dups.size();
         }
+      if (prof.vstats) {
+        for (const auto& [e, f] : dups)
+          if (std::memcmp(want.vs.data() + e * kVstatsCols, want.vs.data() + f * kVstatsCols,
+                          kVstatsCols * sizeof(double)) != 0) {
+            ++out.vstats_mismatched_rows[t];
+            bad = true;
+          }
+        out.rows_compared[t] += dups.size();
+      }
     }
 
     ++out.graphs;
     out.edges += m;
     out.hits += fuzz_hits(fg);
+    out.vstats_sides += want.vs_sides;
+    for (std::uint64_t e = 0; e < want.vs.size() / kVstatsCols; ++e)
+      out.vstats_nonzero_rows += std::any_of(want.vs.begin() + std::ptrdiff_t(e * kVstatsCols),
+                                             want.vs.begin() + std::ptrdiff_t((e + 1) * kVstatsCols),
+                                             [](double x) { return x != 0; });
     for (const ProfileBlock& pb : live.blocks)
       out.nonzero_rows[int(pb.block)] += nonzero_rows(want.rows[0][int(pb.block)], block_cols(block_bins[int(pb.block)]));
     for (std::size_t b = 0; b < limited.size(); ++b) out.limited_graphs[b] += limited[b];
@@ -333,12 +374,15 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
         res.graphs += local.graphs;
         res.edges += local.edges;
         res.hits += local.hits;
+        res.vstats_nonzero_rows += local.vstats_nonzero_rows;
+        res.vstats_sides += local.vstats_sides;
         for (std::size_t b = 0; b < kAllBlocks.size(); ++b) {
           res.limited_graphs[b] += local.limited_graphs[b];
           res.nonzero_rows[b] += local.nonzero_rows[b];
         }
         for (std::size_t t = 0; t < kMetaTests.size(); ++t) {
           res.rows_compared[t] += local.rows_compared[t];
+          res.vstats_mismatched_rows[t] += local.vstats_mismatched_rows[t];
           for (std::size_t b = 0; b < kAllBlocks.size(); ++b) res.mismatched_rows[t][b] += local.mismatched_rows[t][b];
         }
         res.bad_seeds.insert(res.bad_seeds.end(), local.bad_seeds.begin(), local.bad_seeds.end());

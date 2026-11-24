@@ -46,6 +46,11 @@ struct MetamorphicResult {
   // graphs' nonzero rows (the first run's, where the block completed).
   FuzzHits hits;
   std::array<std::uint64_t, kAllBlocks.size()> nonzero_rows{};
+  // vstats (a profile with them, SPEC v3 R8): [test] rows that differ in any bit (rows_compared
+  // counts them too); the untransformed graphs' nonzero rows and the distinct sides the backend
+  // computed for them (the oracle: none).
+  std::array<std::uint64_t, kMetaTests.size()> vstats_mismatched_rows{};
+  std::uint64_t vstats_nonzero_rows = 0, vstats_sides = 0;
   std::vector<std::uint64_t> bad_seeds;  // ascending
 };
 
@@ -73,6 +78,10 @@ struct MetamorphicResult {
 //     moving with its edge, leaves every row unchanged;
 //   - duplicate (u, v, t) (SPEC v3 R3b): edges with the same (u, v, t) have the same row in every
 //     block (rows_compared counts the edges after the first of each such group, per block).
+// A profile with vstats has them in every test but visibility invariance and order relaxation, at
+// each graph's window with fuzz_amounts(seed), which move with their edges (prefix closure keeps
+// the prefix's, tie permutation permutes them). Ages are differences of timestamps, so the time
+// shift leaves them exact.
 // check_profile_backend(prof, backend) must hold; this throws otherwise.
 MetamorphicResult metamorphic(const Profile& prof, Backend backend, std::uint64_t s0, std::uint64_t s1,
                               std::span<const std::uint32_t> bins, std::span<const std::uint32_t> thresholds,
