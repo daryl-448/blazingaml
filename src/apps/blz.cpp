@@ -695,15 +695,16 @@ int compare(const std::string& a_path, const std::string& b_path, const std::str
 // `work_limit`; every row of a graph that reaches the limit is UINT32_MAX (tools/gfp/lcyc_vs_gfp.py
 // skips those graphs).
 int fuzz(const std::string& seeds, const std::string& bins_opt, int k_max, bool vstats, bool lcyc,
-         std::uint64_t work_limit, const std::string& out) {
+         std::uint64_t work_limit, const std::string& setting_opt, const std::string& out) {
   const auto [s0, s1] = parse_range(seeds);
+  const blz::FuzzSetting setting = blz::parse_fuzz_setting(setting_opt);
   const auto bins = parse_bins(bins_opt);
   std::vector<std::int64_t> rows;
   std::map<blz::Block, std::vector<std::uint32_t>> feats;
   std::vector<double> amounts, vs;  // --vstats (SPEC v2 §8 S2)
   std::uint64_t limited = 0;        // --lcyc: graphs that reached the work limit
   for (std::uint64_t seed = s0; seed < s1; ++seed) {
-    const blz::FuzzGraph fg = blz::fuzz_graph(seed);
+    const blz::FuzzGraph fg = blz::fuzz_graph(seed, setting);
     const std::uint64_t m = fg.src.size();
     if (vstats) {
       const std::vector<double> a = blz::fuzz_amounts(seed, m);
@@ -748,8 +749,8 @@ int fuzz(const std::string& seeds, const std::string& bins_opt, int k_max, bool 
     blz::write_npy_f64(out + "/amounts.npy", amounts, total, 1);
     blz::write_npy_f64(out + "/vstats.npy", vs, total, blz::kVstatsCols);
   }
-  std::fprintf(stderr, "seeds %s: %llu edges -> %s\n", seeds.c_str(), (unsigned long long)total,
-               out.c_str());
+  std::fprintf(stderr, "seeds %s (%s): %llu edges -> %s\n", seeds.c_str(), blz::fuzz_setting_name(setting),
+               (unsigned long long)total, out.c_str());
   if (lcyc)
     std::fprintf(stderr, "lcyc: %llu graphs reached the work limit of %llu bindings (rows UINT32_MAX)\n",
                  (unsigned long long)limited, (unsigned long long)work_limit);
@@ -1394,6 +1395,31 @@ void merge_report(const std::string& report, const std::string& name, const nloh
   std::ofstream(report) << doc.dump(1) << '\n';
 }
 
+// Path hit (SPEC v3 §4.4 item 6): what a fuzz run's graphs exercised, as JSON, and one line on stdout.
+nlohmann::json path_hits(const blz::FuzzHits& h, std::span<const std::uint64_t> nonzero, const blz::Profile& prof) {
+  nlohmann::json nz = nlohmann::json::object();
+  std::string line;
+  for (const blz::ProfileBlock& pb : prof.blocks) {
+    nz[std::string(blz::block_name(pb.block))] = nonzero[int(pb.block)];
+    line += " " + std::string(blz::block_name(pb.block)) + "=" + std::to_string(nonzero[int(pb.block)]);
+  }
+  std::printf("  path hits: %llu of %llu graphs with 2+ components (%llu in all); of %llu non-loop triggers, %llu "
+              "with a bound edge at t - delta, %llu at t - delta + 1; %llu tied, %llu duplicate (u, v, t) edges\n"
+              "  nonzero rows:%s\n",
+              (unsigned long long)h.multi_component_graphs, (unsigned long long)h.graphs,
+              (unsigned long long)h.components, (unsigned long long)h.triggers, (unsigned long long)h.bound_out,
+              (unsigned long long)h.bound_in, (unsigned long long)h.tied, (unsigned long long)h.duplicated,
+              line.c_str());
+  return {{"graphs_with_two_or_more_components", h.multi_component_graphs},
+          {"components", h.components},
+          {"non_loop_triggers", h.triggers},
+          {"triggers_with_bound_edge_at_t_minus_delta", h.bound_out},
+          {"triggers_with_bound_edge_at_t_minus_delta_plus_1", h.bound_in},
+          {"tied_edges", h.tied},
+          {"duplicate_uvt_edges", h.duplicated},
+          {"nonzero_rows_by_block", nz}};
+}
+
 // AC1 on fuzz graphs (SPEC §13.3): a generated backend vs the profile's oracle (the clean oracle for
 // a clean profile, SPEC v3 §3.2), or with --reference cpu vs the cpu backend's dynamic schedule
 // (backend against backend).
@@ -1402,9 +1428,10 @@ void merge_report(const std::string& report, const std::string& name, const nloh
 // legacy pattern (v1).
 int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::string& backend,
               const std::string& heavy_opt, const std::string& cpu_heavy_opt, const std::string& profile_path,
-              std::uint64_t work_limit, bool fuse, bool pack, const std::string& reference, const std::string& report,
-              const std::string& name) {
+              std::uint64_t work_limit, bool fuse, bool pack, const std::string& reference,
+              const std::string& setting_opt, const std::string& report, const std::string& name) {
   const auto [s0, s1] = parse_range(seeds);
+  const blz::FuzzSetting setting = blz::parse_fuzz_setting(setting_opt);
   const bool hybrid = backend == "hybrid";
   const bool gpu = backend == "cuda" || hybrid;
   if ((fuse || pack) && backend != "cuda") throw std::runtime_error("--fuse and --pack are for --backend cuda");
@@ -1418,9 +1445,9 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
   const std::vector<std::uint32_t> cpu_thresholds = hybrid ? parse_thresholds(cpu_heavy_opt) : std::vector<std::uint32_t>{};
   auto t0 = Clock::now();
   const blz::FuzzDiff d =
-      hybrid ? blz::fuzz_diff_hybrid(prof, s0, s1, bins, thresholds, cpu_thresholds, work_limit, {}, ref)
-      : gpu  ? blz::fuzz_diff_cuda(prof, s0, s1, bins, thresholds, work_limit, {fuse, pack}, ref)
-             : blz::fuzz_diff_cpu(prof, s0, s1, bins, work_limit, ref);
+      hybrid ? blz::fuzz_diff_hybrid(prof, s0, s1, bins, thresholds, cpu_thresholds, work_limit, {}, ref, setting)
+      : gpu  ? blz::fuzz_diff_cuda(prof, s0, s1, bins, thresholds, work_limit, {fuse, pack}, ref, setting)
+             : blz::fuzz_diff_cpu(prof, s0, s1, bins, work_limit, ref, setting);
   // SPEC v3 R11: a block of a graph where the reference hit the work limit is inconclusive; a gate
   // counts the completed ones.
   nlohmann::json per_block = nlohmann::json::object(), completed = nlohmann::json::object(),
@@ -1437,6 +1464,7 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
                                        d.bad_seeds.begin() + std::ptrdiff_t(std::min<std::size_t>(20, d.bad_seeds.size())));
   nlohmann::json res = {{"backend", backend},
                         {"seeds", seeds},
+                        {"setting", blz::fuzz_setting_name(setting)},
                         {"graphs", d.graphs},
                         {"edges", d.edges},
                         {"bins", bins.empty() ? nlohmann::json("profile") : nlohmann::json(bins)},
@@ -1473,8 +1501,9 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
   } else {
     res["schedules"] = ref == blz::Reference::oracle ? nlohmann::json{"dynamic", "sorted"} : nlohmann::json{"sorted"};
   }
-  std::printf("fuzz-diff %s vs %s, seeds %s: %llu graphs, %llu edges, %llu mismatching rows (%.1f s)\n",
+  std::printf("fuzz-diff %s vs %s, seeds %s (%s): %llu graphs, %llu edges, %llu mismatching rows (%.1f s)\n",
               backend.c_str(), ref == blz::Reference::oracle ? "oracle" : "cpu (dynamic)", seeds.c_str(),
+              blz::fuzz_setting_name(setting),
               (unsigned long long)d.graphs, (unsigned long long)d.edges, (unsigned long long)bad, secs(t0));
   for (const blz::ProfileBlock& pb : prof.blocks)
     if (const std::uint64_t l = d.limited_graphs[int(pb.block)])
@@ -1482,6 +1511,7 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
                   "stop eids compared, not their rows)\n",
                   std::string(blz::block_name(pb.block)).c_str(), (unsigned long long)(d.graphs - l),
                   (unsigned long long)l, (unsigned long long)work_limit);
+  res["path_hits"] = path_hits(d.hits, d.nonzero_rows, prof);
   if (bad) std::printf("%s\n", res.dump(1).c_str());
   merge_report(report, name, res);
   return bad == 0 ? 0 : 2;
@@ -1491,8 +1521,10 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
 // is unchanged, 2 if not.
 int metamorphic(const std::string& seeds, const std::string& bins_opt, const std::string& backend,
                 const std::string& heavy_opt, const std::string& cpu_heavy_opt, const std::string& profile_path,
-                std::uint64_t work_limit, const std::string& report, const std::string& name) {
+                std::uint64_t work_limit, const std::string& setting_opt, const std::string& report,
+                const std::string& name) {
   const auto [s0, s1] = parse_range(seeds);
+  const blz::FuzzSetting setting = blz::parse_fuzz_setting(setting_opt);
   const blz::Backend be = blz::parse_backend(backend);
   const blz::Profile prof = profile_path.empty() ? blz::registry_profile() : blz::load_profile(profile_path);
   const auto bins = fuzz_bins(bins_opt, !profile_path.empty());
@@ -1500,7 +1532,8 @@ int metamorphic(const std::string& seeds, const std::string& bins_opt, const std
   const std::vector<std::uint32_t> cpu_thresholds =
       be == blz::Backend::hybrid ? parse_thresholds(cpu_heavy_opt) : std::vector<std::uint32_t>{};
   auto t0 = Clock::now();
-  const blz::MetamorphicResult r = blz::metamorphic(prof, be, s0, s1, bins, thresholds, cpu_thresholds, work_limit);
+  const blz::MetamorphicResult r =
+      blz::metamorphic(prof, be, s0, s1, bins, thresholds, cpu_thresholds, work_limit, setting);
   std::uint64_t bad = 0;
   nlohmann::json tests = nlohmann::json::object();
   for (blz::MetaTest t : blz::kMetaTests) {
@@ -1527,6 +1560,7 @@ int metamorphic(const std::string& seeds, const std::string& bins_opt, const std
   nlohmann::json res = {{"backend", backend},
                         {"profile", profile_path.empty() ? nlohmann::json(nullptr) : profile_ref(prof)},
                         {"seeds", seeds},
+                        {"setting", blz::fuzz_setting_name(setting)},
                         {"graphs", r.graphs},
                         {"edges", r.edges},
                         {"bins", bins.empty() ? nlohmann::json("profile") : nlohmann::json(bins)},
@@ -1551,15 +1585,16 @@ int metamorphic(const std::string& seeds, const std::string& bins_opt, const std
     }
     res["cuda"] = cuda_json();
   }
-  std::printf("metamorphic %s, %s, seeds %s: %llu graphs, %llu edges, %llu mismatching rows (%.1f s)\n",
-              backend.c_str(), prof.name.c_str(), seeds.c_str(), (unsigned long long)r.graphs,
-              (unsigned long long)r.edges, (unsigned long long)bad, secs(t0));
+  std::printf("metamorphic %s, %s, seeds %s (%s): %llu graphs, %llu edges, %llu mismatching rows (%.1f s)\n",
+              backend.c_str(), prof.name.c_str(), seeds.c_str(), blz::fuzz_setting_name(setting),
+              (unsigned long long)r.graphs, (unsigned long long)r.edges, (unsigned long long)bad, secs(t0));
   for (const blz::ProfileBlock& pb : prof.blocks)
     if (const std::uint64_t l = r.limited_graphs[int(pb.block)])
       std::printf("  %s: %llu graphs completed, %llu reached the work limit of %llu bindings (inconclusive: not "
                   "compared)\n",
                   std::string(blz::block_name(pb.block)).c_str(), (unsigned long long)(r.graphs - l),
                   (unsigned long long)l, (unsigned long long)work_limit);
+  res["path_hits"] = path_hits(r.hits, r.nonzero_rows, prof);
   if (bad) std::printf("%s\n", res.dump(1).c_str());
   merge_report(report, name, res);
   return bad == 0 ? 0 : 2;
@@ -1753,6 +1788,11 @@ int main(int argc, char** argv) {
   bool fz_lcyc = false;
   fz->add_flag("--lcyc", fz_lcyc, "also lcyc.npy (SPEC v2 §8 S3): length <= the compiled K_MAX; limited graphs' rows UINT32_MAX");
   fz->add_option("--work-limit", work_limit, "--lcyc: bindings per trigger");
+  std::string setting = "dense";
+  const auto setting_check = CLI::IsMember({"dense", "sparse"});
+  const char* setting_help = "fuzz graphs: dense (v1) or sparse (time spans of many windows, edges on the window "
+                             "bounds, several components; SPEC v3 §4.4)";
+  fz->add_option("--setting", setting, setting_help)->check(setting_check);
   fz->add_option("--out", out)->required();
 
   std::int32_t vs_window = 0;
@@ -1814,6 +1854,7 @@ int main(int argc, char** argv) {
                  "the rows compared against: the profile's oracle (the clean oracle for a clean profile), or the cpu "
                  "backend's dynamic schedule (backend against backend; --backend cpu then checks the sorted schedule)")
       ->check(CLI::IsMember({"oracle", "cpu"}));
+  fd->add_option("--setting", setting, setting_help)->check(setting_check);
   fd->add_option("--report", report, "merge the summary into this JSON file");
   fd->add_option("--name", name, "key (JSON pointer path) in --report")->needs("--report");
 
@@ -1826,6 +1867,7 @@ int main(int argc, char** argv) {
   mt->add_option("--cpu-threshold", fd_cpu_heavy, "hybrid: CPU thresholds, each run with every --heavy (SPEC v2 §8 S6)");
   mt->add_option("--profile", profile, "default: every registered pattern (v1)");
   mt->add_option("--work-limit", work_limit, "lcyc: bindings per trigger; a graph past it is reported, not compared");
+  mt->add_option("--setting", setting, setting_help)->check(setting_check);
   mt->add_option("--report", report, "merge the summary into this JSON file");
   mt->add_option("--name", name, "key (JSON pointer path) in --report")->needs("--report");
 
@@ -1887,11 +1929,12 @@ int main(int argc, char** argv) {
     if (*fd) {
       if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");
       return fuzz_diff(seeds, fd_bins, fd_backend, fd_heavy, fd_cpu_heavy, profile, work_limit, fuse, pack, fd_reference,
-                       report, name);
+                       setting, report, name);
     }
     if (*mt) {
       if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");
-      return metamorphic(seeds, fd_bins, mt_backend, fd_heavy, fd_cpu_heavy, profile, work_limit, report, name);
+      return metamorphic(seeds, fd_bins, mt_backend, fd_heavy, fd_cpu_heavy, profile, work_limit, setting, report,
+                         name);
     }
     if (*gj) return gt_join(graph, gt_csv, gt_patterns, out);
     if (*cv) {
@@ -1902,7 +1945,7 @@ int main(int argc, char** argv) {
       if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");
       return compare(a_npy, b_npy, graph, tw, first_eid, report, name);
     }
-    if (*fz) return fuzz(seeds, bins, k_max, fz_vstats, fz_lcyc, work_limit, out);
+    if (*fz) return fuzz(seeds, bins, k_max, fz_vstats, fz_lcyc, work_limit, setting, out);
     if (*vsc) return vstats(graph, vs_window, backend == "oracle" ? "cpu" : backend, threads, triggers, out);
     if (*tr) return train(graph, features, set, xgb, out, name.empty() ? set : name, threads);
   } catch (const std::exception& e) {

@@ -4,6 +4,7 @@
 #include <span>
 #include <vector>
 
+#include "graph/fuzz_gen.hpp"
 #include "runtime/cpu_backend.hpp"
 #include "runtime/profile.hpp"
 
@@ -11,8 +12,9 @@ namespace blz {
 
 // AC1 on fuzz graphs (SPEC §13.3): the generated CPU backend against the profile's oracle
 // (ProfileOracle: the clean oracle for a clean profile, SPEC v3 §3.2), every row of every block, on
-// the graphs of seeds [s0, s1). Each graph uses its own window for every block,
-// `bins`, and the compiled K_MAX for the oracle's tcyc cap. Both schedules are checked, and for a
+// the graphs of seeds [s0, s1) in `setting` (fuzz_gen.hpp: dense or sparse-time, SPEC v3 §4.4).
+// Each graph uses its own window for every block, `bins`, and the compiled K_MAX for the oracle's
+// tcyc cap. Both schedules are checked, and for a
 // block with a pattern planned for reachability pruning (tcyc, SPEC v2 §8 S6) both again with it.
 // The profile forms (SPEC v2 §10) take the blocks, their patterns and k_max from `prof`; the
 // windows still come from each graph, and the bins from fuzz_bins(): `bins`, or each profile
@@ -34,13 +36,18 @@ struct FuzzDiff {
   std::uint64_t graphs = 0, edges = 0;
   std::array<std::uint64_t, kAllBlocks.size()> mismatched_rows{};  // per block, both schedules
   std::array<std::uint64_t, kAllBlocks.size()> limited_graphs{};   // per block: the reference hit the limit
+  // Path hit (SPEC v3 §4.4 item 6): what the graphs exercise, and per block the reference's nonzero
+  // rows on the graphs it completed.
+  FuzzHits hits;
+  std::array<std::uint64_t, kAllBlocks.size()> nonzero_rows{};
   std::vector<std::uint64_t> bad_seeds;                             // ascending
   std::vector<std::uint64_t> limited_seeds;                         // ascending: limited in some block
 };
 
 FuzzDiff fuzz_diff_cpu(std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins);
 FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
-                       std::uint64_t work_limit = kDefaultWorkLimit, Reference ref = Reference::oracle);
+                       std::uint64_t work_limit = kDefaultWorkLimit, Reference ref = Reference::oracle,
+                       FuzzSetting setting = FuzzSetting::dense);
 
 // AC1 for the generated CUDA backend, the same way: every row of every block against the oracle,
 // once per light/heavy threshold in `thresholds` (0 sends every trigger to the heavy kernel,
@@ -55,7 +62,8 @@ struct CudaOptions {
 };
 FuzzDiff fuzz_diff_cuda(const Profile& prof, std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
                         std::span<const std::uint32_t> thresholds, std::uint64_t work_limit = kDefaultWorkLimit,
-                        CudaOptions opts = {}, Reference ref = Reference::oracle);
+                        CudaOptions opts = {}, Reference ref = Reference::oracle,
+                        FuzzSetting setting = FuzzSetting::dense);
 
 // AC1 for the hybrid (SPEC v2 §8 S6): mine_hybrid with reachability pruning on its CPU side and
 // the sorted schedule, once per pair of a GPU light/heavy threshold in `thresholds` and a CPU
@@ -65,6 +73,6 @@ FuzzDiff fuzz_diff_cuda(const Profile& prof, std::uint64_t s0, std::uint64_t s1,
 FuzzDiff fuzz_diff_hybrid(const Profile& prof, std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
                           std::span<const std::uint32_t> thresholds, std::span<const std::uint32_t> cpu_thresholds,
                           std::uint64_t work_limit = kDefaultWorkLimit, CudaOptions opts = {},
-                          Reference ref = Reference::oracle);
+                          Reference ref = Reference::oracle, FuzzSetting setting = FuzzSetting::dense);
 
 }  // namespace blz

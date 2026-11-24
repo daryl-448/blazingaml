@@ -131,7 +131,8 @@ bool meta_test_applies(MetaTest t, const Profile& prof, [[maybe_unused]] Backend
 
 MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0, std::uint64_t s1,
                               std::span<const std::uint32_t> bins, std::span<const std::uint32_t> thresholds,
-                              std::span<const std::uint32_t> cpu_thresholds, std::uint64_t work_limit) {
+                              std::span<const std::uint32_t> cpu_thresholds, std::uint64_t work_limit,
+                              FuzzSetting setting) {
   check_profile_backend(prof, be);
   const bool gpu = be == Backend::cuda || be == Backend::hybrid;
   if (gpu && thresholds.empty()) throw std::invalid_argument("metamorphic: cuda and hybrid need thresholds");
@@ -181,7 +182,7 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
   if (gpu) miner.emplace(be == Backend::hybrid);  // hybrid: the GPU's host thread sleeps while the CPU works
 
   auto one_graph = [&](std::uint64_t seed, MetamorphicResult& out) {
-    const FuzzGraph fg = fuzz_graph(seed);
+    const FuzzGraph fg = fuzz_graph(seed, setting);
     Graph base{fg.src, fg.dst, fg.ts, fg.n};
     const std::uint64_t m = base.m();
     CudaMiner* mp = miner ? &*miner : nullptr;
@@ -310,6 +311,9 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
 
     ++out.graphs;
     out.edges += m;
+    out.hits += fuzz_hits(fg);
+    for (const ProfileBlock& pb : live.blocks)
+      out.nonzero_rows[int(pb.block)] += nonzero_rows(want.rows[0][int(pb.block)], block_cols(block_bins[int(pb.block)]));
     for (std::size_t b = 0; b < limited.size(); ++b) out.limited_graphs[b] += limited[b];
     if (bad) out.bad_seeds.push_back(seed);
   };
@@ -328,7 +332,11 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
       {
         res.graphs += local.graphs;
         res.edges += local.edges;
-        for (std::size_t b = 0; b < kAllBlocks.size(); ++b) res.limited_graphs[b] += local.limited_graphs[b];
+        res.hits += local.hits;
+        for (std::size_t b = 0; b < kAllBlocks.size(); ++b) {
+          res.limited_graphs[b] += local.limited_graphs[b];
+          res.nonzero_rows[b] += local.nonzero_rows[b];
+        }
         for (std::size_t t = 0; t < kMetaTests.size(); ++t) {
           res.rows_compared[t] += local.rows_compared[t];
           for (std::size_t b = 0; b < kAllBlocks.size(); ++b) res.mismatched_rows[t][b] += local.mismatched_rows[t][b];

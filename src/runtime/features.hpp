@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <optional>
@@ -62,6 +63,15 @@ inline std::uint32_t block_cols(std::span<const std::uint32_t> bins) {
   return bins.empty() ? 1u : std::uint32_t(bins.size());
 }
 inline std::uint32_t block_cols(const BlockParams& p) { return block_cols(p.bins); }
+
+// The rows of `rows` (`cols` columns each) with a nonzero column: path-hit evidence (SPEC v3 §4.4).
+inline std::uint64_t nonzero_rows(std::span<const std::uint32_t> rows, std::size_t cols) {
+  std::uint64_t n = 0;
+  for (std::size_t at = 0; at + cols <= rows.size(); at += cols)
+    n += std::any_of(rows.begin() + std::ptrdiff_t(at), rows.begin() + std::ptrdiff_t(at + cols),
+                     [](std::uint32_t c) { return c != 0; });
+  return n;
+}
 
 // Thrown when a trigger exceeds the work limit (SPEC v2 §8 S3). `eid` is the smallest such
 // trigger among those that ran (a driver skips the triggers it has not started yet).

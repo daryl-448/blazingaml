@@ -111,6 +111,17 @@ TEST_CASE("cuda, hybrid: clean_all equals the clean oracle on fuzz graphs, every
   const std::uint32_t cpu_thresholds[] = {0, 4, kAllGpu};
   check(rest, fuzz_diff_hybrid(rest, 0, 40, {}, kThresholds, cpu_thresholds), 40);
   check(lcyc, fuzz_diff_hybrid(lcyc, 0, 12, {}, kThresholds, cpu_thresholds, 20'000), 12);
+  // The sparse-time setting (SPEC v3 §4.4), every block at once.
+  const auto sparse = [&](const FuzzDiff& d, std::uint64_t graphs) {
+    check(all, d, graphs);
+    for (const ProfileBlock& pb : all.blocks) CHECK(d.nonzero_rows[int(pb.block)] > 0);
+  };
+  sparse(fuzz_diff_cuda(all, 0, 300, {}, kThresholds, kDefaultWorkLimit, {true, true}, Reference::oracle,
+                        FuzzSetting::sparse),
+         300);
+  sparse(fuzz_diff_hybrid(all, 0, 40, {}, kThresholds, cpu_thresholds, kDefaultWorkLimit, {}, Reference::oracle,
+                          FuzzSetting::sparse),
+         40);
 }
 
 // The metamorphic suite on clean_all (SPEC v3 §4.4: every clean pattern), lcyc at a low work limit
@@ -130,5 +141,14 @@ TEST_CASE("cuda, hybrid: the metamorphic tests on clean_all, every threshold") {
     }
     CHECK(r.limited_graphs[int(Block::lcyc)] < graphs);
     CHECK(r.bad_seeds.empty());
+    // The sparse-time setting (SPEC v3 §4.4).
+    const MetamorphicResult sp = metamorphic(all, b, 0, b == Backend::cuda ? 150 : 24, {}, kThresholds, cpu_thresholds,
+                                             kDefaultWorkLimit, FuzzSetting::sparse);
+    for (MetaTest t : kMetaTests) {
+      INFO(meta_test_name(t));
+      CHECK((sp.rows_compared[int(t)] > 0) == meta_test_applies(t, all, b));
+      for (std::uint64_t n : sp.mismatched_rows[int(t)]) CHECK(n == 0);
+    }
+    for (const ProfileBlock& pb : all.blocks) CHECK(sp.nonzero_rows[int(pb.block)] > 0);
   }
 }

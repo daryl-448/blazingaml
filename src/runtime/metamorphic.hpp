@@ -7,6 +7,7 @@
 #include <span>
 #include <vector>
 
+#include "graph/fuzz_gen.hpp"
 #include "runtime/profile.hpp"
 
 namespace blz {
@@ -41,10 +42,15 @@ struct MetamorphicResult {
   // [block]: graphs where the block reached the work limit on the base or a transformed graph, so
   // none of its rows were compared (SPEC v3 R11: inconclusive).
   std::array<std::uint64_t, kAllBlocks.size()> limited_graphs{};
+  // Path hit (SPEC v3 §4.4 item 6): what the graphs exercise, and per block the untransformed
+  // graphs' nonzero rows (the first run's, where the block completed).
+  FuzzHits hits;
+  std::array<std::uint64_t, kAllBlocks.size()> nonzero_rows{};
   std::vector<std::uint64_t> bad_seeds;  // ascending
 };
 
-// Runs every test on the graphs of seeds [s0, s1), for every block of `prof` with its patterns
+// Runs every test on the graphs of seeds [s0, s1) in `setting` (fuzz_gen.hpp: dense or sparse-time,
+// SPEC v3 §4.4), for every block of `prof` with its patterns
 // and k_max, each graph's own window, and fuzz_bins() (`bins`, each block's own bins when `bins` is
 // empty, none for a count block), on one backend: the profile's oracle (ProfileOracle: the clean
 // oracle for a clean profile), or a generated backend on the profile's index (Profile::self_loops):
@@ -71,6 +77,6 @@ struct MetamorphicResult {
 MetamorphicResult metamorphic(const Profile& prof, Backend backend, std::uint64_t s0, std::uint64_t s1,
                               std::span<const std::uint32_t> bins, std::span<const std::uint32_t> thresholds,
                               std::span<const std::uint32_t> cpu_thresholds = {},
-                              std::uint64_t work_limit = kDefaultWorkLimit);
+                              std::uint64_t work_limit = kDefaultWorkLimit, FuzzSetting setting = FuzzSetting::dense);
 
 }  // namespace blz

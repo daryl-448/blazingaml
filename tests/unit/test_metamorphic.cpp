@@ -59,6 +59,14 @@ TEST_CASE("metamorphic: clean_all on the clean oracle and cpu, lcyc limited on s
     CHECK(r.limited_graphs[int(Block::lcyc)] < 30);
     for (const ProfileBlock& pb : clean.blocks)
       if (pb.block != Block::lcyc) CHECK(r.limited_graphs[int(pb.block)] == 0);
+    // The sparse-time setting (SPEC v3 §4.4), every block with nonzero rows (path hit).
+    const MetamorphicResult sp = metamorphic(clean, b, 0, 500, {}, {}, {}, kDefaultWorkLimit, FuzzSetting::sparse);
+    check_clean(sp, 500, clean, b);
+    for (const ProfileBlock& pb : clean.blocks) {
+      INFO(block_name(pb.block));
+      CHECK(sp.limited_graphs[int(pb.block)] == 0);
+      CHECK(sp.nonzero_rows[int(pb.block)] > 0);
+    }
   }
 }
 

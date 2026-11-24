@@ -175,6 +175,15 @@ TEST_CASE("clean_all: the CPU backend equals the clean oracle on fuzz graphs, bo
   CHECK(l.limited_graphs[int(Block::lcyc)] == l.limited_seeds.size());
   // The CPU's sorted schedule against its dynamic one (--reference cpu), every block.
   check(all, fuzz_diff_cpu(all, 0, 60, {}, 100'000, Reference::cpu), 60);
+  // The sparse-time setting (SPEC v3 §4.4), every block, each with nonzero rows (path hit).
+  const FuzzDiff sp = fuzz_diff_cpu(all, 0, 1000, {}, kDefaultWorkLimit, Reference::oracle, FuzzSetting::sparse);
+  check(all, sp, 1000);
+  CHECK(sp.limited_seeds.empty());
+  CHECK(sp.hits.multi_component_graphs == 1000);
+  for (const ProfileBlock& pb : all.blocks) {
+    INFO(block_name(pb.block));
+    CHECK(sp.nonzero_rows[int(pb.block)] > 0);
+  }
 }
 
 TEST_CASE("clean profiles: clean_default, clean_wc_hi_small and clean_all (SPEC v3 §3.3, F5)") {

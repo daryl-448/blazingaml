@@ -65,19 +65,19 @@ std::uint64_t stop_eid(F&& f) {
 }  // namespace
 
 FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
-                       std::uint64_t work_limit, Reference ref) {
+                       std::uint64_t work_limit, Reference ref, FuzzSetting setting) {
   const auto block_bins = all_fuzz_bins(prof, bins);
   FuzzDiff res;
   // Parallel over seeds; the oracle's and the drivers' own parallel loops run nested, i.e. on
   // one thread each.
 #pragma omp parallel for schedule(dynamic, 4)
   for (std::int64_t si = std::int64_t(s0); si < std::int64_t(s1); ++si) {
-    const FuzzGraph fg = fuzz_graph(std::uint64_t(si));
+    const FuzzGraph fg = fuzz_graph(std::uint64_t(si), setting);
     const std::uint64_t m = fg.src.size();
     std::optional<ProfileOracle> oracle;
     if (ref == Reference::oracle) oracle.emplace(EdgeStream{fg.src, fg.dst, fg.ts, fg.n}, prof);
     const GraphIndex index(fg.src, fg.dst, fg.ts, fg.n, prof.self_loops());
-    std::array<std::uint64_t, kAllBlocks.size()> bad{};
+    std::array<std::uint64_t, kAllBlocks.size()> bad{}, nonzero{};
     std::array<bool, kAllBlocks.size()> limited{};
     TriggerSel all;
     all.last = m;
@@ -90,6 +90,7 @@ FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, 
       const std::uint64_t stop =
           stop_eid([&] { reference_rows(oracle ? &*oracle : nullptr, index, pb, p, prof, m, want.data()); });
       limited[int(b)] = stop != UINT64_MAX;
+      if (!limited[int(b)]) nonzero[int(b)] = nonzero_rows(want, nb);
       // A block with a pattern planned for reachability pruning (SPEC v2 §8 S6) runs both ways.
       const bool reach = std::any_of(pb.patterns.begin(), pb.patterns.end(), [](const PatternInfo* pi) { return pi->cpu_reach; });
       for (int run = 0; run < (reach ? 4 : 2); ++run) {
@@ -112,10 +113,12 @@ FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, 
     {
       ++res.graphs;
       res.edges += m;
+      res.hits += fuzz_hits(fg);
       bool any = false, any_limited = false;
       for (std::size_t i = 0; i < bad.size(); ++i) {
         res.mismatched_rows[i] += bad[i];
         res.limited_graphs[i] += limited[i];
+        res.nonzero_rows[i] += nonzero[i];
         any = any || bad[i] != 0;
         any_limited = any_limited || limited[i];
       }
@@ -130,13 +133,13 @@ FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, 
 
 FuzzDiff fuzz_diff_cuda(const Profile& prof, std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
                         std::span<const std::uint32_t> thresholds, std::uint64_t work_limit, CudaOptions opts,
-                        Reference ref) {
-  return fuzz_diff_hybrid(prof, s0, s1, bins, thresholds, {}, work_limit, opts, ref);
+                        Reference ref, FuzzSetting setting) {
+  return fuzz_diff_hybrid(prof, s0, s1, bins, thresholds, {}, work_limit, opts, ref, setting);
 }
 
 FuzzDiff fuzz_diff_hybrid(const Profile& prof, std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
                           std::span<const std::uint32_t> thresholds, std::span<const std::uint32_t> cpu_thresholds,
-                          std::uint64_t work_limit, CudaOptions opts, Reference ref) {
+                          std::uint64_t work_limit, CudaOptions opts, Reference ref, FuzzSetting setting) {
   const auto block_bins = all_fuzz_bins(prof, bins);
   FuzzDiff res;
   const bool hybrid = !cpu_thresholds.empty();
@@ -162,7 +165,7 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, std::uint64_t s0, std::uint64_t s
 #pragma omp parallel for schedule(dynamic, 4)
     for (std::int64_t i = 0; i < std::int64_t(items.size()); ++i) {
       Item& it = items[std::size_t(i)];
-      it.fg = fuzz_graph(b0 + std::uint64_t(i));
+      it.fg = fuzz_graph(b0 + std::uint64_t(i), setting);
       const std::uint64_t m = it.fg.src.size();
       std::optional<ProfileOracle> oracle;
       if (ref == Reference::oracle) oracle.emplace(EdgeStream{it.fg.src, it.fg.dst, it.fg.ts, it.fg.n}, prof);
@@ -233,11 +236,15 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, std::uint64_t s0, std::uint64_t s
           }
       bool limited = false;
       for (const ProfileBlock& pb : prof.blocks) {
-        res.limited_graphs[int(pb.block)] += it.stop[int(pb.block)] != UINT64_MAX;
-        limited = limited || it.stop[int(pb.block)] != UINT64_MAX;
+        const bool l = it.stop[int(pb.block)] != UINT64_MAX;
+        res.limited_graphs[int(pb.block)] += l;
+        if (!l)
+          res.nonzero_rows[int(pb.block)] += nonzero_rows(it.want[int(pb.block)], block_cols(block_bins[int(pb.block)]));
+        limited = limited || l;
       }
       ++res.graphs;
       res.edges += m;
+      res.hits += fuzz_hits(it.fg);
       if (any) res.bad_seeds.push_back(b0 + i);
       if (limited) res.limited_seeds.push_back(b0 + i);
     }
