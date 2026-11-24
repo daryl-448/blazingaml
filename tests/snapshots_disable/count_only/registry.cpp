@@ -16,7 +16,7 @@ namespace {
 
 
 constexpr PatternInfo kPatterns[] = {
-  {"sg_gather", "sg", "patterns/sg_gather.yaml:4:8", "patterns/sg_gather.yaml", "2f4c6613be4ef4b2f10134183fa264de4f5629b544a82ec49e7633f0f6edb87b", "", "", "delta_sg", {}, &gen::sg_gather_cpu, &gen::sg_gather_work, BLZ_CUDA_FN(gen::sg_gather_cuda_bucket), BLZ_CUDA_FN(gen::sg_gather_cuda), false, false},
+  {"sg_gather", "sg", "patterns/sg_gather.yaml:4:8", "patterns/sg_gather.yaml", "2f4c6613be4ef4b2f10134183fa264de4f5629b544a82ec49e7633f0f6edb87b", "", "", "delta_sg", {}, &gen::sg_gather_cpu, &gen::sg_gather_work, BLZ_CUDA_FN(gen::sg_gather_cuda_bucket), BLZ_CUDA_FN(gen::sg_gather_cuda), false, false, "legacy", false},
 };
 
 constexpr const char* kDisabled[] = {"count_only"};

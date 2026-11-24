@@ -1,0 +1,18 @@
+# expect: E101 6:9 -- family is legacy or clean
+version: 1
+pattern: p
+block: fan_in
+window: {span: d, lower: open}
+family: tidy
+visibility: stream
+trigger: {edge: e0, src: U, dst: V}
+constraints: [{skip_if: "U == V"}]
+stages:
+  - id: in_nbrs
+    op: count
+    src: V.in
+    edge: e1
+    element: X
+    multiplicity: distinct
+    output: n
+    emit: {size: n}

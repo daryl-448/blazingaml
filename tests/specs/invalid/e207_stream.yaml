@@ -1,0 +1,18 @@
+# expect: E207 7:13 -- a clean spec's visibility is timestamp, not stream (SPEC v3 R3)
+version: 1
+pattern: p
+block: fan_in
+window: {span: d, lower: open}
+family: clean
+visibility: stream
+trigger: {edge: e0, src: U, dst: V}
+constraints: [{skip_if: "U == V"}]
+stages:
+  - id: in_nbrs
+    op: count
+    src: V.in
+    edge: e1
+    element: X
+    multiplicity: distinct
+    output: n
+    emit: {size: n}

@@ -1,0 +1,18 @@
+# expect: E206 5:26 -- a clean spec's window lower bound is open (SPEC v3 R2)
+version: 1
+pattern: p
+block: fan_in
+window: {span: d, lower: closed}
+family: clean
+visibility: timestamp
+trigger: {edge: e0, src: U, dst: V}
+constraints: [{skip_if: "U == V"}]
+stages:
+  - id: in_nbrs
+    op: count
+    src: V.in
+    edge: e1
+    element: X
+    multiplicity: distinct
+    output: n
+    emit: {size: n}

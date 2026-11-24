@@ -39,6 +39,11 @@ inline bool closed_lower_bound(Block b) {
 enum class Visibility { stream, timestamp };
 const char* visibility_name(Visibility v);  // defined in runtime/profile.cpp
 
+// The semantics family of a pattern or profile (SPEC v3 §3.2): legacy (v1/v2, with their quirks)
+// or clean (R1–R11). A profile never mixes them (E403).
+enum class Family { legacy, clean };
+const char* family_name(Family f);  // defined in runtime/profile.cpp
+
 // The per-trigger work limit of lcyc (SPEC v2 §8 S3): bindings one trigger may make before the
 // run stops with that trigger's eid. Every backend counts the same bindings, so they all stop on
 // the same triggers. No other block counts work.

@@ -516,6 +516,8 @@ template. Repeats nest. A YAML list item that is exactly `P{a..b}` expands into 
 | E102 | Unknown or duplicate identifier; use before definition. Also two specs of one `blzc` run that define the same `pattern` name (P4: it names generated functions and registry entries). |
 | E103 | Type error (node, time, int and set are kinds that do not mix). |
 | E201–E204 | Constraint classification (§6.4). |
+| E206 | A `family: clean` spec (SPEC v3 §3.2) whose window lower bound is not `open` (R2). At the `lower:` value. |
+| E207 | A `family: clean` spec that does not pin `visibility: timestamp` (R3). At the `visibility:` value, or at `family:` when the spec has none. |
 | E301 | Unrolled depth > 16. |
 | E401 | Reserved op (`union`, `difference`, `differentiate`): "not supported in v1". |
 | E402 | `emit` or `block` refers to a block that is missing from the feature config. Checked at registration, at runtime start. |

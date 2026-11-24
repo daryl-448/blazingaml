@@ -371,3 +371,27 @@ TEST_CASE("plan: blzc --disable names (SPEC v2 §7.2)") {
   const ir::Pattern sg = ir::compile_file(src("patterns/sg_gather.yaml"), {}, ir::parse_disable("count_only"));
   CHECK(sg.levels.at(1).checks.at(0).materialize);
 }
+
+TEST_CASE("lower: family clean and one_instance (SPEC v3 §3.2, R7)") {
+  const std::string head =
+      "version: 1\npattern: p\nblock: fan_in\nwindow: {span: d, lower: open}\nfamily: clean\n"
+      "visibility: timestamp\ntrigger: {edge: e0, src: U, dst: V}\n";
+  const std::string count = "  - id: c\n    op: count\n    src: V.in\n    edge: e1\n    output: n\n    emit: {size: n}\n";
+  const ir::Pattern fan = ir::compile_text(head + "stages:\n" + count, "x.yaml");
+  CHECK(fan.family == ir::Family::clean);
+  CHECK(fan.one_instance);
+  CHECK(ir::dump(fan).find("pattern p block fan_in family clean one instance\n") == 0);
+  // Two root emits are two instances per trigger.
+  const std::string count2 = "  - id: d\n    op: count\n    src: U.out\n    edge: e2\n    output: m\n    emit: {size: m}\n";
+  CHECK_FALSE(ir::compile_text(head + "stages:\n" + count + count2, "x.yaml").one_instance);
+  // An emit under a binding stage runs once per binding.
+  const std::string bound =
+      "stages:\n  - id: b\n    op: for_all\n    src: V.in\n    edge: e1\n    dst_var: S\n"
+      "  - id: c\n    op: count\n    src: S.in\n    edge: e2\n    output: n\n    emit: {size: n}\n";
+  CHECK_FALSE(ir::compile_text(head + bound, "x.yaml").one_instance);
+  // A legacy spec gets the flag too; its dump has no family.
+  const ir::Pattern legacy = compile("stages:\n" + count);
+  CHECK(legacy.family == ir::Family::legacy);
+  CHECK(legacy.one_instance);
+  CHECK(ir::dump(legacy).find("pattern p block fan_in\n") == 0);
+}

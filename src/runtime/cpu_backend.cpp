@@ -34,19 +34,21 @@ Schedule parse_schedule(const std::string& s) {
 std::vector<const PatternInfo*> patterns_for(Block b) {
   std::vector<const PatternInfo*> out;
   for (const PatternInfo& p : registered_patterns())
-    if (block_name(b) == p.block) out.push_back(&p);
+    if (block_name(b) == p.block && !is_clean(p)) out.push_back(&p);
   return out;
 }
 
 void check_backend_config(const FeatureConfig& cfg, const std::string& config_name) {
-  // A v1 config covers the v1 blocks. A pattern of a v2 block (sg_ordered, SPEC v2 §6.3) runs
-  // only from a profile that lists it, so a v1 config that leaves its block out is not E402.
+  // A v1 config covers the v1 blocks with the legacy patterns. A pattern of a v2 block
+  // (sg_ordered, SPEC v2 §6.3) or a clean one (SPEC v3 §3.2) runs only from a profile that lists
+  // it, so a v1 config that leaves it out is not E402.
   std::vector<PatternRef> refs;
   for (const PatternInfo& p : registered_patterns())
-    if (const auto b = parse_block(p.block); !b || is_v1_block(*b)) refs.push_back({p.name, p.block, p.block_loc});
+    if (const auto b = parse_block(p.block); !is_clean(p) && (!b || is_v1_block(*b)))
+      refs.push_back({p.name, p.block, p.block_loc});
   check_registration(refs, cfg, config_name);
   for (const PatternInfo& p : registered_patterns())
-    if (const auto b = parse_block(p.block); b && !is_v1_block(*b)) continue;  // not run by a v1 config
+    if (const auto b = parse_block(p.block); is_clean(p) || (b && !is_v1_block(*b))) continue;  // not run by a v1 config
     else if (const ConstInfo* k = find_const(p, "K_MAX"); k && k->value != cfg.k_max)
       throw std::runtime_error(std::string(p.file) + ": pattern '" + p.name + "' was compiled with K_MAX = " +
                                std::to_string(k->value) + ", but " + config_name + " has k_max: " +

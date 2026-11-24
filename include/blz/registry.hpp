@@ -3,6 +3,7 @@
 // driver, work-estimate and CUDA launcher signatures, and the registry blzc writes (registry.cpp).
 #include <cstdint>
 #include <span>
+#include <string_view>
 
 #include "blz/primitives.hpp"
 
@@ -143,7 +144,11 @@ struct PatternInfo {
   CudaFn cuda;               // null in a build without CUDA
   bool cpu_sweep;            // the CPU driver is the sweep plan (SPEC v2 §7.1)
   bool cpu_reach;            // the CPU driver prunes by reachability when Params::reach_prune (SPEC v2 §8 S6)
+  const char* family;        // "legacy" or "clean" (SPEC v3 §3.2); a profile mixes neither (E403)
+  bool one_instance;         // at most one emit per trigger, at the root: may fill a count block (SPEC v3 R7)
 };
+
+inline bool is_clean(const PatternInfo& p) { return std::string_view(p.family) == "clean"; }
 
 // Every pattern blzc compiled into this build, in the order of its spec arguments.
 std::span<const PatternInfo> registered_patterns();

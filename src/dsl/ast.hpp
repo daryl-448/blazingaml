@@ -18,6 +18,8 @@ enum class Dir { in, out };
 enum class Op { for_all, intersection, exists, count, union_, difference };
 enum class Mult { distinct, edges };
 enum class Visibility { stream, timestamp };
+// `family: clean` (SPEC v3 §3.2): the spec follows the clean rules R1–R11; absent, legacy.
+enum class Family { legacy, clean };
 
 struct Name {
   std::string s;
@@ -68,8 +70,11 @@ struct Spec {
   Name pattern, block;
   IntEnv consts;
   std::vector<Loc> const_locs;  // the position of each const's name
+  Family family = Family::legacy;
+  Loc family_loc;  // the `family:` value, if given
   Name span;  // the window's span parameter
   bool lower_open = false;
+  Loc lower_loc;  // the window's `lower:` value
   Visibility visibility = Visibility::stream;
   Loc visibility_loc;  // the `visibility:` value, if given
   bool work_limit = false;  // `work_limit: true` (SPEC v2 §8 S3): count bindings per trigger

@@ -20,7 +20,7 @@ inline constexpr int kSortedChunk = 16;
 const char* schedule_name(Schedule s);
 Schedule parse_schedule(const std::string& s);
 
-// The registered patterns that emit into block b, in registry order.
+// The registered legacy patterns that emit into block b, in registry order.
 std::vector<const PatternInfo*> patterns_for(Block b);
 
 // The start-up checks of the generated backends (SPEC §7.6): E402 for every registered pattern of

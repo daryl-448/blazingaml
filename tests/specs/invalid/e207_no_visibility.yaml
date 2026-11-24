@@ -1,0 +1,17 @@
+# expect: E207 6:9 -- a clean spec pins visibility: timestamp (SPEC v3 R3)
+version: 1
+pattern: p
+block: fan_in
+window: {span: d, lower: open}
+family: clean
+trigger: {edge: e0, src: U, dst: V}
+constraints: [{skip_if: "U == V"}]
+stages:
+  - id: in_nbrs
+    op: count
+    src: V.in
+    edge: e1
+    element: X
+    multiplicity: distinct
+    output: n
+    emit: {size: n}

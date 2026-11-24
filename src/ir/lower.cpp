@@ -67,6 +67,19 @@ class Lowerer {
   explicit Lowerer(const dsl::Spec& s) : s_(s) {}
 
   Pattern run() {
+    // The clean rules a spec states itself (SPEC v3 §3.2): one half-open window (R2) and
+    // timestamp visibility (R3).
+    if (s_.family == Family::clean) {
+      if (!s_.lower_open)
+        fail("E206", s_.lower_loc,
+             "a clean spec's window is (t - span, t] (SPEC v3 R2), so its lower bound is open; found closed");
+      if (s_.visibility_loc.line == 0)
+        fail("E207", s_.family_loc,
+             "a clean spec sees every edge with ts <= t (SPEC v3 R3): it must pin visibility: timestamp");
+      if (s_.visibility != Visibility::timestamp)
+        fail("E207", s_.visibility_loc,
+             "a clean spec sees every edge with ts <= t (SPEC v3 R3): its visibility is timestamp, not stream");
+    }
     collect_declarations();
 
     Pattern p;
@@ -79,6 +92,7 @@ class Lowerer {
     p.span_param = s_.span.s;
     p.lower_open = s_.lower_open;
     p.visibility = s_.visibility;
+    p.family = s_.family;
     p.work_limit = s_.work_limit;
     p.e0 = s_.trig_edge.s;
     p.src_var = s_.trig_src.s;
@@ -123,6 +137,17 @@ class Lowerer {
         p.levels.back().checks.push_back(std::move(out));
       }
     }
+    int emits = 0;
+    bool nested = false;
+    for (std::size_t i = 0; i < p.levels.size(); ++i) {
+      if (p.levels[i].binding && p.levels[i].binding->emit) nested = true;
+      for (const Stage& c : p.levels[i].checks) {
+        if (!c.emit) continue;
+        if (i == 0) ++emits;
+        else nested = true;
+      }
+    }
+    p.one_instance = !nested && emits <= 1;
     return p;
   }
 

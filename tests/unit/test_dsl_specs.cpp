@@ -59,7 +59,7 @@ TEST_CASE("invalid-spec suite: every file fails with its declared code and posit
     }
   }
   // AC5: E101–E401 (E402 needs the feature config: test_registration.cpp), and E205 (SPEC v2 §6.2).
-  for (const char* c : {"E101", "E102", "E103", "E201", "E202", "E203", "E204", "E205", "E301", "E401"})
+  for (const char* c : {"E101", "E102", "E103", "E201", "E202", "E203", "E204", "E205", "E206", "E207", "E301", "E401"})
     CHECK(covered.count(c) == 1);
 }
 

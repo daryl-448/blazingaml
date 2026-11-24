@@ -123,8 +123,9 @@ TEST_CASE("profiles: E403 at load, with the file, line and column of the pattern
   CHECK(error_of(profile("  tcyc: {patterns: [tcyc], window: 86400, bins: [2]}\n",
                          "visibility: timestamp\ncredit: trigger\nk_max: 10\n"),
                  reg) == "ok");
-  // The library's specs pin nothing.
-  for (const PatternInfo& pi : registered_patterns()) CHECK(std::string(pi.visibility).empty());
+  // The legacy library's specs pin nothing; the clean ones pin timestamp (SPEC v3 R3).
+  for (const PatternInfo& pi : registered_patterns())
+    CHECK(std::string(pi.visibility) == (is_clean(pi) ? "timestamp" : ""));
 }
 
 TEST_CASE("profiles: schema errors carry the location") {
@@ -192,4 +193,118 @@ TEST_CASE("profiles: registry_profile is every registered block with the compile
   CHECK(std::string(r.find(Block::sg_ord)->patterns.at(0)->name) == "sg_ordered");
   CHECK(r.find(Block::sg)->patterns.size() == 2);
   CHECK(r.find(Block::fan_in)->params.bins.empty());
+}
+
+namespace {
+
+// The registry plus clean copies of fan_in (one instance), sg_gather (one emit per binding) and
+// lcyc, as blzc would register patterns/clean/*.yaml.
+std::vector<PatternInfo> with_clean() {
+  std::vector<PatternInfo> reg(registered_patterns().begin(), registered_patterns().end());
+  const std::size_t n = reg.size();
+  for (std::size_t i = 0; i < n; ++i) {
+    PatternInfo c = reg[i];
+    const std::string name = c.name;
+    if (name == "fan_in") c.name = "clean_fan_in";
+    else if (name == "sg_gather") c.name = "clean_sg_gather";
+    else if (name == "lcyc") c.name = "clean_lcyc";
+    else continue;
+    c.file = "patterns/clean/x.yaml";
+    c.family = "clean";
+    c.visibility = "timestamp";
+    c.visibility_loc = "patterns/clean/x.yaml:5:13";
+    c.one_instance = name == "fan_in";
+    reg.push_back(c);
+  }
+  return reg;
+}
+
+const std::string kClean = "family: clean\nvisibility: timestamp\ncredit: trigger\nk_max: 10\n";
+
+}  // namespace
+
+TEST_CASE("profiles: the family key keeps every legacy id (SPEC v3 F1, AC-V3-0)") {
+  // The ids before P13 (features/p13/ids_before.txt): the family key must not move them.
+  const Profile d = load_profile(kSrc + "/configs/profiles/v1_default.yaml");
+  const Profile p = load_profile(kSrc + "/configs/profiles/v1_parity.yaml");
+  CHECK(d.id() == "b21580d6e129821a");
+  CHECK(p.id() == "8c8237bf05998d07");
+  CHECK(d.family == Family::legacy);
+  CHECK(d.self_loops() == SelfLoops::keep);
+  CHECK_FALSE(d.canonical().contains("family"));
+  CHECK_FALSE(d.resolved().contains("family"));
+  // `family: legacy` spelled out is the same profile.
+  const std::string fan = "  fan_in: {patterns: [fan_in], window: 86400, bins: [2, 3]}\n";
+  CHECK(parse_profile(profile(fan, "family: legacy\nvisibility: stream\ncredit: trigger\nk_max: 10\n"), "a.yaml").id() ==
+        parse_profile(profile(fan), "a.yaml").id());
+  CHECK(error_of(profile(fan, "family: tidy\nvisibility: stream\ncredit: trigger\nk_max: 10\n")) ==
+        "p.yaml:3:9: family must be legacy or clean, found 'tidy'");
+}
+
+TEST_CASE("profiles: a clean profile, its count blocks and E403 both ways (SPEC v3 §3.2, R7)") {
+  const std::vector<PatternInfo> reg = with_clean();
+  const Profile c = parse_profile(profile("  fan_in: {patterns: [clean_fan_in], window: 86400}\n"
+                                          "  sg: {patterns: [clean_sg_gather], window: 21600, bins: [2, 3]}\n",
+                                          kClean),
+                                  "c.yaml", reg);
+  CHECK(c.family == Family::clean);
+  CHECK(c.self_loops() == SelfLoops::drop);
+  CHECK(c.find(Block::fan_in)->params.bins.empty());
+  CHECK(block_cols(c.find(Block::fan_in)->params) == 1);
+  CHECK(block_cols(c.find(Block::sg)->params) == 2);
+  CHECK(c.canonical()["family"] == "clean");
+  CHECK(c.resolved()["family"] == "clean");
+  CHECK(c.canonical()["blocks"]["fan_in"]["bins"] == nlohmann::json::array());
+
+  // A clean profile has timestamp visibility (R3).
+  CHECK(error_of(profile("  fan_in: {patterns: [clean_fan_in], window: 86400}\n",
+                         "family: clean\nvisibility: stream\ncredit: trigger\nk_max: 10\n"),
+                 reg) ==
+        "p.yaml:4:13: error E403: a clean profile (family: clean, p.yaml:3:9) has visibility: timestamp (SPEC v3 "
+        "R3), found stream");
+  // Only clean patterns in a clean profile, only legacy ones in a legacy profile.
+  CHECK(error_of(profile("  fan_in: {patterns: [fan_in], window: 86400}\n", kClean), reg) ==
+        "p.yaml:8:23: error E403: pattern 'fan_in' (patterns/fan_in.yaml) is a legacy pattern, but the profile is "
+        "clean (SPEC v3 §3.2: a profile never mixes the families)");
+  CHECK(error_of(profile("  fan_in: {patterns: [clean_fan_in], window: 86400, bins: [2]}\n",
+                         "visibility: timestamp\ncredit: trigger\nk_max: 10\n"),
+                 reg) ==
+        "p.yaml:7:23: error E403: pattern 'clean_fan_in' (patterns/clean/x.yaml) is a clean pattern, but the profile "
+        "is legacy (SPEC v3 §3.2: a profile never mixes the families)");
+  // A count block is clean-only, and holds one_instance patterns only.
+  CHECK(error_of(profile("  fan_in: {patterns: [fan_in], window: 86400}\n"), reg) ==
+        "p.yaml:7:3: error E403: block fan_in has no bins: a count block (SPEC v3 R7) is only in a clean profile "
+        "(family: clean)");
+  CHECK(error_of(profile("  sg: {patterns: [clean_sg_gather], window: 21600}\n", kClean), reg) ==
+        "p.yaml:8:19: error E403: pattern 'clean_sg_gather' (patterns/clean/x.yaml) can emit more than one instance "
+        "per trigger, so block sg needs bins: a count block (no bins, SPEC v3 R7) takes only patterns with at most "
+        "one emit, at the root");
+
+  // The oracle computes the legacy definitions only.
+  CHECK(backend_error(c, Backend::oracle) ==
+        "c.yaml:3:9: error E404: the oracle computes the legacy definitions (SPEC §9); a clean profile (SPEC v3 "
+        "§3.2) runs on cpu, cuda or hybrid");
+  CHECK(backend_error(c, Backend::cpu) == "ok");
+}
+
+TEST_CASE("profiles: v1 configs and registry_profile are legacy; clean_registry_profile is every clean block") {
+  const std::vector<PatternInfo> reg = with_clean();
+  const Profile v1 = parse_profile("k_max: 10\nblocks:\n  fan_in: {window: 86400, bins: [2]}\n", "cfg.yaml", reg);
+  REQUIRE(v1.find(Block::fan_in)->patterns.size() == 1);
+  CHECK(std::string(v1.find(Block::fan_in)->patterns[0]->name) == "fan_in");
+  const Profile r = registry_profile(reg);
+  CHECK(r.family == Family::legacy);
+  CHECK(r.find(Block::lcyc) == nullptr);
+  for (const ProfileBlock& pb : r.blocks)
+    for (const PatternInfo* pi : pb.patterns) CHECK_FALSE(is_clean(*pi));
+  const Profile c = clean_registry_profile(reg);
+  CHECK(c.family == Family::clean);
+  CHECK(c.visibility == Visibility::timestamp);
+  CHECK(c.k_max == 10);
+  REQUIRE(c.blocks.size() == 3);  // fan_in, sg, and lcyc too (SPEC v3 §4.4)
+  CHECK(c.blocks[0].block == Block::fan_in);
+  CHECK(c.blocks[1].block == Block::sg);
+  CHECK(c.blocks[2].block == Block::lcyc);
+  for (const ProfileBlock& pb : c.blocks)
+    for (const PatternInfo* pi : pb.patterns) CHECK(is_clean(*pi));
 }

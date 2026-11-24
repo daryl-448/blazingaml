@@ -13,6 +13,7 @@ namespace blz::ir {
 
 using dsl::Dir;
 using dsl::Expr;
+using dsl::Family;
 using dsl::IntEnv;
 using dsl::Loc;
 using dsl::Mult;
@@ -145,6 +146,10 @@ struct Pattern {
   std::string span_param;      // runtime int parameter: the window span (the block's window)
   bool lower_open = false;
   Visibility visibility = Visibility::stream;  // the pin, when visibility_loc.line > 0 (SPEC v2 §6.1)
+  Family family = Family::legacy;  // SPEC v3 §3.2; a clean spec has an open lower bound and pins timestamp
+  // At most one instance per trigger: the pattern has at most one emit, and it is a root check's
+  // (no emit sits under a binding stage). Only such patterns may fill a count block (SPEC v3 R7).
+  bool one_instance = false;
   // `work_limit: true` (SPEC v2 §8 S3): every binding counts against Params::work_limit; past it
   // the trigger stops and its sink is marked aborted, which the runtime turns into an error.
   bool work_limit = false;
@@ -157,7 +162,9 @@ struct Pattern {
   const Stage* find_stage(std::string_view id) const;
 };
 
-// Resolve, type-check and classify (§7.1 steps 3–5, 7): E102, E103, E201–E204, E301.
+// Resolve, type-check and classify (§7.1 steps 3–5, 7): E102, E103, E201–E205, E301; and, for a
+// `family: clean` spec (SPEC v3 §3.2), E206 when its window's lower bound is not open (R2) and
+// E207 when it does not pin visibility: timestamp (R3).
 Pattern lower(const dsl::Spec& spec);
 
 // Planner (§7.3): access paths, effective bounds, work estimate, warp split, the CPU sweep plan

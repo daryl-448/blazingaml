@@ -91,7 +91,8 @@ void stage(std::ostringstream& o, const Stage& s, const std::string& ind) {
 
 std::string dump(const Pattern& p) {
   std::ostringstream o;
-  o << "pattern " << p.name << " block " << p.block << "\n";
+  o << "pattern " << p.name << " block " << p.block << (p.family == Family::clean ? " family clean" : "")
+    << (p.family == Family::clean && p.one_instance ? " one instance" : "") << "\n";
   o << "window span " << p.span_param << " lower " << (p.lower_open ? "open" : "closed")
     << " visibility "
     << (p.visibility_loc.line == 0 ? "runtime"

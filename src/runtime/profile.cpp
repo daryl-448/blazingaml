@@ -99,7 +99,8 @@ BlockParams read_params(const YAML::Node& blk, const std::string& file, const st
   const YAML::Node w = required(blk, "window", file, "block " + bname);
   bp.window = scalar_as<std::int32_t>(w, file, bname + " window");
   if (bp.window <= 0) fail(at(file, w.Mark()), bname + ": window must be > 0");
-  const YAML::Node bins = required(blk, "bins", file, "block " + bname);
+  const YAML::Node bins = blk["bins"];
+  if (!bins) return bp;  // a count block (SPEC v3 R7); parse_v2 checks where one may be
   if (!bins.IsSequence() || bins.size() == 0) fail(at(file, bins.Mark()), bname + ": bins must be a non-empty list");
   for (const YAML::Node& b : bins) {
     const auto v = scalar_as<std::int64_t>(b, file, bname + " bin");
@@ -110,6 +111,8 @@ BlockParams read_params(const YAML::Node& blk, const std::string& file, const st
   }
   return bp;
 }
+
+Family family_of(const PatternInfo& p) { return is_clean(p) ? Family::clean : Family::legacy; }
 
 const PatternInfo* find_pattern(std::span<const PatternInfo> registry, const std::string& name) {
   for (const PatternInfo& p : registry)
@@ -131,14 +134,14 @@ Profile parse_v1(const YAML::Node& root, std::string_view text, const std::strin
     const std::string name = kv.first.as<std::string>();
     ProfileBlock pb{*parse_block(name), {}, *cfg[*parse_block(name)], at(file, kv.first.Mark())};
     for (const PatternInfo& pi : registry)
-      if (name == pi.block) pb.patterns.push_back(&pi);
+      if (name == pi.block && !is_clean(pi)) pb.patterns.push_back(&pi);
     p.blocks.push_back(std::move(pb));
   }
   return p;
 }
 
 Profile parse_v2(const YAML::Node& root, const std::string& file, std::span<const PatternInfo> registry) {
-  check_keys(root, file, {"version", "profile", "visibility", "credit", "k_max", "blocks"}, "the profile");
+  check_keys(root, file, {"version", "profile", "family", "visibility", "credit", "k_max", "blocks"}, "the profile");
   Profile p;
   p.file = file;
   p.format = 2;
@@ -146,12 +149,24 @@ Profile parse_v2(const YAML::Node& root, const std::string& file, std::span<cons
   p.name = scalar_as<std::string>(name, file, "'profile'");
   if (!is_ident(p.name)) fail(at(file, name.Mark()), "'profile' must be an identifier, found '" + p.name + "'");
 
+  p.family_loc = file;
+  if (const YAML::Node fam = root["family"]) {
+    p.family_loc = at(file, fam.Mark());
+    const auto f = scalar_as<std::string>(fam, file, "'family'");
+    if (f == "clean") p.family = Family::clean;
+    else if (f != "legacy") fail(p.family_loc, "family must be legacy or clean, found '" + f + "'");
+  }
+  const bool clean = p.family == Family::clean;
+
   const YAML::Node vis = required(root, "visibility", file, "the profile");
   p.visibility_loc = at(file, vis.Mark());
   const auto v = scalar_as<std::string>(vis, file, "'visibility'");
   if (v == "stream") p.visibility = Visibility::stream;
   else if (v == "timestamp") p.visibility = Visibility::timestamp;
   else fail(p.visibility_loc, "visibility must be stream or timestamp, found '" + v + "'");
+  if (clean && p.visibility != Visibility::timestamp)
+    fail_code(p.visibility_loc, "E403",
+              "a clean profile (family: clean, " + p.family_loc + ") has visibility: timestamp (SPEC v3 R3), found " + v);
 
   const YAML::Node cr = required(root, "credit", file, "the profile");
   const auto c = scalar_as<std::string>(cr, file, "'credit'");
@@ -175,6 +190,9 @@ Profile parse_v2(const YAML::Node& root, const std::string& file, std::span<cons
     if (!blk.IsMap()) fail(at(file, blk.Mark()), "block " + bname + " must be a map");
     check_keys(blk, file, {"patterns", "window", "bins"}, "block " + bname);
     ProfileBlock pb{*b, {}, read_params(blk, file, bname), bloc};
+    if (pb.params.bins.empty() && !clean)
+      fail_code(bloc, "E403", "block " + bname + " has no bins: a count block (SPEC v3 R7) is only in a clean "
+                              "profile (family: clean)");
     const YAML::Node pats = required(blk, "patterns", file, "block " + bname);
     if (!pats.IsSequence() || pats.size() == 0)
       fail(at(file, pats.Mark()), bname + ": patterns must be a non-empty list");
@@ -188,10 +206,18 @@ Profile parse_v2(const YAML::Node& root, const std::string& file, std::span<cons
                                     "', not '" + bname + "'");
       if (std::find(pb.patterns.begin(), pb.patterns.end(), pi) != pb.patterns.end())
         fail(ploc, bname + ": pattern '" + pname + "' is listed twice");
+      if (family_of(*pi) != p.family)
+        fail_code(ploc, "E403", "pattern '" + pname + "' (" + pi->file + ") is a " + pi->family +
+                                    " pattern, but the profile is " + family_name(p.family) +
+                                    " (SPEC v3 §3.2: a profile never mixes the families)");
       if (*pi->visibility && v != pi->visibility)
         fail_code(ploc, "E403", "pattern '" + pname + "' pins visibility: " + pi->visibility + " (" +
                                     pi->visibility_loc + "), but the profile has visibility: " + v + " (" +
                                     p.visibility_loc + ")");
+      if (pb.params.bins.empty() && !pi->one_instance)
+        fail_code(ploc, "E403", "pattern '" + pname + "' (" + pi->file + ") can emit more than one instance per "
+                                    "trigger, so block " + bname + " needs bins: a count block (no bins, SPEC v3 R7) "
+                                    "takes only patterns with at most one emit, at the root");
       pb.patterns.push_back(pi);
     }
     p.blocks.push_back(std::move(pb));
@@ -202,6 +228,7 @@ Profile parse_v2(const YAML::Node& root, const std::string& file, std::span<cons
 }  // namespace
 
 const char* visibility_name(Visibility v) { return v == Visibility::stream ? "stream" : "timestamp"; }
+const char* family_name(Family f) { return f == Family::clean ? "clean" : "legacy"; }
 const char* backend_name(Backend b) {
   return b == Backend::oracle ? "oracle" : b == Backend::cpu ? "cpu" : b == Backend::cuda ? "cuda" : "hybrid";
 }
@@ -244,8 +271,10 @@ nlohmann::json Profile::resolved() const {
       pats.push_back({{"name", pi->name}, {"spec", pi->file}, {"spec_sha256", pi->spec_sha256}});
     out[bname] = {{"patterns", pats}, {"window", pb.params.window}, {"bins", pb.params.bins}};
   }
-  return {{"version", 2}, {"profile", name}, {"visibility", visibility_name(visibility)}, {"credit", "trigger"},
-          {"k_max", k_max}, {"block_order", order}, {"blocks", out}};
+  nlohmann::json r = {{"version", 2}, {"profile", name}, {"visibility", visibility_name(visibility)},
+                      {"credit", "trigger"}, {"k_max", k_max}, {"block_order", order}, {"blocks", out}};
+  if (family == Family::clean) r["family"] = "clean";
+  return r;
 }
 
 nlohmann::json Profile::canonical() const {
@@ -257,11 +286,13 @@ nlohmann::json Profile::canonical() const {
     for (const PatternInfo* pi : pb.patterns) pats.push_back(pi->spec_sha256);
     out[bname] = {{"patterns", pats}, {"window", pb.params.window}, {"bins", pb.params.bins}};
   }
-  return {{"visibility", visibility_name(visibility)},
-          {"credit", "trigger"},
-          {"k_max", k_max},
-          {"blocks", out},
-          {"block_order", order}};
+  nlohmann::json c = {{"visibility", visibility_name(visibility)},
+                      {"credit", "trigger"},
+                      {"k_max", k_max},
+                      {"blocks", out},
+                      {"block_order", order}};
+  if (family == Family::clean) c["family"] = "clean";
+  return c;
 }
 
 std::string Profile::id() const {
@@ -290,29 +321,47 @@ Profile load_profile(const std::string& path, std::span<const PatternInfo> regis
   return parse_profile(read_text(path), path, registry);
 }
 
-Profile registry_profile(std::span<const PatternInfo> registry) {
+namespace {
+
+Profile family_registry_profile(std::span<const PatternInfo> registry, Family family) {
   Profile p;
   p.file = "(registry)";
-  p.name = "registry";
-  p.format = 1;
-  p.visibility_loc = p.k_max_loc = p.file;
+  p.name = family == Family::clean ? "clean_registry" : "registry";
+  p.family = family;
+  p.format = family == Family::clean ? 2 : 1;  // a v2 profile runs no v1 start-up check
+  if (family == Family::clean) p.visibility = Visibility::timestamp;
+  p.family_loc = p.visibility_loc = p.k_max_loc = p.file;
   for (const PatternInfo& pi : registry)
-    if (const ConstInfo* k = find_const(pi, "K_MAX")) p.k_max = int(k->value);
+    if (const ConstInfo* k = find_const(pi, "K_MAX"); k && family_of(pi) == family) p.k_max = int(k->value);
   for (Block b : kAllBlocks) {
-    // lcyc runs only from a profile that lists it (SPEC v2 §8 S3): on dense fuzz graphs its
+    // Legacy lcyc runs only from a profile that lists it (SPEC v2 §8 S3): on dense fuzz graphs its
     // unordered search reaches the work limit, which the v1 fuzz and metamorphic runs do not expect.
-    if (b == Block::lcyc) continue;
+    if (b == Block::lcyc && family == Family::legacy) continue;
     ProfileBlock pb{b, {}, {}, p.file};
     for (const PatternInfo& pi : registry)
-      if (block_name(b) == pi.block) pb.patterns.push_back(&pi);
+      if (block_name(b) == pi.block && family_of(pi) == family) pb.patterns.push_back(&pi);
     if (!pb.patterns.empty()) p.blocks.push_back(std::move(pb));
   }
   return p;
 }
 
+}  // namespace
+
+Profile registry_profile(std::span<const PatternInfo> registry) {
+  return family_registry_profile(registry, Family::legacy);
+}
+
+Profile clean_registry_profile(std::span<const PatternInfo> registry) {
+  return family_registry_profile(registry, Family::clean);
+}
+
 void check_profile_backend(const Profile& p, Backend b) {
   const std::string be = backend_name(b);
   if (b == Backend::oracle) {
+    if (p.family == Family::clean)
+      fail_code(p.family_loc, "E404",
+                "the oracle computes the legacy definitions (SPEC §9); a clean profile (SPEC v3 §3.2) runs on cpu, "
+                "cuda or hybrid");
     for (const ProfileBlock& pb : p.blocks) {
       std::vector<std::string> got, want = oracle_patterns(pb.block);
       for (const PatternInfo* pi : pb.patterns) got.push_back(pi->name);

@@ -245,8 +245,8 @@ Stage stage_of(const YNode& n) {
 
 Spec parse_spec(const YNode& root, const std::string& file) {
   map_of(root, "a spec");
-  check_keys(root, {"version", "pattern", "block", "consts", "window", "visibility", "work_limit", "trigger",
-                    "constraints", "stages"},
+  check_keys(root, {"version", "pattern", "block", "family", "consts", "window", "visibility", "work_limit",
+                    "trigger", "constraints", "stages"},
              "the spec");
   Spec s;
   s.file = file;
@@ -259,12 +259,20 @@ Spec parse_spec(const YNode& root, const std::string& file) {
   if (const YNode* c = root.get("consts"); c && c->is_map())
     for (const auto& [k, v] : c->map) s.const_locs.push_back(k.loc);
 
+  if (const YNode* v = root.get("family")) {
+    scalar_of(*v, "'family'");
+    s.family_loc = v->loc;
+    if (v->scalar == "clean") s.family = Family::clean;
+    else if (v->scalar != "legacy") fail("E101", v->loc, "family must be legacy or clean, found '" + v->scalar + "'");
+  }
+
   const YNode& w = *required(root, "window", "the spec");
   map_of(w, "'window'");
   check_keys(w, {"span", "lower"}, "window");
   s.span = ident(*required(w, "span", "window"), "window span");
   const YNode& lower = *required(w, "lower", "window");
   scalar_of(lower, "window lower");
+  s.lower_loc = lower.loc;
   if (lower.scalar == "open") s.lower_open = true;
   else if (lower.scalar == "closed") s.lower_open = false;
   else fail("E101", lower.loc, "window lower must be open or closed, found '" + lower.scalar + "'");
