@@ -1,36 +1,30 @@
-"""blz's vertex statistics against GFP's (SPEC v2 §8 S2).
+"""blz's vertex statistics against GFP's (SPEC v2 §8 S2), on fuzz graphs.
 
-Fuzz mode: `blz fuzz --vstats` writes the fuzz graphs, their amounts (fuzz_amounts) and blz's
-statistics (window = the graph's window, ts offset GFP_TS_OFFSET). Each graph is replayed into a
-fresh GFP in stream mode (one transform() per edge, ts + GFP_TS_OFFSET) with vertex_stats on and
-temp-cycle as the companion pattern (window = the graph's window, bins [2]), as F1 calls it.
-
-HI-Small mode (--blz-dir): blz's vstats.npy (float64) against F1's (features/dg2_R7_F1,
-float32, GFP's values clipped to the float32 range); blz's values are rounded to float32 and
-clipped the same way first.
+`blz fuzz --vstats` writes the fuzz graphs, their amounts (fuzz_amounts) and blz's statistics
+(window = the graph's window). Each graph is replayed into a fresh GFP in stream mode (one
+transform() per edge, ts as blz sees it) with vertex_stats on and temp-cycle as the companion
+pattern (window = the graph's window, bins [2]), as F1 calls it. GFP's ts-0 artifact (A33, D-12)
+drops temporal cycles only, and the temp-cycle column is not compared, so GFP gets no ts offset.
 
 The fan and degree columns must be equal. Every other value must be within a relative error of
 1e-6 of GFP's, or 1e-9 absolute (§8 S2); NaN only matches NaN. Each mismatch is classified by
 whether its side (node, direction) had lost an edge to eviction before the row: GFP keeps
 running sums that it adds to and subtracts from (A45), and only those rows can carry its
 rounding residue. The report also has a histogram of the mismatches' relative error and the count
-of negative variances in GFP's output. The summary goes to the report under "vstats_vs_gfp_fuzz" or
-"vstats_vs_gfp_hi_small".
+of negative variances in GFP's output. The summary goes to the report under "vstats_vs_gfp_fuzz".
 
 Usage: uv run vstats_vs_gfp.py --seeds 0:2000 [--work ../../data/fuzz_vs]
-       uv run vstats_vs_gfp.py --blz-dir ../../features/<run> [--gfp-dir ../../features/dg2_R7_F1]
 """
 
 import argparse
 import json
 import subprocess
-import sys
 import time
 from pathlib import Path
 
 import numpy as np
 
-from gfp_common import GFP_TS_OFFSET, PATTERN_BLOCKS
+from gfp_common import PATTERN_BLOCKS
 from snapml import GraphFeaturePreprocessor
 
 VS_FEATS = [0, 1, 2, 3, 4, 8, 9, 10]
@@ -42,7 +36,6 @@ NAMES = [f"vs_{side}_{s}" for side in SIDES for s in STATS]
 INT_COLS = [i for i, n in enumerate(NAMES) if n.endswith("_fan") or n.endswith("_deg")]
 VAR_COLS = [i for i, n in enumerate(NAMES) if n.endswith("_var")]
 REL_EDGES = [1e-4, 1e-2, 1.0, np.inf]  # upper edges of the mismatches' relative-error histogram
-F32_MAX = float(np.finfo(np.float32).max)
 
 
 def gfp_vstats(window):
@@ -102,7 +95,7 @@ def compare(blz, gfp, evicted):
             "by_column": cols}, bad
 
 
-def fuzz_mode(args, root):
+def fuzz_mode(args):
     t0 = time.time()
     subprocess.run([args.blz, "fuzz", "--seeds", args.seeds, "--vstats", "--out", args.work], check=True)
     t_blz = time.time() - t0
@@ -121,8 +114,7 @@ def fuzz_mode(args, root):
         window = int(graphs[a, 5])
         g = gfp_vstats(window)
         for r in range(a, z):
-            X = np.array([[graphs[r, 1], graphs[r, 2], graphs[r, 3], graphs[r, 4] + GFP_TS_OFFSET, amounts[r]]],
-                         dtype=np.float64)
+            X = np.array([[graphs[r, 1], graphs[r, 2], graphs[r, 3], graphs[r, 4], amounts[r]]], dtype=np.float64)
             gfp[r] = g.transform(X)[0, 6:]  # the input columns, then temp-cycle's one bin
         evicted[a:z] = evicted_before(graphs[a:z, 2], graphs[a:z, 3], graphs[a:z, 4], window)
     t_gfp = time.time() - t1
@@ -135,51 +127,10 @@ def fuzz_mode(args, root):
                          "gfp": float(gfp[r, j]), "blz": float(mine[r, j])})
     summary.update({"generator": "blz fuzz --vstats (SPEC §13.3 graphs, fuzz_amounts)",
                     "gfp": "snapml==1.17.2, stream mode, temp-cycle companion, fresh instance per graph",
-                    "gfp_ts_offset": GFP_TS_OFFSET, "seeds": args.seeds, "graphs": int(len(starts)),
+                    "gfp_ts_offset": 0, "seeds": args.seeds, "graphs": int(len(starts)),
                     "first_mismatches": examples,
                     "seconds": {"blz_fuzz": round(t_blz, 1), "gfp": round(t_gfp, 1)}})
     return "vstats_vs_gfp_fuzz", summary
-
-
-def hi_small_mode(args, root):
-    sys.path.insert(0, str(root / "bench/dg2"))
-    from blzg import Blzg  # noqa: E402
-    blz_dir, gfp_dir = Path(args.blz_dir), Path(args.gfp_dir)
-    meta = json.loads((gfp_dir / "features.json").read_text())
-    names = meta["blocks"]["vstats"]["columns"]
-    if names != NAMES:
-        sys.exit(f"{gfp_dir}: vstats columns differ from {NAMES[:3]}...")
-    window = int(meta["blocks"]["vstats"]["window"])
-    gfp = np.load(gfp_dir / "vstats.npy", mmap_mode="r")
-    mine = np.load(blz_dir / "vstats.npy", mmap_mode="r")
-    if mine.shape != gfp.shape:
-        sys.exit(f"shapes differ: {mine.shape} vs {gfp.shape}")
-    g = Blzg(str(root / args.graph))
-    m = mine.shape[0]
-    t0 = time.time()
-    evicted = evicted_before(g.src[:m], g.dst[:m], g.ts[:m], window)
-    tot = None
-    step = 1 << 18
-    for a in range(0, m, step):
-        b = min(m, a + step)
-        mine32 = np.clip(np.asarray(mine[a:b]), -F32_MAX, F32_MAX).astype(np.float32).astype(np.float64)
-        s, _ = compare(mine32, np.asarray(gfp[a:b]).astype(np.float64), evicted[a:b])
-        if tot is None:
-            tot = s
-        else:
-            for k in ("rows", "values", "mismatched_values", "mismatched_int_values", "mismatched_after_eviction",
-                      "mismatched_no_eviction", "rows_with_eviction_side", "rows_mismatched", "gfp_negative_variances"):
-                tot[k] += s[k]
-            for k, v in s["mismatch_relative_error"].items():
-                tot["mismatch_relative_error"][k] += v
-            for c, v in s["by_column"].items():
-                d = tot["by_column"].setdefault(c, {"after_eviction": 0, "no_eviction": 0})
-                d["after_eviction"] += v["after_eviction"]
-                d["no_eviction"] += v["no_eviction"]
-    tot.update({"blz_dir": str(blz_dir), "gfp_dir": str(gfp_dir), "window": window,
-                "note": "blz float64 rounded to float32 and clipped to the float32 range, as F1 stored GFP's values",
-                "seconds": round(time.time() - t0, 1)})
-    return "vstats_vs_gfp_hi_small", tot
 
 
 def main():
@@ -189,12 +140,9 @@ def main():
     ap.add_argument("--blz", default=str(root / "build/rel/blz"))
     ap.add_argument("--seeds", default="0:2000")
     ap.add_argument("--work", default=str(root / "data/fuzz_vs"))
-    ap.add_argument("--blz-dir", default=None, help="HI-Small mode: a `blz vstats` output directory")
-    ap.add_argument("--gfp-dir", default=str(root / "features/dg2_R7_F1"))
-    ap.add_argument("--graph", default="data/hi_small.blzg")
     ap.add_argument("--report", default=str(root / "results/s2_vstats.json"))
     args = ap.parse_args()
-    key, summary = hi_small_mode(args, root) if args.blz_dir else fuzz_mode(args, root)
+    key, summary = fuzz_mode(args)
     report = Path(args.report)
     doc = json.loads(report.read_text()) if report.exists() else {}
     doc[key] = summary

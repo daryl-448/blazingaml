@@ -45,7 +45,7 @@ std::vector<double> reference(const FuzzGraph& g, const std::vector<double>& amo
         o[1] = n;
         o[2] = nbrs.empty() ? 0.0 : n / double(nbrs.size());
         for (int col = 0; col < 2; ++col) {
-          auto x = [&](std::uint64_t f) { return col == 0 ? double(g.ts[f]) + p.ts_offset : amount[f]; };
+          auto x = [&](std::uint64_t f) { return col == 0 ? double(g.ts[f]) : amount[f]; };
           VsMoments mo;
           for (std::uint64_t f : w) mo.sum += x(f);
           if (!w.empty()) {
@@ -136,7 +136,7 @@ TEST_CASE("vstats: the CPU module matches the GFP vertex-statistics probes") {
     const GraphIndex idx(src, dst, ts, n);
     TriggerSel all;
     all.last = src.size();
-    const auto got = cpu_rows(idx, amount, {c["window"].get<std::int32_t>(), 0.0}, all);
+    const auto got = cpu_rows(idx, amount, {c["window"].get<std::int32_t>()}, all);
     const bool full = c["kind"] == "rule";
     rule += full;
     for (std::size_t e = 0; e < src.size(); ++e)
@@ -159,7 +159,7 @@ TEST_CASE("vstats: the CPU module equals the definition, bit for bit, at any thr
     const std::uint64_t m = g.src.size();
     const std::vector<double> amount = fuzz_amounts(seed, m);
     const GraphIndex idx(g.src, g.dst, g.ts, g.n);
-    const VstatsParams p{g.window, 1.0};
+    const VstatsParams p{g.window};
     const auto want = reference(g, amount, p);
     TriggerSel all;
     all.last = m;
@@ -184,7 +184,7 @@ TEST_CASE("vstats: CPU = CUDA, bit for bit") {
     const std::uint64_t m = g.src.size();
     const std::vector<double> amount = fuzz_amounts(seed, m);
     const GraphIndex idx(g.src, g.dst, g.ts, g.n);
-    const VstatsParams p{g.window, 1.0};
+    const VstatsParams p{g.window};
     TriggerSel all;
     all.last = m;
     const auto want = cpu_rows(idx, amount, p, all);

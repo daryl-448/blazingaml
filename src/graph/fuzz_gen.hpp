@@ -18,9 +18,8 @@ struct FuzzGraph {
 FuzzGraph fuzz_graph(std::uint64_t seed);
 
 // One amount per edge of fuzz_graph(seed) (m values) for the vertex statistics (SPEC v2 §8 S2),
-// from a splitmix64 stream of its own: cents below 100, small integers (ties), large and tiny
-// values, and repeats of the previous amount (constant windows), so every branch of the moments
-// and of GFP's variance guard is reached.
+// from a splitmix64 stream of its own. It reaches cents below 100, small integers (ties), large
+// and tiny values, and repeats of the previous amount, which make a window constant.
 std::vector<double> fuzz_amounts(std::uint64_t seed, std::uint64_t m);
 
 }  // namespace blz

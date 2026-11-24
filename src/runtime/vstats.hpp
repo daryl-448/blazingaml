@@ -29,7 +29,6 @@ std::vector<std::string> vstats_column_names();
 
 struct VstatsParams {
   std::int32_t window = 0;  // W: GFP's time_window (> 0)
-  double ts_offset = 0;     // added to ts before the ts statistics (GFP parity runs send ts + 1, D-12)
 };
 
 // GFP's cancellation guard (A44): a variance below 1e-5 * mean^2 is reported as 0, with its
@@ -62,12 +61,12 @@ BLZ_HD inline void vstats_finish(const VsMoments& a, double n, double* out) {
 
 // One side: node x's list l, the window entries [r.lo, r.hi) (eid <= e, ts >= the lower bound),
 // `amount` by eid. Writes kVstatsPerSide values.
-BLZ_HD inline void vstats_side(const TCsrView& l, Range r, const double* amount, double ts_offset, double* out) {
+BLZ_HD inline void vstats_side(const TCsrView& l, Range r, const double* amount, double* out) {
   std::uint32_t fan = 0;
   VsMoments t, a;
   for (std::uint32_t j = r.lo; j < r.hi; ++j) {
     fan += l.distinct_first(j, r.lo) ? 1u : 0u;
-    t.sum += double(l.ts[j]) + ts_offset;
+    t.sum += double(l.ts[j]);
     a.sum += amount[l.eid[j]];
   }
   const std::uint32_t deg = r.hi - r.lo;
@@ -75,7 +74,7 @@ BLZ_HD inline void vstats_side(const TCsrView& l, Range r, const double* amount,
   if (deg > 0) {
     const double mt = t.sum / n, ma = a.sum / n;
     for (std::uint32_t j = r.lo; j < r.hi; ++j) {
-      const double dt = (double(l.ts[j]) + ts_offset) - mt, da = amount[l.eid[j]] - ma;
+      const double dt = double(l.ts[j]) - mt, da = amount[l.eid[j]] - ma;
       const double dt2 = dt * dt, da2 = da * da;
       t.m2 += dt2;
       t.m3 += dt2 * dt;
@@ -102,10 +101,10 @@ BLZ_HD inline void vstats_row(const GraphView& g, const double* amount, const Vs
                               double* out) {
   const std::int64_t lo = vstats_lower(g.ts, e, p.window);
   const std::uint32_t u = g.src[e], v = g.dst[e];
-  vstats_side(g.out, g.out.range(u, lo, kNoUpper, e), amount, p.ts_offset, out);
-  vstats_side(g.in, g.in.range(u, lo, kNoUpper, e), amount, p.ts_offset, out + kVstatsPerSide);
-  vstats_side(g.out, g.out.range(v, lo, kNoUpper, e), amount, p.ts_offset, out + 2 * kVstatsPerSide);
-  vstats_side(g.in, g.in.range(v, lo, kNoUpper, e), amount, p.ts_offset, out + 3 * kVstatsPerSide);
+  vstats_side(g.out, g.out.range(u, lo, kNoUpper, e), amount, out);
+  vstats_side(g.in, g.in.range(u, lo, kNoUpper, e), amount, out + kVstatsPerSide);
+  vstats_side(g.out, g.out.range(v, lo, kNoUpper, e), amount, out + 2 * kVstatsPerSide);
+  vstats_side(g.in, g.in.range(v, lo, kNoUpper, e), amount, out + 3 * kVstatsPerSide);
 }
 
 // The rows of the triggers `sel` (sel.rows() * kVstatsCols doubles, row r = sel.eid(r)), on the
