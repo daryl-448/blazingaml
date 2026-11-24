@@ -58,7 +58,8 @@ void check_backend_config(const FeatureConfig& cfg, const std::string& config_na
 int compiled_k_max() {
   int k = -1;
   for (const PatternInfo& p : registered_patterns())
-    if (const ConstInfo* c = find_const(p, "K_MAX")) {
+    if (is_clean(p)) continue;  // the legacy patterns' cap (blz fuzz --lcyc)
+    else if (const ConstInfo* c = find_const(p, "K_MAX")) {
       if (k >= 0 && k != c->value) throw std::runtime_error("patterns were compiled with different K_MAX values");
       k = int(c->value);
     }
