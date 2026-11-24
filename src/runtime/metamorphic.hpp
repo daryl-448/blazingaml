@@ -25,19 +25,23 @@ bool meta_test_applies(MetaTest t, const Profile& prof, Backend backend);
 struct MetamorphicResult {
   std::uint64_t graphs = 0, edges = 0;
   // [test][block]: rows that differ from the untransformed graph's, summed over the graphs (and,
-  // for prefix closure, over its cuts; for cuda, over the thresholds).
+  // for prefix closure, over its cuts; for cuda and the hybrid, over the runs).
   std::array<std::array<std::uint64_t, kAllBlocks.size()>, kMetaTests.size()> mismatched_rows{};
   // [test]: rows compared, summed the same way.
   std::array<std::uint64_t, kMetaTests.size()> rows_compared{};
+  // [block]: graphs where the block reached the work limit on the base or a transformed graph, so
+  // none of its rows were compared (SPEC v3 R11: inconclusive).
+  std::array<std::uint64_t, kAllBlocks.size()> limited_graphs{};
   std::vector<std::uint64_t> bad_seeds;  // ascending
 };
 
 // Runs every test on the graphs of seeds [s0, s1), for every block of `prof` with its patterns
 // and k_max, each graph's own window, and fuzz_bins() (`bins`, each block's own bins when `bins` is
 // empty, none for a count block), on one backend: the profile's oracle (ProfileOracle: the clean
-// oracle for a clean profile), or a generated backend on the profile's index (Profile::self_loops)
-// (for cuda, once per light/heavy threshold in `thresholds`; the other backends ignore it). Per
-// graph:
+// oracle for a clean profile), or a generated backend on the profile's index (Profile::self_loops):
+// cpu, cuda once per light/heavy threshold in `thresholds`, the hybrid (sorted schedule, pruning on
+// its CPU side) once per pair of a threshold and a CPU threshold in `cpu_thresholds`. Every run has
+// `work_limit`; a block that reaches it on a graph is left out of that graph's tests. Per graph:
 //   - prefix closure: mining the first k edges gives the same rows for them as mining the whole
 //     graph, at two cuts k drawn from the seed (under timestamp visibility, k is moved forward
 //     to the next timestamp boundary);
@@ -52,6 +56,8 @@ struct MetamorphicResult {
 //     window and bins, by the same backend (SPEC v2 §6.3).
 // check_profile_backend(prof, backend) must hold; this throws otherwise.
 MetamorphicResult metamorphic(const Profile& prof, Backend backend, std::uint64_t s0, std::uint64_t s1,
-                              std::span<const std::uint32_t> bins, std::span<const std::uint32_t> thresholds);
+                              std::span<const std::uint32_t> bins, std::span<const std::uint32_t> thresholds,
+                              std::span<const std::uint32_t> cpu_thresholds = {},
+                              std::uint64_t work_limit = kDefaultWorkLimit);
 
 }  // namespace blz

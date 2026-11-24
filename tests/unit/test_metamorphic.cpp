@@ -47,11 +47,18 @@ TEST_CASE("metamorphic: 200 fuzz graphs, oracle and cpu, under timestamp visibil
   }
 }
 
-TEST_CASE("metamorphic: clean_default on the clean oracle and cpu (SPEC v3 F6)") {
-  const Profile clean = load_profile(std::string(BLZ_SOURCE_DIR) + "/configs/profiles/clean_default.yaml");
+// clean_all enables every clean pattern (SPEC v3 §4.4). At this work limit lcyc reaches it on some
+// graphs, which are inconclusive for lcyc (R11), and completes on the others.
+TEST_CASE("metamorphic: clean_all on the clean oracle and cpu, lcyc limited on some graphs (SPEC v3 F6, R11)") {
+  const Profile clean = load_profile(std::string(BLZ_SOURCE_DIR) + "/configs/profiles/clean_all.yaml");
   for (Backend b : {Backend::oracle, Backend::cpu}) {
     INFO(backend_name(b));
-    check_clean(metamorphic(clean, b, 0, 100, {}, {}), 100, clean, b);
+    const MetamorphicResult r = metamorphic(clean, b, 0, 60, {}, {}, {}, 100'000);
+    check_clean(r, 60, clean, b);
+    CHECK(r.limited_graphs[int(Block::lcyc)] > 0);
+    CHECK(r.limited_graphs[int(Block::lcyc)] < 30);
+    for (const ProfileBlock& pb : clean.blocks)
+      if (pb.block != Block::lcyc) CHECK(r.limited_graphs[int(pb.block)] == 0);
   }
 }
 

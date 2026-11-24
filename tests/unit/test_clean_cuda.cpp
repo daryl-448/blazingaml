@@ -1,6 +1,6 @@
 // The clean family on the CUDA backend and the hybrid (SPEC v3 §3.2): count rows (R7) on the
-// loop-free index (R1) through the light, heavy, fused and packed paths, on a hand-checked graph
-// and against the clean oracle on fuzz graphs.
+// loop-free index (R1) through the light, heavy, fused and packed paths, on a hand-checked graph,
+// against the clean oracle on fuzz graphs, and the metamorphic tests.
 #include <catch2/catch_test_macros.hpp>
 #include <cstdint>
 #include <string>
@@ -12,6 +12,7 @@
 #include "runtime/cuda_backend.hpp"
 #include "runtime/fuzz_diff.hpp"
 #include "runtime/hybrid.hpp"
+#include "runtime/metamorphic.hpp"
 #include "runtime/profile.hpp"
 
 using namespace blz;
@@ -110,4 +111,24 @@ TEST_CASE("cuda, hybrid: clean_all equals the clean oracle on fuzz graphs, every
   const std::uint32_t cpu_thresholds[] = {0, 4, kAllGpu};
   check(rest, fuzz_diff_hybrid(rest, 0, 40, {}, kThresholds, cpu_thresholds), 40);
   check(lcyc, fuzz_diff_hybrid(lcyc, 0, 12, {}, kThresholds, cpu_thresholds, 20'000), 12);
+}
+
+// The metamorphic suite on clean_all (SPEC v3 §4.4: every clean pattern), lcyc at a low work limit
+// (R11: a limited graph is inconclusive for lcyc).
+TEST_CASE("cuda, hybrid: the metamorphic tests on clean_all, every threshold") {
+  const Profile all = load_profile(std::string(BLZ_SOURCE_DIR) + "/configs/profiles/clean_all.yaml");
+  const std::uint32_t cpu_thresholds[] = {0, 4, kAllGpu};
+  for (const Backend b : {Backend::cuda, Backend::hybrid}) {
+    INFO(backend_name(b));
+    const std::uint64_t graphs = b == Backend::cuda ? 30 : 12;
+    const MetamorphicResult r = metamorphic(all, b, 0, graphs, {}, kThresholds, cpu_thresholds, 20'000);
+    CHECK(r.graphs == graphs);
+    for (MetaTest t : kMetaTests) {
+      INFO(meta_test_name(t));
+      CHECK((r.rows_compared[int(t)] > 0) == meta_test_applies(t, all, b));
+      for (std::uint64_t n : r.mismatched_rows[int(t)]) CHECK(n == 0);
+    }
+    CHECK(r.limited_graphs[int(Block::lcyc)] < graphs);
+    CHECK(r.bad_seeds.empty());
+  }
 }

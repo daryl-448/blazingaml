@@ -12,6 +12,7 @@
 #include "oracle/profile_oracle.hpp"
 #include "runtime/cpu_backend.hpp"
 #include "runtime/cuda_backend.hpp"
+#include "runtime/hybrid.hpp"
 
 namespace blz {
 
@@ -35,52 +36,62 @@ struct Graph {
   std::uint64_t m() const { return src.size(); }
 };
 
-// rows[t][block]: the block's rows for threshold index t (one entry for oracle and cpu).
-using Rows = std::vector<std::array<std::vector<std::uint32_t>, kAllBlocks.size()>>;
-
+// One run of the backend over a graph: the oracle and cpu have one; cuda one per light/heavy
+// threshold; the hybrid one per pair of a GPU threshold and a CPU threshold.
+struct Run {
+  std::uint32_t gpu = 0, cpu = 0;
+};
 using BlockBins = std::array<std::vector<std::uint32_t>, kAllBlocks.size()>;
 
-Rows mine_all(const Graph& g, const Profile& prof, Backend be, std::int32_t window, const BlockBins& bins,
-              std::span<const std::uint32_t> thresholds, CudaMiner* miner) {
+// A graph's rows on one backend, rows[r][block] for run r. A block that reached the work limit in
+// some run is limited: inconclusive (SPEC v3 R11), its rows are not compared.
+struct Mined {
+  std::vector<std::array<std::vector<std::uint32_t>, kAllBlocks.size()>> rows;
+  std::array<bool, kAllBlocks.size()> limited{};
+};
+
+Mined mine_all(const Graph& g, const Profile& prof, Backend be, std::int32_t window, const BlockBins& bins,
+               std::uint64_t work_limit, std::span<const Run> runs, CudaMiner* miner) {
   const std::uint64_t m = g.m();
-  const std::size_t nt = be == Backend::cuda ? thresholds.size() : 1;
-  Rows rows(nt);
-  if (be == Backend::oracle) {
-    const ProfileOracle o({g.src, g.dst, g.ts, g.n}, prof);
+  std::optional<ProfileOracle> oracle;
+  std::optional<GraphIndex> index;
+  std::optional<DeviceGraph> dg;
+  if (be == Backend::oracle) oracle.emplace(EdgeStream{g.src, g.dst, g.ts, g.n}, prof);
+  else index.emplace(g.src, g.dst, g.ts, g.n, prof.self_loops());
+  if (miner) dg.emplace(index->view());
+  TriggerSel all;
+  all.last = m;
+  Mined out;
+  out.rows.resize(runs.size());
+  for (std::size_t t = 0; t < runs.size(); ++t)
     for (const ProfileBlock& pb : prof.blocks) {
-      const BlockParams p{window, bins[int(pb.block)]};
-      auto& r = rows[0][int(pb.block)];
+      BlockParams p{window, bins[int(pb.block)]};
+      p.work_limit = work_limit;
+      std::vector<std::uint32_t>& r = out.rows[t][int(pb.block)];
       r.assign(m * block_cols(p), 0);
-      // check_profile_backend holds for the profiles under test, so an sg block of one pattern is the
-      // order-relaxation bound, the gather role alone (the oracle's sg is both roles).
-      if (pb.block == Block::sg && pb.patterns.size() == 1)
-        o.mine_sg_gather(p, 0, m, r.data());
-      else
-        o.mine(pb.block, p, 0, m, r.data());
+      try {
+        switch (be) {
+          case Backend::oracle:
+            // check_profile_backend holds for the profiles under test, so an sg block of one pattern
+            // is the order-relaxation bound, the gather role alone (the oracle's sg is both roles).
+            if (pb.block == Block::sg && pb.patterns.size() == 1) oracle->mine_sg_gather(p, 0, m, r.data());
+            else oracle->mine(pb.block, p, 0, m, r.data());
+            break;
+          case Backend::cpu:
+            mine_cpu(index->view(), pb.patterns, p, prof.visibility, all, Schedule::dynamic, r.data());
+            break;
+          case Backend::cuda: miner->mine(*dg, pb.patterns, p, prof.visibility, 0, m, runs[t].gpu, r.data()); break;
+          case Backend::hybrid:
+            p.reach_prune = true;  // as blz mine --backend hybrid runs it (SPEC v2 §8 S6)
+            mine_hybrid(index->view(), *dg, *miner, pb.patterns, p, prof.visibility, 0, m, runs[t].cpu, runs[t].gpu,
+                        Schedule::sorted, r.data());
+            break;
+        }
+      } catch (const WorkLimitExceeded&) {
+        out.limited[int(pb.block)] = true;
+      }
     }
-    return rows;
-  }
-  const GraphIndex index(g.src, g.dst, g.ts, g.n, prof.self_loops());
-  if (be == Backend::cpu) {
-    TriggerSel all;
-    all.last = m;
-    for (const ProfileBlock& pb : prof.blocks) {
-      const BlockParams p{window, bins[int(pb.block)]};
-      auto& r = rows[0][int(pb.block)];
-      r.assign(m * block_cols(p), 0);
-      mine_cpu(index.view(), pb.patterns, p, prof.visibility, all, Schedule::dynamic, r.data());
-    }
-    return rows;
-  }
-  const DeviceGraph dg(index.view());
-  for (std::size_t t = 0; t < nt; ++t)
-    for (const ProfileBlock& pb : prof.blocks) {
-      const BlockParams p{window, bins[int(pb.block)]};
-      auto& r = rows[t][int(pb.block)];
-      r.assign(m * block_cols(p), 0);
-      miner->mine(dg, pb.patterns, p, prof.visibility, 0, m, thresholds[t], r.data());
-    }
-  return rows;
+  return out;
 }
 
 }  // namespace
@@ -107,10 +118,21 @@ bool meta_test_applies(MetaTest t, const Profile& prof, [[maybe_unused]] Backend
 }
 
 MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0, std::uint64_t s1,
-                              std::span<const std::uint32_t> bins, std::span<const std::uint32_t> thresholds) {
+                              std::span<const std::uint32_t> bins, std::span<const std::uint32_t> thresholds,
+                              std::span<const std::uint32_t> cpu_thresholds, std::uint64_t work_limit) {
   check_profile_backend(prof, be);
-  if (be == Backend::hybrid) throw std::invalid_argument("metamorphic: the hybrid backend is not supported");
-  if (be == Backend::cuda && thresholds.empty()) throw std::invalid_argument("metamorphic: cuda needs thresholds");
+  const bool gpu = be == Backend::cuda || be == Backend::hybrid;
+  if (gpu && thresholds.empty()) throw std::invalid_argument("metamorphic: cuda and hybrid need thresholds");
+  if (be == Backend::hybrid && cpu_thresholds.empty())
+    throw std::invalid_argument("metamorphic: the hybrid needs CPU thresholds");
+  std::vector<Run> runs;
+  if (be == Backend::cuda)
+    for (std::uint32_t h : thresholds) runs.push_back({h, 0});
+  else if (be == Backend::hybrid)
+    for (std::uint32_t h : thresholds)
+      for (std::uint32_t c : cpu_thresholds) runs.push_back({h, c});
+  else
+    runs.push_back({});
   // tcyc and tchain (SPEC v2 §8 S5) alone, under the other visibility: every hop of either is
   // strictly before t. Every backend runs both visibilities (P10), so the check of `prof` covers
   // it; checking the reduced profile itself would fail a v1 config's E402.
@@ -144,23 +166,35 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
   }
   MetamorphicResult res;
   std::optional<CudaMiner> miner;
-  if (be == Backend::cuda) miner.emplace();
+  if (gpu) miner.emplace(be == Backend::hybrid);  // hybrid: the GPU's host thread sleeps while the CPU works
 
   auto one_graph = [&](std::uint64_t seed, MetamorphicResult& out) {
     const FuzzGraph fg = fuzz_graph(seed);
     Graph base{fg.src, fg.dst, fg.ts, fg.n};
     const std::uint64_t m = base.m();
     CudaMiner* mp = miner ? &*miner : nullptr;
-    const Rows want = mine_all(base, prof, be, fg.window, block_bins, thresholds, mp);
+    const Mined want = mine_all(base, prof, be, fg.window, block_bins, work_limit, runs, mp);
+    // R11: a block the base graph limits is inconclusive for this graph, so the transformed graphs
+    // leave it out.
+    std::array<bool, kAllBlocks.size()> limited = want.limited;
+    Profile live = prof;
+    std::erase_if(live.blocks, [&](const ProfileBlock& pb) { return limited[int(pb.block)]; });
+    const auto mine = [&](const Graph& g, const Profile& p, const BlockBins& bb) {
+      return mine_all(g, p, be, fg.window, bb, work_limit, runs, mp);
+    };
     Rng rng{seed ^ 0x6d657461ULL};  // "meta"
     bool bad = false;
     // Rows of `got` (a graph whose eid e is the base's eid e, for e < rows) vs the base, for the
-    // blocks of `which` (by default, every block of the profile).
-    auto compare = [&](MetaTest test, const Rows& got, std::uint64_t rows, const Profile* which = nullptr) {
-      for (std::size_t t = 0; t < want.size(); ++t)
-        for (const ProfileBlock& pb : (which ? which : &prof)->blocks) {
-          const auto& w = want[t][int(pb.block)];
-          const auto& g = got[t][int(pb.block)];
+    // blocks of `which` (by default, every block the base completed).
+    auto compare = [&](MetaTest test, const Mined& got, std::uint64_t rows, const Profile* which = nullptr) {
+      for (std::size_t t = 0; t < want.rows.size(); ++t)
+        for (const ProfileBlock& pb : (which ? which : &live)->blocks) {
+          if (want.limited[int(pb.block)] || got.limited[int(pb.block)]) {
+            limited[int(pb.block)] = true;
+            continue;
+          }
+          const auto& w = want.rows[t][int(pb.block)];
+          const auto& g = got.rows[t][int(pb.block)];
           const std::size_t nb = block_cols(block_bins[int(pb.block)]);
           for (std::uint64_t e = 0; e < rows; ++e)
             if (!std::equal(g.begin() + std::ptrdiff_t(e * nb), g.begin() + std::ptrdiff_t((e + 1) * nb),
@@ -180,7 +214,7 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
                 {base.dst.begin(), base.dst.begin() + std::ptrdiff_t(k)},
                 {base.ts.begin(), base.ts.begin() + std::ptrdiff_t(k)},
                 base.n};
-      compare(MetaTest::prefix_closure, mine_all(pre, prof, be, fg.window, block_bins, thresholds, mp), k);
+      compare(MetaTest::prefix_closure, mine(pre, live, block_bins), k);
     }
 
     std::vector<std::uint32_t> perm(base.n);
@@ -191,25 +225,24 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
       rel.src[e] = perm[base.src[e]];
       rel.dst[e] = perm[base.dst[e]];
     }
-    compare(MetaTest::relabeling, mine_all(rel, prof, be, fg.window, block_bins, thresholds, mp), m);
+    compare(MetaTest::relabeling, mine(rel, live, block_bins), m);
 
     const std::int32_t shift = std::int32_t(1 + rng.below(std::uint64_t(1) << 30));
     Graph sh = base;
     for (auto& t : sh.ts) t += shift;
-    compare(MetaTest::time_shift, mine_all(sh, prof, be, fg.window, block_bins, thresholds, mp), m);
+    compare(MetaTest::time_shift, mine(sh, live, block_bins), m);
 
     if (flipped)
-      compare(MetaTest::visibility_invariance, mine_all(base, *flipped, be, fg.window, block_bins, thresholds, mp), m,
-              &*flipped);
+      compare(MetaTest::visibility_invariance, mine(base, *flipped, block_bins), m, &*flipped);
 
     if (gather) {
       // Per row, sg_ordered's instances (the sum over its bins) are at most sg_gather's: ordering
       // only removes sources and intermediates (SPEC v2 §3.4). Bins are not compared.
-      const Rows g = mine_all(base, *gather, be, fg.window, gather_bins, thresholds, mp);
+      const Mined g = mine(base, *gather, gather_bins);
       const std::size_t nb = block_cols(gather_bins[int(Block::sg)]);
-      for (std::size_t t = 0; t < want.size(); ++t) {
-        const auto& ord = want[t][int(Block::sg_ord)];
-        const auto& all = g[t][int(Block::sg)];
+      for (std::size_t t = 0; t < want.rows.size(); ++t) {
+        const auto& ord = want.rows[t][int(Block::sg_ord)];
+        const auto& all = g.rows[t][int(Block::sg)];
         for (std::uint64_t e = 0; e < m; ++e) {
           const auto at = std::ptrdiff_t(e * nb);
           if (std::accumulate(ord.begin() + at, ord.begin() + at + std::ptrdiff_t(nb), std::uint64_t(0)) >
@@ -224,10 +257,11 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
 
     ++out.graphs;
     out.edges += m;
+    for (std::size_t b = 0; b < limited.size(); ++b) out.limited_graphs[b] += limited[b];
     if (bad) out.bad_seeds.push_back(seed);
   };
 
-  if (be == Backend::cuda) {
+  if (gpu) {
     for (std::uint64_t seed = s0; seed < s1; ++seed) one_graph(seed, res);
   } else {
     // Parallel over seeds; the oracle's and the drivers' own parallel loops run nested, i.e. on
@@ -241,6 +275,7 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
       {
         res.graphs += local.graphs;
         res.edges += local.edges;
+        for (std::size_t b = 0; b < kAllBlocks.size(); ++b) res.limited_graphs[b] += local.limited_graphs[b];
         for (std::size_t t = 0; t < kMetaTests.size(); ++t) {
           res.rows_compared[t] += local.rows_compared[t];
           for (std::size_t b = 0; b < kAllBlocks.size(); ++b) res.mismatched_rows[t][b] += local.mismatched_rows[t][b];

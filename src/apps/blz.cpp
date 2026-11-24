@@ -1490,15 +1490,17 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
 // SPEC v2 §3.4: the metamorphic tests on fuzz graphs, for one backend. Exit code 0 if every row
 // is unchanged, 2 if not.
 int metamorphic(const std::string& seeds, const std::string& bins_opt, const std::string& backend,
-                const std::string& heavy_opt, const std::string& profile_path, const std::string& report,
-                const std::string& name) {
+                const std::string& heavy_opt, const std::string& cpu_heavy_opt, const std::string& profile_path,
+                std::uint64_t work_limit, const std::string& report, const std::string& name) {
   const auto [s0, s1] = parse_range(seeds);
   const blz::Backend be = blz::parse_backend(backend);
   const blz::Profile prof = profile_path.empty() ? blz::registry_profile() : blz::load_profile(profile_path);
   const auto bins = fuzz_bins(bins_opt, !profile_path.empty());
   const std::vector<std::uint32_t> thresholds = parse_thresholds(heavy_opt);
+  const std::vector<std::uint32_t> cpu_thresholds =
+      be == blz::Backend::hybrid ? parse_thresholds(cpu_heavy_opt) : std::vector<std::uint32_t>{};
   auto t0 = Clock::now();
-  const blz::MetamorphicResult r = blz::metamorphic(prof, be, s0, s1, bins, thresholds);
+  const blz::MetamorphicResult r = blz::metamorphic(prof, be, s0, s1, bins, thresholds, cpu_thresholds, work_limit);
   std::uint64_t bad = 0;
   nlohmann::json tests = nlohmann::json::object();
   for (blz::MetaTest t : blz::kMetaTests) {
@@ -1514,6 +1516,12 @@ int metamorphic(const std::string& seeds, const std::string& bins_opt, const std
                                      {"mismatched_rows", tb},
                                      {"mismatched_rows_by_block", per_block}};
   }
+  // SPEC v3 R11: a block that reached the work limit on a graph is inconclusive there.
+  nlohmann::json completed = nlohmann::json::object(), limited = nlohmann::json::object();
+  for (const blz::ProfileBlock& pb : prof.blocks) {
+    completed[std::string(blz::block_name(pb.block))] = r.graphs - r.limited_graphs[int(pb.block)];
+    limited[std::string(blz::block_name(pb.block))] = r.limited_graphs[int(pb.block)];
+  }
   std::vector<std::uint64_t> first_bad(r.bad_seeds.begin(),
                                        r.bad_seeds.begin() + std::ptrdiff_t(std::min<std::size_t>(20, r.bad_seeds.size())));
   nlohmann::json res = {{"backend", backend},
@@ -1524,19 +1532,34 @@ int metamorphic(const std::string& seeds, const std::string& bins_opt, const std
                         {"bins", bins.empty() ? nlohmann::json("profile") : nlohmann::json(bins)},
                         {"k_max", prof.k_max},
                         {"tests", tests},
+                        {"work_limit", work_limit},
+                        {"completed_graphs_by_block", completed},
+                        {"limited_graphs_by_block", limited},
                         {"mismatched_seeds", r.bad_seeds.size()},
                         {"first_mismatched_seeds", first_bad},
                         {"seconds", secs(t0)},
                         {"git", git_info()}};
-  if (be == blz::Backend::cuda) {
+  if (be == blz::Backend::cuda || be == blz::Backend::hybrid) {
     nlohmann::json hs = nlohmann::json::array();
     for (std::uint32_t h : thresholds) hs.push_back(threshold_name(h));
     res["heavy_thresholds"] = hs;
+    if (be == blz::Backend::hybrid) {
+      nlohmann::json cs = nlohmann::json::array();
+      for (std::uint32_t h : cpu_thresholds) cs.push_back(threshold_name(h));
+      res["cpu_thresholds"] = cs;
+      res["hybrid_cpu"] = {{"schedule", "sorted"}, {"reach_prune", true}};
+    }
     res["cuda"] = cuda_json();
   }
   std::printf("metamorphic %s, %s, seeds %s: %llu graphs, %llu edges, %llu mismatching rows (%.1f s)\n",
               backend.c_str(), prof.name.c_str(), seeds.c_str(), (unsigned long long)r.graphs,
               (unsigned long long)r.edges, (unsigned long long)bad, secs(t0));
+  for (const blz::ProfileBlock& pb : prof.blocks)
+    if (const std::uint64_t l = r.limited_graphs[int(pb.block)])
+      std::printf("  %s: %llu graphs completed, %llu reached the work limit of %llu bindings (inconclusive: not "
+                  "compared)\n",
+                  std::string(blz::block_name(pb.block)).c_str(), (unsigned long long)(r.graphs - l),
+                  (unsigned long long)l, (unsigned long long)work_limit);
   if (bad) std::printf("%s\n", res.dump(1).c_str());
   merge_report(report, name, res);
   return bad == 0 ? 0 : 2;
@@ -1795,12 +1818,14 @@ int main(int argc, char** argv) {
   fd->add_option("--name", name, "key (JSON pointer path) in --report")->needs("--report");
 
   std::string mt_backend = "cpu";
-  auto* mt = app.add_subcommand("metamorphic", "SPEC v2 §3.4: prefix closure, relabeling, time shift, tcyc and tchain visibility invariance on fuzz graphs");
+  auto* mt = app.add_subcommand("metamorphic", "SPEC v2 §3.4: prefix closure, relabeling, time shift, tcyc and tchain visibility invariance, order relaxation on fuzz graphs");
   mt->add_option("--seeds", seeds, "a:b")->required();
   mt->add_option("--bins", fd_bins, "default: the profile's bins per block, or 2..33 without --profile");
-  mt->add_option("--backend", mt_backend)->check(CLI::IsMember({"oracle", "cpu", "cuda"}));
-  mt->add_option("--heavy", fd_heavy, "cuda: light/heavy thresholds, each run on every graph");
+  mt->add_option("--backend", mt_backend)->check(CLI::IsMember({"oracle", "cpu", "cuda", "hybrid"}));
+  mt->add_option("--heavy", fd_heavy, "cuda, hybrid: light/heavy thresholds, each run on every graph");
+  mt->add_option("--cpu-threshold", fd_cpu_heavy, "hybrid: CPU thresholds, each run with every --heavy (SPEC v2 §8 S6)");
   mt->add_option("--profile", profile, "default: every registered pattern (v1)");
+  mt->add_option("--work-limit", work_limit, "lcyc: bindings per trigger; a graph past it is reported, not compared");
   mt->add_option("--report", report, "merge the summary into this JSON file");
   mt->add_option("--name", name, "key (JSON pointer path) in --report")->needs("--report");
 
@@ -1866,7 +1891,7 @@ int main(int argc, char** argv) {
     }
     if (*mt) {
       if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");
-      return metamorphic(seeds, fd_bins, mt_backend, fd_heavy, profile, report, name);
+      return metamorphic(seeds, fd_bins, mt_backend, fd_heavy, fd_cpu_heavy, profile, work_limit, report, name);
     }
     if (*gj) return gt_join(graph, gt_csv, gt_patterns, out);
     if (*cv) {
