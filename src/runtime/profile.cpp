@@ -143,7 +143,8 @@ Profile parse_v1(const YAML::Node& root, std::string_view text, const std::strin
 }
 
 Profile parse_v2(const YAML::Node& root, const std::string& file, std::span<const PatternInfo> registry) {
-  check_keys(root, file, {"version", "profile", "family", "visibility", "credit", "k_max", "blocks"}, "the profile");
+  check_keys(root, file, {"version", "profile", "family", "visibility", "credit", "k_max", "vstats", "blocks"},
+             "the profile");
   Profile p;
   p.file = file;
   p.format = 2;
@@ -178,6 +179,19 @@ Profile parse_v2(const YAML::Node& root, const std::string& file, std::span<cons
   p.k_max_loc = at(file, km.Mark());
   p.k_max = scalar_as<int>(km, file, "'k_max'");
   if (p.k_max < 2) fail(p.k_max_loc, "k_max must be >= 2");
+
+  if (const YAML::Node vs = root["vstats"]) {
+    const std::string loc = at(file, vs.Mark());
+    if (!clean)
+      fail_code(loc, "E403", "vstats (vertex statistics, SPEC v3 R8) is in clean profiles only, and the profile is " +
+                                 std::string(family_name(p.family)) + " (" + p.family_loc + ")");
+    if (!vs.IsMap()) fail(loc, "vstats must be a map: {window: <seconds>}");
+    check_keys(vs, file, {"window"}, "vstats");
+    const YAML::Node w = required(vs, "window", file, "vstats");
+    const auto window = scalar_as<std::int32_t>(w, file, "vstats window");
+    if (window <= 0) fail(at(file, w.Mark()), "vstats: window must be > 0");
+    p.vstats = ProfileVstats{window, loc};
+  }
 
   const YAML::Node blocks = required(root, "blocks", file, "the profile");
   if (!blocks.IsMap() || blocks.size() == 0) fail(at(file, blocks.Mark()), "'blocks' must be a non-empty map");
@@ -276,6 +290,7 @@ nlohmann::json Profile::resolved() const {
   nlohmann::json r = {{"version", 2}, {"profile", name}, {"visibility", visibility_name(visibility)},
                       {"credit", "trigger"}, {"k_max", k_max}, {"block_order", order}, {"blocks", out}};
   if (family == Family::clean) r["family"] = "clean";
+  if (vstats) r["vstats"] = {{"window", vstats->window}};
   return r;
 }
 
@@ -294,6 +309,7 @@ nlohmann::json Profile::canonical() const {
                       {"blocks", out},
                       {"block_order", order}};
   if (family == Family::clean) c["family"] = "clean";
+  if (vstats) c["vstats"] = {{"window", vstats->window}};
   return c;
 }
 
@@ -344,6 +360,7 @@ Profile family_registry_profile(std::span<const PatternInfo> registry, Family fa
       if (block_name(b) == pi.block && family_of(pi) == family) pb.patterns.push_back(&pi);
     if (!pb.patterns.empty()) p.blocks.push_back(std::move(pb));
   }
+  if (family == Family::clean) p.vstats = ProfileVstats{0, p.file};
   return p;
 }
 

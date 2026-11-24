@@ -6,6 +6,7 @@
 #include "oracle/clean_oracle.hpp"
 #include "oracle/oracle.hpp"
 #include "runtime/profile.hpp"
+#include "runtime/triggers.hpp"
 
 namespace blz {
 
@@ -14,10 +15,10 @@ namespace blz {
 // `q`, and the legacy oracle at the profile's visibility for a legacy one. Quirks are for clean
 // profiles only (std::invalid_argument otherwise). Each block is mined at the profile's k_max, as
 // the oracle of its family does it; check_profile_backend(prof, Backend::oracle) says which
-// pattern lists that covers.
+// pattern lists that covers. `amount` (Amount Received by eid) is read by vstats only.
 class ProfileOracle {
  public:
-  ProfileOracle(const EdgeStream& s, const Profile& prof, Quirks q = {});
+  ProfileOracle(const EdgeStream& s, const Profile& prof, Quirks q = {}, std::span<const double> amount = {});
 
   std::uint64_t mine(Block b, const BlockParams& p, std::uint64_t first, std::uint64_t last,
                      std::uint32_t* out) const;
@@ -25,6 +26,8 @@ class ProfileOracle {
   // Block sg's gather role alone (the order-relaxation bound of sg_ord).
   std::uint64_t mine_sg_gather(const BlockParams& p, std::uint64_t first, std::uint64_t last,
                                std::uint32_t* out) const;
+  // A clean profile's vstats (CleanOracle::vstats, SPEC v3 R8); std::logic_error for a legacy one.
+  void vstats(std::int32_t window, const TriggerSel& sel, double* out) const;
 
  private:
   std::variant<Oracle, CleanOracle> o_;

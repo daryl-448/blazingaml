@@ -3,6 +3,7 @@
 // A profile is `configs/profiles/<name>.yaml` (`version: 2`); a v1 feature config (no `version`)
 // loads as the profile it implies. The profile id is content-derived and identifies the
 // semantics, not the build.
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -30,6 +31,13 @@ struct ProfileBlock {
   std::string loc;  // "<file>:<line>:<col>" of the block's key
 };
 
+// R8's vertex statistics in a clean profile (`vstats: {window: W}`, SPEC v3 §3.2): one float64
+// block of kVstatsCols columns, vstats.npy.
+struct ProfileVstats {
+  std::int32_t window = 0;
+  std::string loc;  // "<file>:<line>:<col>" of the value
+};
+
 struct Profile {
   std::string file;  // the file it was loaded from
   std::string name;  // `profile:`; for a v1 feature config, the file's stem
@@ -38,6 +46,7 @@ struct Profile {
   Visibility visibility = Visibility::stream;
   int k_max = 10;
   std::vector<ProfileBlock> blocks;  // output order = listed order
+  std::optional<ProfileVstats> vstats;  // clean profiles only
   std::string family_loc, visibility_loc, k_max_loc;  // "<file>:<line>:<col>" of the values
 
   const ProfileBlock* find(Block b) const;
@@ -49,13 +58,13 @@ struct Profile {
   std::string row_sees() const;
   // The windows, bins and k_max as a v1 FeatureConfig.
   FeatureConfig feature_config() const;
-  // The resolved profile: name, semantics, block order, and each block's patterns (name, spec
-  // file, spec SHA-256), window and bins.
+  // The resolved profile: name, semantics, block order, each block's patterns (name, spec file,
+  // spec SHA-256), window and bins, and the vstats window.
   nlohmann::json resolved() const;
   // What the id hashes (§3.1): visibility, credit, k_max, every block's window, bins and patterns
-  // (each replaced by its spec's SHA-256), plus `block_order`, and `family` for a clean profile
-  // only, so no legacy id moves (SPEC v3 AC-V3-0). The name and file are labels and are left out,
-  // so a v1 config and the profile it implies have one id.
+  // (each replaced by its spec's SHA-256), plus `block_order`, `family` for a clean profile only and
+  // `vstats` for a profile that has it only, so no other id moves (SPEC v3 AC-V3-0). The name and
+  // file are labels and are left out, so a v1 config and the profile it implies have one id.
   nlohmann::json canonical() const;
   // The first 16 hex digits of SHA-256 over canonical().dump() (sorted keys, no whitespace).
   std::string id() const;
@@ -66,8 +75,8 @@ struct Profile {
 // "error E403: " (§3.1) when the profile names an unknown pattern, lists a pattern under a block
 // it does not emit into, has a visibility that conflicts with a pattern that pins its own, or
 // breaks a family rule (SPEC v3 §3.2): a clean profile has visibility: timestamp and only clean
-// patterns, a legacy one only legacy patterns, and a block without bins (a count block, R7) is
-// in a clean profile and has only one_instance patterns.
+// patterns, a legacy one only legacy patterns and no vstats, and a block without bins (a count
+// block, R7) is in a clean profile and has only one_instance patterns.
 // A v1 config gets, per block, every registered legacy pattern whose block matches, in registry
 // order.
 Profile load_profile(const std::string& path, std::span<const PatternInfo> registry = registered_patterns());
@@ -79,7 +88,7 @@ Profile parse_profile(std::string_view yaml_text, const std::string& file,
 // The default of `blz fuzz-diff` and `blz metamorphic` without --profile (the v1 behaviour).
 Profile registry_profile(std::span<const PatternInfo> registry = registered_patterns());
 // The same for the clean patterns, lcyc included (SPEC v3 §4.4: a clean test profile enables
-// every pattern): family clean, visibility timestamp.
+// every pattern), and vstats: family clean, visibility timestamp.
 Profile clean_registry_profile(std::span<const PatternInfo> registry = registered_patterns());
 
 // A block's bins on fuzz graphs (fuzz-diff, metamorphic): none for a count block, else `bins`,

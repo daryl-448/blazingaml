@@ -39,6 +39,7 @@
 #include "oracle/oracle.hpp"
 #include "oracle/profile_oracle.hpp"
 #include "runtime/vstats.hpp"
+#include "runtime/clean_vstats.hpp"
 #include "runtime/coverage.hpp"
 #include "runtime/cpu_backend.hpp"
 #include "runtime/cuda_backend.hpp"
@@ -185,7 +186,8 @@ nlohmann::json block_params_json(const blz::BlockParams& p, blz::Block b, blz::F
           {"bins", p.bins}};
 }
 
-// --blocks: a comma-separated list (in that order), or every block of the profile.
+// --blocks: a comma-separated list (in that order), or every block of the profile. `vstats` (a
+// clean profile's, SPEC v3 R8) is not a pattern block: select_vstats says whether it is chosen.
 std::vector<const blz::ProfileBlock*> select_blocks(const blz::Profile& prof, const std::string& blocks_opt) {
   std::vector<const blz::ProfileBlock*> blocks;
   if (blocks_opt.empty()) {
@@ -195,6 +197,11 @@ std::vector<const blz::ProfileBlock*> select_blocks(const blz::Profile& prof, co
   for (std::size_t p = 0; p <= blocks_opt.size();) {
     auto q = std::min(blocks_opt.find(',', p), blocks_opt.size());
     const std::string name = blocks_opt.substr(p, q - p);
+    if (name == "vstats") {
+      if (!prof.vstats) throw std::runtime_error("block 'vstats' is not in " + prof.file);
+      p = q + 1;
+      continue;
+    }
     const auto b = blz::parse_block(name);
     if (!b) throw std::runtime_error("unknown block '" + name + "'");
     const blz::ProfileBlock* pb = prof.find(*b);
@@ -205,17 +212,24 @@ std::vector<const blz::ProfileBlock*> select_blocks(const blz::Profile& prof, co
   return blocks;
 }
 
+bool select_vstats(const blz::Profile& prof, const std::string& blocks_opt) {
+  if (blocks_opt.empty()) return prof.vstats.has_value();
+  return ("," + blocks_opt + ",").find(",vstats,") != std::string::npos;
+}
+
 std::string file_sha256(const std::string& path) {
   const blz::MappedFile f(path);
   return blz::to_hex(blz::sha256(f.data(), f.size()));
 }
 
-std::uint64_t fnv1a(std::span<const std::uint32_t> data) {
-  std::uint64_t h = 1469598103934665603ULL;
-  const auto* b = reinterpret_cast<const unsigned char*>(data.data());
-  for (std::size_t i = 0; i < data.size_bytes(); ++i) h = (h ^ b[i]) * 1099511628211ULL;
+// FNV-1a over bytes; `h` continues an earlier call's hash.
+std::uint64_t fnv1a_bytes(const void* data, std::size_t bytes, std::uint64_t h = 1469598103934665603ULL) {
+  const auto* b = static_cast<const unsigned char*>(data);
+  for (std::size_t i = 0; i < bytes; ++i) h = (h ^ b[i]) * 1099511628211ULL;
   return h;
 }
+
+std::uint64_t fnv1a(std::span<const std::uint32_t> data) { return fnv1a_bytes(data.data(), data.size_bytes()); }
 
 double peak_rss_mb() {
   rusage ru{};
@@ -283,6 +297,55 @@ std::vector<std::uint32_t> parse_thresholds(const std::string& s) {
 }
 std::string threshold_name(std::uint32_t h) { return h == blz::kAllLight ? "all" : std::to_string(h); }
 
+// SPEC v3 R8 -> <out>/vstats.npy (float64[rows, kVstatsCols], F7's columns), written in chunks of
+// CleanVstats::kChunkRows rows, so the rows never sit in memory whole. rows_of(part, buf) computes
+// the rows of the selection `part`. The manifest entry's fnv1a is over the data bytes.
+template <class RowsOf>
+nlohmann::json write_vstats(const std::string& out, const blz::TriggerSel& sel, RowsOf rows_of) {
+  const std::string path = out + "/vstats.npy", tmp = path + ".tmp";
+  std::ofstream f(tmp, std::ios::binary);
+  if (!f) throw std::runtime_error("cannot write " + tmp);
+  const std::uint64_t rows = sel.rows();
+  const std::string header = blz::npy_header("<f8", rows, blz::kVstatsCols);
+  f.write(header.data(), std::streamsize(header.size()));
+  std::uint64_t h = fnv1a_bytes(nullptr, 0);
+  std::vector<double> buf;
+  double mine_s = 0, write_s = 0;
+  for (std::uint64_t a = 0; a < rows; a += blz::CleanVstats::kChunkRows) {
+    const std::uint64_t b = std::min(rows, a + blz::CleanVstats::kChunkRows);
+    blz::TriggerSel part;
+    if (sel.sampled) {
+      part.sampled = true;
+      part.eids.assign(sel.eids.begin() + std::ptrdiff_t(a), sel.eids.begin() + std::ptrdiff_t(b));
+      part.first = part.eids.front();
+      part.last = std::uint64_t(part.eids.back()) + 1;
+    } else {
+      part.first = sel.first + a;
+      part.last = sel.first + b;
+    }
+    buf.resize((b - a) * blz::kVstatsCols);
+    auto t0 = Clock::now();
+    rows_of(part, buf.data());
+    mine_s += secs(t0);
+    t0 = Clock::now();
+    f.write(reinterpret_cast<const char*>(buf.data()), std::streamsize(buf.size() * sizeof(double)));
+    h = fnv1a_bytes(buf.data(), buf.size() * sizeof(double), h);
+    write_s += secs(t0);
+  }
+  f.close();
+  if (!f) throw std::runtime_error("write failed: " + tmp);
+  std::filesystem::rename(tmp, path);
+  return {{"file", "vstats.npy"},
+          {"dtype", "float64"},
+          {"columns", blz::clean_vstats_column_names()},
+          {"rule", "SPEC v3 R8: per side (u_out, u_in, v_out, v_in) the node's loop-free edges with t - window < ts' "
+                   "<= t; fan, deg, deg / fan, then the age t - ts' and the amount received, each mean, sum, "
+                   "population var, skew and kurtosis, accumulated in ascending order"},
+          {"output_fnv1a", h},
+          {"mine_seconds", mine_s},
+          {"write_seconds", write_s}};
+}
+
 int mine(const std::string& graph, const std::string& profile_path, const std::string& backend, int threads,
          const std::string& schedule_opt, std::uint32_t heavy, std::uint32_t cpu_heavy, bool reach_prune,
          const std::string& blocks_opt, const std::string& triggers, std::uint64_t edges, std::uint64_t work_limit,
@@ -319,10 +382,12 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
     throw std::runtime_error("--triggers sample: runs on the oracle and cpu backends (the preflight of SPEC v2 §2.5 "
                              "uses cpu); the CUDA kernels take an eid range");
   if (threads > 0) omp_set_num_threads(threads);
+  const auto amount = g.amount_received.first(m);  // vstats only
+  const bool want_vstats = select_vstats(prof, blocks_opt);
   std::optional<blz::ProfileOracle> oracle;  // a clean profile's is the clean oracle, on its own lists
   std::optional<blz::GraphIndex> index;
   if (cpu || gpu) index.emplace(src, dst, ts, g.n(), prof.self_loops());  // hybrid: gpu
-  else oracle.emplace(blz::EdgeStream{src, dst, ts, g.n()}, prof, quirks);
+  else oracle.emplace(blz::EdgeStream{src, dst, ts, g.n()}, prof, quirks, amount);
   const double build_s = secs(t0);
   std::fprintf(stderr, "%s index built in %.1f s (m=%llu, n=%llu); profile %s (%s); triggers %s: %llu rows\n",
                backend.c_str(), build_s, (unsigned long long)m, (unsigned long long)g.n(), prof.name.c_str(),
@@ -509,6 +574,28 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
     }
     if (gpu) j["cuda"] = cuda_json_of(ctm, ctm);
     finish(*pb, p, data, mine_s, sat, std::move(j));
+  }
+  if (want_vstats) {
+    // SPEC v3 R8. The cuda backend and the hybrid compute it on the GPU.
+    const std::int32_t window = prof.vstats->window;
+    auto t1 = Clock::now();
+    std::optional<blz::CleanVstats> vs;
+    if (!oracle) vs.emplace(index->view(), amount, window, gpu ? &*dgraph : nullptr);
+    const double order_s = secs(t1);
+    nlohmann::json j = write_vstats(out, sel, [&](const blz::TriggerSel& part, double* buf) {
+      if (vs) vs->rows(part, buf);
+      else oracle->vstats(window, part, buf);
+    });
+    j["mine_seconds"] = j["mine_seconds"].get<double>() + order_s;
+    j["window"] = window;
+    j["lower"] = "open";
+    j["device"] = oracle ? "oracle" : gpu ? "cuda" : "cpu";
+    if (vs) j["sides"] = vs->sides();
+    meta["blocks"]["vstats"] = j;
+    meta["peak_rss_mb"] = peak_rss_mb();
+    std::fprintf(stderr, "%-8s %8.1f s  fnv1a=%llu\n", "vstats", j["mine_seconds"].get<double>(),
+                 (unsigned long long)j["output_fnv1a"].get<std::uint64_t>());
+    std::ofstream(meta_path) << meta.dump(1) << '\n';
   }
   if (total_saturated > 0) std::fprintf(stderr, "warning: %llu saturated counts\n",
                                         (unsigned long long)total_saturated);
@@ -1751,7 +1838,7 @@ int main(int argc, char** argv) {
   mn->add_option("--cpu-threshold", cpu_heavy_opt,
                  "hybrid backend: work estimate from which a trigger runs on the CPU ('all': none; SPEC v2 §8 S6)");
   mn->add_flag("--reach-prune", reach_prune, "cpu and hybrid backends: reachability pruning (SPEC v2 §8 S6), same rows");
-  mn->add_option("--blocks", blocks, "comma-separated; default: every block of the profile");
+  mn->add_option("--blocks", blocks, "comma-separated, vstats included; default: every block of the profile");
   mn->add_option("--triggers", triggers, "all | train | test | fit | val | range:a:b | sample:<pct>:<seed>");
   mn->add_option("--edges", edges, "mine on the stream prefix [0, k) only: later edges do not exist (SPEC v2 §4.4 R5)");
   std::uint64_t work_limit = blz::kDefaultWorkLimit;

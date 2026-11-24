@@ -268,6 +268,36 @@ TEST_CASE("profiles: a clean profile, its count blocks and E403 both ways (SPEC 
   CHECK(backend_error(c, Backend::cpu) == "ok");
 }
 
+TEST_CASE("profiles: vstats, a clean profile's vertex statistics (SPEC v3 R8)") {
+  const std::string fan = "  fan_in: {patterns: [clean_fan_in], window: 86400}\n";
+  const Profile plain = parse_profile(profile(fan, kClean), "c.yaml");
+  const Profile vs = parse_profile(profile(fan, kClean + "vstats: {window: 3600}\n"), "c.yaml");
+  CHECK_FALSE(plain.vstats);
+  REQUIRE(vs.vstats);
+  CHECK(vs.vstats->window == 3600);
+  CHECK(vs.vstats->loc == "c.yaml:7:9");
+  // Only a profile with vstats hashes it, so every other id stays.
+  CHECK_FALSE(plain.canonical().contains("vstats"));
+  CHECK(vs.canonical()["vstats"] == nlohmann::json{{"window", 3600}});
+  CHECK(vs.resolved()["vstats"] == nlohmann::json{{"window", 3600}});
+  CHECK(vs.id() != plain.id());
+  CHECK(parse_profile(profile(fan, kClean + "vstats: {window: 7200}\n"), "c.yaml").id() != vs.id());
+  for (Backend b : {Backend::oracle, Backend::cpu, Backend::cuda, Backend::hybrid}) CHECK(backend_error(vs, b) == "ok");
+
+  CHECK(error_of(profile("  fan_in: {patterns: [fan_in], window: 86400, bins: [2]}\n",
+                         "visibility: stream\ncredit: trigger\nk_max: 10\nvstats: {window: 3600}\n")) ==
+        "p.yaml:6:9: error E403: vstats (vertex statistics, SPEC v3 R8) is in clean profiles only, and the profile is "
+        "legacy (p.yaml)");
+  CHECK(error_of(profile(fan, kClean + "vstats: 3600\n")) == "p.yaml:7:9: vstats must be a map: {window: <seconds>}");
+  CHECK(error_of(profile(fan, kClean + "vstats: {}\n")) == "p.yaml:7:9: vstats needs 'window'");
+  CHECK(error_of(profile(fan, kClean + "vstats: {window: 0}\n")) == "p.yaml:7:18: vstats: window must be > 0");
+  CHECK(error_of(profile(fan, kClean + "vstats: {window: 1, lower: open}\n")) ==
+        "p.yaml:7:21: unknown key 'lower' in vstats");
+  CHECK(error_of(profile(fan, kClean + "vstats: {window: x}\n")) == "p.yaml:7:18: vstats window has the wrong type ('x')");
+  // clean_default has none (§3.3).
+  CHECK_FALSE(load_profile(kSrc + "/configs/profiles/clean_default.yaml").vstats);
+}
+
 TEST_CASE("profiles: v1 configs and registry_profile are legacy; clean_registry_profile is every clean block") {
   const Profile v1 = parse_profile("k_max: 10\nblocks:\n  fan_in: {window: 86400, bins: [2]}\n", "cfg.yaml");
   REQUIRE(v1.find(Block::fan_in)->patterns.size() == 1);
@@ -286,5 +316,7 @@ TEST_CASE("profiles: v1 configs and registry_profile are legacy; clean_registry_
   CHECK(c.find(Block::sg)->patterns.size() == 2);
   for (const ProfileBlock& pb : c.blocks)
     for (const PatternInfo* pi : pb.patterns) CHECK(is_clean(*pi));
+  CHECK(c.vstats);
+  CHECK_FALSE(r.vstats);
   CHECK(backend_error(c, Backend::cpu) == "ok");
 }
