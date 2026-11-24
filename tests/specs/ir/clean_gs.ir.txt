@@ -1,0 +1,29 @@
+pattern clean_gs block gs family clean one instance
+window span delta_gs lower open visibility pinned timestamp
+trigger e0: X -> W
+  skip if X == W
+level 0 (root)
+  check count sources -> a [distinct] [gate]
+    operand e1: X.in access scan_distinct
+      lo > t - delta_gs [window]
+      hi -
+      range ts >= t - delta_gs + 1
+    element S
+    skip if S == W
+    exports a
+    // scan T-CSR X.in distinct-first; a = number of elements that pass the filters (count only)
+    // e1 in X.in: ts >= t - delta_gs + 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+    // gate: later stages run only when this check passes
+  check count sinks -> b [distinct]
+    operand e2: X.out access scan_distinct
+      lo > t - delta_gs [window]
+      hi -
+      range ts >= t - delta_gs + 1
+    element D
+    emit min(a, b) (min 2)
+    exports b
+    // scan T-CSR X.out distinct-first; b = number of elements that pass the filters (count only)
+    // e2 in X.out: ts >= t - delta_gs + 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+plan depth 0 work sources split sources (raw count)
+  // work estimate (sorted schedule, CUDA bucketing): the window size of sources.e1 (X.in), two binary searches
+  // CUDA heavy kernel: no binding stage; the lanes split the scan of sources, sinks, the raw count is summed across the warp and lane 0 emits once (partial counts are never binned)

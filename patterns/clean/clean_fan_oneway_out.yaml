@@ -1,0 +1,21 @@
+# clean_fan_oneway_out (SPEC v3 R7, V2 S4): |N_out(u) \ N_in(u)|, the distinct counterparties the
+# trigger's source u paid in the window that paid nothing back to u in it (v counts unless v paid
+# u). The index has no self-loops (R1), so neither list holds u itself and the difference needs no
+# element filter.
+version: 1
+pattern: clean_fan_oneway_out
+block: fan_oneway_out
+family: clean
+window: {span: delta_fan, lower: open}
+visibility: timestamp
+trigger: {edge: e0, src: U, dst: V}
+constraints: [{skip_if: "U == V"}]       # a self-loop trigger's row is zero (R1)
+stages:
+  - id: oneway
+    op: difference
+    src: U.out
+    dst: U.in
+    edges: [e1, e2]
+    output: D
+    element: Y
+    emit: {size: "len(D)"}

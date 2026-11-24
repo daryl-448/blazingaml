@@ -1,0 +1,170 @@
+pattern clean_tcyc block tcyc family clean
+window span delta_cyc lower open visibility pinned timestamp
+const K_MAX = 10
+trigger e0: U -> V
+  skip if U == V
+level 0 (root)
+  check exists close_2
+    operand c2: V.out access probe
+      lo > t - delta_cyc [window]
+      hi -
+      range ts >= t - delta_cyc + 1
+    probe for U
+    emit 2 (min 2)
+    // probe P-CSR V.out for U: two binary searches; c2 = the earliest witness in range
+    // c2 in V.out: ts >= t - delta_cyc + 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+  level 1
+    bind for_all hop_1 -> C1 [distinct]
+      operand h1: V.out access scan_distinct
+        lo > t - delta_cyc [window]
+        hi -
+        range ts >= t - delta_cyc + 1
+      skip if C1 == U
+      exports C1 h1
+      // scan T-CSR V.out distinct-first: each C1 once, h1 = its earliest witness in range
+      // h1 in V.out: ts >= t - delta_cyc + 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+    check exists close_3
+      operand c3: C1.out access probe
+        lo > t - delta_cyc [window], >= h1.t
+        hi -
+        range ts >= max(t - delta_cyc + 1, h1.t)
+      probe for U
+      emit 3 (min 2)
+      // probe P-CSR C1.out for U: two binary searches; c3 = the earliest witness in range
+      // c3 in C1.out: ts >= max(t - delta_cyc + 1, h1.t), visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+    level 2
+      bind for_all hop_2 -> C2 [distinct]
+        operand h2: C1.out access scan_distinct
+          lo > t - delta_cyc [window], >= h1.t
+          hi -
+          range ts >= max(t - delta_cyc + 1, h1.t)
+        skip if C2 in [U, V, C1]
+        exports C2 h2
+        // scan T-CSR C1.out distinct-first: each C2 once, h2 = its earliest witness in range
+        // h2 in C1.out: ts >= max(t - delta_cyc + 1, h1.t), visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+      check exists close_4
+        operand c4: C2.out access probe
+          lo > t - delta_cyc [window], >= h2.t
+          hi -
+          range ts >= max(t - delta_cyc + 1, h2.t)
+        probe for U
+        emit 4 (min 2)
+        // probe P-CSR C2.out for U: two binary searches; c4 = the earliest witness in range
+        // c4 in C2.out: ts >= max(t - delta_cyc + 1, h2.t), visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+      level 3
+        bind for_all hop_3 -> C3 [distinct]
+          operand h3: C2.out access scan_distinct
+            lo > t - delta_cyc [window], >= h2.t
+            hi -
+            range ts >= max(t - delta_cyc + 1, h2.t)
+          skip if C3 in [U, V, C1, C2]
+          exports C3 h3
+          // scan T-CSR C2.out distinct-first: each C3 once, h3 = its earliest witness in range
+          // h3 in C2.out: ts >= max(t - delta_cyc + 1, h2.t), visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+        check exists close_5
+          operand c5: C3.out access probe
+            lo > t - delta_cyc [window], >= h3.t
+            hi -
+            range ts >= max(t - delta_cyc + 1, h3.t)
+          probe for U
+          emit 5 (min 2)
+          // probe P-CSR C3.out for U: two binary searches; c5 = the earliest witness in range
+          // c5 in C3.out: ts >= max(t - delta_cyc + 1, h3.t), visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+        level 4
+          bind for_all hop_4 -> C4 [distinct]
+            operand h4: C3.out access scan_distinct
+              lo > t - delta_cyc [window], >= h3.t
+              hi -
+              range ts >= max(t - delta_cyc + 1, h3.t)
+            skip if C4 in [U, V, C1, C2, C3]
+            exports C4 h4
+            // scan T-CSR C3.out distinct-first: each C4 once, h4 = its earliest witness in range
+            // h4 in C3.out: ts >= max(t - delta_cyc + 1, h3.t), visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+          check exists close_6
+            operand c6: C4.out access probe
+              lo > t - delta_cyc [window], >= h4.t
+              hi -
+              range ts >= max(t - delta_cyc + 1, h4.t)
+            probe for U
+            emit 6 (min 2)
+            // probe P-CSR C4.out for U: two binary searches; c6 = the earliest witness in range
+            // c6 in C4.out: ts >= max(t - delta_cyc + 1, h4.t), visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+          level 5
+            bind for_all hop_5 -> C5 [distinct]
+              operand h5: C4.out access scan_distinct
+                lo > t - delta_cyc [window], >= h4.t
+                hi -
+                range ts >= max(t - delta_cyc + 1, h4.t)
+              skip if C5 in [U, V, C1, C2, C3, C4]
+              exports C5 h5
+              // scan T-CSR C4.out distinct-first: each C5 once, h5 = its earliest witness in range
+              // h5 in C4.out: ts >= max(t - delta_cyc + 1, h4.t), visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+            check exists close_7
+              operand c7: C5.out access probe
+                lo > t - delta_cyc [window], >= h5.t
+                hi -
+                range ts >= max(t - delta_cyc + 1, h5.t)
+              probe for U
+              emit 7 (min 2)
+              // probe P-CSR C5.out for U: two binary searches; c7 = the earliest witness in range
+              // c7 in C5.out: ts >= max(t - delta_cyc + 1, h5.t), visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+            level 6
+              bind for_all hop_6 -> C6 [distinct]
+                operand h6: C5.out access scan_distinct
+                  lo > t - delta_cyc [window], >= h5.t
+                  hi -
+                  range ts >= max(t - delta_cyc + 1, h5.t)
+                skip if C6 in [U, V, C1, C2, C3, C4, C5]
+                exports C6 h6
+                // scan T-CSR C5.out distinct-first: each C6 once, h6 = its earliest witness in range
+                // h6 in C5.out: ts >= max(t - delta_cyc + 1, h5.t), visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+              check exists close_8
+                operand c8: C6.out access probe
+                  lo > t - delta_cyc [window], >= h6.t
+                  hi -
+                  range ts >= max(t - delta_cyc + 1, h6.t)
+                probe for U
+                emit 8 (min 2)
+                // probe P-CSR C6.out for U: two binary searches; c8 = the earliest witness in range
+                // c8 in C6.out: ts >= max(t - delta_cyc + 1, h6.t), visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+              level 7
+                bind for_all hop_7 -> C7 [distinct]
+                  operand h7: C6.out access scan_distinct
+                    lo > t - delta_cyc [window], >= h6.t
+                    hi -
+                    range ts >= max(t - delta_cyc + 1, h6.t)
+                  skip if C7 in [U, V, C1, C2, C3, C4, C5, C6]
+                  exports C7 h7
+                  // scan T-CSR C6.out distinct-first: each C7 once, h7 = its earliest witness in range
+                  // h7 in C6.out: ts >= max(t - delta_cyc + 1, h6.t), visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+                check exists close_9
+                  operand c9: C7.out access probe
+                    lo > t - delta_cyc [window], >= h7.t
+                    hi -
+                    range ts >= max(t - delta_cyc + 1, h7.t)
+                  probe for U
+                  emit 9 (min 2)
+                  // probe P-CSR C7.out for U: two binary searches; c9 = the earliest witness in range
+                  // c9 in C7.out: ts >= max(t - delta_cyc + 1, h7.t), visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+                level 8
+                  bind for_all hop_8 -> C8 [distinct]
+                    operand h8: C7.out access scan_distinct
+                      lo > t - delta_cyc [window], >= h7.t
+                      hi -
+                      range ts >= max(t - delta_cyc + 1, h7.t)
+                    skip if C8 in [U, V, C1, C2, C3, C4, C5, C6, C7]
+                    exports C8 h8
+                    // scan T-CSR C7.out distinct-first: each C8 once, h8 = its earliest witness in range
+                    // h8 in C7.out: ts >= max(t - delta_cyc + 1, h7.t), visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+                  check exists close_10
+                    operand c10: C8.out access probe
+                      lo > t - delta_cyc [window], >= h8.t
+                      hi -
+                      range ts >= max(t - delta_cyc + 1, h8.t)
+                    probe for U
+                    emit 10 (min 2)
+                    // probe P-CSR C8.out for U: two binary searches; c10 = the earliest witness in range
+                    // c10 in C8.out: ts >= max(t - delta_cyc + 1, h8.t), visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+plan depth 8 work hop_1 split hop_1
+  // work estimate (sorted schedule, CUDA bucketing): the window size of hop_1.h1 (V.out), two binary searches
+  // CUDA heavy kernel: root checks close_2 on lane 0; the lanes stride over the scan of hop_1 and each runs every stage nested in its own bindings; lane bin counts are summed across the warp

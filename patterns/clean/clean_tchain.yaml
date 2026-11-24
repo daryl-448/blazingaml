@@ -1,0 +1,35 @@
+# clean_tchain (SPEC v3 R4, R10): the chains C_{k-1} -> ... -> C1 -> U -> V of k = 2..K_MAX edges,
+# all nodes distinct, that the trigger U -> V ends as a latest edge: each hop at or before the hop
+# after it. Each hop binds its node with its latest witness, and the next hop is bounded above by
+# that witness's time. The visibility caps the first hop at t (R3). The index has no self-loops
+# (R1), so C1 != U and no hop needs the filters that excluded one.
+version: 1
+pattern: clean_tchain
+block: tchain
+family: clean
+consts: {K_MAX: 10}
+window: {span: delta_chain, lower: open}
+visibility: timestamp
+trigger: {edge: e0, src: U, dst: V}
+constraints: [{skip_if: "U == V"}]       # a self-loop trigger's row is zero (R1)
+stages:
+  - id: hop_1                            # C1 -> U
+    op: for_all
+    src: U.in
+    edge: h1
+    dst_var: C1
+    witness: latest
+    constraints: [{skip_if: "C1 == V"}]
+    emit: {size: 2}
+  - repeat: {var: k, from: 2, to: "K_MAX - 1"}
+    stages:
+      - id: "hop_{k}"                    # C{k} -> C{k-1}, at or before the hop after it (R4)
+        op: for_all
+        src: "C{k-1}.in"
+        edge: "h{k}"
+        dst_var: "C{k}"
+        witness: latest
+        constraints:
+          - break_if: "h{k}.t > h{k-1}.t"
+          - skip_if: "C{k} in [U, V, C{1..k-1}]"
+        emit: {size: "{k+1}"}

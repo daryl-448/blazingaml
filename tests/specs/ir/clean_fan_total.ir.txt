@@ -1,0 +1,24 @@
+pattern clean_fan_total block fan_total family clean one instance
+window span delta_fan lower open visibility pinned timestamp
+trigger e0: U -> V
+  skip if U == V
+level 0 (root)
+  check union counterparties -> C
+    operand e1: V.in access scan_distinct
+      lo > t - delta_fan [window]
+      hi -
+      range ts >= t - delta_fan + 1
+    operand e2: V.out access scan_distinct
+      lo > t - delta_fan [window]
+      hi -
+      range ts >= t - delta_fan + 1
+    element Y
+    emit len(C) (min 2)
+    exports C
+    // union V.in ∪ V.out over distinct nodes, as |V.in| + |V.out \ V.in|: count V.in (T-CSR, distinct-first), then scan V.out (T-CSR, distinct-first) and keep the elements whose probe of V.in (P-CSR) finds no edge
+    // no materialization: C is used only through len(), so the elements that pass the filters are counted
+    // e1 in V.in: ts >= t - delta_fan + 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+    // e2 in V.out: ts >= t - delta_fan + 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+plan depth 0 work counterparties split 
+  // work estimate (sorted schedule, CUDA bucketing): the window size of counterparties.e1 (V.in), two binary searches
+  // CUDA heavy kernel: no binding stage and no root count; lane 0 runs every check

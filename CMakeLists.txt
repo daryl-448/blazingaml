@@ -74,17 +74,21 @@ target_link_libraries(blz_codegen PUBLIC blz_dsl)
 add_executable(blzc src/apps/blzc.cpp)
 target_link_libraries(blzc PRIVATE blz_codegen CLI11::CLI11)
 
-# The generated pattern library (SPEC §7.1): blzc runs over patterns/*.yaml at build time and
-# writes ${build}/generated/. It runs in the source directory with relative spec paths, so the
-# generated text (file names in comments and E402 locations) equals tests/snapshots/. The CUDA
-# files are always generated and compiled only with BLZ_ENABLE_CUDA.
+# The generated pattern library (SPEC §7.1): blzc runs over patterns/*.yaml, then the clean family's
+# patterns/clean/*.yaml (SPEC v3 §3.2), at build time and writes ${build}/generated/. It runs in
+# the source directory with relative spec paths, so the generated text (file names in comments
+# and E402 locations) equals tests/snapshots/. The CUDA files are always generated and compiled
+# only with BLZ_ENABLE_CUDA.
 file(GLOB BLZ_PATTERN_SPECS CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/patterns/*.yaml)
 list(SORT BLZ_PATTERN_SPECS)
+file(GLOB BLZ_CLEAN_SPECS CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/patterns/clean/*.yaml)
+list(SORT BLZ_CLEAN_SPECS)
+list(APPEND BLZ_PATTERN_SPECS ${BLZ_CLEAN_SPECS})
 set(BLZ_GEN_DIR ${PROJECT_BINARY_DIR}/generated)
 # The fusions (SPEC v2 §8 S7, D-46): each group becomes one CUDA kernel, fused_<a>__<b>_cuda.cu.
 # The snapshot test (tests/CMakeLists.txt) generates with the same groups. An E11 variant is
 # CPU-only (and --disable sweep leaves no member in the sweep shape), so it compiles no fusion.
-set(BLZ_FUSIONS fan_in,deg_in fan_out,deg_out)
+set(BLZ_FUSIONS fan_in,deg_in fan_out,deg_out clean_fan_in,clean_deg_in clean_fan_out,clean_deg_out)
 set(BLZ_FUSE_ARGS)
 set(BLZ_BUILD_FUSE_ARGS)
 set(BLZ_FUSED_FILES)

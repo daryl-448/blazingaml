@@ -1,0 +1,48 @@
+# clean_lcyc (SPEC v3 R5): the simple node cycles of length 2..K_MAX through the trigger u -> v,
+# every other edge a window edge in any time order, ties included. tcyc's shape without its time
+# constraints; the visibility caps every hop at t (R3). One cycle per node sequence. The index has
+# no self-loops (R1), so C1 != V and no hop needs the filters that excluded one. The search is
+# unordered, so every binding counts against the work limit, a resource guard (R11).
+version: 1
+pattern: clean_lcyc
+block: lcyc
+family: clean
+consts: {K_MAX: 10}
+window: {span: delta_lc, lower: open}
+visibility: timestamp
+work_limit: true
+trigger: {edge: e0, src: U, dst: V}
+constraints: [{skip_if: "U == V"}]       # a self-loop trigger's row is zero (R1)
+stages:
+  - id: close_2                          # the cycle V -> U -> V
+    op: exists
+    src: V.out
+    node: U
+    edge: c2
+    emit: {size: 2}
+  - id: hop_1
+    op: for_all
+    src: V.out
+    edge: h1
+    dst_var: C1
+    constraints: [{skip_if: "C1 == U"}]
+  - id: close_3
+    op: exists
+    src: C1.out
+    node: U
+    edge: c3
+    emit: {size: 3}
+  - repeat: {var: k, from: 2, to: "K_MAX - 2"}
+    stages:
+      - id: "hop_{k}"
+        op: for_all
+        src: "C{k-1}.out"
+        edge: "h{k}"
+        dst_var: "C{k}"
+        constraints: [{skip_if: "C{k} in [U, V, C{1..k-1}]"}]
+      - id: "close_{k+2}"
+        op: exists
+        src: "C{k}.out"
+        node: U
+        edge: "c{k+2}"
+        emit: {size: "{k+2}"}

@@ -177,9 +177,10 @@ nlohmann::json git_info() {
   return {{"sha", sha}, {"dirty", !run(git + "status --porcelain 2>/dev/null").empty()}};
 }
 
-nlohmann::json block_params_json(const blz::BlockParams& p, blz::Block b) {
+// Every clean window is (t - delta, t] (SPEC v3 R2); a legacy block's lower bound is its block's.
+nlohmann::json block_params_json(const blz::BlockParams& p, blz::Block b, blz::Family f) {
   return {{"window", p.window},
-          {"lower", blz::closed_lower_bound(b) ? "closed" : "open"},
+          {"lower", f == blz::Family::legacy && blz::closed_lower_bound(b) ? "closed" : "open"},
           {"bins", p.bins}};
 }
 
@@ -314,7 +315,7 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
   if (threads > 0) omp_set_num_threads(threads);
   std::optional<blz::Oracle> oracle;
   std::optional<blz::GraphIndex> index;
-  if (cpu || gpu) index.emplace(src, dst, ts, g.n());  // hybrid: gpu
+  if (cpu || gpu) index.emplace(src, dst, ts, g.n(), prof.self_loops());  // hybrid: gpu
   else oracle.emplace(blz::EdgeStream{src, dst, ts, g.n()}, prof.visibility);
   const double build_s = secs(t0);
   std::fprintf(stderr, "%s index built in %.1f s (m=%llu, n=%llu); profile %s (%s); triggers %s: %llu rows\n",
@@ -387,8 +388,8 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
                           double mine_s, std::uint64_t sat, nlohmann::json j) {
     const blz::Block b = pb.block;
     const std::string file = std::string(blz::block_name(b)) + ".npy";
-    blz::write_npy_u32(out + "/" + file, data, rows, p.bins.size());
-    j.update(block_params_json(p, b));
+    blz::write_npy_u32(out + "/" + file, data, rows, blz::block_cols(p));
+    j.update(block_params_json(p, b, prof.family));
     if (b == blz::Block::lcyc) j["work_limit"] = p.work_limit;  // bindings per trigger; no row reached it
     j["file"] = file;
     j["columns"] = blz::column_names(b, p.bins);
@@ -428,7 +429,7 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
       for (const blz::ProfileBlock* pb : unit.blocks) {
         params.push_back(pb->params);
         params.back().work_limit = work_limit;
-        bufs.push_back(std::make_unique<blz::PinnedBuffer>(std::max<std::uint64_t>(rows * pb->params.bins.size(), 1)));
+        bufs.push_back(std::make_unique<blz::PinnedBuffer>(std::max<std::uint64_t>(rows * blz::block_cols(pb->params), 1)));
         outs.push_back(bufs.back()->data());
       }
       for (const blz::BlockParams& bp : params) param_ptrs.push_back(&bp);
@@ -441,7 +442,7 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
         j["cuda"] = cuda_json_of(ftm.group, ftm.slots[sl]);
         // The kernel times and trigger counts are the fusion's, shared by its blocks.
         j["cuda"]["fused"] = unit.fusion->name;
-        finish(*unit.blocks[sl], params[sl], std::span<const std::uint32_t>(outs[sl], rows * params[sl].bins.size()),
+        finish(*unit.blocks[sl], params[sl], std::span<const std::uint32_t>(outs[sl], rows * blz::block_cols(params[sl])),
                mine_s, ftm.slots[sl].saturated, std::move(j));
       }
       continue;
@@ -451,7 +452,7 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
     blz::BlockParams p = pb->params;
     p.work_limit = work_limit;  // a run over it stops with an error (SPEC v2 §8 S3)
     p.reach_prune = reach_prune;  // SPEC v2 §8 S6: the same rows, faster where a pattern is planned for it
-    const std::uint64_t cells = rows * p.bins.size();
+    const std::uint64_t cells = rows * blz::block_cols(p);
     std::vector<std::uint32_t> feats;
     std::optional<blz::PinnedBuffer> pinned;  // cuda: the rows, copied straight from the device
     if (gpu) pinned.emplace(std::max<std::uint64_t>(cells, 1));
@@ -970,7 +971,7 @@ int bench(const std::string& graph, const std::string& config, const std::string
 
   blz::BlzgView g(graph);
   auto t0 = Clock::now();
-  const blz::GraphIndex index(g.src, g.dst, g.ts, g.n());
+  const blz::GraphIndex index(g.src, g.dst, g.ts, g.n(), prof.self_loops());
   res["index_build_seconds"] = secs(t0);
   res["index_bytes"] = index.bytes();
   res["csv_sha256"] = blz::to_hex(g.csv_sha256());
@@ -984,7 +985,7 @@ int bench(const std::string& graph, const std::string& config, const std::string
   for (const blz::ProfileBlock* pb : blocks) {
     const blz::BlockParams& p = pb->params;
     const std::string bname(blz::block_name(pb->block));
-    std::vector<std::uint32_t> feats(m * p.bins.size()), ref;
+    std::vector<std::uint32_t> feats(m * blz::block_cols(p)), ref;
     nlohmann::json jb = {{"patterns", nlohmann::json::array()}, {"cpu_plans", cpu_plans_json(*pb)}};
     for (const blz::PatternInfo* pi : pb->patterns) jb["patterns"].push_back(pi->name);
     for (blz::Schedule sched : schedules) {
@@ -1073,7 +1074,7 @@ int bench_cuda(const std::string& graph, const std::string& config, int reps, co
 
   blz::BlzgView g(graph);
   auto t0 = Clock::now();
-  const blz::GraphIndex index(g.src, g.dst, g.ts, g.n());
+  const blz::GraphIndex index(g.src, g.dst, g.ts, g.n(), prof.self_loops());
   res["index_build_seconds"] = secs(t0);
   res["index_bytes"] = index.bytes();
   res["csv_sha256"] = blz::to_hex(g.csv_sha256());
@@ -1102,7 +1103,7 @@ int bench_cuda(const std::string& graph, const std::string& config, int reps, co
     nlohmann::json jb = {{"patterns", nlohmann::json::array()}, {"blocks", nlohmann::json::array()},
                          {"fusion", unit.fusion ? nlohmann::json(unit.fusion->name) : nlohmann::json(nullptr)}};
     for (const blz::ProfileBlock* pb : unit.blocks) {
-      bufs.push_back(std::make_unique<blz::PinnedBuffer>(std::max<std::uint64_t>(m * pb->params.bins.size(), 1)));
+      bufs.push_back(std::make_unique<blz::PinnedBuffer>(std::max<std::uint64_t>(m * blz::block_cols(pb->params), 1)));
       outs.push_back(bufs.back()->data());
       params.push_back(&pb->params);
       jb["blocks"].push_back(std::string(blz::block_name(pb->block)));
@@ -1128,7 +1129,7 @@ int bench_cuda(const std::string& graph, const std::string& config, int reps, co
         }
         for (std::size_t sl = 0; sl < nslots; ++sl) {
           const std::string bname(blz::block_name(unit.blocks[sl]->block));
-          const std::span<const std::uint32_t> got(outs[sl], m * params[sl]->bins.size());
+          const std::span<const std::uint32_t> got(outs[sl], m * blz::block_cols(*params[sl]));
           if (ref[sl].empty()) {
             ref[sl].assign(got.begin(), got.end());
             jb["outputs"][bname] = {{"output_fnv1a", fnv1a(ref[sl])}, {"saturated", slot_tm[sl].saturated}};
@@ -1237,7 +1238,7 @@ int bench_hybrid(const std::string& graph, const std::string& config, int reps, 
 
   blz::BlzgView g(graph);
   auto t0 = Clock::now();
-  const blz::GraphIndex index(g.src, g.dst, g.ts, g.n());
+  const blz::GraphIndex index(g.src, g.dst, g.ts, g.n(), prof.self_loops());
   res["index_build_seconds"] = secs(t0);
   res["csv_sha256"] = blz::to_hex(g.csv_sha256());
   std::vector<double> uploads;
@@ -1258,7 +1259,7 @@ int bench_hybrid(const std::string& graph, const std::string& config, int reps, 
   nlohmann::json runs = nlohmann::json::object();
   for (const blz::ProfileBlock* pb : blocks) {
     const std::string bname(blz::block_name(pb->block));
-    const std::uint64_t cells = m * pb->params.bins.size();
+    const std::uint64_t cells = m * blz::block_cols(pb->params);
     blz::PinnedBuffer buf(cells);
     std::vector<std::uint32_t> ref;
     nlohmann::json jb = {{"patterns", nlohmann::json::array()},
@@ -1383,27 +1384,32 @@ void merge_report(const std::string& report, const std::string& name, const nloh
   std::ofstream(report) << doc.dump(1) << '\n';
 }
 
-// AC1 on fuzz graphs (SPEC §13.3): a generated backend vs the oracle. Exit code 0 if equal, 2 if
-// not. cuda runs every graph once per light/heavy threshold. With --profile (SPEC v2 §10), the
-// profile's blocks, patterns and k_max; without, every registered pattern (v1).
+// AC1 on fuzz graphs (SPEC §13.3): a generated backend vs the oracle, or with --reference cpu vs
+// the cpu backend's dynamic schedule (backend against backend, for a profile the oracle cannot run).
+// Exit code 0 if equal, 2 if not. cuda runs every graph once per light/heavy threshold. With
+// --profile (SPEC v2 §10), the profile's blocks, patterns and k_max; without, every registered
+// legacy pattern (v1).
 int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::string& backend,
               const std::string& heavy_opt, const std::string& cpu_heavy_opt, const std::string& profile_path,
-              std::uint64_t work_limit, bool fuse, bool pack, const std::string& report, const std::string& name) {
+              std::uint64_t work_limit, bool fuse, bool pack, const std::string& reference, const std::string& report,
+              const std::string& name) {
   const auto [s0, s1] = parse_range(seeds);
   const bool hybrid = backend == "hybrid";
   const bool gpu = backend == "cuda" || hybrid;
   if ((fuse || pack) && backend != "cuda") throw std::runtime_error("--fuse and --pack are for --backend cuda");
+  const blz::Reference ref = reference == "cpu" ? blz::Reference::cpu : blz::Reference::oracle;
   const blz::Profile prof = profile_path.empty() ? blz::registry_profile() : blz::load_profile(profile_path);
-  blz::check_profile_backend(prof, blz::Backend::oracle);
+  if (ref == blz::Reference::oracle) blz::check_profile_backend(prof, blz::Backend::oracle);
+  else blz::check_profile_backend(prof, blz::Backend::cpu);
   blz::check_profile_backend(prof, blz::parse_backend(backend));
   const auto bins = fuzz_bins(bins_opt, !profile_path.empty());
   const std::vector<std::uint32_t> thresholds = parse_thresholds(heavy_opt);
   const std::vector<std::uint32_t> cpu_thresholds = hybrid ? parse_thresholds(cpu_heavy_opt) : std::vector<std::uint32_t>{};
   auto t0 = Clock::now();
   const blz::FuzzDiff d =
-      hybrid ? blz::fuzz_diff_hybrid(prof, s0, s1, bins, thresholds, cpu_thresholds, work_limit)
-      : gpu  ? blz::fuzz_diff_cuda(prof, s0, s1, bins, thresholds, work_limit, {fuse, pack})
-             : blz::fuzz_diff_cpu(prof, s0, s1, bins, work_limit);
+      hybrid ? blz::fuzz_diff_hybrid(prof, s0, s1, bins, thresholds, cpu_thresholds, work_limit, {}, ref)
+      : gpu  ? blz::fuzz_diff_cuda(prof, s0, s1, bins, thresholds, work_limit, {fuse, pack}, ref)
+             : blz::fuzz_diff_cpu(prof, s0, s1, bins, work_limit, ref);
   nlohmann::json per_block = nlohmann::json::object();
   std::uint64_t bad = 0;
   for (const blz::ProfileBlock& pb : prof.blocks) {
@@ -1429,6 +1435,7 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
                         {"seconds", secs(t0)},
                         {"git", git_info()}};
   if (!profile_path.empty()) res["profile"] = profile_ref(prof);
+  if (ref != blz::Reference::oracle) res["reference"] = {{"backend", "cpu"}, {"schedule", "dynamic"}};
   if (gpu) {
     nlohmann::json hs = nlohmann::json::array();
     for (std::uint32_t h : thresholds) hs.push_back(threshold_name(h));
@@ -1445,11 +1452,11 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
     }
     res["cuda"] = cuda_json();
   } else {
-    res["schedules"] = {"dynamic", "sorted"};
+    res["schedules"] = ref == blz::Reference::oracle ? nlohmann::json{"dynamic", "sorted"} : nlohmann::json{"sorted"};
   }
-  std::printf("fuzz-diff %s vs oracle, seeds %s: %llu graphs, %llu edges, %llu mismatching rows (%.1f s)\n",
-              backend.c_str(), seeds.c_str(), (unsigned long long)d.graphs, (unsigned long long)d.edges,
-              (unsigned long long)bad, secs(t0));
+  std::printf("fuzz-diff %s vs %s, seeds %s: %llu graphs, %llu edges, %llu mismatching rows (%.1f s)\n",
+              backend.c_str(), ref == blz::Reference::oracle ? "oracle" : "cpu (dynamic)", seeds.c_str(),
+              (unsigned long long)d.graphs, (unsigned long long)d.edges, (unsigned long long)bad, secs(t0));
   if (!d.limited_seeds.empty())
     std::printf("  %llu graphs reached the work limit of %llu bindings: their stop eids compared, not their rows\n",
                 (unsigned long long)d.limited_seeds.size(), (unsigned long long)work_limit);
@@ -1578,7 +1585,7 @@ int coverage(const std::string& graph, const std::string& gt_path, const std::st
     const std::string b(blz::block_name(pb.block));
     const auto& fb = fm.at("blocks").at(b);
     views.emplace_back(features + "/" + fb.at("file").get<std::string>());
-    if (views.back().rows() != m || views.back().cols() != pb.params.bins.size())
+    if (views.back().rows() != m || views.back().cols() != blz::block_cols(pb.params))
       throw std::runtime_error(features + ": block " + b + " is not m x bins");
     jfiles[b] = fb.at("output_fnv1a");
   }
@@ -1753,6 +1760,11 @@ int main(int argc, char** argv) {
   fd->add_option("--work-limit", work_limit, "lcyc: bindings per trigger; a graph past it is reported, its stop eid compared");
   fd->add_flag("--fuse", fuse, "cuda: run each compiled fusion's blocks in one kernel (SPEC v2 §8 S7)");
   fd->add_flag("--pack", pack, "cuda: packed D2H (SPEC v2 §8 S7)");
+  std::string fd_reference = "oracle";
+  fd->add_option("--reference", fd_reference,
+                 "the rows compared against: the oracle, or the cpu backend's dynamic schedule (a profile the oracle "
+                 "cannot run, e.g. a clean one; --backend cpu then checks the sorted schedule)")
+      ->check(CLI::IsMember({"oracle", "cpu"}));
   fd->add_option("--report", report, "merge the summary into this JSON file");
   fd->add_option("--name", name, "key (JSON pointer path) in --report")->needs("--report");
 
@@ -1823,7 +1835,8 @@ int main(int argc, char** argv) {
     }
     if (*fd) {
       if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");
-      return fuzz_diff(seeds, fd_bins, fd_backend, fd_heavy, fd_cpu_heavy, profile, work_limit, fuse, pack, report, name);
+      return fuzz_diff(seeds, fd_bins, fd_backend, fd_heavy, fd_cpu_heavy, profile, work_limit, fuse, pack, fd_reference,
+                       report, name);
     }
     if (*mt) {
       if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");

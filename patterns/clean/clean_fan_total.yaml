@@ -1,0 +1,20 @@
+# clean_fan_total (SPEC v3 R7, V2 S4): |N_in(v) ∪ N_out(v)|, every distinct counterparty of the
+# trigger's destination v in the window, u included. The index has no self-loops (R1), so neither
+# list holds v itself and the union needs no element filter.
+version: 1
+pattern: clean_fan_total
+block: fan_total
+family: clean
+window: {span: delta_fan, lower: open}
+visibility: timestamp
+trigger: {edge: e0, src: U, dst: V}
+constraints: [{skip_if: "U == V"}]       # a self-loop trigger's row is zero (R1)
+stages:
+  - id: counterparties
+    op: union
+    src: V.in
+    dst: V.out
+    edges: [e1, e2]
+    output: C
+    element: Y
+    emit: {size: "len(C)"}

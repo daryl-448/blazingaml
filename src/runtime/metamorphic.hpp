@@ -33,8 +33,8 @@ struct MetamorphicResult {
 };
 
 // Runs every test on the graphs of seeds [s0, s1), for every block of `prof` with its patterns
-// and k_max, each graph's own window, and `bins` (each block's own bins when `bins` is empty), on
-// one backend (for cuda, once per light/heavy threshold in `thresholds`; the other backends ignore
+// and k_max, each graph's own window, and fuzz_bins() (`bins`, each block's own bins when `bins` is
+// empty, none for a count block), on the profile's index (Profile::self_loops), on one backend (for cuda, once per light/heavy threshold in `thresholds`; the other backends ignore
 // it). Per graph:
 //   - prefix closure: mining the first k edges gives the same rows for them as mining the whole
 //     graph, at two cuts k drawn from the seed (under timestamp visibility, k is moved forward
@@ -42,10 +42,12 @@ struct MetamorphicResult {
 //   - relabeling: a seeded permutation of the node ids leaves every row unchanged;
 //   - time shift: adding a seeded constant in [1, 2^30] to every timestamp leaves every row
 //     unchanged;
-//   - visibility invariance: tcyc and tchain mined under the other visibility (stream <->
-//     timestamp) give the same rows (SPEC v2 §6.1, §8 S5);
+//   - visibility invariance (legacy profiles: a clean one's visibility is fixed, SPEC v3 R3): tcyc
+//     and tchain mined under the other visibility (stream <-> timestamp) give the same rows (SPEC
+//     v2 §6.1, §8 S5);
 //   - order relaxation: per row, sg_ord's instance count (the sum over its bins) is at most that
-//     of sg_gather mined alone at sg_ord's window and bins, by the same backend (SPEC v2 §6.3).
+//     of sg_gather (clean_sg_gather for a clean profile, SPEC v3 R6) mined alone at sg_ord's
+//     window and bins, by the same backend (SPEC v2 §6.3).
 // check_profile_backend(prof, backend) must hold; this throws otherwise.
 MetamorphicResult metamorphic(const Profile& prof, Backend backend, std::uint64_t s0, std::uint64_t s1,
                               std::span<const std::uint32_t> bins, std::span<const std::uint32_t> thresholds);

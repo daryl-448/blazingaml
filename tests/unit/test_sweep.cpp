@@ -1,7 +1,8 @@
 // The sweep lowering (SPEC v2 §7.1, D-29) and the ablation helpers (§7.2): the sweep drivers of
 // the library's fan and degree patterns against their per-trigger plan (<pattern>_trigger, the
 // body CUDA runs), and sweep_count against the §5.3 primitives on lists with ties, repeated
-// neighbours and self-loops, under both visibilities, for trigger ranges and samples.
+// neighbours and self-loops, under both visibilities, for trigger ranges and samples. The clean
+// patterns (SPEC v3 §3.2) run as count rows (R7) on the loop-free index (R1).
 #include <catch2/catch_test_macros.hpp>
 #include <algorithm>
 #include <cstring>
@@ -13,6 +14,10 @@
 
 #include "blz/ablation.hpp"
 #include "blz/sweep.hpp"
+#include "clean_deg_in.hpp"
+#include "clean_deg_out.hpp"
+#include "clean_fan_in.hpp"
+#include "clean_fan_out.hpp"
 #include "deg_in.hpp"
 #include "deg_out.hpp"
 #include "fan_in.hpp"
@@ -56,6 +61,7 @@ struct Pattern {
   const char* name;
   void (*cpu)(const GraphView&, const Params&, std::span<const std::uint32_t>, BlockOut&, int);
   void (*trigger)(const GraphView&, const Params&, std::uint32_t, RowSink&);
+  bool clean = false;  // count rows (SPEC v3 R7) on the loop-free index (R1), timestamp visibility
 };
 
 const Pattern kPatterns[] = {
@@ -63,6 +69,10 @@ const Pattern kPatterns[] = {
     {"fan_out", &gen::fan_out_cpu, &gen::fan_out_trigger<RowSink>},
     {"deg_in", &gen::deg_in_cpu, &gen::deg_in_trigger<RowSink>},
     {"deg_out", &gen::deg_out_cpu, &gen::deg_out_trigger<RowSink>},
+    {"clean_fan_in", &gen::clean_fan_in_cpu, &gen::clean_fan_in_trigger<RowSink>, true},
+    {"clean_fan_out", &gen::clean_fan_out_cpu, &gen::clean_fan_out_trigger<RowSink>, true},
+    {"clean_deg_in", &gen::clean_deg_in_cpu, &gen::clean_deg_in_trigger<RowSink>, true},
+    {"clean_deg_out", &gen::clean_deg_out_cpu, &gen::clean_deg_out_trigger<RowSink>, true},
 };
 
 const std::vector<std::uint32_t> kBins = {2, 3, 4, 6, 9};
@@ -70,13 +80,14 @@ const std::vector<std::uint32_t> kBins = {2, 3, 4, 6, 9};
 // Rows of the selected triggers: by the sweep driver, and by the per-trigger plan.
 std::pair<std::vector<std::uint32_t>, std::vector<std::uint32_t>> both(const Pattern& pat, const GraphView& g,
                                                                        const Params& params, const TriggerSel& sel) {
-  const std::uint32_t nb = std::uint32_t(kBins.size());
+  const std::uint32_t nb = pat.clean ? 1 : std::uint32_t(kBins.size());
+  const std::uint32_t* bins = pat.clean ? nullptr : kBins.data();
   std::vector<std::uint32_t> sweep(sel.rows() * nb, 0), each(sel.rows() * nb, 0);
-  BlockOut out{sweep.data(), sel.first, kBins.data(), nb, false, 0, sel.sampled ? sel.eids.data() : nullptr,
+  BlockOut out{sweep.data(), sel.first, bins, nb, pat.clean, 0, sel.sampled ? sel.eids.data() : nullptr,
                sel.sampled ? sel.eids.size() : 0, sel.last};
   pat.cpu(g, params, {}, out, 1);
   for (std::uint64_t r = 0; r < sel.rows(); ++r) {
-    RowSink sink{each.data() + r * nb, kBins.data(), nb};
+    RowSink sink{each.data() + r * nb, bins, nb, pat.clean};
     pat.trigger(g, params, sel.eid(r), sink);
   }
   return {sweep, each};
@@ -87,7 +98,8 @@ std::pair<std::vector<std::uint32_t>, std::vector<std::uint32_t>> both(const Pat
 TEST_CASE("sweep: the library's fan and degree patterns are planned as sweeps") {
   for (const PatternInfo& p : registered_patterns()) {
     const std::string name = p.name;
-    const bool fan_deg = name == "fan_in" || name == "fan_out" || name == "deg_in" || name == "deg_out";
+    const std::string base = name.starts_with("clean_") ? name.substr(6) : name;
+    const bool fan_deg = base == "fan_in" || base == "fan_out" || base == "deg_in" || base == "deg_out";
     INFO(name);
     CHECK(p.cpu_sweep == fan_deg);
   }
@@ -106,7 +118,7 @@ TEST_CASE("sweep: the drivers equal the per-trigger plan, every window, both vis
       const auto& dst = which ? fg.dst : dg.dst;
       const auto& ts = which ? fg.ts : dg.ts;
       const std::uint32_t n = which ? fg.n : dg.n;
-      const GraphIndex index(src, dst, ts, n);
+      const GraphIndex index(src, dst, ts, n), loop_free(src, dst, ts, n, SelfLoops::drop);
       const std::uint64_t m = src.size();
       std::vector<TriggerSel> sels;
       sels.push_back(select_triggers("all", ts));
@@ -119,8 +131,9 @@ TEST_CASE("sweep: the drivers equal the per-trigger plan, every window, both vis
           for (const Pattern& pat : kPatterns)
             for (const TriggerSel& sel : sels)
               for (int t : {1, 3}) {
+                if (pat.clean && !tsvis) continue;  // a clean spec pins timestamp visibility (R3)
                 omp_set_num_threads(t);
-                const auto [sweep, each] = both(pat, index.view(), Params{span, tsvis}, sel);
+                const auto [sweep, each] = both(pat, (pat.clean ? loop_free : index).view(), Params{span, tsvis}, sel);
                 INFO(pat.name << " seed " << seed << (which ? " fuzz" : " dense") << " span " << span << " tsvis "
                               << tsvis << " triggers " << sel.spec << " threads " << t);
                 REQUIRE(sweep == each);

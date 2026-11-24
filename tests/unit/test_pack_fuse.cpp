@@ -77,9 +77,10 @@ TEST_CASE("fuse, pack: rows equal the oracle's on 300 fuzz graphs, every thresho
     prof.visibility = vis;
     std::vector<const ProfileBlock*> blocks;
     for (const ProfileBlock& b : prof.blocks) blocks.push_back(&b);
-    std::size_t fused = 0;
+    std::size_t fused = 0, legacy = 0;
     for (const CudaUnit& u : cuda_units(blocks, true)) fused += u.fusion != nullptr;
-    CHECK(fused == registered_fusions().size());  // every fusion's blocks are in the profile
+    for (const FusionInfo& f : registered_fusions()) legacy += !is_clean(*f.members[0]);
+    CHECK(fused == legacy);  // every legacy fusion's blocks are in the profile
     const std::vector<std::uint32_t> bins = {2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 16, 20};
     for (const CudaOptions opts : {CudaOptions{true, true}, CudaOptions{true, false}, CudaOptions{false, true}}) {
       INFO("visibility " << int(vis) << " fuse " << opts.fuse << " pack " << opts.pack);

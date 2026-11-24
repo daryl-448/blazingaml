@@ -64,10 +64,14 @@ TEST_CASE("invalid-spec suite: every file fails with its declared code and posit
 }
 
 TEST_CASE("library: every pattern compiles, and its IR equals the snapshot") {
-  const auto files = yaml_files("patterns");
+  auto files = yaml_files("patterns");
   REQUIRE(files.size() == 13);
+  const auto clean = yaml_files("patterns/clean");  // SPEC v3 §3.2
+  REQUIRE(clean.size() == 13);
+  files.insert(files.end(), clean.begin(), clean.end());
   for (const fs::path& f : files) {
-    INFO(f.filename().string() << " (regenerate with: blzc --dump-ir --out tests/specs/ir patterns/*.yaml)");
+    INFO(f.filename().string()
+         << " (regenerate with: blzc --dump-ir --out tests/specs/ir patterns/*.yaml patterns/clean/*.yaml)");
     const ir::Pattern p = ir::compile_file(f.string());
     CHECK(p.name == f.stem().string());
     const std::string snap = src("tests/specs/ir/" + p.name + ".ir.txt");

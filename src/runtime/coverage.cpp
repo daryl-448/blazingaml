@@ -113,7 +113,7 @@ nlohmann::ordered_json coverage(const CoverageInputs& in) {
   if (in.blocks.size() != nb) throw std::runtime_error("coverage: one full-mining block per profile block is needed");
   std::vector<std::uint64_t> cols(nb);
   for (std::size_t b = 0; b < nb; ++b) {
-    cols[b] = prof.blocks[b].params.bins.size();
+    cols[b] = block_cols(prof.blocks[b].params);
     if (in.blocks[b].size() != m * cols[b])
       throw std::runtime_error("coverage: block " + std::string(block_name(prof.blocks[b].block)) + " is not m x bins");
   }

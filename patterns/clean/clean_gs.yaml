@@ -1,0 +1,29 @@
+# clean_gs (SPEC v3 R7, V2 S5): gather-scatter through the trigger's source X, a hub that paid W.
+# A = the distinct sources s != W that sent to X in the window (ts <= t, ties included: the
+# visibility bounds the scan, R3, R4); B = the distinct sinks X paid in the window, W included.
+# One instance of size min(|A|, |B|). The index has no self-loops (R1), so no source and no sink is
+# X itself: only A's s != W remains a filter.
+version: 1
+pattern: clean_gs
+block: gs
+family: clean
+window: {span: delta_gs, lower: open}
+visibility: timestamp
+trigger: {edge: e0, src: X, dst: W}
+constraints: [{skip_if: "X == W"}]       # a self-loop trigger's row is zero (R1)
+stages:
+  - id: sources
+    op: count
+    src: X.in
+    edge: e1
+    element: S
+    output: a
+    gate: true                           # no source: no instance, so the sinks are not counted
+    constraints: [{skip_if: "S == W"}]
+  - id: sinks
+    op: count
+    src: X.out
+    edge: e2
+    element: D
+    output: b
+    emit: {size: "min(a, b)"}

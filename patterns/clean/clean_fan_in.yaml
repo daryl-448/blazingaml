@@ -1,0 +1,20 @@
+# clean_fan_in (SPEC v3 R7): |N_in(v)|, the distinct in-neighbours of the trigger's destination v
+# in the window, u included. The index has no self-loops (R1), so no neighbour is v itself and the
+# count needs no element filter.
+version: 1
+pattern: clean_fan_in
+block: fan_in
+family: clean
+window: {span: delta_fan, lower: open}
+visibility: timestamp
+trigger: {edge: e0, src: U, dst: V}
+constraints: [{skip_if: "U == V"}]       # a self-loop trigger's row is zero (R1)
+stages:
+  - id: in_nbrs
+    op: count
+    src: V.in
+    edge: e1
+    element: X
+    multiplicity: distinct
+    output: n
+    emit: {size: n}

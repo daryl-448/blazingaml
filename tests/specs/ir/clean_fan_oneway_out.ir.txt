@@ -1,0 +1,24 @@
+pattern clean_fan_oneway_out block fan_oneway_out family clean one instance
+window span delta_fan lower open visibility pinned timestamp
+trigger e0: U -> V
+  skip if U == V
+level 0 (root)
+  check difference oneway -> D
+    operand e1: U.out access scan_distinct
+      lo > t - delta_fan [window]
+      hi -
+      range ts >= t - delta_fan + 1
+    operand e2: U.in access probe
+      lo > t - delta_fan [window]
+      hi -
+      range ts >= t - delta_fan + 1
+    element Y
+    emit len(D) (min 2)
+    exports D
+    // difference U.out \ U.in over distinct nodes: scan U.out (T-CSR, distinct-first) and keep the elements whose probe of U.in (P-CSR) finds no edge; the scanned side is fixed (a difference is not symmetric)
+    // no materialization: D is used only through len(), so the elements that pass the filters are counted
+    // e1 in U.out: ts >= t - delta_fan + 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+    // e2 in U.in: ts >= t - delta_fan + 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+plan depth 0 work oneway split 
+  // work estimate (sorted schedule, CUDA bucketing): the window size of oneway.e1 (U.out), two binary searches
+  // CUDA heavy kernel: no binding stage and no root count; lane 0 runs every check

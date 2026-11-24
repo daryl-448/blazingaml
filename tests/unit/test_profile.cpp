@@ -197,28 +197,6 @@ TEST_CASE("profiles: registry_profile is every registered block with the compile
 
 namespace {
 
-// The registry plus clean copies of fan_in (one instance), sg_gather (one emit per binding) and
-// lcyc, as blzc would register patterns/clean/*.yaml.
-std::vector<PatternInfo> with_clean() {
-  std::vector<PatternInfo> reg(registered_patterns().begin(), registered_patterns().end());
-  const std::size_t n = reg.size();
-  for (std::size_t i = 0; i < n; ++i) {
-    PatternInfo c = reg[i];
-    const std::string name = c.name;
-    if (name == "fan_in") c.name = "clean_fan_in";
-    else if (name == "sg_gather") c.name = "clean_sg_gather";
-    else if (name == "lcyc") c.name = "clean_lcyc";
-    else continue;
-    c.file = "patterns/clean/x.yaml";
-    c.family = "clean";
-    c.visibility = "timestamp";
-    c.visibility_loc = "patterns/clean/x.yaml:5:13";
-    c.one_instance = name == "fan_in";
-    reg.push_back(c);
-  }
-  return reg;
-}
-
 const std::string kClean = "family: clean\nvisibility: timestamp\ncredit: trigger\nk_max: 10\n";
 
 }  // namespace
@@ -242,11 +220,10 @@ TEST_CASE("profiles: the family key keeps every legacy id (SPEC v3 F1, AC-V3-0)"
 }
 
 TEST_CASE("profiles: a clean profile, its count blocks and E403 both ways (SPEC v3 §3.2, R7)") {
-  const std::vector<PatternInfo> reg = with_clean();
   const Profile c = parse_profile(profile("  fan_in: {patterns: [clean_fan_in], window: 86400}\n"
                                           "  sg: {patterns: [clean_sg_gather], window: 21600, bins: [2, 3]}\n",
                                           kClean),
-                                  "c.yaml", reg);
+                                  "c.yaml");
   CHECK(c.family == Family::clean);
   CHECK(c.self_loops() == SelfLoops::drop);
   CHECK(c.find(Block::fan_in)->params.bins.empty());
@@ -258,25 +235,23 @@ TEST_CASE("profiles: a clean profile, its count blocks and E403 both ways (SPEC 
 
   // A clean profile has timestamp visibility (R3).
   CHECK(error_of(profile("  fan_in: {patterns: [clean_fan_in], window: 86400}\n",
-                         "family: clean\nvisibility: stream\ncredit: trigger\nk_max: 10\n"),
-                 reg) ==
+                         "family: clean\nvisibility: stream\ncredit: trigger\nk_max: 10\n")) ==
         "p.yaml:4:13: error E403: a clean profile (family: clean, p.yaml:3:9) has visibility: timestamp (SPEC v3 "
         "R3), found stream");
   // Only clean patterns in a clean profile, only legacy ones in a legacy profile.
-  CHECK(error_of(profile("  fan_in: {patterns: [fan_in], window: 86400}\n", kClean), reg) ==
+  CHECK(error_of(profile("  fan_in: {patterns: [fan_in], window: 86400}\n", kClean)) ==
         "p.yaml:8:23: error E403: pattern 'fan_in' (patterns/fan_in.yaml) is a legacy pattern, but the profile is "
         "clean (SPEC v3 §3.2: a profile never mixes the families)");
   CHECK(error_of(profile("  fan_in: {patterns: [clean_fan_in], window: 86400, bins: [2]}\n",
-                         "visibility: timestamp\ncredit: trigger\nk_max: 10\n"),
-                 reg) ==
-        "p.yaml:7:23: error E403: pattern 'clean_fan_in' (patterns/clean/x.yaml) is a clean pattern, but the profile "
+                         "visibility: timestamp\ncredit: trigger\nk_max: 10\n")) ==
+        "p.yaml:7:23: error E403: pattern 'clean_fan_in' (patterns/clean/clean_fan_in.yaml) is a clean pattern, but the profile "
         "is legacy (SPEC v3 §3.2: a profile never mixes the families)");
   // A count block is clean-only, and holds one_instance patterns only.
-  CHECK(error_of(profile("  fan_in: {patterns: [fan_in], window: 86400}\n"), reg) ==
+  CHECK(error_of(profile("  fan_in: {patterns: [fan_in], window: 86400}\n")) ==
         "p.yaml:7:3: error E403: block fan_in has no bins: a count block (SPEC v3 R7) is only in a clean profile "
         "(family: clean)");
-  CHECK(error_of(profile("  sg: {patterns: [clean_sg_gather], window: 21600}\n", kClean), reg) ==
-        "p.yaml:8:19: error E403: pattern 'clean_sg_gather' (patterns/clean/x.yaml) can emit more than one instance "
+  CHECK(error_of(profile("  sg: {patterns: [clean_sg_gather], window: 21600}\n", kClean)) ==
+        "p.yaml:8:19: error E403: pattern 'clean_sg_gather' (patterns/clean/clean_sg_gather.yaml) can emit more than one instance "
         "per trigger, so block sg needs bins: a count block (no bins, SPEC v3 R7) takes only patterns with at most "
         "one emit, at the root");
 
@@ -288,23 +263,22 @@ TEST_CASE("profiles: a clean profile, its count blocks and E403 both ways (SPEC 
 }
 
 TEST_CASE("profiles: v1 configs and registry_profile are legacy; clean_registry_profile is every clean block") {
-  const std::vector<PatternInfo> reg = with_clean();
-  const Profile v1 = parse_profile("k_max: 10\nblocks:\n  fan_in: {window: 86400, bins: [2]}\n", "cfg.yaml", reg);
+  const Profile v1 = parse_profile("k_max: 10\nblocks:\n  fan_in: {window: 86400, bins: [2]}\n", "cfg.yaml");
   REQUIRE(v1.find(Block::fan_in)->patterns.size() == 1);
   CHECK(std::string(v1.find(Block::fan_in)->patterns[0]->name) == "fan_in");
-  const Profile r = registry_profile(reg);
+  const Profile r = registry_profile();
   CHECK(r.family == Family::legacy);
   CHECK(r.find(Block::lcyc) == nullptr);
   for (const ProfileBlock& pb : r.blocks)
     for (const PatternInfo* pi : pb.patterns) CHECK_FALSE(is_clean(*pi));
-  const Profile c = clean_registry_profile(reg);
+  const Profile c = clean_registry_profile();
   CHECK(c.family == Family::clean);
   CHECK(c.visibility == Visibility::timestamp);
   CHECK(c.k_max == 10);
-  REQUIRE(c.blocks.size() == 3);  // fan_in, sg, and lcyc too (SPEC v3 §4.4)
-  CHECK(c.blocks[0].block == Block::fan_in);
-  CHECK(c.blocks[1].block == Block::sg);
-  CHECK(c.blocks[2].block == Block::lcyc);
+  REQUIRE(c.blocks.size() == kAllBlocks.size());  // lcyc too (SPEC v3 §4.4)
+  for (std::size_t i = 0; i < kAllBlocks.size(); ++i) CHECK(c.blocks[i].block == kAllBlocks[i]);
+  CHECK(c.find(Block::sg)->patterns.size() == 2);
   for (const ProfileBlock& pb : c.blocks)
     for (const PatternInfo* pi : pb.patterns) CHECK(is_clean(*pi));
+  CHECK(backend_error(c, Backend::cpu) == "ok");
 }

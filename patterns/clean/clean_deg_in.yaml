@@ -1,0 +1,20 @@
+# clean_deg_in (SPEC v3 R7): the window edges into the trigger's destination v, parallel edges and
+# the trigger included. The index has no self-loops (R1), so no edge is v -> v and the count needs
+# no element filter.
+version: 1
+pattern: clean_deg_in
+block: deg_in
+family: clean
+window: {span: delta_deg, lower: open}
+visibility: timestamp
+trigger: {edge: e0, src: U, dst: V}
+constraints: [{skip_if: "U == V"}]       # a self-loop trigger's row is zero (R1)
+stages:
+  - id: in_edges
+    op: count
+    src: V.in
+    edge: e1
+    element: X
+    multiplicity: edges
+    output: n
+    emit: {size: n}

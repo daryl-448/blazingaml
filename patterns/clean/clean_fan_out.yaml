@@ -1,0 +1,20 @@
+# clean_fan_out (SPEC v3 R7): |N_out(u)|, the distinct out-neighbours of the trigger's source u in
+# the window, v included. The index has no self-loops (R1), so no neighbour is u itself and the
+# count needs no element filter.
+version: 1
+pattern: clean_fan_out
+block: fan_out
+family: clean
+window: {span: delta_fan, lower: open}
+visibility: timestamp
+trigger: {edge: e0, src: U, dst: V}
+constraints: [{skip_if: "U == V"}]       # a self-loop trigger's row is zero (R1)
+stages:
+  - id: out_nbrs
+    op: count
+    src: U.out
+    edge: e1
+    element: Y
+    multiplicity: distinct
+    output: n
+    emit: {size: n}

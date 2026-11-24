@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 
 #include "graph/fuzz_gen.hpp"
@@ -22,13 +23,34 @@ FuzzDiff fuzz_diff_cuda(std::uint64_t s0, std::uint64_t s1, std::span<const std:
   return fuzz_diff_cuda(registry_profile(), s0, s1, bins, thresholds);
 }
 
+const char* reference_name(Reference r) { return r == Reference::oracle ? "oracle" : "cpu"; }
+
 namespace {
 
-// A block's bins on fuzz graphs: `bins`, or the profile's own when `bins` is empty.
-std::vector<std::uint32_t> fuzz_bins(const ProfileBlock& pb, std::span<const std::uint32_t> bins) {
-  std::vector<std::uint32_t> v = bins.empty() ? pb.params.bins : std::vector<std::uint32_t>(bins.begin(), bins.end());
-  if (v.empty()) throw std::invalid_argument("fuzz-diff: block " + std::string(block_name(pb.block)) + " has no bins");
-  return v;
+std::array<std::vector<std::uint32_t>, kAllBlocks.size()> all_fuzz_bins(const Profile& prof,
+                                                                        std::span<const std::uint32_t> bins) {
+  std::array<std::vector<std::uint32_t>, kAllBlocks.size()> out;
+  for (const ProfileBlock& pb : prof.blocks) try {
+      out[int(pb.block)] = fuzz_bins(prof, pb, bins);
+    } catch (const std::invalid_argument& e) {
+      throw std::invalid_argument(std::string("fuzz-diff: ") + e.what());
+    }
+  return out;
+}
+
+// The reference rows of one block: the oracle's, or the CPU backend's (dynamic schedule, no
+// pruning) when `oracle` is null.
+void reference_rows(const Oracle* oracle, const GraphIndex& index, const ProfileBlock& pb, const BlockParams& p,
+                    const Profile& prof, std::uint64_t m, std::uint32_t* out) {
+  if (oracle) {
+    oracle->mine(pb.block, p, prof.k_max, 0, m, out);
+    return;
+  }
+  TriggerSel all;
+  all.last = m;
+  BlockParams q = p;
+  q.reach_prune = false;
+  mine_cpu(index.view(), pb.patterns, q, prof.visibility, all, Schedule::dynamic, out);
 }
 
 // Runs f; returns UINT64_MAX, or the eid at which the work limit stopped it (SPEC v2 §8 S3).
@@ -45,10 +67,8 @@ std::uint64_t stop_eid(F&& f) {
 }  // namespace
 
 FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
-                       std::uint64_t work_limit) {
-  const int k_max = prof.k_max;
-  std::array<std::vector<std::uint32_t>, kAllBlocks.size()> block_bins;
-  for (const ProfileBlock& pb : prof.blocks) block_bins[int(pb.block)] = fuzz_bins(pb, bins);
+                       std::uint64_t work_limit, Reference ref) {
+  const auto block_bins = all_fuzz_bins(prof, bins);
   FuzzDiff res;
   // Parallel over seeds; the oracle's and the drivers' own parallel loops run nested, i.e. on
   // one thread each.
@@ -56,8 +76,9 @@ FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, 
   for (std::int64_t si = std::int64_t(s0); si < std::int64_t(s1); ++si) {
     const FuzzGraph fg = fuzz_graph(std::uint64_t(si));
     const std::uint64_t m = fg.src.size();
-    const Oracle oracle({fg.src, fg.dst, fg.ts, fg.n}, prof.visibility);
-    const GraphIndex index(fg.src, fg.dst, fg.ts, fg.n);
+    std::optional<Oracle> oracle;
+    if (ref == Reference::oracle) oracle.emplace(EdgeStream{fg.src, fg.dst, fg.ts, fg.n}, prof.visibility);
+    const GraphIndex index(fg.src, fg.dst, fg.ts, fg.n, prof.self_loops());
     std::array<std::uint64_t, kAllBlocks.size()> bad{};
     bool limited = false;
     TriggerSel all;
@@ -66,13 +87,15 @@ FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, 
       const Block b = pb.block;
       BlockParams p{fg.window, block_bins[int(b)]};
       p.work_limit = work_limit;
-      const std::size_t nb = p.bins.size();
+      const std::size_t nb = block_cols(p);
       std::vector<std::uint32_t> want(m * nb, 0);
-      const std::uint64_t stop = stop_eid([&] { oracle.mine(b, p, k_max, 0, m, want.data()); });
+      const std::uint64_t stop =
+          stop_eid([&] { reference_rows(oracle ? &*oracle : nullptr, index, pb, p, prof, m, want.data()); });
       limited = limited || stop != UINT64_MAX;
       // A block with a pattern planned for reachability pruning (SPEC v2 §8 S6) runs both ways.
       const bool reach = std::any_of(pb.patterns.begin(), pb.patterns.end(), [](const PatternInfo* pi) { return pi->cpu_reach; });
       for (int run = 0; run < (reach ? 4 : 2); ++run) {
+        if (run == 0 && ref == Reference::cpu) continue;  // the reference itself
         const Schedule s = run % 2 == 0 ? Schedule::dynamic : Schedule::sorted;
         BlockParams q = p;
         q.reach_prune = run >= 2;
@@ -106,16 +129,15 @@ FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, 
 }
 
 FuzzDiff fuzz_diff_cuda(const Profile& prof, std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
-                        std::span<const std::uint32_t> thresholds, std::uint64_t work_limit, CudaOptions opts) {
-  return fuzz_diff_hybrid(prof, s0, s1, bins, thresholds, {}, work_limit, opts);
+                        std::span<const std::uint32_t> thresholds, std::uint64_t work_limit, CudaOptions opts,
+                        Reference ref) {
+  return fuzz_diff_hybrid(prof, s0, s1, bins, thresholds, {}, work_limit, opts, ref);
 }
 
 FuzzDiff fuzz_diff_hybrid(const Profile& prof, std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
                           std::span<const std::uint32_t> thresholds, std::span<const std::uint32_t> cpu_thresholds,
-                          std::uint64_t work_limit, CudaOptions opts) {
-  const int k_max = prof.k_max;
-  std::array<std::vector<std::uint32_t>, kAllBlocks.size()> block_bins;
-  for (const ProfileBlock& pb : prof.blocks) block_bins[int(pb.block)] = fuzz_bins(pb, bins);
+                          std::uint64_t work_limit, CudaOptions opts, Reference ref) {
+  const auto block_bins = all_fuzz_bins(prof, bins);
   FuzzDiff res;
   const bool hybrid = !cpu_thresholds.empty();
   if (hybrid && (opts.fuse || opts.pack)) throw std::invalid_argument("fuzz-diff: the hybrid neither fuses nor packs");
@@ -142,15 +164,17 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, std::uint64_t s0, std::uint64_t s
       Item& it = items[std::size_t(i)];
       it.fg = fuzz_graph(b0 + std::uint64_t(i));
       const std::uint64_t m = it.fg.src.size();
-      const Oracle oracle({it.fg.src, it.fg.dst, it.fg.ts, it.fg.n}, prof.visibility);
-      it.index = std::make_unique<GraphIndex>(it.fg.src, it.fg.dst, it.fg.ts, it.fg.n);
+      std::optional<Oracle> oracle;
+      if (ref == Reference::oracle) oracle.emplace(EdgeStream{it.fg.src, it.fg.dst, it.fg.ts, it.fg.n}, prof.visibility);
+      it.index = std::make_unique<GraphIndex>(it.fg.src, it.fg.dst, it.fg.ts, it.fg.n, prof.self_loops());
       it.stop.fill(UINT64_MAX);
       for (const ProfileBlock& pb : prof.blocks) {
         BlockParams p{it.fg.window, block_bins[int(pb.block)]};
         p.work_limit = work_limit;
-        it.want[int(pb.block)].assign(m * p.bins.size(), 0);
-        it.stop[int(pb.block)] =
-            stop_eid([&] { oracle.mine(pb.block, p, k_max, 0, m, it.want[int(pb.block)].data()); });
+        it.want[int(pb.block)].assign(m * block_cols(p), 0);
+        it.stop[int(pb.block)] = stop_eid([&] {
+          reference_rows(oracle ? &*oracle : nullptr, *it.index, pb, p, prof, m, it.want[int(pb.block)].data());
+        });
       }
     }
     for (std::size_t i = 0; i < items.size(); ++i) {
@@ -168,7 +192,7 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, std::uint64_t s0, std::uint64_t s
           }
           return;
         }
-        const std::size_t nb = block_bins[int(b)].size();
+        const std::size_t nb = block_cols(block_bins[int(b)]);
         const auto& want = it.want[int(b)];
         for (std::uint64_t e = 0; e < m; ++e)
           if (!std::equal(got.begin() + e * nb, got.begin() + (e + 1) * nb, want.begin() + e * nb)) {
@@ -186,7 +210,7 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, std::uint64_t s0, std::uint64_t s
               p.reach_prune = hybrid;  // the hybrid's CPU side prunes where it can (SPEC v2 §8 S6)
             }
             std::vector<std::vector<std::uint32_t>> got(unit.blocks.size());
-            for (std::size_t sl = 0; sl < got.size(); ++sl) got[sl].assign(m * params[sl].bins.size(), 0xdeadbeefu);
+            for (std::size_t sl = 0; sl < got.size(); ++sl) got[sl].assign(m * block_cols(params[sl]), 0xdeadbeefu);
             if (unit.fusion) {  // no fused pattern counts work, so a fused run never stops
               std::vector<const BlockParams*> pp;
               std::vector<std::uint32_t*> outs;

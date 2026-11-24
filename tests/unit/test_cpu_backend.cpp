@@ -56,14 +56,28 @@ std::string error_of(const FeatureConfig& cfg) {
 
 }  // namespace
 
-TEST_CASE("registry: the library's thirteen patterns, one block each, sg from two") {
-  std::set<std::string> names;
-  for (const PatternInfo& p : registered_patterns()) names.insert(p.name);
+TEST_CASE("registry: the library's thirteen patterns, one block each, sg from two; and their clean family") {
+  std::set<std::string> names, clean;
+  for (const PatternInfo& p : registered_patterns()) (is_clean(p) ? clean : names).insert(p.name);
   CHECK(names == std::set<std::string>{"deg_in", "deg_out", "fan_in", "fan_oneway_out", "fan_out", "fan_total", "gs",
                                        "lcyc", "sg_gather", "sg_ordered", "sg_scatter", "tchain", "tcyc"});
-  for (Block b : kAllBlocks) CHECK(!patterns_for(b).empty());
+  // SPEC v3 §3.2: one clean pattern per legacy one, clean_<x>; sg_ordered's is clean_sg_ord.
+  std::set<std::string> want;
+  for (const std::string& n : names) want.insert("clean_" + (n == "sg_ordered" ? std::string("sg_ord") : n));
+  CHECK(clean == want);
+  for (Block b : kAllBlocks) {
+    CHECK(!patterns_for(b).empty());
+    for (const PatternInfo* p : patterns_for(b)) CHECK_FALSE(is_clean(*p));  // legacy only (AC-V3-0)
+  }
   CHECK(patterns_for(Block::sg).size() == 2);
   CHECK(compiled_k_max() == 10);
+  // A count block takes the patterns that emit once per trigger, at the root (SPEC v3 R7).
+  for (const PatternInfo& p : registered_patterns()) {
+    const std::string n = p.name;
+    const bool counts = n.find("fan") != std::string::npos || n.find("deg") != std::string::npos || n.ends_with("gs");
+    INFO(n);
+    CHECK(p.one_instance == counts);
+  }
 }
 
 TEST_CASE("registry: start-up checks use the generated E402 locations and the compiled K_MAX") {

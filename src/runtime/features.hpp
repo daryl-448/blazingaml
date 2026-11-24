@@ -58,7 +58,10 @@ struct BlockParams {
 
 // A block's columns: a count block (SPEC v3 R7, no bins) has one, the count; a histogram block one
 // per bin.
-inline std::uint32_t block_cols(const BlockParams& p) { return p.bins.empty() ? 1u : std::uint32_t(p.bins.size()); }
+inline std::uint32_t block_cols(std::span<const std::uint32_t> bins) {
+  return bins.empty() ? 1u : std::uint32_t(bins.size());
+}
+inline std::uint32_t block_cols(const BlockParams& p) { return block_cols(p.bins); }
 
 // Thrown when a trigger exceeds the work limit (SPEC v2 §8 S3). `eid` is the smallest such
 // trigger among those that ran (a driver skips the triggers it has not started yet).
@@ -98,7 +101,7 @@ inline bool add_saturating(std::uint32_t& c) {
   return false;
 }
 
-// "<block>[b_i,b_{i+1})" ... "<block>[b_last,inf)" (SPEC §4.2).
+// "<block>[b_i,b_{i+1})" ... "<block>[b_last,inf)" (SPEC §4.2); "<block>" for a count block (no bins).
 std::vector<std::string> column_names(Block b, std::span<const std::uint32_t> bins);
 
 }  // namespace blz

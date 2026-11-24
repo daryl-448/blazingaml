@@ -30,6 +30,7 @@ std::optional<Block> parse_block(std::string_view name) {
 std::vector<std::string> column_names(Block b, std::span<const std::uint32_t> bins) {
   std::vector<std::string> out;
   const std::string base(block_name(b));
+  if (bins.empty()) return {base};  // a count block's one column (SPEC v3 R7)
   for (std::size_t i = 0; i < bins.size(); ++i) {
     const std::string hi = i + 1 < bins.size() ? std::to_string(bins[i + 1]) : "inf";
     out.push_back(base + "[" + std::to_string(bins[i]) + "," + hi + ")");

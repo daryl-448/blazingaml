@@ -52,7 +52,8 @@ set_tests_properties(blzc_check_library PROPERTIES LABELS fast)
 
 # SPEC §13.4: the generated code equals tests/snapshots/, the fusions included (SPEC v2 §8 S7).
 # After reviewing a change, update with
-#   (cd <source> && blzc --fuse fan_in,deg_in --fuse fan_out,deg_out patterns/*.yaml
+#   (cd <source> && blzc --fuse fan_in,deg_in --fuse fan_out,deg_out --fuse clean_fan_in,clean_deg_in
+#      --fuse clean_fan_out,clean_deg_out patterns/*.yaml patterns/clean/*.yaml
 #      --snapshots tests/snapshots --update-snapshots)
 add_test(NAME blzc_snapshots
   COMMAND blzc ${BLZ_FUSE_ARGS} ${BLZ_PATTERN_SPECS_REL} --snapshots tests/snapshots

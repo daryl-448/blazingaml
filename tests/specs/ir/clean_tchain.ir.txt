@@ -1,0 +1,108 @@
+pattern clean_tchain block tchain family clean
+window span delta_chain lower open visibility pinned timestamp
+const K_MAX = 10
+trigger e0: U -> V
+  skip if U == V
+level 0 (root)
+  level 1
+    bind for_all hop_1 -> C1 [distinct] [latest witness]
+      operand h1: U.in access scan_distinct
+        lo > t - delta_chain [window]
+        hi -
+        range ts >= t - delta_chain + 1
+      skip if C1 == V
+      emit 2 (min 2)
+      exports C1 h1
+      // scan T-CSR U.in distinct-first: each C1 once, h1 = its latest witness in range (witness: latest, SPEC v2 §8 S5): a P-CSR pair_latest probe per binding
+      // h1 in U.in: ts >= t - delta_chain + 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger
+    level 2
+      bind for_all hop_2 -> C2 [distinct] [latest witness]
+        operand h2: C1.in access scan_distinct
+          lo > t - delta_chain [window]
+          hi <= h1.t
+          range ts >= t - delta_chain + 1, ts <= h1.t
+        skip if C2 in [U, V, C1]
+        emit 3 (min 2)
+        exports C2 h2
+        // scan T-CSR C1.in distinct-first: each C2 once, h2 = its latest witness in range (witness: latest, SPEC v2 §8 S5): a P-CSR pair_latest probe per binding
+        // h2 in C1.in: ts >= t - delta_chain + 1, ts <= h1.t, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+      level 3
+        bind for_all hop_3 -> C3 [distinct] [latest witness]
+          operand h3: C2.in access scan_distinct
+            lo > t - delta_chain [window]
+            hi <= h2.t
+            range ts >= t - delta_chain + 1, ts <= h2.t
+          skip if C3 in [U, V, C1, C2]
+          emit 4 (min 2)
+          exports C3 h3
+          // scan T-CSR C2.in distinct-first: each C3 once, h3 = its latest witness in range (witness: latest, SPEC v2 §8 S5): a P-CSR pair_latest probe per binding
+          // h3 in C2.in: ts >= t - delta_chain + 1, ts <= h2.t, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+        level 4
+          bind for_all hop_4 -> C4 [distinct] [latest witness]
+            operand h4: C3.in access scan_distinct
+              lo > t - delta_chain [window]
+              hi <= h3.t
+              range ts >= t - delta_chain + 1, ts <= h3.t
+            skip if C4 in [U, V, C1, C2, C3]
+            emit 5 (min 2)
+            exports C4 h4
+            // scan T-CSR C3.in distinct-first: each C4 once, h4 = its latest witness in range (witness: latest, SPEC v2 §8 S5): a P-CSR pair_latest probe per binding
+            // h4 in C3.in: ts >= t - delta_chain + 1, ts <= h3.t, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+          level 5
+            bind for_all hop_5 -> C5 [distinct] [latest witness]
+              operand h5: C4.in access scan_distinct
+                lo > t - delta_chain [window]
+                hi <= h4.t
+                range ts >= t - delta_chain + 1, ts <= h4.t
+              skip if C5 in [U, V, C1, C2, C3, C4]
+              emit 6 (min 2)
+              exports C5 h5
+              // scan T-CSR C4.in distinct-first: each C5 once, h5 = its latest witness in range (witness: latest, SPEC v2 §8 S5): a P-CSR pair_latest probe per binding
+              // h5 in C4.in: ts >= t - delta_chain + 1, ts <= h4.t, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+            level 6
+              bind for_all hop_6 -> C6 [distinct] [latest witness]
+                operand h6: C5.in access scan_distinct
+                  lo > t - delta_chain [window]
+                  hi <= h5.t
+                  range ts >= t - delta_chain + 1, ts <= h5.t
+                skip if C6 in [U, V, C1, C2, C3, C4, C5]
+                emit 7 (min 2)
+                exports C6 h6
+                // scan T-CSR C5.in distinct-first: each C6 once, h6 = its latest witness in range (witness: latest, SPEC v2 §8 S5): a P-CSR pair_latest probe per binding
+                // h6 in C5.in: ts >= t - delta_chain + 1, ts <= h5.t, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+              level 7
+                bind for_all hop_7 -> C7 [distinct] [latest witness]
+                  operand h7: C6.in access scan_distinct
+                    lo > t - delta_chain [window]
+                    hi <= h6.t
+                    range ts >= t - delta_chain + 1, ts <= h6.t
+                  skip if C7 in [U, V, C1, C2, C3, C4, C5, C6]
+                  emit 8 (min 2)
+                  exports C7 h7
+                  // scan T-CSR C6.in distinct-first: each C7 once, h7 = its latest witness in range (witness: latest, SPEC v2 §8 S5): a P-CSR pair_latest probe per binding
+                  // h7 in C6.in: ts >= t - delta_chain + 1, ts <= h6.t, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+                level 8
+                  bind for_all hop_8 -> C8 [distinct] [latest witness]
+                    operand h8: C7.in access scan_distinct
+                      lo > t - delta_chain [window]
+                      hi <= h7.t
+                      range ts >= t - delta_chain + 1, ts <= h7.t
+                    skip if C8 in [U, V, C1, C2, C3, C4, C5, C6, C7]
+                    emit 9 (min 2)
+                    exports C8 h8
+                    // scan T-CSR C7.in distinct-first: each C8 once, h8 = its latest witness in range (witness: latest, SPEC v2 §8 S5): a P-CSR pair_latest probe per binding
+                    // h8 in C7.in: ts >= t - delta_chain + 1, ts <= h7.t, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+                  level 9
+                    bind for_all hop_9 -> C9 [distinct] [latest witness]
+                      operand h9: C8.in access scan_distinct
+                        lo > t - delta_chain [window]
+                        hi <= h8.t
+                        range ts >= t - delta_chain + 1, ts <= h8.t
+                      skip if C9 in [U, V, C1, C2, C3, C4, C5, C6, C7, C8]
+                      emit 10 (min 2)
+                      exports C9 h9
+                      // scan T-CSR C8.in distinct-first: each C9 once, h9 = its latest witness in range (witness: latest, SPEC v2 §8 S5): a P-CSR pair_latest probe per binding
+                      // h9 in C8.in: ts >= t - delta_chain + 1, ts <= h8.t, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
+plan depth 9 work hop_1 split hop_1
+  // work estimate (sorted schedule, CUDA bucketing): the window size of hop_1.h1 (U.in), two binary searches
+  // CUDA heavy kernel: no root checks; the lanes stride over the scan of hop_1 and each runs every stage nested in its own bindings; lane bin counts are summed across the warp

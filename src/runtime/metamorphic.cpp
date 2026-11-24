@@ -50,7 +50,7 @@ Rows mine_all(const Graph& g, const Profile& prof, Backend be, std::int32_t wind
     for (const ProfileBlock& pb : prof.blocks) {
       const BlockParams p{window, bins[int(pb.block)]};
       auto& r = rows[0][int(pb.block)];
-      r.assign(m * p.bins.size(), 0);
+      r.assign(m * block_cols(p), 0);
       if (pb.block == Block::sg && pb.patterns.size() == 1 && std::string_view(pb.patterns[0]->name) == "sg_gather")
         o.mine_sg_gather(p, 0, m, r.data());  // the order-relaxation bound (the oracle's sg is both roles)
       else
@@ -58,14 +58,14 @@ Rows mine_all(const Graph& g, const Profile& prof, Backend be, std::int32_t wind
     }
     return rows;
   }
-  const GraphIndex index(g.src, g.dst, g.ts, g.n);
+  const GraphIndex index(g.src, g.dst, g.ts, g.n, prof.self_loops());
   if (be == Backend::cpu) {
     TriggerSel all;
     all.last = m;
     for (const ProfileBlock& pb : prof.blocks) {
       const BlockParams p{window, bins[int(pb.block)]};
       auto& r = rows[0][int(pb.block)];
-      r.assign(m * p.bins.size(), 0);
+      r.assign(m * block_cols(p), 0);
       mine_cpu(index.view(), pb.patterns, p, prof.visibility, all, Schedule::dynamic, r.data());
     }
     return rows;
@@ -75,7 +75,7 @@ Rows mine_all(const Graph& g, const Profile& prof, Backend be, std::int32_t wind
     for (const ProfileBlock& pb : prof.blocks) {
       const BlockParams p{window, bins[int(pb.block)]};
       auto& r = rows[t][int(pb.block)];
-      r.assign(m * p.bins.size(), 0);
+      r.assign(m * block_cols(p), 0);
       miner->mine(dg, pb.patterns, p, prof.visibility, 0, m, thresholds[t], r.data());
     }
   return rows;
@@ -96,7 +96,9 @@ const char* meta_test_name(MetaTest t) {
 
 bool meta_test_applies(MetaTest t, const Profile& prof, [[maybe_unused]] Backend be) {
   switch (t) {
-    case MetaTest::visibility_invariance: return prof.find(Block::tcyc) || prof.find(Block::tchain);
+    // A clean profile's visibility is timestamp, fixed (SPEC v3 R3), so it has nothing to flip.
+    case MetaTest::visibility_invariance:
+      return prof.family == Family::legacy && (prof.find(Block::tcyc) || prof.find(Block::tchain));
     case MetaTest::order_relaxation: return prof.find(Block::sg_ord) != nullptr;
     default: return true;
   }
@@ -119,19 +121,21 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
       if (const ProfileBlock* pb = prof.find(b)) flipped->blocks.push_back(*pb);
   }
   BlockBins block_bins;
-  for (const ProfileBlock& pb : prof.blocks) {
-    auto& v = block_bins[int(pb.block)];
-    v = bins.empty() ? pb.params.bins : std::vector<std::uint32_t>(bins.begin(), bins.end());
-    if (v.empty()) throw std::invalid_argument("metamorphic: block " + std::string(block_name(pb.block)) + " has no bins");
-  }
-  // Order relaxation: sg_gather alone, at sg_ord's window and bins, mined by the same backend.
+  for (const ProfileBlock& pb : prof.blocks) try {
+      block_bins[int(pb.block)] = fuzz_bins(prof, pb, bins);
+    } catch (const std::invalid_argument& e) {
+      throw std::invalid_argument(std::string("metamorphic: ") + e.what());
+    }
+  // Order relaxation: sg_gather alone (the profile's family's: clean_sg_gather for a clean
+  // profile, SPEC v3 R6), at sg_ord's window and bins, mined by the same backend.
   std::optional<Profile> gather;
   BlockBins gather_bins;
   if (meta_test_applies(MetaTest::order_relaxation, prof, be)) {
+    const std::string_view want = prof.family == Family::clean ? "clean_sg_gather" : "sg_gather";
     const PatternInfo* sg_gather = nullptr;
     for (const PatternInfo& pi : registered_patterns())
-      if (std::string_view(pi.name) == "sg_gather") sg_gather = &pi;
-    if (!sg_gather) throw std::runtime_error("metamorphic: order relaxation needs the pattern sg_gather");
+      if (std::string_view(pi.name) == want) sg_gather = &pi;
+    if (!sg_gather) throw std::runtime_error("metamorphic: order relaxation needs the pattern " + std::string(want));
     gather = prof;
     gather->blocks = {ProfileBlock{Block::sg, {sg_gather}, prof.find(Block::sg_ord)->params, prof.file}};
     gather_bins[int(Block::sg)] = block_bins[int(Block::sg_ord)];
@@ -155,7 +159,7 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
         for (const ProfileBlock& pb : (which ? which : &prof)->blocks) {
           const auto& w = want[t][int(pb.block)];
           const auto& g = got[t][int(pb.block)];
-          const std::size_t nb = block_bins[int(pb.block)].size();
+          const std::size_t nb = block_cols(block_bins[int(pb.block)]);
           for (std::uint64_t e = 0; e < rows; ++e)
             if (!std::equal(g.begin() + std::ptrdiff_t(e * nb), g.begin() + std::ptrdiff_t((e + 1) * nb),
                             w.begin() + std::ptrdiff_t(e * nb))) {
@@ -200,7 +204,7 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
       // Per row, sg_ordered's instances (the sum over its bins) are at most sg_gather's: ordering
       // only removes sources and intermediates (SPEC v2 §3.4). Bins are not compared.
       const Rows g = mine_all(base, *gather, be, fg.window, gather_bins, thresholds, mp);
-      const std::size_t nb = gather_bins[int(Block::sg)].size();
+      const std::size_t nb = block_cols(gather_bins[int(Block::sg)]);
       for (std::size_t t = 0; t < want.size(); ++t) {
         const auto& ord = want[t][int(Block::sg_ord)];
         const auto& all = g[t][int(Block::sg)];

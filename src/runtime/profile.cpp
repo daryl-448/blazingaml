@@ -355,6 +355,15 @@ Profile clean_registry_profile(std::span<const PatternInfo> registry) {
   return family_registry_profile(registry, Family::clean);
 }
 
+std::vector<std::uint32_t> fuzz_bins(const Profile& prof, const ProfileBlock& pb, std::span<const std::uint32_t> bins) {
+  const bool count = prof.family == Family::clean && pb.params.bins.empty() &&
+                     std::all_of(pb.patterns.begin(), pb.patterns.end(), [](const PatternInfo* pi) { return pi->one_instance; });
+  if (count) return {};
+  std::vector<std::uint32_t> v = bins.empty() ? pb.params.bins : std::vector<std::uint32_t>(bins.begin(), bins.end());
+  if (v.empty()) throw std::invalid_argument("block " + std::string(block_name(pb.block)) + " has no bins");
+  return v;
+}
+
 void check_profile_backend(const Profile& p, Backend b) {
   const std::string be = backend_name(b);
   if (b == Backend::oracle) {

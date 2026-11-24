@@ -82,6 +82,12 @@ Profile registry_profile(std::span<const PatternInfo> registry = registered_patt
 // every pattern): family clean, visibility timestamp.
 Profile clean_registry_profile(std::span<const PatternInfo> registry = registered_patterns());
 
+// A block's bins on fuzz graphs (fuzz-diff, metamorphic): none for a count block, else `bins`,
+// or the block's own when `bins` is empty; throws std::invalid_argument if that leaves none. A
+// count block (SPEC v3 R7) is a clean profile's block without bins whose patterns are all
+// one_instance: every such block of clean_registry_profile(), whatever `bins` says.
+std::vector<std::uint32_t> fuzz_bins(const Profile& prof, const ProfileBlock& pb, std::span<const std::uint32_t> bins);
+
 // The start-up check of a profile against a backend (§3.1, §6.4 of v2). Throws
 // "<file>:<line>:<col>: error E404: ..." when the backend cannot run the profile:
 //   - oracle: a clean profile (the oracle computes the legacy definitions), or a block whose
