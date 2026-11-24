@@ -79,8 +79,8 @@ if [ -z "$ID" ]; then
 fi
 jl exec "$ID" -- mkdir -p "$W"
 
-# The working tree and the commit it came from.
-git ls-files -co --exclude-standard -z | tar --null -czf "$TMP/repo.tgz" -T -
+# The working tree and the commit it came from (not .claude/: agent worktrees, whole repo copies).
+git ls-files -co --exclude-standard -z | grep -zv '^\.claude/' | tar --null -czf "$TMP/repo.tgz" -T -
 dirty=0
 [ -n "$(git status --porcelain)" ] && dirty=1
 printf 'BLZ_GIT_SHA=%s\nBLZ_GIT_DIRTY=%s\nBLZ_CAMPAIGN=%s\n' "$(git rev-parse HEAD)" "$dirty" "$CAMPAIGN" > "$TMP/source.env"
