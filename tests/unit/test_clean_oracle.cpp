@@ -275,6 +275,10 @@ TEST_CASE("R4: tcyc and tchain hops are in non-decreasing time order, the trigge
   const Graph par{{1, 2, 1}, {0, 1, 5}, {1, 2, 5}, {2, 0, 9}};
   CHECK(row(par, Block::tcyc, p, 3) == Row{0, 1});
   CHECK(row(par, Block::tcyc, p, 3, parse_quirks("Q5")) == Row{0, 0});
+  // The trigger 0 -> 1 at 6 reaches 2 at 1 or 5 (parallel 1 -> 2 edges); 2 -> 0 at 3 follows the
+  // arrival at 1 only.
+  const Graph arr{{1, 2, 1}, {2, 0, 3}, {1, 2, 5}, {0, 1, 6}};
+  CHECK(row(arr, Block::tcyc, p, 3) == Row{0, 1});
   // tchain into the trigger 0 -> 1 at 4: 2 -> 0 (size 2) and 3 -> 2 -> 0 (size 3), every edge at 4.
   // For e1 = 2 -> 0: 3 -> 2 -> 0 (size 2).
   const Graph chain{{3, 2, 4}, {2, 0, 4}, {0, 1, 4}};
@@ -283,6 +287,10 @@ TEST_CASE("R4: tcyc and tchain hops are in non-decreasing time order, the trigge
   // 3 -> 2 at 2 is later than 2 -> 0 at 1: only the chain 2 -> 0 -> 1.
   const Graph late{{2, 0, 1}, {3, 2, 2}, {0, 1, 3}};
   CHECK(row(late, Block::tchain, p, 2) == Row{1, 0});
+  // The chain edge 2 -> 0 into the trigger 0 -> 1 at 7 can be at 2 or 6 (parallel); 3 -> 2 at 4 is
+  // no later than the one at 6 only: 2 -> 0 -> 1 and 3 -> 2 -> 0 -> 1.
+  const Graph dep{{2, 0, 2}, {3, 2, 4}, {2, 0, 6}, {0, 1, 7}};
+  CHECK(row(dep, Block::tchain, p, 3) == Row{1, 1});
 }
 
 TEST_CASE("R5: lcyc counts the simple cycles through the trigger in any time order, ties included") {
