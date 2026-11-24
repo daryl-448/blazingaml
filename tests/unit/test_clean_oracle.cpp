@@ -405,6 +405,16 @@ TEST_CASE("R8: vertex statistics, small sides and order independence") {
     const double sum = 1e-200 + 2e-200;
     CHECK(same_bits(side(vs_row(g, 100, 1), 3), {2, 2, 1, 0, 0, 0, 0, 0, sum / 2, sum, 0, 0, 0}));
   }
+  // D-58: a positive computed m2 whose m2^1.5 and m2^2 underflow (1e-160 and 3e-160 give m2 = 1e-320):
+  // var is that m2, and skew and kurt are 0, not 0/0, whose NaN bits differ between x86 and CUDA.
+  {
+    const Graph g{{1, 9, 5, 1e-160}, {2, 9, 5, 3e-160}};
+    const double sum = 1e-160 + 3e-160, mean = sum / 2, d1 = 1e-160 - mean, d2 = 3e-160 - mean;
+    const double m2 = (0.0 + d1 * d1 + d2 * d2) / 2;
+    REQUIRE(m2 > 0);
+    REQUIRE(m2 * std::sqrt(m2) == 0);
+    CHECK(same_bits(side(vs_row(g, 100, 1), 3), {2, 2, 1, 0, 0, 0, 0, 0, mean, sum, m2, 0, 0}));
+  }
   // The moments: into 9 at 5, 9, 10, the trigger at t = 10. Ages {5, 1, 0}: mean 2, sum 6, m2 = 14/3,
   // m3 = 6, m4 = 98/3. Amounts {1, 2, 3}: mean 2, sum 6, m2 = 2/3, m3 = 0, m4 = 2/3.
   {

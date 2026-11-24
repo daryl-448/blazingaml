@@ -446,9 +446,12 @@ void CleanOracle::moments(std::vector<double> x, double* out) const {
   // Q10: GFP's guard reports a variance below 1e-5 * mean^2 as 0, with its skew and kurtosis (A44).
   if (q_.q10_vstats_gfp_arith && (!(m2 > 0) || m2 < kVstatsVarGuard * (mean * mean))) return;
   out[2] = m2;
-  if (m2 == 0) return;  // skew and kurtosis 0, never 0/0
-  out[3] = m3 / (m2 * std::sqrt(m2));
-  out[4] = m4 / (m2 * m2);
+  // R8, D-58: skew and kurtosis are 0 when their denominator is 0 (the computed m2 is 0, or m2^1.5 or
+  // m2^2 underflows): never 0/0. Q10 keeps GFP's division, which its guard protects.
+  const double d3 = m2 * std::sqrt(m2), d4 = m2 * m2;
+  const bool zero = !q_.q10_vstats_gfp_arith;
+  out[3] = zero && d3 == 0 ? 0.0 : m3 / d3;
+  out[4] = zero && d4 == 0 ? 0.0 : m4 / d4;
 }
 
 // R8 for one side, node x's out- or in-edges in the window: fan (distinct neighbours), deg, ratio,
