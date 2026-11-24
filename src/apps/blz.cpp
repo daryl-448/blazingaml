@@ -36,9 +36,7 @@
 #if BLZ_WITH_XGBOOST
 #include "ml/xgb.hpp"
 #endif
-#include "oracle/batch_oracle.hpp"
 #include "oracle/oracle.hpp"
-#include "runtime/batch.hpp"
 #include "runtime/vstats.hpp"
 #include "runtime/coverage.hpp"
 #include "runtime/cpu_backend.hpp"
@@ -315,21 +313,8 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
                              "uses cpu); the CUDA kernels take an eid range");
   if (threads > 0) omp_set_num_threads(threads);
   std::optional<blz::Oracle> oracle;
-  std::optional<blz::BatchOracle> batch_oracle;
   std::optional<blz::GraphIndex> index;
-  std::optional<blz::BatchLayout> layout;  // GFP batch mode (SPEC v2 §8 S1)
-  if (prof.batch) {
-    layout = blz::batch_layout(*prof.batch, m, g.ts);
-    // S1's trap: a batch's rows see the whole batch, so a batch that holds eids on both sides of
-    // b_fv or of the train/test boundary would give fit (train) rows validation (test) evidence.
-    for (const std::uint64_t c : {blz::fit_val_boundary(g.ts), blz::train_size(g.m())})
-      if (c < m && !std::binary_search(layout->starts.begin(), layout->starts.end(), c))
-        throw std::runtime_error(profile_path + ": batch " + std::to_string(layout->batch_of(c)) +
-                                 " holds eids on both sides of the split boundary at eid " + std::to_string(c) +
-                                 ", so its earlier rows would see later-split edges (SPEC v2 §8 S1); use cuts: splits");
-  }
   if (cpu || gpu) index.emplace(src, dst, ts, g.n());  // hybrid: gpu
-  else if (layout) batch_oracle.emplace(blz::EdgeStream{src, dst, ts, g.n()}, *layout, prof.batch_time_window());
   else oracle.emplace(blz::EdgeStream{src, dst, ts, g.n()}, prof.visibility);
   const double build_s = secs(t0);
   std::fprintf(stderr, "%s index built in %.1f s (m=%llu, n=%llu); profile %s (%s); triggers %s: %llu rows\n",
@@ -375,12 +360,6 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
   if (hybrid) jbe["cpu_threshold"] = threshold_name(cpu_heavy);
   meta["backend"] = jbe;
   meta["triggers"] = sel.json();
-  if (layout)
-    meta["batch"] = {{"size", prof.batch->size},
-                     {"cuts", prof.batch->cut_at_splits ? "splits" : "none"},
-                     {"batches", layout->batches()},
-                     {"time_window", prof.batch_time_window()},
-                     {"module", cpu ? "runtime/batch.cpp (not generated code, D-36)" : "oracle/batch_oracle.cpp"}};
   meta["graph"] = graph;
   meta["edges"] = m;  // the graph is eids [0, edges) (--edges; m otherwise)
   meta["blzg_sha256"] = blzg_sha;
@@ -482,11 +461,7 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
     blz::CpuBlockTiming tm;
     blz::CudaBlockTiming ctm;
     blz::HybridTiming htm;
-    if (layout && cpu) {
-      sat = blz::mine_batch_cpu(index->view(), b, p, prof.k_max, prof.batch_time_window(), *layout, sel, feats.data());
-    } else if (layout) {
-      sat = batch_oracle->mine(b, p, prof.k_max, sel, feats.data());
-    } else if (cpu) {
+    if (cpu) {
       tm = blz::mine_cpu(index->view(), pb->patterns, p, prof.visibility, sel, schedule, feats.data());
       sat = tm.saturated;
     } else if (hybrid) {
@@ -506,10 +481,9 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
         gpu ? std::span<const std::uint32_t>(pinned->data(), cells) : std::span<const std::uint32_t>(feats);
     nlohmann::json j = nlohmann::json::object();
     // A sweep (SPEC v2 §7.1) walks every list entry whatever the sample, so its time is not scaled.
-    // Batch mode computes every batch that holds a sampled row, so rows do not scale it: no estimate.
-    if (sel.sampled && rows > 0 && !layout)
+    if (sel.sampled && rows > 0)
       j["extrapolated_mine_seconds"] = tm.sweep_seconds + (mine_s - tm.sweep_seconds) * double(m) / double(rows);
-    if (cpu && !layout) {
+    if (cpu) {
       j["schedule_seconds"] = tm.schedule_seconds;
       j["loop_seconds"] = tm.loop_seconds;
       j["cpu_plans"] = cpu_plans_json(*pb);
@@ -707,13 +681,11 @@ int compare(const std::string& a_path, const std::string& b_path, const std::str
 // Fuzz graphs (SPEC §13.3) plus their oracle features, for tools/gfp/fuzz_vs_gfp.py. Writes
 // graphs.npy (int64[total, 6]: seed, eid, src, dst, ts, window) and <block>.npy (uint32 rows
 // aligned with graphs.npy) for every v1 block, with the graph's window for every block. With
-// batch > 0 the features are GFP batch mode's (SPEC v2 §8 S1): batches of `batch` edges, no cuts,
-// time_window = the graph's window. With lcyc (SPEC v2 §8 S3, stream mode only), also lcyc.npy:
-// the oracle's lcyc rows, length <= the compiled K_MAX, at `work_limit`; every row of a graph that
-// reaches the limit is UINT32_MAX (tools/gfp/lcyc_vs_gfp.py skips those graphs).
-int fuzz(const std::string& seeds, const std::string& bins_opt, int k_max, std::uint64_t batch, bool vstats,
-         bool lcyc, std::uint64_t work_limit, const std::string& out) {
-  if (lcyc && batch) throw std::runtime_error("fuzz: --lcyc is stream mode only");
+// lcyc (SPEC v2 §8 S3), also lcyc.npy: the oracle's lcyc rows, length <= the compiled K_MAX, at
+// `work_limit`; every row of a graph that reaches the limit is UINT32_MAX (tools/gfp/lcyc_vs_gfp.py
+// skips those graphs).
+int fuzz(const std::string& seeds, const std::string& bins_opt, int k_max, bool vstats, bool lcyc,
+         std::uint64_t work_limit, const std::string& out) {
   const auto [s0, s1] = parse_range(seeds);
   const auto bins = parse_bins(bins_opt);
   std::vector<std::int64_t> rows;
@@ -738,16 +710,11 @@ int fuzz(const std::string& seeds, const std::string& bins_opt, int k_max, std::
       rows.insert(rows.end(), {std::int64_t(seed), std::int64_t(e), fg.src[e], fg.dst[e],
                                fg.ts[e], fg.window});
     const blz::Oracle oracle({fg.src, fg.dst, fg.ts, fg.n});
-    std::optional<blz::BatchOracle> bo;
-    if (batch) bo.emplace(blz::EdgeStream{fg.src, fg.dst, fg.ts, fg.n}, blz::batch_layout(m, batch, {}), fg.window);
-    blz::TriggerSel all;
-    all.last = m;
     for (blz::Block b : blz::kV1Blocks) {  // GFP's blocks: sg_ord has no GFP counterpart
       auto& f = feats[b];
       const std::size_t at = f.size();
       f.resize(at + m * bins.size(), 0);
-      if (bo) bo->mine(b, {fg.window, bins}, k_max, all, f.data() + at);
-      else oracle.mine(b, {fg.window, bins}, k_max, 0, m, f.data() + at);
+      oracle.mine(b, {fg.window, bins}, k_max, 0, m, f.data() + at);
     }
     if (lcyc) {
       auto& f = feats[blz::Block::lcyc];
@@ -990,7 +957,6 @@ int bench(const std::string& graph, const std::string& config, const std::string
   if (reps < 1) throw std::runtime_error("--reps must be >= 1");
   const blz::Profile prof = blz::load_profile(config);
   blz::check_profile_backend(prof, blz::Backend::cpu);
-  if (prof.batch) throw std::runtime_error("bench: GFP batch mode profiles are not supported (SPEC v2 §8 S1)");
   const std::vector<const blz::ProfileBlock*> blocks = select_blocks(prof, blocks_opt);
   const std::vector<int> threads = parse_int_list(threads_opt);
   std::vector<blz::Schedule> schedules;
@@ -1240,7 +1206,6 @@ int bench_hybrid(const std::string& graph, const std::string& config, int reps, 
   if (reps < 1) throw std::runtime_error("--reps must be >= 1");
   const blz::Profile prof = blz::load_profile(config);
   blz::check_profile_backend(prof, blz::Backend::hybrid);
-  if (prof.batch) throw std::runtime_error("bench: GFP batch mode profiles are not supported (SPEC v2 §8 S1)");
   const std::vector<const blz::ProfileBlock*> blocks = select_blocks(prof, blocks_opt);
   const blz::Schedule schedule = blz::parse_schedule(sched_opt);
   const std::vector<std::uint32_t> gpu_h = parse_thresholds(heavy_opt), cpu_h = parse_thresholds(cpu_heavy_opt);
@@ -1481,9 +1446,6 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
       res["hybrid_cpu"] = {{"schedule", "sorted"}, {"reach_prune", true}};
     }
     res["cuda"] = cuda_json();
-  } else if (prof.batch) {
-    res["batch"] = {{"size", prof.batch->size}, {"cuts", prof.batch->cut_at_splits ? "splits" : "none"},
-                    {"time_window", "each graph's window"}};
   } else {
     res["schedules"] = {"dynamic", "sorted"};
   }
@@ -1584,11 +1546,10 @@ int gt_join(const std::string& graph, const std::string& csv, const std::string&
 }
 
 // SPEC v2 §5 (E9): per listed attempt and profile block, structural eligibility (the oracle on the
-// attempt's edges alone, or --eligibility for GFP-produced features), activation (the full
-// mining in --features) and detection (--pred, u8[m] codes of runtime/coverage.hpp).
+// attempt's edges alone), activation (the full mining in --features) and detection (--pred, u8[m]
+// codes of runtime/coverage.hpp).
 int coverage(const std::string& graph, const std::string& gt_path, const std::string& profile_path,
-             const std::string& features, const std::string& pred_path, const std::string& elig_path,
-             const std::string& out) {
+             const std::string& features, const std::string& pred_path, const std::string& out) {
   auto t0 = Clock::now();
   const blz::BlzgView g(graph);
   const std::uint64_t m = g.m();
@@ -1603,39 +1564,17 @@ int coverage(const std::string& graph, const std::string& gt_path, const std::st
   const blz::Profile prof = blz::load_profile(profile_path);   // E403
   blz::check_profile_backend(prof, blz::Backend::oracle);     // E404: eligibility runs the oracle
 
-  // The full mining (activation): a blz manifest of this profile over every edge, or a
-  // GFP-produced pass (tools/gfp/dg2_features.py) at this profile's windows and bins.
+  // The full mining (activation): a blz manifest of this profile over every edge.
   const nlohmann::json fm = nlohmann::json::parse(std::ifstream(features + "/features.json"));
   if (fm.at("blzg_sha256") != blzg_sha) throw std::runtime_error(features + " was mined from another .blzg");
-  const bool gfp = fm.value("producer", "") == "tools/gfp/dg2_features.py";
-  nlohmann::ordered_json jfeat = {{"dir", features}, {"source", gfp ? "gfp" : "blz"}};
-  if (gfp) {
-    if (fm.at("rows").at("first") != 0 || fm.at("rows").at("last") != m)
-      throw std::runtime_error(features + ": not every edge's row");
-    for (const blz::ProfileBlock& pb : prof.blocks) {
-      const std::string b(blz::block_name(pb.block));
-      const auto& fb = fm.at("blocks").at(b);
-      if (fb.at("window") != pb.params.window || fb.at("bins") != nlohmann::json(pb.params.bins))
-        throw std::runtime_error(features + ": block " + b + " has another window or bins than " + profile_path);
-    }
-    if (elig_path.empty())
-      throw std::runtime_error(features + " is GFP-produced: its eligibility runs the same GFP recipe (SPEC v2 §5); "
-                               "give --eligibility from tools/gfp/coverage_gfp.py");
-    jfeat["gfp_recipe"] = fm.at("gfp_recipe").at("id");
-    jfeat["causal"] = fm.at("causal");
-    jfeat["row_sees"] = fm.at("row_sees");
-  } else {
-    if (fm.at("profile").at("id") != prof.id())
-      throw std::runtime_error(features + ": profile " + fm.at("profile").at("id").get<std::string>() + ", not " +
-                               prof.id() + " (" + profile_path + ")");
-    const auto& tr = fm.at("triggers");
-    if (tr.value("sampled", false) || tr.at("first") != 0 || tr.at("last") != m || fm.value("edges", m) != m)
-      throw std::runtime_error(features + ": not a mining of every edge");
-    if (!elig_path.empty())
-      throw std::runtime_error("--eligibility is for GFP-produced features; blz features use the oracle (SPEC v2 §5)");
-    jfeat["profile_id"] = prof.id();
-    jfeat["backend"] = fm.at("backend").at("name");
-  }
+  if (fm.at("profile").at("id") != prof.id())
+    throw std::runtime_error(features + ": profile " + fm.at("profile").at("id").get<std::string>() + ", not " +
+                             prof.id() + " (" + profile_path + ")");
+  const auto& tr = fm.at("triggers");
+  if (tr.value("sampled", false) || tr.at("first") != 0 || tr.at("last") != m || fm.value("edges", m) != m)
+    throw std::runtime_error(features + ": not a mining of every edge");
+  nlohmann::ordered_json jfeat = {
+      {"dir", features}, {"source", "blz"}, {"profile_id", prof.id()}, {"backend", fm.at("backend").at("name")}};
   std::deque<blz::NpyU32View> views;  // not movable: a deque never relocates them
   nlohmann::ordered_json jfiles;
   for (const blz::ProfileBlock& pb : prof.blocks) {
@@ -1644,7 +1583,7 @@ int coverage(const std::string& graph, const std::string& gt_path, const std::st
     views.emplace_back(features + "/" + fb.at("file").get<std::string>());
     if (views.back().rows() != m || views.back().cols() != pb.params.bins.size())
       throw std::runtime_error(features + ": block " + b + " is not m x bins");
-    jfiles[b] = fb.contains("output_fnv1a") ? fb.at("output_fnv1a") : fb.at("output_sha256");
+    jfiles[b] = fb.at("output_fnv1a");
   }
   jfeat["blocks"] = jfiles;
 
@@ -1665,33 +1604,7 @@ int coverage(const std::string& graph, const std::string& gt_path, const std::st
     jpred = {{"file", pred_path}, {"sha256", file_sha256(pred_path)}};
   }
 
-  nlohmann::ordered_json jelig = {{"source", gfp ? "external" : "oracle"}};
-  if (!elig_path.empty()) {
-    const nlohmann::json el = nlohmann::json::parse(std::ifstream(elig_path));
-    if (el.at("producer") != "tools/gfp/coverage_gfp.py") throw std::runtime_error(elig_path + ": not written by tools/gfp/coverage_gfp.py");
-    if (el.at("gfp_recipe") != fm.at("gfp_recipe"))
-      throw std::runtime_error(elig_path + ": its GFP recipe differs from " + features + "'s");
-    if (el.at("gt_join_sha256") != file_sha256(gt_path)) throw std::runtime_error(elig_path + ": computed from another gt-join");
-    std::vector<std::size_t> col;  // profile block -> column of the file's rows
-    const auto names = el.at("blocks").get<std::vector<std::string>>();
-    for (const blz::ProfileBlock& pb : prof.blocks) {
-      auto it = std::find(names.begin(), names.end(), std::string(blz::block_name(pb.block)));
-      if (it == names.end()) throw std::runtime_error(elig_path + ": no block " + std::string(blz::block_name(pb.block)));
-      col.push_back(std::size_t(it - names.begin()));
-    }
-    for (const auto& a : el.at("attempts")) {
-      const auto r = a.at("rows").get<std::vector<std::uint64_t>>();
-      if (r.size() != names.size()) throw std::runtime_error(elig_path + ": a row of the wrong width");
-      std::vector<std::uint64_t> v;
-      for (std::size_t c : col) v.push_back(r[c]);
-      in.external_eligible[a.at("id").get<std::int64_t>()] = v;
-    }
-    jelig = {{"source", "gfp"},
-             {"file", elig_path},
-             {"sha256", file_sha256(elig_path)},
-             {"gfp_recipe", el.at("gfp_recipe").at("id")},
-             {"call", el.at("call")}};
-  }
+  const nlohmann::ordered_json jelig = {{"source", "oracle"}};
 
   nlohmann::ordered_json res = blz::coverage(in);
   nlohmann::ordered_json head = {
@@ -1782,8 +1695,6 @@ int main(int argc, char** argv) {
   fz->add_option("--seeds", seeds, "a:b")->required();
   fz->add_option("--bins", bins);
   fz->add_option("--k-max", k_max, "tcyc cap; the default exceeds every fuzz graph's n");
-  std::uint64_t fz_batch = 0;
-  fz->add_option("--batch", fz_batch, "GFP batch mode (SPEC v2 §8 S1) with batches of this many edges (0: stream mode)");
   bool fz_vstats = false;
   fz->add_flag("--vstats", fz_vstats, "also amounts.npy and vstats.npy (SPEC v2 §8 S2): window = the graph's, ts offset 1");
   bool fz_lcyc = false;
@@ -1867,14 +1778,13 @@ int main(int argc, char** argv) {
   gj->add_option("--patterns", gt_patterns)->required();
   gj->add_option("--out", out)->required();
 
-  std::string gt_path = "results/gt_join.json", pred_path, elig_path;
+  std::string gt_path = "results/gt_join.json", pred_path;
   auto* cv = app.add_subcommand("coverage", "SPEC v2 §5 (E9): eligibility, activation and detection per listed attempt");
   cv->add_option("--graph", graph)->required();
   cv->add_option("--gt", gt_path, "blz gt-join output");
   cv->add_option("--profile", profile, "the profile whose blocks are covered")->required();
-  cv->add_option("--features", features, "the full mining under the profile (blz mine, or tools/gfp/dg2_features.py)")->required();
+  cv->add_option("--features", features, "the full mining under the profile (blz mine)")->required();
   cv->add_option("--pred", pred_path, "u8[m] prediction codes: 0, 1, 255 = not scored");
-  cv->add_option("--eligibility", elig_path, "GFP-produced features: tools/gfp/coverage_gfp.py output");
   cv->add_option("--threads", threads);
   cv->add_option("--out", out)->required();
 
@@ -1927,13 +1837,13 @@ int main(int argc, char** argv) {
     if (*gj) return gt_join(graph, gt_csv, gt_patterns, out);
     if (*cv) {
       if (threads > 0) omp_set_num_threads(threads);
-      return coverage(graph, gt_path, profile, features, pred_path, elig_path, out);
+      return coverage(graph, gt_path, profile, features, pred_path, out);
     }
     if (*cmp) {
       if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");
       return compare(a_npy, b_npy, graph, tw, first_eid, report, name);
     }
-    if (*fz) return fuzz(seeds, bins, k_max, fz_batch, fz_vstats, fz_lcyc, work_limit, out);
+    if (*fz) return fuzz(seeds, bins, k_max, fz_vstats, fz_lcyc, work_limit, out);
     if (*vsc) return vstats(graph, vs_window, vs_ts_offset, backend == "oracle" ? "cpu" : backend, threads, triggers, out);
     if (*tr) return train(graph, features, set, xgb, out, name.empty() ? set : name, threads);
   } catch (const std::exception& e) {

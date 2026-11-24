@@ -4,7 +4,6 @@
 // (structural eligibility), whether the block fires on them in the full mining (activation), and
 // which of its validation and test edges a classifier flags (detection).
 #include <cstdint>
-#include <map>
 #include <span>
 #include <string>
 #include <vector>
@@ -68,17 +67,13 @@ struct CoverageInputs {
   // u8[m] prediction codes, or empty (no detection). Fit rows must be kNotScored: they are
   // training data. A split is either scored (every row 0 or 1) or not (every row 255).
   std::span<const std::uint8_t> pred;
-  // Normative eligibility computed elsewhere (§5: GFP for a GFP-produced block): attempt id ->
-  // non-zero rows per profile block. Empty: the oracle's is normative. When given, the oracle's
-  // is still computed and reported as `eligible_oracle`.
-  std::map<std::int64_t, std::vector<std::uint64_t>> external_eligible;
 };
 
 // The coverage of one profile:
 // - `blocks`: the profile's block names, which index every per-block array;
 // - `attempts`: per attempt, its edges per split and, for a complete attempt, `eligible` and
-//   `activated` (non-zero rows per block), `eligible_oracle` (with external eligibility) and
-//   `predicted` (predicted-positive edges per scored split);
+//   `activated` (non-zero rows per block) and `predicted` (predicted-positive edges per scored
+//   split);
 // - `by_typology` (alphabetical, then "ALL"): attempt counts by status and split, span
 //   percentiles in hours (numpy's linear interpolation, complete attempts), per block (and "any")
 //   the complete attempts eligible, activated, and eligible but not activated, and `det_val`,

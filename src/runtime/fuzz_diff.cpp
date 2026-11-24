@@ -2,14 +2,11 @@
 
 #include <algorithm>
 #include <memory>
-#include <optional>
 #include <stdexcept>
 
 #include "graph/fuzz_gen.hpp"
 #include "graph/index.hpp"
-#include "oracle/batch_oracle.hpp"
 #include "oracle/oracle.hpp"
-#include "runtime/batch.hpp"
 #include "runtime/cuda_backend.hpp"
 #include "runtime/fusion.hpp"
 #include "runtime/hybrid.hpp"
@@ -65,29 +62,12 @@ FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, 
     bool limited = false;
     TriggerSel all;
     all.last = m;
-    // GFP batch mode (SPEC v2 §8 S1): the batch oracle against the CPU module. Every block has the
-    // graph's window, so GFP's time_window is that window; `cuts: splits` cuts at the graph's own
-    // b_fv and train/test boundary.
-    std::optional<BatchLayout> layout;
-    std::optional<BatchOracle> batch_oracle;
-    if (prof.batch) {
-      layout = batch_layout(*prof.batch, m, fg.ts);
-      batch_oracle.emplace(EdgeStream{fg.src, fg.dst, fg.ts, fg.n}, *layout, fg.window);
-    }
     for (const ProfileBlock& pb : prof.blocks) {
       const Block b = pb.block;
       BlockParams p{fg.window, block_bins[int(b)]};
       p.work_limit = work_limit;
       const std::size_t nb = p.bins.size();
       std::vector<std::uint32_t> want(m * nb, 0);
-      if (layout) {
-        batch_oracle->mine(b, p, k_max, all, want.data());
-        std::vector<std::uint32_t> got(m * nb, 0);
-        mine_batch_cpu(index.view(), b, p, k_max, fg.window, *layout, all, got.data());
-        for (std::uint64_t e = 0; e < m; ++e)
-          bad[int(b)] += !std::equal(got.begin() + e * nb, got.begin() + (e + 1) * nb, want.begin() + e * nb);
-        continue;
-      }
       const std::uint64_t stop = stop_eid([&] { oracle.mine(b, p, k_max, 0, m, want.data()); });
       limited = limited || stop != UINT64_MAX;
       // A block with a pattern planned for reachability pruning (SPEC v2 §8 S6) runs both ways.

@@ -149,22 +149,11 @@ TEST_CASE("coverage: eligibility, activation, detection and positives") {
   CHECK(nlohmann::ordered_json::parse(text) == j);
 }
 
-TEST_CASE("coverage: external eligibility and input checks") {
+TEST_CASE("coverage: input checks") {
   const auto blocks = full_mining(v1_default());
   CoverageInputs in = inputs(blocks);
-  in.external_eligible = {{0, {1, 2, 0, 2, 0, 0}}, {1, {0, 0, 0, 0, 0, 1}}};
   const auto j = coverage(in);
-  CHECK(j["eligibility"] == "external");
-  CHECK(u64s(j["attempts"][0]["eligible"]) == std::vector<std::uint64_t>{1, 2, 0, 2, 0, 0});
-  CHECK(u64s(j["attempts"][0]["eligible_oracle"]) == std::vector<std::uint64_t>{0, 2, 0, 2, 0, 0});
-  CHECK(j["by_typology"]["ALL"]["eligible_oracle"]["fan_in"] == 0);
   CHECK(j["by_typology"]["ALL"]["det_val"]["mean"].is_null());  // no --pred
-
-  in.external_eligible.erase(1);
-  CHECK_THROWS(coverage(in));
-  in.external_eligible = {{0, {9, 0, 0, 0, 0, 0}}, {1, {0, 0, 0, 0, 0, 1}}};  // more rows than edges
-  CHECK_THROWS(coverage(in));
-  in.external_eligible.clear();
 
   std::vector<std::uint8_t> pred(10, 0);  // scores fit rows
   in.pred = pred;

@@ -5,10 +5,6 @@ empty dict means "no instance"). Every probe except A28, A29 and A33 (GFP behavi
 code does not reproduce) is also written, with GFP's full
 per-edge output, to tests/golden/gfp_probes.json for the C++ tests.
 
-The batch-mode probes A34-A37 and A39-A42 (SPEC v2 Appendix A') assert what GFP does with several
-transform() batches, re-sent edges and eviction. They describe GFP, not this repo's semantics,
-so they go to a separate file, tests/golden/gfp_batch_probes.json (SPEC v2 §10; used by S1).
-
 The vertex-statistics probes A43-A45 (S2) assert GFP's window, formulas and guard against the S2
 rule (vs_model) and each rejected alternative, and A45 its running-accumulator drift after
 eviction. GFP's rows go to tests/golden/gfp_vstats_probes.json (test_vstats.cpp).
@@ -18,7 +14,6 @@ against the S3 rule (lcyc_vs_gfp.lc_model) and each rejected alternative. GFP's 
 rule's without ties (blz's lcyc) go to tests/golden/gfp_lcyc_probes.json (test_lcyc.cpp).
 
 Usage: uv run probes.py [--out ../../tests/golden/gfp_probes.json]
-                        [--batch-out ../../tests/golden/gfp_batch_probes.json]
                         [--vstats-out ../../tests/golden/gfp_vstats_probes.json]
                         [--lcyc-out ../../tests/golden/gfp_lcyc_probes.json] [--check-only]
 """
@@ -129,90 +124,6 @@ CASES = [
 ]
 
 
-# S1 (SPEC v2 §8 S1, Appendix A' A39-A42): the batch-mode rules of the addendum. Each fixture is
-# the shrunk graph on which GFP gives the pinned rule's rows and a rejected alternative does not
-# (found by search; the alternatives name the rule they replace). Expectations are GFP's rows for
-# the blocks where the alternative differs, every edge listed. tw is one window for every
-# pattern, or {"sg": SG's, "other": the others'}; GFP's time_window is the largest (-1).
-#   A39 fan/degree (rule 1): eid_le = only eids <= e; later_ts = batch edges with ts > t too;
-#       closed = ts >= t - delta; loops_in = self-loops in W; loop_trig_skip = self-loop triggers
-#       do not search; trigger_only = credit e only (v1).
-#   A40 tcyc (rule 2): open = ts > t - delta; trigger_only; all_hop_edges = credit every window
-#       edge between consecutive cycle nodes; per_path = one instance per edge path.
-#   A41 SG reports (rule 3): {g,s}_find_hi=t = pairs found in win, not up; {g,s}_find_lo=g =
-#       pairs found from the evicted graph's lower bound; kill_ties_too = later edges with ts = t
-#       suppress; no_excl_on_later = the excluded node x suppresses; no_loop_searchers.
-#   A42 SG suppression (rule 3): no_suppression; <role>_kill_<side>=<view>: the view in which
-#       the other edge of a suppressing later edge is looked up (gather: G for a later y -> w, up
-#       for a later s -> y; scatter the reverse); e = up, g = G, b = from the batch's first ts
-#       - delta, a = every edge, off = that side never suppresses; TW=sg|other = G's eviction
-#       uses that window instead of the largest.
-S1_RULES = [
-    ('A39', ['fan/closed'], '0>1@1 0>2@8', 7, [],
-     [E(0, {'fan_out': {}, 'deg_out': {}}), E(1, {'fan_out': {}, 'deg_out': {}})]),
-    ('A39', ['fan/eid_le', 'fan/trigger_only'], '0>1@1 2>1@1', 7, [],
-     [E(0, {'fan_in': {2: 2}, 'deg_in': {2: 2}}), E(1, {'fan_in': {2: 2}, 'deg_in': {2: 2}})]),
-    ('A39', ['fan/later_ts'], '0>1@1 0>2@2', 7, [],
-     [E(0, {'fan_out': {2: 1}, 'deg_out': {2: 1}}), E(1, {'fan_out': {2: 1}, 'deg_out': {2: 1}})]),
-    ('A39', ['fan/loop_trig_skip'], '0>1@1 2>1@1 1>1@1', 7, [],
-     [E(0, {'fan_in': {2: 3}, 'deg_in': {2: 3}}), E(1, {'fan_in': {2: 3}, 'deg_in': {2: 3}}), E(2, {'fan_in': {}, 'deg_in': {}})]),
-    ('A39', ['fan/loops_in'], '0>0@1 0>1@1', 7, [],
-     [E(0, {'fan_out': {}, 'deg_out': {}}), E(1, {'fan_out': {}, 'deg_out': {}})]),
-    ('A40', ['cyc/all_hop_edges'], '0>1@1 1>2@2 0>1@8 2>0@16', 17, [],
-     [E(0, {'tcyc': {3: 1}}), E(1, {'tcyc': {3: 1}}), E(2, {'tcyc': {}}), E(3, {'tcyc': {3: 1}})]),
-    ('A40', ['cyc/open'], '0>1@1 1>0@8', 7, [],
-     [E(0, {'tcyc': {2: 1}}), E(1, {'tcyc': {2: 1}})]),
-    ('A40', ['cyc/per_path'], '0>1@1 0>1@4 1>0@6', 7, [],
-     [E(0, {'tcyc': {2: 1}}), E(1, {'tcyc': {2: 1}}), E(2, {'tcyc': {2: 1}})]),
-    ('A40', ['cyc/trigger_only'], '0>1@1 1>0@4', 7, [],
-     [E(0, {'tcyc': {2: 1}}), E(1, {'tcyc': {2: 1}})]),
-    ('A41', ['sg/g_find_hi=t'], '0>1@1 2>3@1 1>3@4 0>2@6 3>3@11 0>3@20', 10, [],
-     [E(0, {'sg': {2: 1}}), E(1, {'sg': {2: 1}}), E(2, {'sg': {2: 1}}), E(3, {'sg': {2: 1}}), E(4, {'sg': {}}), E(5, {'sg': {}})]),
-    ('A41', ['sg/g_find_lo=g'], '0>1@1 0>2@3 0>3@4 3>1@6 2>1@10 1>1@13', 10, [],
-     [E(0, {'sg': {}}), E(1, {'sg': {2: 1}}), E(2, {'sg': {2: 1}}), E(3, {'sg': {2: 1}}), E(4, {'sg': {2: 1}}), E(5, {'sg': {}})]),
-    ('A41', ['sg/kill_ties_too'], '0>1@1 2>1@6 3>2@9 3>0@9', 11, [],
-     [E(0, {'sg': {2: 2}}), E(1, {'sg': {2: 2}}), E(2, {'sg': {2: 2}}), E(3, {'sg': {2: 2}})]),
-    ('A41', ['sg/no_excl_on_later'], '0>0@1 0>1@1 0>2@1 2>1@4 1>1@5', 6, [],
-     [E(0, {'sg': {2: 2}}), E(1, {'sg': {2: 2}}), E(2, {'sg': {2: 2}}), E(3, {'sg': {2: 2}}), E(4, {'sg': {}})]),
-    ('A41', ['sg/no_loop_searchers'], '0>1@1 2>2@6 2>0@9 2>1@11 1>1@12', 12, [],
-     [E(0, {'sg': {2: 1}}), E(1, {'sg': {2: 1}}), E(2, {'sg': {2: 1}}), E(3, {'sg': {2: 1}}), E(4, {'sg': {}})]),
-    ('A41', ['sg/s_find_hi=t'], '0>1@1 1>2@3 3>2@4 0>3@5 0>0@8 0>2@25', 9, [],
-     [E(0, {'sg': {2: 2}}), E(1, {'sg': {2: 2}}), E(2, {'sg': {2: 2}}), E(3, {'sg': {2: 2}}), E(4, {'sg': {}}), E(5, {'sg': {}})]),
-    ('A41', ['sg/s_find_lo=g'], '0>1@1 2>1@5 1>1@7 2>3@9 3>1@10 2>0@11', 9, [],
-     [E(0, {'sg': {}}), E(1, {'sg': {}}), E(2, {'sg': {}}), E(3, {'sg': {}}), E(4, {'sg': {}}), E(5, {'sg': {}})]),
-    ('A42', ['sg/TW=other'], '0>0@1 1>0@3 2>3@4 3>0@10 2>1@11 2>0@13', {'sg': 12, 'other': 5}, [4],
-     [E(0, {'sg': {}}), E(1, {'sg': {}}), E(2, {'sg': {}}), E(3, {'sg': {}}), E(4, {'sg': {}}), E(5, {'sg': {}})]),
-    ('A42', ['sg/TW=sg'], '0>1@1 0>2@7 2>3@10 4>2@14 4>3@14 0>4@14 1>3@25', {'sg': 11, 'other': 18}, [4],
-     [E(0, {'sg': {}}), E(1, {'sg': {}}), E(2, {'sg': {}}), E(3, {'sg': {}}), E(4, {'sg': {2: 1}}), E(5, {'sg': {2: 1}}), E(6, {'sg': {}})]),
-    ('A42', ['sg/g_kill_g=a'], '0>1@1 0>2@33 2>3@37 4>3@41 0>4@41 1>3@42', 10, [3],
-     [E(0, {'sg': {}}), E(1, {'sg': {}}), E(2, {'sg': {}}), E(3, {'sg': {2: 2}}), E(4, {'sg': {2: 2}}), E(5, {'sg': {}})]),
-    ('A42', ['sg/g_kill_g=b'], '0>1@1 0>2@7 2>3@10 4>3@14 0>4@14 1>3@25', 11, [3],
-     [E(0, {'sg': {}}), E(1, {'sg': {}}), E(2, {'sg': {}}), E(3, {'sg': {2: 1}}), E(4, {'sg': {2: 1}}), E(5, {'sg': {}})]),
-    ('A42', ['sg/g_kill_g=e', 'sg/s_kill_g=g', 'sg/s_kill_g=a'], '0>1@1 0>2@7 2>3@10 4>3@14 0>4@14 1>3@25', 11, [],
-     [E(0, {'sg': {}}), E(1, {'sg': {2: 1}}), E(2, {'sg': {2: 1}}), E(3, {'sg': {2: 1}}), E(4, {'sg': {2: 1}}), E(5, {'sg': {}})]),
-    ('A42', ['sg/g_kill_g=off'], '0>1@1 2>0@2 2>3@7 3>1@12 0>1@29', 12, [],
-     [E(0, {'sg': {}}), E(1, {'sg': {}}), E(2, {'sg': {}}), E(3, {'sg': {}}), E(4, {'sg': {}})]),
-    ('A42', ['sg/g_kill_s=b', 'sg/g_kill_s=g', 'sg/g_kill_s=a'], '0>1@1 2>1@5 2>2@10 3>1@12 2>3@12 2>0@20', 9, [],
-     [E(0, {'sg': {}}), E(1, {'sg': {2: 1}}), E(2, {'sg': {2: 1}}), E(3, {'sg': {2: 1}}), E(4, {'sg': {2: 1}}), E(5, {'sg': {}})]),
-    ('A42', ['sg/g_kill_s=off'], '0>1@1 0>2@2 1>3@2 2>3@3 0>2@31', 10, [],
-     [E(0, {'sg': {}}), E(1, {'sg': {}}), E(2, {'sg': {}}), E(3, {'sg': {}}), E(4, {'sg': {}})]),
-    ('A42', ['sg/no_suppression'], '0>1@1 0>2@7 2>3@7 1>3@9 1>3@18', 8, [],
-     [E(0, {'sg': {}}), E(1, {'sg': {}}), E(2, {'sg': {}}), E(3, {'sg': {}}), E(4, {'sg': {}})]),
-    ('A42', ['sg/s_kill_g=b'], '0>1@1 2>2@27 3>2@28 0>3@31 0>2@31 1>2@40', 8, [],
-     [E(0, {'sg': {}}), E(1, {'sg': {2: 1}}), E(2, {'sg': {2: 1}}), E(3, {'sg': {2: 1}}), E(4, {'sg': {2: 1}}), E(5, {'sg': {}})]),
-    ('A42', ['sg/s_kill_g=off'], '0>1@1 1>1@4 2>1@10 0>2@11 1>1@14', 12, [],
-     [E(0, {'sg': {}}), E(1, {'sg': {}}), E(2, {'sg': {}}), E(3, {'sg': {}}), E(4, {'sg': {}})]),
-    ('A42', ['sg/s_kill_s=a'], '0>0@1 1>2@31 3>4@32 1>0@32 4>0@32 3>1@32 3>0@34', 6, [2],
-     [E(0, {'sg': {}}), E(1, {'sg': {}}), E(2, {'sg': {2: 4}}), E(3, {'sg': {2: 4}}), E(4, {'sg': {2: 4}}), E(5, {'sg': {2: 4}}), E(6, {'sg': {}})]),
-    ('A42', ['sg/s_kill_s=b'], '0>1@1 2>3@2 4>1@9 3>1@10 2>4@13 2>0@15', 11, [4],
-     [E(0, {'sg': {}}), E(1, {'sg': {}}), E(2, {'sg': {}}), E(3, {'sg': {}}), E(4, {'sg': {}}), E(5, {'sg': {}})]),
-    ('A42', ['sg/s_kill_s=e'], '0>1@1 1>1@10 2>1@12 3>1@13 2>3@15 2>0@24', 10, [],
-     [E(0, {'sg': {}}), E(1, {'sg': {}}), E(2, {'sg': {}}), E(3, {'sg': {}}), E(4, {'sg': {}}), E(5, {'sg': {}})]),
-    ('A42', ['sg/s_kill_s=off'], '0>1@1 2>3@3 3>1@6 2>0@7 2>0@9', 11, [],
-     [E(0, {'sg': {2: 1}}), E(1, {'sg': {2: 1}}), E(2, {'sg': {2: 1}}), E(3, {'sg': {2: 1}}), E(4, {'sg': {2: 1}})]),
-]
-
-
 def fresh():
     return make_preprocessor(ALL_PATTERNS, 100, BINS, lc_len=LC_LEN)
 
@@ -226,125 +137,6 @@ def run_stream(es, tw):
 def run_batch(g, es):
     X = np.array([[i, s, d, t] for i, (s, d, t) in enumerate(es)], dtype=np.float64)
     return [split_blocks(row, ALL_PATTERNS, len(BINS)) for row in g.transform(X)]
-
-
-def X_of(es):
-    return np.array([[i, s, d, t] for i, (s, d, t) in enumerate(es)], dtype=np.float64)
-
-
-def pattern_tw(tw):
-    """A probe's tw (int, or {"sg": x, "other": y}) -> make_preprocessor's tw."""
-    if isinstance(tw, int):
-        return tw
-    return {p: tw["sg"] if p == "scatter-gather" else tw["other"] for p in ALL_PATTERNS}
-
-
-def run_cuts(es, tw, cuts, **params):
-    """A fresh preprocessor fed `es` as consecutive transform() batches that end at `cuts`."""
-    g = make_preprocessor(ALL_PATTERNS, pattern_tw(tw), BINS, lc_len=LC_LEN)
-    if params:
-        p = g.get_params()
-        p.update(params)
-        g.set_params(p)
-    X, out, a = X_of(es), [], 0
-    for c in list(cuts) + [len(es)]:
-        if c > a:
-            out += [split_blocks(row, ALL_PATTERNS, len(BINS)) for row in g.transform(X[a:c])]
-        a = c
-    return out
-
-
-def batch_probes(failures):
-    """SPEC v2 Appendix A' (A34-A37, A39-A42). Returns the golden cases: edges, call recipe, GFP's rows."""
-    cases = []
-
-    def record(case_id, es, tw, recipe, out):
-        cases.append({"id": case_id, "edges": [list(e) for e in es], "tw": tw, "recipe": recipe, "output": out})
-        return out
-
-    def want(case_id, ok, what):
-        if not ok:
-            failures.append(f"{case_id}: {what}")
-
-    a1, a5 = edges(A1), edges(A5)
-    every = lambda es: list(range(1, len(es)))  # stream mode: one edge per batch
-    # A34: batch boundaries. A batch's rows see the edges of earlier batches (they are in the
-    # graph), never those of later batches, and they do not depend on how the earlier edges were
-    # batched: the graph state is the edge set.
-    one = record("A34/A1/one-batch", a1, 100, {"cuts": []}, run_cuts(a1, 100, []))
-    two = record("A34/A1/cuts=2", a1, 100, {"cuts": [2]}, run_cuts(a1, 100, [2]))
-    head = run_cuts(a1[:2], 100, [])
-    want("A34/A1", two[:2] == head, "batch 1's rows changed when batch 2 followed")
-    want("A34/A1", two[0]["fan_in"] == hist({2: 1}) and one[0]["fan_in"] == hist({2: 2, 3: 1, 4: 1}),
-         "edge 0 sees batch 2's edges")
-    want("A34/A1", two[2]["fan_in"] == hist({2: 1, 3: 1, 4: 1}), "edge 2 (batch 2) does not see batch 1's edges")
-    split = record("A34/A5/cuts=1,2,3", a5, 100, {"cuts": [1, 2, 3]}, run_cuts(a5, 100, [1, 2, 3]))
-    whole = record("A34/A5/cuts=3", a5, 100, {"cuts": [3]}, run_cuts(a5, 100, [3]))
-    want("A34/A5", split[3:] == whole[3:], "batch 2's rows depend on how the earlier edges were batched")
-    # A35: credit across batches. An instance completed in batch k credits only the participant
-    # edges of batch k; earlier participants' rows were already returned and get nothing. An SG
-    # instance (s, w) is credited once per edge of the batch, at its size in the batch.
-    c4 = record("A35/A5/cuts=4", a5, 100, {"cuts": [4]}, run_cuts(a5, 100, [4]))
-    want("A35/A5", not any(c4[3]["sg"]) and c4[4]["sg"] == hist({3: 1}) and c4[5]["sg"] == hist({3: 1}),
-         "1>5 (batch 1) is credited, or 2>5 and 3>5 (batch 2) are not, for the instance batch 2 completes")
-    want("A35/A5", all(r["sg"] == hist({3: 1}) for r in run_cuts(a5, 100, [])),
-         "in one batch every participant gets sg{3:1}")
-    want("A35/A5", all(not any(r["sg"]) for r in whole[:3]) and all(r["sg"] == hist({3: 1}) for r in whole[3:]),
-         "cuts=3: batch 1 has no sg, every batch-2 edge sg{3:1}")
-    # A36: re-sent edges (extends A29). fit_transform(X) = fit(X) + transform(X) behaves exactly
-    # like sending X twice to a fresh preprocessor. Per pattern group: fan counts double, SG
-    # counts double, degree instance sizes double (re-sent edges count as parallel edges), tcyc
-    # changes unevenly. A chunked transform after fit differs from one transform call.
-    cyc = edges("10>11@1 11>12@2 12>10@3 10>12@4 12>10@5")
-    for name, es in (("A1", a1), ("A5", a5), ("cyc", cyc)):
-        X = X_of(es)
-        fresh = run_batch(fresh_pp(), es)
-        g = fresh_pp()
-        ft = [split_blocks(r, ALL_PATTERNS, len(BINS)) for r in g.fit_transform(X)]
-        g = fresh_pp()
-        g.transform(X)
-        resend = [split_blocks(r, ALL_PATTERNS, len(BINS)) for r in g.transform(X)]
-        g = fresh_pp()
-        g.fit(X)
-        chunked = [split_blocks(r, ALL_PATTERNS, len(BINS)) for r in g.transform(X[:2])]
-        chunked += [split_blocks(r, ALL_PATTERNS, len(BINS)) for r in g.transform(X[2:])]
-        record(f"A36/{name}/fresh", es, 100, {"cuts": []}, fresh)
-        record(f"A36/{name}/fit_transform", es, 100, {"fit_transform": True}, ft)
-        record(f"A36/{name}/fit+transform[:2]+transform[2:]", es, 100, {"fit": True, "cuts": [2]}, chunked)
-        want(f"A36/{name}", ft == resend, "fit_transform differs from sending the edges twice")
-        want(f"A36/{name}", ft != fresh and chunked != ft, "fit_transform equals fresh, or chunking changes nothing")
-        if name == "A1":
-            want("A36/A1", all(f["fan_in"] == [2 * x for x in r["fan_in"]] for f, r in zip(ft, fresh)),
-                 "fan counts are not exactly doubled")
-            want("A36/A1", ft[0]["deg_in"] == hist({2: 2, 4: 2, 6: 2, 8: 2, 10: 2}),
-                 "degree sizes of edge 0 are not doubled ({2,3,4,5} -> {4,6,8,10}, plus size 2)")
-        if name == "A5":
-            want("A36/A5", all(f["sg"] == [2 * x for x in r["sg"]] for f, r in zip(ft, fresh)),
-                 "sg counts are not exactly doubled")
-        if name == "cyc":
-            want("A36/cyc", ft[3]["tcyc"] == hist({2: 3}) and fresh[3]["tcyc"] == hist({2: 2})
-                 and ft[4]["tcyc"] == fresh[4]["tcyc"], "tcyc does not change unevenly as recorded")
-    # A37: eviction. time_window below the largest pattern window changes nothing (GFP keeps that
-    # window). max_no_edges = 2 leaves a stream edge the 2 most recent earlier edges, but a batch
-    # always sees all of its own edges.
-    ev = edges("1>9@1 2>9@2 1>9@3 3>9@4 4>9@8")
-    base_s, base_b = run_cuts(ev, 10, every(ev)), run_cuts(ev, 10, [])
-    for kw in ({"time_window": 3}, {"max_no_edges": 2}):
-        tag = ",".join(f"{k}={v}" for k, v in kw.items())
-        s_out = record(f"A37/{tag}/stream", ev, 10, {"cuts": every(ev), **kw}, run_cuts(ev, 10, every(ev), **kw))
-        b_out = record(f"A37/{tag}/one-batch", ev, 10, {"cuts": [], **kw}, run_cuts(ev, 10, [], **kw))
-        want(f"A37/{tag}", b_out == base_b, "a batch lost some of its own edges")
-        if "time_window" in kw:
-            want("A37/time_window", s_out == base_s, "time_window below the pattern window evicted edges")
-        else:
-            want("A37/max_no_edges", s_out[4]["fan_in"] == hist({3: 1}) and base_s[4]["fan_in"] == hist({4: 1}),
-                 "a stream edge sees other than the 2 most recent edges plus itself")
-    # A39-A42: the S1 rules, each fixture against the alternatives it rejects.
-    for anums, alts, spec, tw, cuts, expects in S1_RULES:
-        es = edges(spec)
-        case_id = f"{anums}/{'+'.join(alts)}"
-        check(case_id, record(case_id, es, tw, {"cuts": cuts}, run_cuts(es, tw, cuts)), expects, failures)
-    return cases
 
 
 def bin_rule_probe(failures):
@@ -591,10 +383,6 @@ def lcyc_probes(failures):
     return cases
 
 
-def fresh_pp():
-    return make_preprocessor(ALL_PATTERNS, 100, BINS, lc_len=LC_LEN)
-
-
 def write_golden(path, doc, cases):
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     head = json.dumps(doc, indent=1)[:-2]  # one case per line keeps diffs readable
@@ -615,7 +403,6 @@ def main():
     ap = argparse.ArgumentParser()
     here = Path(__file__).resolve().parent
     ap.add_argument("--out", default=str(here.parents[1] / "tests/golden/gfp_probes.json"))
-    ap.add_argument("--batch-out", default=str(here.parents[1] / "tests/golden/gfp_batch_probes.json"))
     ap.add_argument("--vstats-out", default=str(here.parents[1] / "tests/golden/gfp_vstats_probes.json"))
     ap.add_argument("--lcyc-out", default=str(here.parents[1] / "tests/golden/gfp_lcyc_probes.json"))
     ap.add_argument("--check-only", action="store_true")
@@ -670,13 +457,12 @@ def main():
         check(f"A33/{spec}/tw={tw}", run_stream(es, tw), [E(len(es) - 1, tcyc=want)], failures)
 
     bin_rule_probe(failures)
-    batch_cases = batch_probes(failures)
     vstats_cases = vstats_probes(failures)
     lcyc_cases = lcyc_probes(failures)
 
     for f in failures:
         print("FAIL", f, file=sys.stderr)
-    print(f"{len(CASES)} stream probes + A28 + A29 + A33 + A38 + batch probes A34-A37, A39-A42 ({len(batch_cases)} cases)"
+    print(f"{len(CASES)} stream probes + A28 + A29 + A33 + A38"
           f" + vertex-statistics probes A43-A45 ({len(vstats_cases)} cases)"
           f" + lc-cycle probes A46-A49 ({len(lcyc_cases)} cases): {len(failures)} failures")
     if failures:
@@ -693,20 +479,6 @@ def main():
             "cases": golden,
         }
         write_golden(args.out, doc, doc.pop("cases"))
-        bdoc = {
-            "generator": "tools/gfp/probes.py (SPEC v2 Appendix A', A34-A37, A39-A42)",
-            "gfp": "snapml==1.17.2, fresh instance per case, ts as listed (no ts-0 cycle cases)",
-            "params": {"num_threads": 1, "vertex_stats": False, "bins": BINS, "lc_cycle_len": LC_LEN,
-                       "patterns": ALL_PATTERNS, "time_window": -1, "max_no_edges": -1},
-            "blocks": [b for p in ALL_PATTERNS for b in PATTERN_BLOCKS[p]],
-            "note": "GFP batch-mode behaviour, not this repo's semantics (SPEC v2 §10): kept apart from "
-                    "gfp_probes.json. edges are [src, dst, ts] with eid = index; tw applies to every pattern, or is "
-                    "{sg: SG's window, other: every other pattern's}. "
-                    "recipe: cuts = the eids where a new transform() batch starts ([] = one batch); "
-                    "fit_transform = one fit_transform(X) call; fit + cuts = fit(X), then transform() per "
-                    "chunk; other keys are set_params overrides. output[i][block] = edge i's bin counts.",
-        }
-        write_golden(args.batch_out, bdoc, batch_cases)
         vdoc = {
             "generator": "tools/gfp/probes.py (SPEC v2 Appendix A', A43-A45)",
             "gfp": "snapml==1.17.2, stream mode (one transform() per edge, fresh instance), F1's call "

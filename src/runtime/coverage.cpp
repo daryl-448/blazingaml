@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include <limits>
+#include <map>
 #include <stdexcept>
 #include <unordered_map>
 
@@ -87,7 +88,6 @@ IsolatedGraph isolated_graph(const CoverageGraph& g, std::span<const std::uint32
 }
 
 std::vector<std::uint64_t> oracle_eligible_rows(const IsolatedGraph& ig, const Profile& prof) {
-  if (prof.batch) throw std::runtime_error("coverage: GFP batch mode profiles are not supported (SPEC v2 §8 S1)");
   const Oracle oracle(ig.stream(), prof.visibility);
   const std::uint64_t k = ig.eids.size();
   std::vector<std::uint64_t> out;
@@ -117,7 +117,6 @@ nlohmann::ordered_json coverage(const CoverageInputs& in) {
     if (in.blocks[b].size() != m * cols[b])
       throw std::runtime_error("coverage: block " + std::string(block_name(prof.blocks[b].block)) + " is not m x bins");
   }
-  const bool external = !in.external_eligible.empty();
 
   // Which splits the predictions score (fit never: it is training data).
   std::array<bool, 3> scored = {false, false, false};
@@ -145,7 +144,7 @@ nlohmann::ordered_json coverage(const CoverageInputs& in) {
   // Per attempt.
   struct Row {
     std::array<std::uint64_t, 3> edges{}, predicted{};
-    std::vector<std::uint64_t> eligible, eligible_oracle, activated;
+    std::vector<std::uint64_t> eligible, activated;
   };
   const std::size_t na = in.attempts.size();
   std::vector<Row> rows(na);
@@ -161,20 +160,7 @@ nlohmann::ordered_json coverage(const CoverageInputs& in) {
         if (have_pred && in.pred[e] == kPredPositive) ++r.predicted[s];
       }
       if (a.status != "complete") continue;
-      r.eligible_oracle = oracle_eligible_rows(isolated_graph(g, a.eids), prof);
-      if (external) {
-        auto it = in.external_eligible.find(a.id);
-        if (it == in.external_eligible.end() || it->second.size() != nb)
-          throw std::runtime_error("coverage: the external eligibility has no row of " + std::to_string(nb) +
-                                   " blocks for attempt " + std::to_string(a.id));
-        r.eligible = it->second;
-        for (std::size_t b = 0; b < nb; ++b)
-          if (r.eligible[b] > a.eids.size())
-            throw std::runtime_error("coverage: external eligibility of attempt " + std::to_string(a.id) +
-                                     " exceeds its edge count");
-      } else {
-        r.eligible = r.eligible_oracle;
-      }
+      r.eligible = oracle_eligible_rows(isolated_graph(g, a.eids), prof);
       r.activated.assign(nb, 0);
       for (std::size_t b = 0; b < nb; ++b)
         for (std::uint32_t e : a.eids) r.activated[b] += row_nonzero(in.blocks[b], cols[b], e);
@@ -189,7 +175,7 @@ nlohmann::ordered_json coverage(const CoverageInputs& in) {
   J jblocks = J::array();
   for (const ProfileBlock& pb : prof.blocks) jblocks.push_back(std::string(block_name(pb.block)));
   out["blocks"] = jblocks;
-  out["eligibility"] = external ? "external" : "oracle";
+  out["eligibility"] = "oracle";
   out["splits"] = {{"fit", {0, in.b_fv}}, {"val", {in.b_fv, in.b_test}}, {"test", {in.b_test, m}}};
   J sc;
   for (int s = 1; s < 3; ++s) sc[kSplitNames[s]] = scored[s];
@@ -210,7 +196,7 @@ nlohmann::ordered_json coverage(const CoverageInputs& in) {
     std::map<std::string, std::uint64_t> split = {{"fit", 0}, {"val", 0}, {"test", 0}, {"straddles", 0}, {"none", 0}};
     std::vector<double> spans;
     std::uint64_t complete = 0, edges = 0;
-    std::vector<std::uint64_t> elig(nb + 1, 0), act(nb + 1, 0), elig_not_act(nb + 1, 0), elig_or(nb + 1, 0);
+    std::vector<std::uint64_t> elig(nb + 1, 0), act(nb + 1, 0), elig_not_act(nb + 1, 0);
     std::array<std::uint64_t, 3> d_att{}, d_edges{}, d_pred{};
     std::array<double, 3> d_share{};
     for (std::size_t i : idx) {
@@ -222,21 +208,18 @@ nlohmann::ordered_json coverage(const CoverageInputs& in) {
       if (a.status != "complete") continue;
       ++complete;
       spans.push_back(double(a.span) / 3600.0);
-      bool any_e = false, any_a = false, any_o = false;
+      bool any_e = false, any_a = false;
       for (std::size_t b = 0; b < nb; ++b) {
-        const bool e = r.eligible[b] > 0, ac = r.activated[b] > 0, o = r.eligible_oracle[b] > 0;
+        const bool e = r.eligible[b] > 0, ac = r.activated[b] > 0;
         elig[b] += e;
         act[b] += ac;
         elig_not_act[b] += e && !ac;
-        elig_or[b] += o;
         any_e |= e;
         any_a |= ac;
-        any_o |= o;
       }
       elig[nb] += any_e;
       act[nb] += any_a;
       elig_not_act[nb] += any_e && !any_a;
-      elig_or[nb] += any_o;
       for (int s = 1; s < 3; ++s)
         if (r.edges[s] > 0) {
           ++d_att[s];
@@ -262,7 +245,6 @@ nlohmann::ordered_json coverage(const CoverageInputs& in) {
     t["eligible"] = per_block(elig);
     t["activated"] = per_block(act);
     t["eligible_not_activated"] = per_block(elig_not_act);
-    if (external) t["eligible_oracle"] = per_block(elig_or);
     for (int s = 1; s < 3; ++s) {
       J d;
       d["attempts"] = d_att[s];
@@ -394,7 +376,6 @@ nlohmann::ordered_json coverage(const CoverageInputs& in) {
     x["edges"] = {{"fit", r.edges[kFit]}, {"val", r.edges[kVal]}, {"test", r.edges[kTest]}};
     if (a.status == "complete") {
       x["eligible"] = r.eligible;
-      if (external) x["eligible_oracle"] = r.eligible_oracle;
       x["activated"] = r.activated;
     }
     if (have_pred) {

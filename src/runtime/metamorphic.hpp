@@ -18,9 +18,8 @@ inline constexpr std::array<MetaTest, 5> kMetaTests = {MetaTest::prefix_closure,
                                                        MetaTest::order_relaxation};
 const char* meta_test_name(MetaTest t);
 
-// Whether test `t` runs for `prof` on `backend`: prefix closure needs trigger credit;
-// visibility invariance needs a tcyc or tchain block (every backend runs both visibilities since P10);
-// order relaxation needs an sg_ord block.
+// Whether test `t` runs for `prof` on `backend`: visibility invariance needs a tcyc or tchain block
+// (every backend runs both visibilities since P10); order relaxation needs an sg_ord block.
 bool meta_test_applies(MetaTest t, const Profile& prof, Backend backend);
 
 struct MetamorphicResult {
@@ -39,8 +38,7 @@ struct MetamorphicResult {
 // it). Per graph:
 //   - prefix closure: mining the first k edges gives the same rows for them as mining the whole
 //     graph, at two cuts k drawn from the seed (under timestamp visibility, k is moved forward
-//     to the next timestamp boundary); for trigger credit only (participants credit is not
-//     causal);
+//     to the next timestamp boundary);
 //   - relabeling: a seeded permutation of the node ids leaves every row unchanged;
 //   - time shift: adding a seeded constant in [1, 2^30] to every timestamp leaves every row
 //     unchanged;

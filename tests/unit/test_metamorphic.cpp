@@ -58,6 +58,7 @@ TEST_CASE("metamorphic: every row of every block is compared") {
 
 TEST_CASE("metamorphic: E404 for a profile the backend cannot run") {
   Profile p = registry_profile();
-  p.credit = Credit::participants;
-  CHECK_THROWS(metamorphic(p, Backend::cpu, 0, 1, {}, {}));
+  for (ProfileBlock& pb : p.blocks)
+    if (pb.block == Block::sg) pb.patterns.resize(1);  // the oracle computes sg as both roles together
+  CHECK_THROWS(metamorphic(p, Backend::oracle, 0, 1, {}, {}));
 }

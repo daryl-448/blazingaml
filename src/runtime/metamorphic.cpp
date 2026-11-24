@@ -96,7 +96,6 @@ const char* meta_test_name(MetaTest t) {
 
 bool meta_test_applies(MetaTest t, const Profile& prof, [[maybe_unused]] Backend be) {
   switch (t) {
-    case MetaTest::prefix_closure: return prof.credit == Credit::trigger;
     case MetaTest::visibility_invariance: return prof.find(Block::tcyc) || prof.find(Block::tchain);
     case MetaTest::order_relaxation: return prof.find(Block::sg_ord) != nullptr;
     default: return true;
@@ -107,11 +106,7 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
                               std::span<const std::uint32_t> bins, std::span<const std::uint32_t> thresholds) {
   check_profile_backend(prof, be);
   if (be == Backend::hybrid) throw std::invalid_argument("metamorphic: the hybrid backend is not supported");
-  // The relations are about stream and timestamp visibility; batch mode is checked by fuzz-diff
-  // against the batch oracle and by tools/gfp/fuzz_vs_gfp.py against GFP.
-  if (prof.batch) throw std::invalid_argument("metamorphic: GFP batch mode profiles are not supported (SPEC v2 §8 S1)");
   if (be == Backend::cuda && thresholds.empty()) throw std::invalid_argument("metamorphic: cuda needs thresholds");
-  const bool prefix_applies = meta_test_applies(MetaTest::prefix_closure, prof, be);
   // tcyc and tchain (SPEC v2 §8 S5) alone, under the other visibility: every hop of either is
   // strictly before t. Every backend runs both visibilities (P10), so the check of `prof` covers
   // it; checking the reduced profile itself would fail a v1 config's E402.
@@ -171,17 +166,16 @@ MetamorphicResult metamorphic(const Profile& prof, Backend be, std::uint64_t s0,
         }
     };
 
-    if (prefix_applies)
-      for (int cut = 0; cut < 2; ++cut) {
-        std::uint64_t k = 1 + rng.below(m - 1);  // m >= 5
-        if (prof.visibility == Visibility::timestamp)
-          while (k < m && base.ts[k] == base.ts[k - 1]) ++k;
-        Graph pre{{base.src.begin(), base.src.begin() + std::ptrdiff_t(k)},
-                  {base.dst.begin(), base.dst.begin() + std::ptrdiff_t(k)},
-                  {base.ts.begin(), base.ts.begin() + std::ptrdiff_t(k)},
-                  base.n};
-        compare(MetaTest::prefix_closure, mine_all(pre, prof, be, fg.window, block_bins, thresholds, mp), k);
-      }
+    for (int cut = 0; cut < 2; ++cut) {
+      std::uint64_t k = 1 + rng.below(m - 1);  // m >= 5
+      if (prof.visibility == Visibility::timestamp)
+        while (k < m && base.ts[k] == base.ts[k - 1]) ++k;
+      Graph pre{{base.src.begin(), base.src.begin() + std::ptrdiff_t(k)},
+                {base.dst.begin(), base.dst.begin() + std::ptrdiff_t(k)},
+                {base.ts.begin(), base.ts.begin() + std::ptrdiff_t(k)},
+                base.n};
+      compare(MetaTest::prefix_closure, mine_all(pre, prof, be, fg.window, block_bins, thresholds, mp), k);
+    }
 
     std::vector<std::uint32_t> perm(base.n);
     std::iota(perm.begin(), perm.end(), 0u);

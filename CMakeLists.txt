@@ -151,12 +151,10 @@ add_library(blz_core
   src/runtime/fuzz_diff.cpp
   src/runtime/metamorphic.cpp
   src/runtime/coverage.cpp
-  src/runtime/batch.cpp
   src/runtime/vstats.cpp
   src/runtime/fusion.cpp
   src/runtime/widen.cpp
   src/oracle/oracle.cpp
-  src/oracle/batch_oracle.cpp
   src/ml/metrics.cpp)
 # SPEC v2 §8 S2: no fused multiply-add in the vertex statistics, so CPU = CUDA bit for bit.
 set_source_files_properties(src/runtime/vstats.cpp PROPERTIES COMPILE_OPTIONS -ffp-contract=off)
