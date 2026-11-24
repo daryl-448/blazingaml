@@ -72,11 +72,11 @@ std::pair<std::vector<std::uint32_t>, std::vector<std::uint32_t>> both(const Pat
                                                                        const Params& params, const TriggerSel& sel) {
   const std::uint32_t nb = std::uint32_t(kBins.size());
   std::vector<std::uint32_t> sweep(sel.rows() * nb, 0), each(sel.rows() * nb, 0);
-  BlockOut out{sweep.data(), sel.first, kBins.data(), nb, 0, sel.sampled ? sel.eids.data() : nullptr,
+  BlockOut out{sweep.data(), sel.first, kBins.data(), nb, false, 0, sel.sampled ? sel.eids.data() : nullptr,
                sel.sampled ? sel.eids.size() : 0, sel.last};
   pat.cpu(g, params, {}, out, 1);
   for (std::uint64_t r = 0; r < sel.rows(); ++r) {
-    RowSink sink{each.data() + r * nb, kBins.data(), nb, 0};
+    RowSink sink{each.data() + r * nb, kBins.data(), nb};
     pat.trigger(g, params, sel.eid(r), sink);
   }
   return {sweep, each};
@@ -146,8 +146,8 @@ TEST_CASE("sweep: sweep_count equals the primitives with a closed bound and a ne
         const auto keep = [](std::uint32_t, std::uint32_t y) { return y % 3 != 1; };
         for (bool distinct : {false, true}) {
           std::vector<std::uint32_t> got(m * nb, 0), want(m * nb, 0);
-          BlockOut out{got.data(), 0, kBins.data(), nb, 0, nullptr, 0, m};
-          const auto emit = [](std::uint32_t, std::int64_t c, RowSink& s) { s.emit(c + 1); };  // a size other than the count
+          BlockOut out{got.data(), 0, kBins.data(), nb, false, 0, nullptr, 0, m};
+          const auto emit = [](std::uint32_t, std::int64_t c, RowSink& s) { s.emit(c + 1, 2); };  // a size other than the count
           if (distinct) sweep_count<true>(g, g.in, tsvis, out, lower, keep, emit);
           else sweep_count<false>(g, g.in, tsvis, out, lower, keep, emit);
           for (std::uint32_t e = 0; e < m; ++e) {
@@ -155,8 +155,8 @@ TEST_CASE("sweep: sweep_count equals the primitives with a closed bound and a ne
             const Range r = g.in.range(g.dst[e], t - span, tsvis ? t : kNoUpper, tsvis ? kAnyEid : e);
             const auto k = [](std::uint32_t y) { return y % 3 != 1; };
             const std::int64_t c = distinct ? count_distinct(g.in, r, k) : count_edges(g.in, r, k);
-            RowSink s{want.data() + e * nb, kBins.data(), nb, 0};
-            s.emit(c + 1);
+            RowSink s{want.data() + e * nb, kBins.data(), nb};
+            s.emit(c + 1, 2);
           }
           INFO("seed " << seed << " tsvis " << tsvis << " span " << span << " distinct " << distinct);
           REQUIRE(got == want);

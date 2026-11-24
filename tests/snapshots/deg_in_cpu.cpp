@@ -18,7 +18,7 @@ void deg_in_cpu(const GraphView& g, const Params& p, std::span<const std::uint32
     [[maybe_unused]] const std::int64_t t = g.ts[e];
     if (v_U == v_V) return;
     const bool ok_in_edges = i_n != 0;
-    if (ok_in_edges && i_n >= 2) out.emit(i_n);
+    if (ok_in_edges) out.emit(i_n, 2);
   };
   rows.saturated += sweep_count<false>(g, g.in, p.ts_visibility, rows, lower, keep, emit);
 }

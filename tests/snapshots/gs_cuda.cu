@@ -34,7 +34,7 @@ __device__ inline void gs_trigger_warp(const GraphView& g, const Params& p, std:
     const Range r_e2 = g.out.range(v_X, t - p_delta_gs + 1, vis_t, vis_e);
     const std::int64_t i_b = count_distinct(g.out, r_e2, [&](std::uint32_t v_D) { return !(v_D == v_X); });
     const bool ok_sinks = i_b != 0;
-    if (ok_sinks && min_int(i_a, i_b) >= 2) out.emit(min_int(i_a, i_b));
+    if (ok_sinks) out.emit(min_int(i_a, i_b), 2);
   }
 }
 

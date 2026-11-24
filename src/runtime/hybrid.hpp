@@ -36,7 +36,7 @@ struct HybridTiming {
 // bucketing) is >= cpu_threshold run on the CPU (mine_cpu, schedule `schedule`, the current
 // OpenMP thread count, Params::reach_prune from p), the others on the GPU (`miner`, bucketed at
 // gpu_threshold), at the same time. The GPU computes the split (CudaMiner::mine_split) and hands
-// the CPU its list first. host_out gets (last - first) rows of p.bins.size() columns,
+// the CPU its list first. host_out gets (last - first) rows of block_cols(p) columns,
 // overwritten: the GPU writes every row (zero for the CPU's triggers), then the CPU's rows are
 // copied over theirs. Each row is computed by one side, so the result does not depend on the
 // split or on timing. A work-limit abort on either side is reported with the smallest eid.

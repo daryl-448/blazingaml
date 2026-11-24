@@ -35,7 +35,7 @@ __device__ inline void fan_oneway_out_trigger_warp(const GraphView& g, const Par
       ++len_D;
     }
     const bool ok_oneway = len_D != 0;
-    if (ok_oneway && len_D >= 2) out.emit(len_D);
+    if (ok_oneway) out.emit(len_D, 2);
   }
 }
 

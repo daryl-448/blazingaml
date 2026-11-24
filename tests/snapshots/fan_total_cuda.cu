@@ -42,7 +42,7 @@ __device__ inline void fan_total_trigger_warp(const GraphView& g, const Params& 
       ++len_C;
     }
     const bool ok_counterparties = len_C != 0;
-    if (ok_counterparties && len_C >= 2) out.emit(len_C);
+    if (ok_counterparties) out.emit(len_C, 2);
   }
 }
 

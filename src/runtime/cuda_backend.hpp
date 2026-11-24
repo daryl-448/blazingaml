@@ -99,8 +99,9 @@ class CudaMiner {
 
   // Mines block b for the triggers [first, last) with every pattern of the block, under stream
   // visibility, bucketed at `heavy_threshold`, and copies the rows to host_out: (last - first)
-  // rows of p.bins.size() columns, overwritten. Pinned host memory makes the copy faster. Throws
-  // if no pattern emits into b or the build has no CUDA launchers.
+  // rows of block_cols(p) columns, overwritten (p without bins: a count block, SPEC v3 R7). Pinned
+  // host memory makes the copy faster. Throws if no pattern emits into b or the build has no CUDA
+  // launchers.
   CudaBlockTiming mine(const DeviceGraph& g, Block b, const BlockParams& p, std::uint64_t first,
                        std::uint64_t last, std::uint32_t heavy_threshold, std::uint32_t* host_out);
   // The same with the patterns `pats` (a profile's list for the block, SPEC v2 §3.1) under
@@ -116,7 +117,7 @@ class CudaMiner {
                        std::uint32_t* host_out, bool pack = false);
   // A fusion's blocks at once (SPEC v2 §8 S7): one kernel runs every member of `f` for each trigger
   // in [first, last). params[s] and host_out[s] are slot s's block parameters and rows ((last - first)
-  // rows of params[s]->bins.size() columns, overwritten); member k runs with params[f.slots[k]]'s
+  // rows of block_cols(*params[s]) columns, overwritten); member k runs with params[f.slots[k]]'s
   // window. The work estimate of a trigger is the largest of its members'. `group` holds the kernel
   // times and the trigger counts (each trigger once), `slots[s]` slot s's pack, D2H and saturation;
   // group's d2h, pack, widen, bytes and saturated are the slots' sums.

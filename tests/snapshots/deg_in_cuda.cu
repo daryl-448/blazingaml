@@ -25,7 +25,7 @@ __device__ inline void deg_in_trigger_warp(const GraphView& g, const Params& p, 
   std::int64_t i_n = count_edges(g.in, r_e1, [&](std::uint32_t v_X) { return !(v_X == v_V); }, lane, cuda::kWarpSize);
   i_n = cuda::warp_sum(i_n);
   const bool ok_in_edges = i_n != 0;
-  if (lane == 0 && ok_in_edges && i_n >= 2) out.emit(i_n);
+  if (lane == 0 && ok_in_edges) out.emit(i_n, 2);
 }
 
 // The pattern's bodies, as include/blz/cuda_kernels.cuh expects them.

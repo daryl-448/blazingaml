@@ -29,7 +29,7 @@ HybridTiming mine_hybrid(const GraphView& host, const DeviceGraph& dev, CudaMine
   if (first > last || last > host.m) throw std::invalid_argument("mine_hybrid: bad trigger range");
   const auto t0 = Clock::now();
   HybridTiming tm;
-  const std::size_t nb = p.bins.size();
+  const std::size_t nb = block_cols(p);
   const std::uint64_t rows = last - first;
 
   // The CPU's triggers. The GPU finds them (CudaMiner::mine_split: the first pattern's work

@@ -18,7 +18,7 @@ void fan_out_cpu(const GraphView& g, const Params& p, std::span<const std::uint3
     [[maybe_unused]] const std::int64_t t = g.ts[e];
     if (v_U == v_V) return;
     const bool ok_out_nbrs = i_n != 0;
-    if (ok_out_nbrs && i_n >= 2) out.emit(i_n);
+    if (ok_out_nbrs) out.emit(i_n, 2);
   };
   rows.saturated += sweep_count<true>(g, g.out, p.ts_visibility, rows, lower, keep, emit);
 }

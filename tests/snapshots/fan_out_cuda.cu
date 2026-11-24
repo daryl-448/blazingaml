@@ -25,7 +25,7 @@ __device__ inline void fan_out_trigger_warp(const GraphView& g, const Params& p,
   std::int64_t i_n = count_distinct(g.out, r_e1, [&](std::uint32_t v_Y) { return !(v_Y == v_U); }, lane, cuda::kWarpSize);
   i_n = cuda::warp_sum(i_n);
   const bool ok_out_nbrs = i_n != 0;
-  if (lane == 0 && ok_out_nbrs && i_n >= 2) out.emit(i_n);
+  if (lane == 0 && ok_out_nbrs) out.emit(i_n, 2);
 }
 
 // The pattern's bodies, as include/blz/cuda_kernels.cuh expects them.

@@ -8,8 +8,12 @@
 
 namespace blz {
 
-// One trigger's output row. emit(size) bins one instance (SPEC §4.2): sizes below 2 or below
-// b_0 are dropped, the last bin is open-ended, counts saturate at UINT32_MAX.
+// One trigger's output row. emit(size, min_size) records one instance (SPEC §4.2, §6.6). A
+// histogram row bins it: sizes below min_size (>= 2) or below b_0 are dropped, the last bin is
+// open-ended, counts saturate at UINT32_MAX. A count row (`count`, SPEC v3 R7) has one column, to
+// which the emit adds the size, min_size not applying; a sum past UINT32_MAX clamps there. Each
+// emit that saturation loses or clamps adds one to `saturated`. A count block's patterns emit at
+// most once per trigger (PatternInfo::one_instance, E403), so its row is the instance's size.
 //
 // over(limit) counts one binding of a pattern compiled with `work_limit: true` (SPEC v2 §8 S3).
 // Past `limit` bindings it marks the trigger aborted and returns true; the generated code then
@@ -17,13 +21,24 @@ namespace blz {
 struct RowSink {
   std::uint32_t* row = nullptr;
   const std::uint32_t* bins = nullptr;
-  std::uint32_t nbins = 0;
+  std::uint32_t nbins = 0;  // the row's columns: 1 for a count row
+  bool count = false;
   std::uint64_t saturated = 0;
   std::uint64_t work = 0;
   bool aborted = false;
 
-  BLZ_HD void emit(std::int64_t size) {
-    if (size < 2 || size < std::int64_t(bins[0])) return;
+  BLZ_HD void emit(std::int64_t size, std::int64_t min_size) {
+    if (count) {
+      const std::uint64_t sum = std::uint64_t(row[0]) + std::uint64_t(size);
+      if (sum > UINT32_MAX) {
+        row[0] = UINT32_MAX;
+        ++saturated;
+      } else {
+        row[0] = std::uint32_t(sum);
+      }
+      return;
+    }
+    if (size < min_size || size < std::int64_t(bins[0])) return;
     std::uint32_t i = nbins - 1;
     while (size < std::int64_t(bins[i])) --i;
     if (row[i] == UINT32_MAX) ++saturated;
@@ -43,7 +58,8 @@ struct BlockOut {
   std::uint32_t* data = nullptr;
   std::uint64_t first = 0;
   const std::uint32_t* bins = nullptr;
-  std::uint32_t nbins = 0;
+  std::uint32_t nbins = 0;  // the row's columns: 1 for a count block
+  bool count = false;       // a count block (SPEC v3 R7): see RowSink
   std::uint64_t saturated = 0;  // summed by the drivers
   const std::uint32_t* rows = nullptr;
   std::uint64_t nrows = 0;
@@ -52,7 +68,7 @@ struct BlockOut {
   // by the drivers of `work_limit` patterns, which then skip the triggers not yet started.
   std::uint64_t aborted = UINT64_MAX;
 
-  RowSink sink(std::uint32_t e) const { return {data + row_of(e) * nbins, bins, nbins, 0}; }
+  RowSink sink(std::uint32_t e) const { return {data + row_of(e) * nbins, bins, nbins, count}; }
   // Whether trigger e has a row (the sweep driver walks every list entry, SPEC v2 §7.1).
   bool selects(std::uint32_t e) const {
     if (!rows) return e >= first && e < last;
@@ -94,7 +110,8 @@ struct CudaRun {
   std::uint32_t* out = nullptr;
   std::uint64_t first = 0;
   const std::uint32_t* bins = nullptr;
-  std::uint32_t nbins = 0;
+  std::uint32_t nbins = 0;    // the row's columns: 1 for a count block
+  bool count_block = false;  // a count block (SPEC v3 R7): see RowSink
   unsigned long long* saturated = nullptr;  // emits lost to saturation are added here
   unsigned long long* aborted = nullptr;    // atomicMin of the eids over the work limit (SPEC v2 §8 S3)
   const std::uint32_t* triggers = nullptr;
@@ -147,7 +164,8 @@ struct FusedParams {
 struct FusedRun {
   std::uint32_t* out[kMaxFusedSlots] = {};
   const std::uint32_t* bins[kMaxFusedSlots] = {};
-  std::uint32_t nbins[kMaxFusedSlots] = {};
+  std::uint32_t nbins[kMaxFusedSlots] = {};  // per slot, its row's columns: 1 for a count block
+  bool count_block[kMaxFusedSlots] = {};      // per slot, a count block (SPEC v3 R7): see RowSink
   std::uint64_t first = 0;
   unsigned long long* saturated = nullptr;  // kMaxFusedSlots counters: emits lost to saturation, per slot
   const std::uint32_t* triggers = nullptr;

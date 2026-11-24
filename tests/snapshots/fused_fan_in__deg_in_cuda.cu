@@ -48,12 +48,12 @@ __device__ inline void fused_fan_in__deg_in_trigger(const GraphView& g, const Fu
   [&](Sink& out) {  // fan_in: its trigger filters, then its emit
     if (m0_v_U == m0_v_V) return;
     const bool m0_ok_in_nbrs = m0_i_n != 0;
-    if (m0_ok_in_nbrs && m0_i_n >= 2) out.emit(m0_i_n);
+    if (m0_ok_in_nbrs) out.emit(m0_i_n, 2);
   }(sinks[0]);
   [&](Sink& out) {  // deg_in: its trigger filters, then its emit
     if (m1_v_U == m1_v_V) return;
     const bool m1_ok_in_edges = m1_i_n != 0;
-    if (m1_ok_in_edges && m1_i_n >= 2) out.emit(m1_i_n);
+    if (m1_ok_in_edges) out.emit(m1_i_n, 2);
   }(sinks[1]);
 }
 

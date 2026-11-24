@@ -58,7 +58,7 @@ BLZ_HD inline void sg_gather_trigger(const GraphView& g, const Params& p, std::u
     }
     const std::int64_t len_I = std::int64_t(set_I.size());
     const bool ok_intermediates = len_I != 0;
-    if (ok_intermediates && len_I >= 2) out.emit(len_I);
+    if (ok_intermediates) out.emit(len_I, 2);
   }
 }
 

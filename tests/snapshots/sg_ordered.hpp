@@ -59,7 +59,7 @@ BLZ_HD inline void sg_ordered_trigger(const GraphView& g, const Params& p, std::
       ++len_I;
     }
     const bool ok_intermediates = len_I != 0;
-    if (ok_intermediates && len_I >= 2) out.emit(len_I);
+    if (ok_intermediates) out.emit(len_I, 2);
   }
 }
 

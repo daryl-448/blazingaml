@@ -395,8 +395,8 @@ CudaBlockTiming CudaMiner::run(const DeviceGraph& g, std::span<const PatternInfo
   for (const PatternInfo* pi : pats)
     if (!pi->cuda || !pi->cuda_bucket) throw std::runtime_error(std::string("pattern '") + pi->name + "' has no CUDA launcher");
   if (first > last || last > dg.m) throw std::invalid_argument("CudaMiner::mine: bad trigger range");
-  const std::uint32_t nbins = std::uint32_t(p.bins.size());
-  if (nbins == 0 || nbins > kMaxBins)
+  const std::uint32_t nbins = block_cols(p);  // 1 for a count block (SPEC v3 R7)
+  if (nbins > kMaxBins)
     throw std::invalid_argument("CudaMiner::mine: the CUDA backend supports 1.." + std::to_string(kMaxBins) + " bins");
   CudaBlockTiming tm;
   const std::uint32_t rows = std::uint32_t(last - first);
@@ -419,7 +419,8 @@ CudaBlockTiming CudaMiner::run(const DeviceGraph& g, std::span<const PatternInfo
 
   const cudaStream_t st = s.stream;
   const Params params{p.window, vis == Visibility::timestamp, p.work_limit};
-  BLZ_CUDA(cudaMemcpyAsync(s.bins.ptr, p.bins.data(), nbins * sizeof(std::uint32_t), cudaMemcpyHostToDevice, st));
+  if (!p.bins.empty())
+    BLZ_CUDA(cudaMemcpyAsync(s.bins.ptr, p.bins.data(), nbins * sizeof(std::uint32_t), cudaMemcpyHostToDevice, st));
   if (subset && count > 0) {
     BLZ_CUDA(cudaEventRecord(s.ev[Impl::kH2d0], st));
     BLZ_CUDA(cudaMemcpyAsync(s.ids.ptr, subset->data(), count * sizeof(std::uint32_t), cudaMemcpyHostToDevice, st));
@@ -463,6 +464,7 @@ CudaBlockTiming CudaMiner::run(const DeviceGraph& g, std::span<const PatternInfo
   run.first = first;
   run.bins = s.bins.as<std::uint32_t>();
   run.nbins = nbins;
+  run.count_block = p.bins.empty();
   run.saturated = reinterpret_cast<unsigned long long*>(s.counter(kSaturated));
   run.aborted = reinterpret_cast<unsigned long long*>(s.counter(kAborted));
   run.stream = st;
@@ -557,20 +559,20 @@ CudaMiner::FusedTiming CudaMiner::mine_fused(const DeviceGraph& g, const FusionI
   std::uint64_t total = 0;
   for (std::uint32_t sl = 0; sl < nslots; ++sl) {
     const std::vector<std::uint32_t>& b = params[sl]->bins;
-    if (b.empty() || b.size() > kMaxBins)  // as mine(), so a block runs fused exactly when it runs alone
+    if (b.size() > kMaxBins)  // as mine(), so a block runs fused exactly when it runs alone
       throw std::invalid_argument("CudaMiner::mine_fused: the CUDA backend supports 1.." + std::to_string(kMaxBins) +
                                   " bins");
     bin_off[sl] = std::uint32_t(all_bins.size());
     all_bins.insert(all_bins.end(), b.begin(), b.end());
     off[sl] = total;
-    cells[sl] = std::uint64_t(rows) * b.size();
+    cells[sl] = std::uint64_t(rows) * block_cols(*params[sl]);
     total += round_cells(cells[sl]);
   }
   s.out.ensure(total * sizeof(std::uint32_t));
   s.ids.ensure(std::size_t(rows) * sizeof(std::uint32_t));
   s.flags.ensure(rows);
   s.part.ensure(std::size_t(rows) * sizeof(std::uint32_t));
-  s.bins.ensure(all_bins.size() * sizeof(std::uint32_t));
+  s.bins.ensure(std::max<std::size_t>(all_bins.size(), 1) * sizeof(std::uint32_t));
   const std::size_t temp_bytes = s.partition_temp(rows);
 
   const cudaStream_t st = s.stream;
@@ -579,7 +581,9 @@ CudaMiner::FusedTiming CudaMiner::mine_fused(const DeviceGraph& g, const FusionI
     const BlockParams& bp = *params[f.slots[k]];
     fp.member[k] = Params{bp.window, vis == Visibility::timestamp, bp.work_limit};
   }
-  BLZ_CUDA(cudaMemcpyAsync(s.bins.ptr, all_bins.data(), all_bins.size() * sizeof(std::uint32_t), cudaMemcpyHostToDevice, st));
+  if (!all_bins.empty())
+    BLZ_CUDA(cudaMemcpyAsync(s.bins.ptr, all_bins.data(), all_bins.size() * sizeof(std::uint32_t), cudaMemcpyHostToDevice,
+                             st));
   BLZ_CUDA(cudaEventRecord(s.ev[Impl::kStart], st));
   BLZ_CUDA(cudaMemsetAsync(s.out.ptr, 0, total * sizeof(std::uint32_t), st));
   BLZ_CUDA(cudaMemsetAsync(s.counter(kSaturated), 0, kMaxFusedSlots * sizeof(std::uint64_t), st));
@@ -590,7 +594,8 @@ CudaMiner::FusedTiming CudaMiner::mine_fused(const DeviceGraph& g, const FusionI
   for (std::uint32_t sl = 0; sl < nslots; ++sl) {
     run.out[sl] = s.out.as<std::uint32_t>() + off[sl];
     run.bins[sl] = s.bins.as<std::uint32_t>() + bin_off[sl];
-    run.nbins[sl] = std::uint32_t(params[sl]->bins.size());
+    run.nbins[sl] = block_cols(*params[sl]);
+    run.count_block[sl] = params[sl]->bins.empty();
   }
   run.first = first;
   run.saturated = reinterpret_cast<unsigned long long*>(s.counter(kSaturated));

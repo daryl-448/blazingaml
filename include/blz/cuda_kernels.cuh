@@ -10,7 +10,8 @@
 // Light kernel: one thread per trigger, emitting straight into the trigger's row (RowSink).
 // Heavy kernel: one warp per trigger. The lanes emit into the warp's 64-bit histogram in shared
 // memory; after the body the lanes add it into the row, saturating at UINT32_MAX exactly as
-// RowSink does one emit at a time. Each trigger's row is written by one thread or one warp, so
+// RowSink does one emit at a time. A count block's histogram is one cell holding the emitted size;
+// its pattern emits at most once per trigger (E403), so the clamp of the row loses one emit. Each trigger's row is written by one thread or one warp, so
 // no global atomics are needed except for the saturation counter and the work-limit report.
 //
 // Work limit (SPEC v2 §8 S3): a `work_limit` pattern calls sink.over(limit) once per binding. The
@@ -55,16 +56,22 @@ __device__ inline unsigned long long abort_bound(unsigned long long* a) {
   return ::cuda::atomic_ref<unsigned long long, ::cuda::thread_scope_device>(*a).load(::cuda::std::memory_order_relaxed);
 }
 
-// The heavy kernel's sink: one warp's histogram. Same binning as RowSink (SPEC §4.2).
+// The heavy kernel's sink: one warp's histogram. Same binning as RowSink (SPEC §4.2); a count
+// row's one cell sums the sizes (SPEC v3 R7).
 struct WarpSink {
   unsigned long long* hist = nullptr;
   const std::uint32_t* bins = nullptr;
   std::uint32_t nbins = 0;
+  bool count = false;
   unsigned long long* work = nullptr;  // the warp's binding count (shared memory)
   bool aborted = false;                // this lane saw the count pass the limit
 
-  __device__ void emit(std::int64_t size) {
-    if (size < 2 || size < std::int64_t(bins[0])) return;
+  __device__ void emit(std::int64_t size, std::int64_t min_size) {
+    if (count) {
+      atomicAdd(&hist[0], (unsigned long long)size);
+      return;
+    }
+    if (size < min_size || size < std::int64_t(bins[0])) return;
     std::uint32_t i = nbins - 1;
     while (size < std::int64_t(bins[i])) --i;
     atomicAdd(&hist[i], 1ULL);
@@ -89,7 +96,7 @@ __global__ void light_kernel(GraphView g, Params p, CudaRun r) {
   if (i >= r.count) return;
   const std::uint32_t e = r.triggers[i];
   if (e > abort_bound(r.aborted)) return;  // past an abort already seen
-  RowSink sink{r.out + (e - r.first) * r.nbins, r.bins, r.nbins, 0};
+  RowSink sink{r.out + (e - r.first) * r.nbins, r.bins, r.nbins, r.count_block};
   K::trigger(g, p, e, sink);
   if (sink.saturated) atomicAdd(r.saturated, (unsigned long long)sink.saturated);
   if (sink.aborted) atomicMin(r.aborted, (unsigned long long)e);
@@ -110,7 +117,7 @@ __global__ void heavy_kernel(GraphView g, Params p, CudaRun r) {
   for (std::uint32_t i = lane; i < r.nbins; i += kWarpSize) hist[i] = 0;
   if (lane == 0) *work = 0;
   __syncwarp();
-  WarpSink sink{hist, r.bins, r.nbins, work};
+  WarpSink sink{hist, r.bins, r.nbins, r.count_block, work};
   K::warp(g, p, e, lane, sink);
   __syncwarp();
   if (sink.aborted) atomicMin(r.aborted, (unsigned long long)e);
@@ -119,7 +126,7 @@ __global__ void heavy_kernel(GraphView g, Params p, CudaRun r) {
   for (std::uint32_t i = lane; i < r.nbins; i += kWarpSize) {
     const unsigned long long v = row[i] + hist[i];
     if (v > UINT32_MAX) {
-      lost += v - UINT32_MAX;
+      lost += r.count_block ? 1 : v - UINT32_MAX;
       row[i] = UINT32_MAX;
     } else {
       row[i] = std::uint32_t(v);
@@ -171,7 +178,7 @@ __global__ void fused_light_kernel(GraphView g, FusedParams p, FusedRun r) {
   RowSink sink[F::kSlots];
 #pragma unroll
   for (std::uint32_t s = 0; s < F::kSlots; ++s)
-    sink[s] = RowSink{r.out[s] + (e - r.first) * r.nbins[s], r.bins[s], r.nbins[s], 0};
+    sink[s] = RowSink{r.out[s] + (e - r.first) * r.nbins[s], r.bins[s], r.nbins[s], r.count_block[s]};
   F::trigger(g, p, e, sink);
 #pragma unroll
   for (std::uint32_t s = 0; s < F::kSlots; ++s)
@@ -187,7 +194,7 @@ __global__ void fused_heavy_kernel(GraphView g, FusedParams p, FusedRun r) {
   RowSink sink[F::kSlots];
 #pragma unroll
   for (std::uint32_t s = 0; s < F::kSlots; ++s)
-    sink[s] = RowSink{r.out[s] + (e - r.first) * r.nbins[s], r.bins[s], r.nbins[s], 0};
+    sink[s] = RowSink{r.out[s] + (e - r.first) * r.nbins[s], r.bins[s], r.nbins[s], r.count_block[s]};
   F::warp(g, p, e, lane, sink);  // every lane scans; only lane 0 emits
 #pragma unroll
   for (std::uint32_t s = 0; s < F::kSlots; ++s)

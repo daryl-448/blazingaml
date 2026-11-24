@@ -46,7 +46,7 @@ BLZ_HD inline void fan_total_trigger(const GraphView& g, const Params& p, std::u
     ++len_C;
   }
   const bool ok_counterparties = len_C != 0;
-  if (ok_counterparties && len_C >= 2) out.emit(len_C);
+  if (ok_counterparties) out.emit(len_C, 2);
 }
 
 // Work estimate: the window size of the first scan (counterparties).

@@ -39,7 +39,7 @@ BLZ_HD inline void fan_oneway_out_trigger(const GraphView& g, const Params& p, s
     ++len_D;
   }
   const bool ok_oneway = len_D != 0;
-  if (ok_oneway && len_D >= 2) out.emit(len_D);
+  if (ok_oneway) out.emit(len_D, 2);
 }
 
 // Work estimate: the window size of the first scan (oneway).

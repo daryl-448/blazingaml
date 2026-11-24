@@ -30,7 +30,8 @@ add_executable(blz_unit_tests
   unit/test_coverage.cpp
   unit/test_sweep.cpp
   unit/test_reach.cpp
-  unit/test_fusion.cpp)
+  unit/test_fusion.cpp
+  unit/test_clean.cpp)
 if(BLZ_WITH_XGBOOST)
   target_sources(blz_unit_tests PRIVATE unit/test_xgb.cpp)
 endif()

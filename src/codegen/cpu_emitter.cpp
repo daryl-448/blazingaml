@@ -445,22 +445,14 @@ class CpuEmitter {
   }
 
   // --- emits -------------------------------------------------------------------------------
-  // emit {size, min_size} (SPEC §6.6): +1 at bin(size) when size >= max(min_size, 2). A check
-  // stage emits only when it passed (`guard`). Warp mode: root emits also need `lane == 0`.
+  // emit {size, min_size} (SPEC §6.6): out.emit(size, max(min_size, 2)). The sink applies the
+  // minimum to a histogram row, +1 at bin(size), and adds the size to a count row, where no minimum
+  // applies (SPEC v3 R7): the block's kind is the profile's, at runtime. A check stage emits only
+  // when it passed (`guard`). Warp mode: root emits also need `lane == 0`.
   void emit_stmt(Writer& w, const ir::Emit& em, const std::string& guard, bool lane0 = false) {
-    const std::string size = cx(em.size);
-    const bool constant = em.size.k == Expr::K::Int || (em.size.k == Expr::K::Name && em.size.sym == Sym::constant);
     std::string cond = lane0 ? "lane == 0" : "";
     if (!guard.empty()) cond += (cond.empty() ? "" : " && ") + guard;
-    if (constant) {
-      if (em.size.ival < em.min_size) {
-        w.line("// emit " + size + " is below the minimum size " + std::to_string(em.min_size) + ": never emits");
-        return;
-      }
-    } else {
-      cond += (cond.empty() ? "" : " && ") + size + " >= " + lit(em.min_size);
-    }
-    w.line((cond.empty() ? "" : "if (" + cond + ") ") + "out.emit(" + size + ");");
+    w.line((cond.empty() ? "" : "if (" + cond + ") ") + "out.emit(" + cx(em.size) + ", " + lit(em.min_size) + ");");
   }
 
   void notes(Writer& w, const Stage& s) {

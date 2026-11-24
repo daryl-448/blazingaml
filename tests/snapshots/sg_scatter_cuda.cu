@@ -50,7 +50,7 @@ __device__ inline void sg_scatter_trigger_warp(const GraphView& g, const Params&
       ++len_I;
     }
     const bool ok_intermediates = len_I != 0;
-    if (ok_intermediates && len_I >= 2) out.emit(len_I);
+    if (ok_intermediates) out.emit(len_I, 2);
   }
 }
 

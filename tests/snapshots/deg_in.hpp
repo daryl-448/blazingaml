@@ -29,7 +29,7 @@ BLZ_HD inline void deg_in_trigger(const GraphView& g, const Params& p, std::uint
   const Range r_e1 = g.in.range(v_V, t - p_delta_deg + 1, vis_t, vis_e);
   const std::int64_t i_n = count_edges(g.in, r_e1, [&](std::uint32_t v_X) { return !(v_X == v_V); });
   const bool ok_in_edges = i_n != 0;
-  if (ok_in_edges && i_n >= 2) out.emit(i_n);
+  if (ok_in_edges) out.emit(i_n, 2);
 }
 
 // Work estimate: the window size of the first scan (in_edges).

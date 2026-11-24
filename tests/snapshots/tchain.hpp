@@ -32,7 +32,7 @@ BLZ_HD inline void tchain_trigger(const GraphView& g, const Params& p, std::uint
     const std::uint32_t v_C1 = g.in.nbr[j_h1];
     if ((v_C1 == v_U || v_C1 == v_V)) continue;
     const std::int64_t ts_h1 = g.pin.pair_latest(v_U, g.in.nbr[j_h1], t - p_delta_chain, min_ts(t - 1, vis_t), vis_e);  // witness: latest
-    out.emit(2);
+    out.emit(2, 2);
     // stage hop_2 (for_all, distinct)
     // scan T-CSR C1.in distinct-first: each C2 once, h2 = its latest witness in range (witness: latest, SPEC v2 §8 S5): a P-CSR pair_latest probe per binding
     // h2 in C1.in: ts >= t - delta_chain, ts <= h1.t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
@@ -42,7 +42,7 @@ BLZ_HD inline void tchain_trigger(const GraphView& g, const Params& p, std::uint
       const std::uint32_t v_C2 = g.in.nbr[j_h2];
       if ((v_C2 == v_U || v_C2 == v_V || v_C2 == v_C1)) continue;
       const std::int64_t ts_h2 = g.pin.pair_latest(v_C1, g.in.nbr[j_h2], t - p_delta_chain, min_ts(ts_h1 - 1, vis_t), vis_e);  // witness: latest
-      out.emit(3);
+      out.emit(3, 2);
       // stage hop_3 (for_all, distinct)
       // scan T-CSR C2.in distinct-first: each C3 once, h3 = its latest witness in range (witness: latest, SPEC v2 §8 S5): a P-CSR pair_latest probe per binding
       // h3 in C2.in: ts >= t - delta_chain, ts <= h2.t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
@@ -52,7 +52,7 @@ BLZ_HD inline void tchain_trigger(const GraphView& g, const Params& p, std::uint
         const std::uint32_t v_C3 = g.in.nbr[j_h3];
         if ((v_C3 == v_U || v_C3 == v_V || v_C3 == v_C1 || v_C3 == v_C2)) continue;
         const std::int64_t ts_h3 = g.pin.pair_latest(v_C2, g.in.nbr[j_h3], t - p_delta_chain, min_ts(ts_h2 - 1, vis_t), vis_e);  // witness: latest
-        out.emit(4);
+        out.emit(4, 2);
         // stage hop_4 (for_all, distinct)
         // scan T-CSR C3.in distinct-first: each C4 once, h4 = its latest witness in range (witness: latest, SPEC v2 §8 S5): a P-CSR pair_latest probe per binding
         // h4 in C3.in: ts >= t - delta_chain, ts <= h3.t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
@@ -62,7 +62,7 @@ BLZ_HD inline void tchain_trigger(const GraphView& g, const Params& p, std::uint
           const std::uint32_t v_C4 = g.in.nbr[j_h4];
           if ((v_C4 == v_U || v_C4 == v_V || v_C4 == v_C1 || v_C4 == v_C2 || v_C4 == v_C3)) continue;
           const std::int64_t ts_h4 = g.pin.pair_latest(v_C3, g.in.nbr[j_h4], t - p_delta_chain, min_ts(ts_h3 - 1, vis_t), vis_e);  // witness: latest
-          out.emit(5);
+          out.emit(5, 2);
           // stage hop_5 (for_all, distinct)
           // scan T-CSR C4.in distinct-first: each C5 once, h5 = its latest witness in range (witness: latest, SPEC v2 §8 S5): a P-CSR pair_latest probe per binding
           // h5 in C4.in: ts >= t - delta_chain, ts <= h4.t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
@@ -72,7 +72,7 @@ BLZ_HD inline void tchain_trigger(const GraphView& g, const Params& p, std::uint
             const std::uint32_t v_C5 = g.in.nbr[j_h5];
             if ((v_C5 == v_U || v_C5 == v_V || v_C5 == v_C1 || v_C5 == v_C2 || v_C5 == v_C3 || v_C5 == v_C4)) continue;
             const std::int64_t ts_h5 = g.pin.pair_latest(v_C4, g.in.nbr[j_h5], t - p_delta_chain, min_ts(ts_h4 - 1, vis_t), vis_e);  // witness: latest
-            out.emit(6);
+            out.emit(6, 2);
             // stage hop_6 (for_all, distinct)
             // scan T-CSR C5.in distinct-first: each C6 once, h6 = its latest witness in range (witness: latest, SPEC v2 §8 S5): a P-CSR pair_latest probe per binding
             // h6 in C5.in: ts >= t - delta_chain, ts <= h5.t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
@@ -82,7 +82,7 @@ BLZ_HD inline void tchain_trigger(const GraphView& g, const Params& p, std::uint
               const std::uint32_t v_C6 = g.in.nbr[j_h6];
               if ((v_C6 == v_U || v_C6 == v_V || v_C6 == v_C1 || v_C6 == v_C2 || v_C6 == v_C3 || v_C6 == v_C4 || v_C6 == v_C5)) continue;
               const std::int64_t ts_h6 = g.pin.pair_latest(v_C5, g.in.nbr[j_h6], t - p_delta_chain, min_ts(ts_h5 - 1, vis_t), vis_e);  // witness: latest
-              out.emit(7);
+              out.emit(7, 2);
               // stage hop_7 (for_all, distinct)
               // scan T-CSR C6.in distinct-first: each C7 once, h7 = its latest witness in range (witness: latest, SPEC v2 §8 S5): a P-CSR pair_latest probe per binding
               // h7 in C6.in: ts >= t - delta_chain, ts <= h6.t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
@@ -92,7 +92,7 @@ BLZ_HD inline void tchain_trigger(const GraphView& g, const Params& p, std::uint
                 const std::uint32_t v_C7 = g.in.nbr[j_h7];
                 if ((v_C7 == v_U || v_C7 == v_V || v_C7 == v_C1 || v_C7 == v_C2 || v_C7 == v_C3 || v_C7 == v_C4 || v_C7 == v_C5 || v_C7 == v_C6)) continue;
                 const std::int64_t ts_h7 = g.pin.pair_latest(v_C6, g.in.nbr[j_h7], t - p_delta_chain, min_ts(ts_h6 - 1, vis_t), vis_e);  // witness: latest
-                out.emit(8);
+                out.emit(8, 2);
                 // stage hop_8 (for_all, distinct)
                 // scan T-CSR C7.in distinct-first: each C8 once, h8 = its latest witness in range (witness: latest, SPEC v2 §8 S5): a P-CSR pair_latest probe per binding
                 // h8 in C7.in: ts >= t - delta_chain, ts <= h7.t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
@@ -102,7 +102,7 @@ BLZ_HD inline void tchain_trigger(const GraphView& g, const Params& p, std::uint
                   const std::uint32_t v_C8 = g.in.nbr[j_h8];
                   if ((v_C8 == v_U || v_C8 == v_V || v_C8 == v_C1 || v_C8 == v_C2 || v_C8 == v_C3 || v_C8 == v_C4 || v_C8 == v_C5 || v_C8 == v_C6 || v_C8 == v_C7)) continue;
                   const std::int64_t ts_h8 = g.pin.pair_latest(v_C7, g.in.nbr[j_h8], t - p_delta_chain, min_ts(ts_h7 - 1, vis_t), vis_e);  // witness: latest
-                  out.emit(9);
+                  out.emit(9, 2);
                   // stage hop_9 (for_all, distinct)
                   // scan T-CSR C8.in distinct-first: each C9 once, h9 = its latest witness in range (witness: latest, SPEC v2 §8 S5): a P-CSR pair_latest probe per binding
                   // h9 in C8.in: ts >= t - delta_chain, ts <= h8.t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
@@ -111,7 +111,7 @@ BLZ_HD inline void tchain_trigger(const GraphView& g, const Params& p, std::uint
                     if (!g.in.distinct_first(j_h9, r_h9.lo)) continue;
                     const std::uint32_t v_C9 = g.in.nbr[j_h9];
                     if ((v_C9 == v_U || v_C9 == v_V || v_C9 == v_C1 || v_C9 == v_C2 || v_C9 == v_C3 || v_C9 == v_C4 || v_C9 == v_C5 || v_C9 == v_C6 || v_C9 == v_C7 || v_C9 == v_C8)) continue;
-                    out.emit(10);
+                    out.emit(10, 2);
                   }
                 }
               }

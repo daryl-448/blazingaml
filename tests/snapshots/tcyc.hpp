@@ -29,7 +29,7 @@ BLZ_HD inline void tcyc_trigger(const GraphView& g, const Params& p, std::uint32
   // c2 in V.out: ts >= t - delta_cyc, ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
   const std::int64_t ts_c2 = g.pout.pair_exists(v_V, v_U, t - p_delta_cyc, min_ts(t - 1, vis_t), vis_e);
   const bool ok_close_2 = ts_c2 != kNoTs;
-  if (ok_close_2) out.emit(2);
+  if (ok_close_2) out.emit(2, 2);
   // stage hop_1 (for_all, distinct)
   // scan T-CSR V.out distinct-first: each C1 once, h1 = its earliest witness in range
   // h1 in V.out: ts >= t - delta_cyc, ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
@@ -44,7 +44,7 @@ BLZ_HD inline void tcyc_trigger(const GraphView& g, const Params& p, std::uint32
     // c3 in C1.out: ts >= max(t - delta_cyc, h1.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
     const std::int64_t ts_c3 = g.pout.pair_exists(v_C1, v_U, max_ts(t - p_delta_cyc, ts_h1 + 1), min_ts(t - 1, vis_t), vis_e);
     const bool ok_close_3 = ts_c3 != kNoTs;
-    if (ok_close_3) out.emit(3);
+    if (ok_close_3) out.emit(3, 2);
     // stage hop_2 (for_all, distinct)
     // scan T-CSR C1.out distinct-first: each C2 once, h2 = its earliest witness in range
     // h2 in C1.out: ts >= max(t - delta_cyc, h1.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
@@ -59,7 +59,7 @@ BLZ_HD inline void tcyc_trigger(const GraphView& g, const Params& p, std::uint32
       // c4 in C2.out: ts >= max(t - delta_cyc, h2.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
       const std::int64_t ts_c4 = g.pout.pair_exists(v_C2, v_U, max_ts(t - p_delta_cyc, ts_h2 + 1), min_ts(t - 1, vis_t), vis_e);
       const bool ok_close_4 = ts_c4 != kNoTs;
-      if (ok_close_4) out.emit(4);
+      if (ok_close_4) out.emit(4, 2);
       // stage hop_3 (for_all, distinct)
       // scan T-CSR C2.out distinct-first: each C3 once, h3 = its earliest witness in range
       // h3 in C2.out: ts >= max(t - delta_cyc, h2.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
@@ -74,7 +74,7 @@ BLZ_HD inline void tcyc_trigger(const GraphView& g, const Params& p, std::uint32
         // c5 in C3.out: ts >= max(t - delta_cyc, h3.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
         const std::int64_t ts_c5 = g.pout.pair_exists(v_C3, v_U, max_ts(t - p_delta_cyc, ts_h3 + 1), min_ts(t - 1, vis_t), vis_e);
         const bool ok_close_5 = ts_c5 != kNoTs;
-        if (ok_close_5) out.emit(5);
+        if (ok_close_5) out.emit(5, 2);
         // stage hop_4 (for_all, distinct)
         // scan T-CSR C3.out distinct-first: each C4 once, h4 = its earliest witness in range
         // h4 in C3.out: ts >= max(t - delta_cyc, h3.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
@@ -89,7 +89,7 @@ BLZ_HD inline void tcyc_trigger(const GraphView& g, const Params& p, std::uint32
           // c6 in C4.out: ts >= max(t - delta_cyc, h4.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
           const std::int64_t ts_c6 = g.pout.pair_exists(v_C4, v_U, max_ts(t - p_delta_cyc, ts_h4 + 1), min_ts(t - 1, vis_t), vis_e);
           const bool ok_close_6 = ts_c6 != kNoTs;
-          if (ok_close_6) out.emit(6);
+          if (ok_close_6) out.emit(6, 2);
           // stage hop_5 (for_all, distinct)
           // scan T-CSR C4.out distinct-first: each C5 once, h5 = its earliest witness in range
           // h5 in C4.out: ts >= max(t - delta_cyc, h4.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
@@ -104,7 +104,7 @@ BLZ_HD inline void tcyc_trigger(const GraphView& g, const Params& p, std::uint32
             // c7 in C5.out: ts >= max(t - delta_cyc, h5.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
             const std::int64_t ts_c7 = g.pout.pair_exists(v_C5, v_U, max_ts(t - p_delta_cyc, ts_h5 + 1), min_ts(t - 1, vis_t), vis_e);
             const bool ok_close_7 = ts_c7 != kNoTs;
-            if (ok_close_7) out.emit(7);
+            if (ok_close_7) out.emit(7, 2);
             // stage hop_6 (for_all, distinct)
             // scan T-CSR C5.out distinct-first: each C6 once, h6 = its earliest witness in range
             // h6 in C5.out: ts >= max(t - delta_cyc, h5.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
@@ -119,7 +119,7 @@ BLZ_HD inline void tcyc_trigger(const GraphView& g, const Params& p, std::uint32
               // c8 in C6.out: ts >= max(t - delta_cyc, h6.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
               const std::int64_t ts_c8 = g.pout.pair_exists(v_C6, v_U, max_ts(t - p_delta_cyc, ts_h6 + 1), min_ts(t - 1, vis_t), vis_e);
               const bool ok_close_8 = ts_c8 != kNoTs;
-              if (ok_close_8) out.emit(8);
+              if (ok_close_8) out.emit(8, 2);
               // stage hop_7 (for_all, distinct)
               // scan T-CSR C6.out distinct-first: each C7 once, h7 = its earliest witness in range
               // h7 in C6.out: ts >= max(t - delta_cyc, h6.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
@@ -134,7 +134,7 @@ BLZ_HD inline void tcyc_trigger(const GraphView& g, const Params& p, std::uint32
                 // c9 in C7.out: ts >= max(t - delta_cyc, h7.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
                 const std::int64_t ts_c9 = g.pout.pair_exists(v_C7, v_U, max_ts(t - p_delta_cyc, ts_h7 + 1), min_ts(t - 1, vis_t), vis_e);
                 const bool ok_close_9 = ts_c9 != kNoTs;
-                if (ok_close_9) out.emit(9);
+                if (ok_close_9) out.emit(9, 2);
                 // stage hop_8 (for_all, distinct)
                 // scan T-CSR C7.out distinct-first: each C8 once, h8 = its earliest witness in range
                 // h8 in C7.out: ts >= max(t - delta_cyc, h7.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
@@ -149,7 +149,7 @@ BLZ_HD inline void tcyc_trigger(const GraphView& g, const Params& p, std::uint32
                   // c10 in C8.out: ts >= max(t - delta_cyc, h8.t + 1), ts <= t - 1, visible: eid <= eid(e0) (stream) or ts <= t (timestamp), set once per trigger; the upper bounds fold into the range end (no per-element break)
                   const std::int64_t ts_c10 = g.pout.pair_exists(v_C8, v_U, max_ts(t - p_delta_cyc, ts_h8 + 1), min_ts(t - 1, vis_t), vis_e);
                   const bool ok_close_10 = ts_c10 != kNoTs;
-                  if (ok_close_10) out.emit(10);
+                  if (ok_close_10) out.emit(10, 2);
                 }
               }
             }

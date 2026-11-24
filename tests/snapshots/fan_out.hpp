@@ -29,7 +29,7 @@ BLZ_HD inline void fan_out_trigger(const GraphView& g, const Params& p, std::uin
   const Range r_e1 = g.out.range(v_U, t - p_delta_fan + 1, vis_t, vis_e);
   const std::int64_t i_n = count_distinct(g.out, r_e1, [&](std::uint32_t v_Y) { return !(v_Y == v_U); });
   const bool ok_out_nbrs = i_n != 0;
-  if (ok_out_nbrs && i_n >= 2) out.emit(i_n);
+  if (ok_out_nbrs) out.emit(i_n, 2);
 }
 
 // Work estimate: the window size of the first scan (out_nbrs).
