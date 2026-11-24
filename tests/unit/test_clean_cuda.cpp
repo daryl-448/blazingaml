@@ -1,0 +1,113 @@
+// The clean family on the CUDA backend and the hybrid (SPEC v3 §3.2): count rows (R7) on the
+// loop-free index (R1) through the light, heavy, fused and packed paths, on a hand-checked graph
+// and against the CPU backend on fuzz graphs.
+#include <catch2/catch_test_macros.hpp>
+#include <cstdint>
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include "blz/registry.hpp"
+#include "graph/index.hpp"
+#include "runtime/cuda_backend.hpp"
+#include "runtime/fuzz_diff.hpp"
+#include "runtime/hybrid.hpp"
+#include "runtime/profile.hpp"
+
+using namespace blz;
+
+namespace {
+
+const PatternInfo* pattern(const std::string& name) {
+  for (const PatternInfo& p : registered_patterns())
+    if (p.name == name) return &p;
+  FAIL("no pattern " << name);
+  return nullptr;
+}
+
+const FusionInfo& fusion(std::string_view name) {
+  for (const FusionInfo& f : registered_fusions())
+    if (name == f.name) return f;
+  FAIL("no fusion " << name);
+  throw 0;
+}
+
+constexpr std::uint32_t kThresholds[] = {0, 4, kAllLight};
+
+}  // namespace
+
+TEST_CASE("cuda: count rows on a hand-checked graph, light, heavy, fused and packed (SPEC v3 R1, R7)") {
+  // test_clean.cpp's graph: e3 is a self-loop, e0 and e1 tie at t = 10.
+  const std::vector<std::uint32_t> src = {1, 2, 2, 0, 3, 0}, dst = {0, 0, 0, 0, 4, 2};
+  const std::vector<std::int32_t> ts = {10, 10, 11, 12, 13, 14};
+  const GraphIndex idx(src, dst, ts, 5, SelfLoops::drop);
+  const DeviceGraph dg(idx.view());
+  const std::uint64_t m = src.size();
+  const std::vector<std::pair<const char*, std::vector<std::uint32_t>>> want = {
+      {"clean_fan_in", {2, 2, 2, 0, 1, 1}},  {"clean_deg_in", {2, 2, 3, 0, 1, 1}},
+      {"clean_fan_out", {1, 1, 1, 0, 1, 1}}, {"clean_deg_out", {1, 1, 2, 0, 1, 1}},
+      {"clean_gs", {0, 0, 0, 0, 0, 1}},      {"clean_fan_total", {2, 2, 2, 0, 1, 1}},
+      {"clean_fan_oneway_out", {1, 1, 1, 0, 1, 0}}};
+  CudaMiner miner;
+  const BlockParams p{100, {}};
+  for (const std::uint32_t h : kThresholds)
+    for (const bool pack : {false, true}) {
+      for (const auto& [name, rows] : want) {
+        INFO(name << " H=" << h << " pack " << pack);
+        std::vector<std::uint32_t> got(m, 0xdeadbeefu);
+        const PatternInfo* pi = pattern(name);
+        const CudaBlockTiming tm = miner.mine(dg, std::span(&pi, 1), p, Visibility::timestamp, 0, m, h, got.data(), pack);
+        CHECK(got == rows);
+        CHECK(tm.saturated == 0);
+        if (pack) CHECK(tm.d2h_width == 1);
+      }
+      for (const auto& [fname, a, b] : {std::tuple{"clean_fan_in+clean_deg_in", 0, 1},
+                                        std::tuple{"clean_fan_out+clean_deg_out", 2, 3}}) {
+        INFO(fname << " H=" << h << " pack " << pack);
+        const FusionInfo& f = fusion(fname);
+        std::vector<std::uint32_t> ga(m, 0xdeadbeefu), gb(m, 0xdeadbeefu);
+        const BlockParams* ps[] = {&p, &p};
+        std::uint32_t* outs[] = {ga.data(), gb.data()};
+        miner.mine_fused(dg, f, ps, Visibility::timestamp, 0, m, h, outs, pack);
+        // Slot order is the members' blocks in fusion order: fan, then degree.
+        CHECK(ga == want[std::size_t(a)].second);
+        CHECK(gb == want[std::size_t(b)].second);
+      }
+    }
+  // The hybrid, every trigger on the CPU, then every trigger on the GPU.
+  for (const std::uint32_t hc : {0u, kAllGpu}) {
+    INFO("hybrid cpu threshold " << hc);
+    CudaMiner hm(true);
+    std::vector<std::uint32_t> got(m, 0xdeadbeefu);
+    const PatternInfo* pi = pattern("clean_fan_in");
+    mine_hybrid(idx.view(), dg, hm, std::span(&pi, 1), p, Visibility::timestamp, 0, m, hc, 4, Schedule::sorted,
+                got.data());
+    CHECK(got == want[0].second);
+  }
+}
+
+TEST_CASE("cuda, hybrid: clean_all equals the CPU backend on fuzz graphs, every threshold, fused and packed") {
+  const Profile all = load_profile(std::string(BLZ_SOURCE_DIR) + "/configs/profiles/clean_all.yaml");
+  // lcyc apart: its unordered search on one GPU thread per trigger (H = all) is the slow part, so
+  // it runs on fewer graphs with a lower work limit (R11: a limited graph compares stop eids).
+  Profile rest = all, lcyc = all;
+  std::erase_if(rest.blocks, [](const ProfileBlock& pb) { return pb.block == Block::lcyc; });
+  std::erase_if(lcyc.blocks, [](const ProfileBlock& pb) { return pb.block != Block::lcyc; });
+  REQUIRE(lcyc.blocks.size() == 1);
+  const auto check = [](const Profile& prof, const FuzzDiff& d, std::uint64_t graphs) {
+    CHECK(d.graphs == graphs);
+    for (const ProfileBlock& pb : prof.blocks) {
+      INFO(block_name(pb.block));
+      CHECK(d.mismatched_rows[int(pb.block)] == 0);
+    }
+    CHECK(d.bad_seeds.empty());
+  };
+  for (const CudaOptions opts : {CudaOptions{false, false}, CudaOptions{true, true}, CudaOptions{false, true}}) {
+    INFO("fuse " << opts.fuse << " pack " << opts.pack);
+    check(rest, fuzz_diff_cuda(rest, 0, 120, {}, kThresholds, kDefaultWorkLimit, opts, Reference::cpu), 120);
+    check(lcyc, fuzz_diff_cuda(lcyc, 0, 24, {}, kThresholds, 20'000, opts, Reference::cpu), 24);
+  }
+  const std::uint32_t cpu_thresholds[] = {0, 4, kAllGpu};
+  check(rest, fuzz_diff_hybrid(rest, 0, 40, {}, kThresholds, cpu_thresholds, kDefaultWorkLimit, {}, Reference::cpu), 40);
+  check(lcyc, fuzz_diff_hybrid(lcyc, 0, 12, {}, kThresholds, cpu_thresholds, 20'000, {}, Reference::cpu), 12);
+}

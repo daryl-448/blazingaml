@@ -36,7 +36,8 @@ if(BLZ_WITH_XGBOOST)
   target_sources(blz_unit_tests PRIVATE unit/test_xgb.cpp)
 endif()
 if(BLZ_ENABLE_CUDA)
-  target_sources(blz_unit_tests PRIVATE unit/test_cuda_backend.cpp unit/test_hybrid.cpp unit/test_pack_fuse.cpp)
+  target_sources(blz_unit_tests PRIVATE unit/test_cuda_backend.cpp unit/test_hybrid.cpp unit/test_pack_fuse.cpp
+    unit/test_clean_cuda.cpp)
 endif()
 target_link_libraries(blz_unit_tests PRIVATE blz_core blz_codegen Catch2::Catch2WithMain)
 # The vertex-statistics reference must round as vstats.cpp does (SPEC v2 §8 S2).

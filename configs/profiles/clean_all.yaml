@@ -1,0 +1,23 @@
+# Semantic profile, clean family: the test profile (SPEC v3 §4.4: a clean test profile enables
+# every pattern). clean_default's blocks, plus lcyc and tchain (86,400 s, tcyc's bins) and the
+# count blocks gs, fan_oneway_out and fan_total (86,400 s). Not a modelling profile: lcyc's
+# unordered search can reach the work limit (R11) on dense graphs.
+version: 2
+profile: clean_all
+family: clean
+visibility: timestamp
+credit: trigger
+k_max: 10
+blocks:
+  fan_in:         {patterns: [clean_fan_in],  window: 86400}
+  fan_out:        {patterns: [clean_fan_out], window: 86400}
+  deg_in:         {patterns: [clean_deg_in],  window: 86400}
+  deg_out:        {patterns: [clean_deg_out], window: 86400}
+  sg:             {patterns: [clean_sg_gather, clean_sg_scatter], window: 21600, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20]}
+  sg_ord:         {patterns: [clean_sg_ord], window: 21600, bins: [2, 3, 4, 5, 6, 8, 10, 13, 16, 20]}
+  tcyc:           {patterns: [clean_tcyc], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}
+  lcyc:           {patterns: [clean_lcyc], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}
+  tchain:         {patterns: [clean_tchain], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}
+  gs:             {patterns: [clean_gs], window: 86400}
+  fan_oneway_out: {patterns: [clean_fan_oneway_out], window: 86400}
+  fan_total:      {patterns: [clean_fan_total], window: 86400}
