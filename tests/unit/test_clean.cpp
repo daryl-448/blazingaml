@@ -1,5 +1,5 @@
 // The clean family's runtime (SPEC v3 §3.2): count blocks (R7) and the loop-free index (R1), on
-// hand-checked graphs, and the CPU schedules against each other on fuzz graphs.
+// hand-checked graphs, and the CPU backend against the clean oracle on fuzz graphs.
 #include <catch2/catch_test_macros.hpp>
 #include <cstdint>
 #include <string>
@@ -149,15 +149,32 @@ TEST_CASE("the loop-free index: sg no longer counts an endpoint through its self
   CHECK(sg_rows(SelfLoops::keep, {"sg_gather", "sg_scatter"}, Visibility::stream) == with_s);
 }
 
-TEST_CASE("clean_all: the CPU's sorted schedule equals its dynamic one on 300 fuzz graphs (SPEC v3 F2)") {
-  const Profile prof = load_profile(std::string(BLZ_SOURCE_DIR) + "/configs/profiles/clean_all.yaml");
-  const FuzzDiff d = fuzz_diff_cpu(prof, 0, 300, {}, 100'000, Reference::cpu);
-  CHECK(d.graphs == 300);
-  for (const ProfileBlock& pb : prof.blocks) {
-    INFO(block_name(pb.block));
-    CHECK(d.mismatched_rows[int(pb.block)] == 0);
-  }
-  CHECK(d.bad_seeds.empty());
+// AC-V3-1's fast share (the gate is `blz fuzz-diff --profile configs/profiles/clean_all.yaml`): both
+// schedules against the clean oracle. lcyc apart, on fewer graphs at a lower work limit, where some
+// graphs are limited (R11: inconclusive for lcyc, their stop eids compared) and the others complete.
+TEST_CASE("clean_all: the CPU backend equals the clean oracle on fuzz graphs, both schedules (SPEC v3 F6, R11)") {
+  const Profile all = load_profile(std::string(BLZ_SOURCE_DIR) + "/configs/profiles/clean_all.yaml");
+  Profile rest = all, lcyc = all;
+  std::erase_if(rest.blocks, [](const ProfileBlock& pb) { return pb.block == Block::lcyc; });
+  std::erase_if(lcyc.blocks, [](const ProfileBlock& pb) { return pb.block != Block::lcyc; });
+  const auto check = [](const Profile& prof, const FuzzDiff& d, std::uint64_t graphs) {
+    CHECK(d.graphs == graphs);
+    for (const ProfileBlock& pb : prof.blocks) {
+      INFO(block_name(pb.block));
+      CHECK(d.mismatched_rows[int(pb.block)] == 0);
+    }
+    CHECK(d.bad_seeds.empty());
+  };
+  const FuzzDiff r = fuzz_diff_cpu(rest, 0, 200, {});
+  check(rest, r, 200);
+  CHECK(r.limited_seeds.empty());
+  const FuzzDiff l = fuzz_diff_cpu(lcyc, 0, 100, {}, 100'000);
+  check(lcyc, l, 100);
+  CHECK(l.limited_graphs[int(Block::lcyc)] > 0);
+  CHECK(l.limited_graphs[int(Block::lcyc)] < 50);
+  CHECK(l.limited_graphs[int(Block::lcyc)] == l.limited_seeds.size());
+  // The CPU's sorted schedule against its dynamic one (--reference cpu), every block.
+  check(all, fuzz_diff_cpu(all, 0, 60, {}, 100'000, Reference::cpu), 60);
 }
 
 TEST_CASE("clean profiles: clean_default, clean_wc_hi_small and clean_all (SPEC v3 §3.3, F5)") {

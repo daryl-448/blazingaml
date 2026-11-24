@@ -9,7 +9,7 @@
 
 #include "graph/fuzz_gen.hpp"
 #include "graph/index.hpp"
-#include "oracle/oracle.hpp"
+#include "oracle/profile_oracle.hpp"
 #include "runtime/cpu_backend.hpp"
 #include "runtime/cuda_backend.hpp"
 
@@ -46,15 +46,17 @@ Rows mine_all(const Graph& g, const Profile& prof, Backend be, std::int32_t wind
   const std::size_t nt = be == Backend::cuda ? thresholds.size() : 1;
   Rows rows(nt);
   if (be == Backend::oracle) {
-    const Oracle o({g.src, g.dst, g.ts, g.n}, prof.visibility);
+    const ProfileOracle o({g.src, g.dst, g.ts, g.n}, prof);
     for (const ProfileBlock& pb : prof.blocks) {
       const BlockParams p{window, bins[int(pb.block)]};
       auto& r = rows[0][int(pb.block)];
       r.assign(m * block_cols(p), 0);
-      if (pb.block == Block::sg && pb.patterns.size() == 1 && std::string_view(pb.patterns[0]->name) == "sg_gather")
-        o.mine_sg_gather(p, 0, m, r.data());  // the order-relaxation bound (the oracle's sg is both roles)
+      // check_profile_backend holds for the profiles under test, so an sg block of one pattern is the
+      // order-relaxation bound, the gather role alone (the oracle's sg is both roles).
+      if (pb.block == Block::sg && pb.patterns.size() == 1)
+        o.mine_sg_gather(p, 0, m, r.data());
       else
-        o.mine(pb.block, p, prof.k_max, 0, m, r.data());
+        o.mine(pb.block, p, 0, m, r.data());
     }
     return rows;
   }

@@ -9,8 +9,9 @@
 
 namespace blz {
 
-// AC1 on fuzz graphs (SPEC §13.3): the generated CPU backend against the oracle, every row of
-// every block, on the graphs of seeds [s0, s1). Each graph uses its own window for every block,
+// AC1 on fuzz graphs (SPEC §13.3): the generated CPU backend against the profile's oracle
+// (ProfileOracle: the clean oracle for a clean profile, SPEC v3 §3.2), every row of every block, on
+// the graphs of seeds [s0, s1). Each graph uses its own window for every block,
 // `bins`, and the compiled K_MAX for the oracle's tcyc cap. Both schedules are checked, and for a
 // block with a pattern planned for reachability pruning (tcyc, SPEC v2 §8 S6) both again with it.
 // The profile forms (SPEC v2 §10) take the blocks, their patterns and k_max from `prof`; the
@@ -19,20 +20,22 @@ namespace blz {
 // as the profile says (Profile::self_loops). The forms without a profile use registry_profile():
 // every registered legacy block (v1's six, and sg_ord from P10).
 //
-// Work limit (SPEC v2 §8 S3): every run has `work_limit`. Where the oracle stops a block (lcyc),
-// the graph is limited: that block's rows are not compared, but the backend must stop at the same
-// eid, the smallest over the limit; a backend that stops elsewhere, or not at all, or stops where
-// the oracle does not, counts as one mismatched row.
+// Work limit (SPEC v2 §8 S3, SPEC v3 R11): every run has `work_limit`. Where the reference stops a
+// block (lcyc), the graph is limited for that block, i.e. inconclusive: its rows are not compared and
+// it counts in no gate, but the backend must stop at the same eid, the smallest over the limit; a
+// backend that stops elsewhere, or not at all, or stops where the reference does not, counts as one
+// mismatched row.
 // What the rows are compared against: the oracle, or the CPU backend with the dynamic schedule
-// (a backend-vs-backend check for a profile the oracle cannot run, SPEC v3 clean profiles). With
-// Reference::cpu, fuzz_diff_cpu checks the sorted schedule (and reachability pruning) against it.
+// (backend against backend, cheaper than the oracle). With Reference::cpu, fuzz_diff_cpu checks the
+// sorted schedule (and reachability pruning) against it.
 enum class Reference { oracle, cpu };
 
 struct FuzzDiff {
   std::uint64_t graphs = 0, edges = 0;
   std::array<std::uint64_t, kAllBlocks.size()> mismatched_rows{};  // per block, both schedules
+  std::array<std::uint64_t, kAllBlocks.size()> limited_graphs{};   // per block: the reference hit the limit
   std::vector<std::uint64_t> bad_seeds;                             // ascending
-  std::vector<std::uint64_t> limited_seeds;                         // ascending: the oracle hit the limit
+  std::vector<std::uint64_t> limited_seeds;                         // ascending: limited in some block
 };
 
 FuzzDiff fuzz_diff_cpu(std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins);

@@ -48,8 +48,8 @@ struct IsolatedGraph {
 };
 IsolatedGraph isolated_graph(const CoverageGraph& g, std::span<const std::uint32_t> eids);
 
-// Structural eligibility (§5): for each block of `prof` (in its order), the
-// number of the isolated graph's edges whose row is non-zero when the oracle mines that graph
+// Structural eligibility (§5): for each block of `prof` (in its order), the number of the isolated
+// graph's edges whose row is non-zero when the profile's oracle (ProfileOracle) mines that graph
 // alone with the profile's windows, bins, k_max and visibility.
 std::vector<std::uint64_t> oracle_eligible_rows(const IsolatedGraph& ig, const Profile& prof);
 

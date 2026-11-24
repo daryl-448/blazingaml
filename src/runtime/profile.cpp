@@ -39,21 +39,23 @@ bool is_ident(const std::string& s) {
   return std::all_of(s.begin(), s.end(), [](char c) { return std::isalnum((unsigned char)c) || c == '_'; });
 }
 
-// The patterns whose definitions the oracle computes for each block (SPEC §4.3–§4.6, §9).
-std::vector<std::string> oracle_patterns(Block b) {
+// The patterns whose definitions the oracle computes for each block: the legacy oracle's (SPEC
+// §4.3–§4.6, §9) and the clean oracle's (SPEC v3 §3.2).
+std::vector<std::string> oracle_patterns(Block b, Family f) {
+  const std::string pre = f == Family::clean ? "clean_" : "";
   switch (b) {
-    case Block::fan_in: return {"fan_in"};
-    case Block::fan_out: return {"fan_out"};
-    case Block::deg_in: return {"deg_in"};
-    case Block::deg_out: return {"deg_out"};
-    case Block::sg: return {"sg_gather", "sg_scatter"};
-    case Block::tcyc: return {"tcyc"};
-    case Block::sg_ord: return {"sg_ordered"};
-    case Block::lcyc: return {"lcyc"};
-    case Block::fan_oneway_out: return {"fan_oneway_out"};
-    case Block::fan_total: return {"fan_total"};
-    case Block::tchain: return {"tchain"};
-    case Block::gs: return {"gs"};
+    case Block::fan_in: return {pre + "fan_in"};
+    case Block::fan_out: return {pre + "fan_out"};
+    case Block::deg_in: return {pre + "deg_in"};
+    case Block::deg_out: return {pre + "deg_out"};
+    case Block::sg: return {pre + "sg_gather", pre + "sg_scatter"};
+    case Block::tcyc: return {pre + "tcyc"};
+    case Block::sg_ord: return {f == Family::clean ? "clean_sg_ord" : "sg_ordered"};
+    case Block::lcyc: return {pre + "lcyc"};
+    case Block::fan_oneway_out: return {pre + "fan_oneway_out"};
+    case Block::fan_total: return {pre + "fan_total"};
+    case Block::tchain: return {pre + "tchain"};
+    case Block::gs: return {pre + "gs"};
   }
   return {};
 }
@@ -367,12 +369,8 @@ std::vector<std::uint32_t> fuzz_bins(const Profile& prof, const ProfileBlock& pb
 void check_profile_backend(const Profile& p, Backend b) {
   const std::string be = backend_name(b);
   if (b == Backend::oracle) {
-    if (p.family == Family::clean)
-      fail_code(p.family_loc, "E404",
-                "the oracle computes the legacy definitions (SPEC §9); a clean profile (SPEC v3 §3.2) runs on cpu, "
-                "cuda or hybrid");
     for (const ProfileBlock& pb : p.blocks) {
-      std::vector<std::string> got, want = oracle_patterns(pb.block);
+      std::vector<std::string> got, want = oracle_patterns(pb.block, p.family);
       for (const PatternInfo* pi : pb.patterns) got.push_back(pi->name);
       std::sort(got.begin(), got.end());
       std::sort(want.begin(), want.end());
@@ -380,7 +378,8 @@ void check_profile_backend(const Profile& p, Backend b) {
         std::string w;
         for (const auto& s : want) w += (w.empty() ? "" : ", ") + s;
         fail_code(pb.loc, "E404",
-                  "the oracle computes block " + std::string(block_name(pb.block)) + " as the patterns [" + w +
+                  std::string(p.family == Family::clean ? "the clean oracle" : "the oracle") + " computes block " +
+                      std::string(block_name(pb.block)) + " as the patterns [" + w +
                       "] together; it cannot run another pattern list");
       }
     }

@@ -2,6 +2,7 @@
 // profile. `blz metamorphic --seeds 0:2000` is the slow test.
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
+#include <string>
 #include <vector>
 
 #include "runtime/fuzz_diff.hpp"
@@ -43,6 +44,14 @@ TEST_CASE("metamorphic: 200 fuzz graphs, oracle and cpu, under timestamp visibil
     check_clean(r, 200, ts, b);
     // Visibility invariance compares the tcyc and tchain rows only, once per graph.
     CHECK(r.rows_compared[int(MetaTest::visibility_invariance)] == 2 * r.edges);
+  }
+}
+
+TEST_CASE("metamorphic: clean_default on the clean oracle and cpu (SPEC v3 F6)") {
+  const Profile clean = load_profile(std::string(BLZ_SOURCE_DIR) + "/configs/profiles/clean_default.yaml");
+  for (Backend b : {Backend::oracle, Backend::cpu}) {
+    INFO(backend_name(b));
+    check_clean(metamorphic(clean, b, 0, 100, {}, {}), 100, clean, b);
   }
 }
 

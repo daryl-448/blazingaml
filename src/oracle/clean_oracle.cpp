@@ -10,8 +10,19 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace blz {
+
+namespace {
+
+// The ledger ids of SPEC v3 §3.1 that Quirks switches, in ledger order.
+constexpr std::pair<const char*, bool Quirks::*> kQuirkIds[] = {
+    {"Q1", &Quirks::q1_sg_self_loops},     {"Q2", &Quirks::q2_vstats_self_loops}, {"Q3", &Quirks::q3_closed_windows},
+    {"Q4", &Quirks::q4_stream_visibility}, {"Q5", &Quirks::q5_strict_order},      {"Q6", &Quirks::q6_lcyc_drops_ties},
+    {"Q9", &Quirks::q9_vstats_gfp_window}, {"Q10", &Quirks::q10_vstats_gfp_arith}};
+
+}  // namespace
 
 Quirks parse_quirks(std::string_view list) {
   Quirks q;
@@ -21,23 +32,21 @@ Quirks parse_quirks(std::string_view list) {
     const std::string_view id = list.substr(at, comma == std::string_view::npos ? std::string_view::npos : comma - at);
     const bool all = id == "all";
     bool known = all;
-    const auto turn_on = [&](std::string_view name, bool& flag) {
-      if (all || id == name) flag = known = true;
-    };
-    turn_on("Q1", q.q1_sg_self_loops);
-    turn_on("Q2", q.q2_vstats_self_loops);
-    turn_on("Q3", q.q3_closed_windows);
-    turn_on("Q4", q.q4_stream_visibility);
-    turn_on("Q5", q.q5_strict_order);
-    turn_on("Q6", q.q6_lcyc_drops_ties);
-    turn_on("Q9", q.q9_vstats_gfp_window);
-    turn_on("Q10", q.q10_vstats_gfp_arith);
+    for (const auto& [name, flag] : kQuirkIds)
+      if (all || id == name) q.*flag = known = true;
     if (!known)
       throw std::invalid_argument("unknown quirk '" + std::string(id) +
                                   "' (known: Q1, Q2, Q3, Q4, Q5, Q6, Q9, Q10, all; SPEC v3 §3.1)");
     if (comma == std::string_view::npos) return q;
     at = comma + 1;
   }
+}
+
+std::vector<std::string> quirk_ids(const Quirks& q) {
+  std::vector<std::string> ids;
+  for (const auto& [name, flag] : kQuirkIds)
+    if (q.*flag) ids.push_back(name);
+  return ids;
 }
 
 CleanOracle::CleanOracle(const EdgeStream& s, std::span<const double> amount, Quirks q)

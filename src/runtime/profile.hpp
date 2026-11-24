@@ -90,9 +90,8 @@ std::vector<std::uint32_t> fuzz_bins(const Profile& prof, const ProfileBlock& pb
 
 // The start-up check of a profile against a backend (§3.1, §6.4 of v2). Throws
 // "<file>:<line>:<col>: error E404: ..." when the backend cannot run the profile:
-//   - oracle: a clean profile (the oracle computes the legacy definitions), or a block whose
-//     patterns are not the set the oracle implements for it (§9 of v1 computes each block's
-//     definition directly);
+//   - oracle: a block whose patterns are not the set the profile family's oracle implements for it
+//     (§9 of v1 and the clean oracle of SPEC v3 §3.2 compute each block's definition directly);
 //   - cpu, cuda: a k_max other than the compiled K_MAX of a listed pattern that declares it.
 // For a v1 config on cpu or cuda it runs the v1 start-up checks instead of the K_MAX one
 // (check_backend_config: E402 and the K_MAX message), so v1 configs behave as in v1.

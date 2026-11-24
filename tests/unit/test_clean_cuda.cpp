@@ -1,6 +1,6 @@
 // The clean family on the CUDA backend and the hybrid (SPEC v3 §3.2): count rows (R7) on the
 // loop-free index (R1) through the light, heavy, fused and packed paths, on a hand-checked graph
-// and against the CPU backend on fuzz graphs.
+// and against the clean oracle on fuzz graphs.
 #include <catch2/catch_test_macros.hpp>
 #include <cstdint>
 #include <string>
@@ -86,7 +86,7 @@ TEST_CASE("cuda: count rows on a hand-checked graph, light, heavy, fused and pac
   }
 }
 
-TEST_CASE("cuda, hybrid: clean_all equals the CPU backend on fuzz graphs, every threshold, fused and packed") {
+TEST_CASE("cuda, hybrid: clean_all equals the clean oracle on fuzz graphs, every threshold, fused and packed") {
   const Profile all = load_profile(std::string(BLZ_SOURCE_DIR) + "/configs/profiles/clean_all.yaml");
   // lcyc apart: its unordered search on one GPU thread per trigger (H = all) is the slow part, so
   // it runs on fewer graphs with a lower work limit (R11: a limited graph compares stop eids).
@@ -104,10 +104,10 @@ TEST_CASE("cuda, hybrid: clean_all equals the CPU backend on fuzz graphs, every 
   };
   for (const CudaOptions opts : {CudaOptions{false, false}, CudaOptions{true, true}, CudaOptions{false, true}}) {
     INFO("fuse " << opts.fuse << " pack " << opts.pack);
-    check(rest, fuzz_diff_cuda(rest, 0, 120, {}, kThresholds, kDefaultWorkLimit, opts, Reference::cpu), 120);
-    check(lcyc, fuzz_diff_cuda(lcyc, 0, 24, {}, kThresholds, 20'000, opts, Reference::cpu), 24);
+    check(rest, fuzz_diff_cuda(rest, 0, 120, {}, kThresholds, kDefaultWorkLimit, opts), 120);
+    check(lcyc, fuzz_diff_cuda(lcyc, 0, 24, {}, kThresholds, 20'000, opts), 24);
   }
   const std::uint32_t cpu_thresholds[] = {0, 4, kAllGpu};
-  check(rest, fuzz_diff_hybrid(rest, 0, 40, {}, kThresholds, cpu_thresholds, kDefaultWorkLimit, {}, Reference::cpu), 40);
-  check(lcyc, fuzz_diff_hybrid(lcyc, 0, 12, {}, kThresholds, cpu_thresholds, 20'000, {}, Reference::cpu), 12);
+  check(rest, fuzz_diff_hybrid(rest, 0, 40, {}, kThresholds, cpu_thresholds), 40);
+  check(lcyc, fuzz_diff_hybrid(lcyc, 0, 12, {}, kThresholds, cpu_thresholds, 20'000), 12);
 }

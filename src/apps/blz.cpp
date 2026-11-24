@@ -37,6 +37,7 @@
 #include "ml/xgb.hpp"
 #endif
 #include "oracle/oracle.hpp"
+#include "oracle/profile_oracle.hpp"
 #include "runtime/vstats.hpp"
 #include "runtime/coverage.hpp"
 #include "runtime/cpu_backend.hpp"
@@ -285,7 +286,7 @@ std::string threshold_name(std::uint32_t h) { return h == blz::kAllLight ? "all"
 int mine(const std::string& graph, const std::string& profile_path, const std::string& backend, int threads,
          const std::string& schedule_opt, std::uint32_t heavy, std::uint32_t cpu_heavy, bool reach_prune,
          const std::string& blocks_opt, const std::string& triggers, std::uint64_t edges, std::uint64_t work_limit,
-         bool fuse, bool pack, const std::string& out) {
+         bool fuse, bool pack, const std::string& quirks_opt, const std::string& out) {
   const blz::Backend be = blz::parse_backend(backend);
   if ((fuse || pack) && be != blz::Backend::cuda) throw std::runtime_error("--fuse and --pack are for the cuda backend");
   // hybrid (SPEC v2 §8 S6): the cuda backend's device and rows, plus the cpu backend's index.
@@ -297,6 +298,11 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
   const blz::Profile prof = blz::load_profile(profile_path);  // E403
   blz::check_profile_backend(prof, be);                       // E404 (v1 configs: E402, K_MAX)
   const std::vector<const blz::ProfileBlock*> blocks = select_blocks(prof, blocks_opt);
+  // E16 (SPEC v3 §3.6): GFP / v2 behaviours switched back on in the clean oracle.
+  const blz::Quirks quirks = blz::parse_quirks(quirks_opt);
+  const std::vector<std::string> quirk_ids = blz::quirk_ids(quirks);
+  if (!quirk_ids.empty() && (be != blz::Backend::oracle || prof.family != blz::Family::clean))
+    throw std::runtime_error("--quirks is for the oracle backend and a clean profile (SPEC v3 §3.6)");
 
   auto t0 = Clock::now();
   blz::BlzgView g(graph);
@@ -313,10 +319,10 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
     throw std::runtime_error("--triggers sample: runs on the oracle and cpu backends (the preflight of SPEC v2 §2.5 "
                              "uses cpu); the CUDA kernels take an eid range");
   if (threads > 0) omp_set_num_threads(threads);
-  std::optional<blz::Oracle> oracle;
+  std::optional<blz::ProfileOracle> oracle;  // a clean profile's is the clean oracle, on its own lists
   std::optional<blz::GraphIndex> index;
   if (cpu || gpu) index.emplace(src, dst, ts, g.n(), prof.self_loops());  // hybrid: gpu
-  else oracle.emplace(blz::EdgeStream{src, dst, ts, g.n()}, prof.visibility);
+  else oracle.emplace(blz::EdgeStream{src, dst, ts, g.n()}, prof, quirks);
   const double build_s = secs(t0);
   std::fprintf(stderr, "%s index built in %.1f s (m=%llu, n=%llu); profile %s (%s); triggers %s: %llu rows\n",
                backend.c_str(), build_s, (unsigned long long)m, (unsigned long long)g.n(), prof.name.c_str(),
@@ -334,10 +340,13 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
   const std::string blzg_sha = file_sha256(graph), csv_sha = blz::to_hex(g.csv_sha256());
   // The run a block belongs to: blocks of an earlier run with the same key are kept, so blocks
   // can be mined one invocation at a time into one directory.
-  const nlohmann::json run_key = {{"backend", backend},     {"csv_sha256", csv_sha},
-                                  {"blzg_sha256", blzg_sha}, {"profile_id", prof.id()},
-                                  {"k_max", prof.k_max},     {"triggers", sel.json()},
-                                  {"edges", m}};
+  nlohmann::json run_key = {{"backend", backend},     {"csv_sha256", csv_sha},
+                            {"blzg_sha256", blzg_sha}, {"profile_id", prof.id()},
+                            {"k_max", prof.k_max},     {"triggers", sel.json()},
+                            {"edges", m}};
+  // Quirk rows are not the profile's rows: a quirk run never shares a directory's blocks with a
+  // clean one, or with another quirk set.
+  if (!quirk_ids.empty()) run_key["quirks"] = quirk_ids;
   nlohmann::json meta = nlohmann::json::object();
   if (std::filesystem::exists(meta_path)) {
     auto old = nlohmann::json::parse(std::ifstream(meta_path));
@@ -359,6 +368,7 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
     jbe["pack"] = pack;
   }
   if (hybrid) jbe["cpu_threshold"] = threshold_name(cpu_heavy);
+  if (be == blz::Backend::oracle && prof.family == blz::Family::clean) jbe["quirks"] = quirk_ids;
   meta["backend"] = jbe;
   meta["triggers"] = sel.json();
   meta["graph"] = graph;
@@ -473,9 +483,9 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
       ctm = miner->mine(*dgraph, pb->patterns, p, prof.visibility, sel.first, sel.last, heavy, pinned->data(), pack);
       sat = ctm.saturated;
     } else if (sel.sampled) {
-      sat = oracle->mine(b, p, prof.k_max, sel.eids, feats.data());
+      sat = oracle->mine(b, p, sel.eids, feats.data());
     } else {
-      sat = oracle->mine(b, p, prof.k_max, sel.first, sel.last, feats.data());
+      sat = oracle->mine(b, p, sel.first, sel.last, feats.data());
     }
     const double mine_s = secs(t1);
     const std::span<const std::uint32_t> data =
@@ -1384,8 +1394,9 @@ void merge_report(const std::string& report, const std::string& name, const nloh
   std::ofstream(report) << doc.dump(1) << '\n';
 }
 
-// AC1 on fuzz graphs (SPEC §13.3): a generated backend vs the oracle, or with --reference cpu vs
-// the cpu backend's dynamic schedule (backend against backend, for a profile the oracle cannot run).
+// AC1 on fuzz graphs (SPEC §13.3): a generated backend vs the profile's oracle (the clean oracle for
+// a clean profile, SPEC v3 §3.2), or with --reference cpu vs the cpu backend's dynamic schedule
+// (backend against backend).
 // Exit code 0 if equal, 2 if not. cuda runs every graph once per light/heavy threshold. With
 // --profile (SPEC v2 §10), the profile's blocks, patterns and k_max; without, every registered
 // legacy pattern (v1).
@@ -1410,10 +1421,16 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
       hybrid ? blz::fuzz_diff_hybrid(prof, s0, s1, bins, thresholds, cpu_thresholds, work_limit, {}, ref)
       : gpu  ? blz::fuzz_diff_cuda(prof, s0, s1, bins, thresholds, work_limit, {fuse, pack}, ref)
              : blz::fuzz_diff_cpu(prof, s0, s1, bins, work_limit, ref);
-  nlohmann::json per_block = nlohmann::json::object();
+  // SPEC v3 R11: a block of a graph where the reference hit the work limit is inconclusive; a gate
+  // counts the completed ones.
+  nlohmann::json per_block = nlohmann::json::object(), completed = nlohmann::json::object(),
+                 limited = nlohmann::json::object();
   std::uint64_t bad = 0;
   for (const blz::ProfileBlock& pb : prof.blocks) {
-    per_block[std::string(blz::block_name(pb.block))] = d.mismatched_rows[int(pb.block)];
+    const std::string bn(blz::block_name(pb.block));
+    per_block[bn] = d.mismatched_rows[int(pb.block)];
+    completed[bn] = d.graphs - d.limited_graphs[int(pb.block)];
+    limited[bn] = d.limited_graphs[int(pb.block)];
     bad += d.mismatched_rows[int(pb.block)];
   }
   std::vector<std::uint64_t> first_bad(d.bad_seeds.begin(),
@@ -1428,6 +1445,8 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
                         {"mismatched_seeds", d.bad_seeds.size()},
                         {"first_mismatched_seeds", first_bad},
                         {"work_limit", work_limit},
+                        {"completed_graphs_by_block", completed},
+                        {"limited_graphs_by_block", limited},
                         {"limited_graphs", d.limited_seeds.size()},
                         {"first_limited_seeds", std::vector<std::uint64_t>(d.limited_seeds.begin(),
                                                     d.limited_seeds.begin() + std::ptrdiff_t(std::min<std::size_t>(
@@ -1457,9 +1476,12 @@ int fuzz_diff(const std::string& seeds, const std::string& bins_opt, const std::
   std::printf("fuzz-diff %s vs %s, seeds %s: %llu graphs, %llu edges, %llu mismatching rows (%.1f s)\n",
               backend.c_str(), ref == blz::Reference::oracle ? "oracle" : "cpu (dynamic)", seeds.c_str(),
               (unsigned long long)d.graphs, (unsigned long long)d.edges, (unsigned long long)bad, secs(t0));
-  if (!d.limited_seeds.empty())
-    std::printf("  %llu graphs reached the work limit of %llu bindings: their stop eids compared, not their rows\n",
-                (unsigned long long)d.limited_seeds.size(), (unsigned long long)work_limit);
+  for (const blz::ProfileBlock& pb : prof.blocks)
+    if (const std::uint64_t l = d.limited_graphs[int(pb.block)])
+      std::printf("  %s: %llu graphs completed, %llu reached the work limit of %llu bindings (inconclusive: their "
+                  "stop eids compared, not their rows)\n",
+                  std::string(blz::block_name(pb.block)).c_str(), (unsigned long long)(d.graphs - l),
+                  (unsigned long long)l, (unsigned long long)work_limit);
   if (bad) std::printf("%s\n", res.dump(1).c_str());
   merge_report(report, name, res);
   return bad == 0 ? 0 : 2;
@@ -1679,6 +1701,10 @@ int main(int argc, char** argv) {
   bool fuse = false, pack = false;
   mn->add_flag("--fuse", fuse, "cuda backend: mine each compiled fusion's blocks in one kernel (SPEC v2 §8 S7), same rows");
   mn->add_flag("--pack", pack, "cuda backend: copy the rows as uint8 or uint16 where they fit (SPEC v2 §8 S7), same rows");
+  std::string quirks;
+  mn->add_option("--quirks", quirks,
+                 "oracle backend, clean profile: GFP / v2 behaviours to switch back on for E16, e.g. Q1,Q3 or all "
+                 "(SPEC v3 §3.1, §3.6)");
   mn->add_option("--out", out)->required();
 
   std::string a_npy, b_npy, report, name;
@@ -1762,8 +1788,8 @@ int main(int argc, char** argv) {
   fd->add_flag("--pack", pack, "cuda: packed D2H (SPEC v2 §8 S7)");
   std::string fd_reference = "oracle";
   fd->add_option("--reference", fd_reference,
-                 "the rows compared against: the oracle, or the cpu backend's dynamic schedule (a profile the oracle "
-                 "cannot run, e.g. a clean one; --backend cpu then checks the sorted schedule)")
+                 "the rows compared against: the profile's oracle (the clean oracle for a clean profile), or the cpu "
+                 "backend's dynamic schedule (backend against backend; --backend cpu then checks the sorted schedule)")
       ->check(CLI::IsMember({"oracle", "cpu"}));
   fd->add_option("--report", report, "merge the summary into this JSON file");
   fd->add_option("--name", name, "key (JSON pointer path) in --report")->needs("--report");
@@ -1810,7 +1836,7 @@ int main(int argc, char** argv) {
       const std::vector<std::uint32_t> cpu_h = parse_thresholds(cpu_heavy_opt);
       if (cpu_h.size() != 1) throw std::runtime_error("mine --cpu-threshold takes one value");
       return mine(graph, profile, backend, threads, schedule, heavy, cpu_h[0], reach_prune, blocks, triggers, edges,
-                  work_limit, fuse, pack, out);
+                  work_limit, fuse, pack, quirks, out);
     }
     if (*bn) {
       if (bench_name.empty()) bench_name = backend;

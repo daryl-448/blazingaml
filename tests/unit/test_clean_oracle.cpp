@@ -16,6 +16,8 @@
 #include "graph/index.hpp"
 #include "oracle/clean_oracle.hpp"
 #include "oracle/oracle.hpp"
+#include "oracle/profile_oracle.hpp"
+#include "runtime/profile.hpp"
 #include "runtime/vstats.hpp"
 
 using namespace blz;
@@ -546,6 +548,11 @@ TEST_CASE("parse_quirks: ledger ids, all, or nothing") {
   CHECK(on(parse_quirks("Q1,Q3")) == std::array{true, false, true, false, false, false, false, false});
   CHECK(on(parse_quirks("Q10")) == std::array{false, false, false, false, false, false, false, true});
   CHECK(on(parse_quirks("all")) == std::array{true, true, true, true, true, true, true, true});
+  // quirk_ids names them back in ledger order (blz mine --quirks: the manifest and the run key).
+  CHECK(quirk_ids(parse_quirks("Q3,Q1,Q3")) == std::vector<std::string>{"Q1", "Q3"});
+  CHECK(quirk_ids(parse_quirks("all")) ==
+        std::vector<std::string>{"Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q9", "Q10"});
+  CHECK(quirk_ids(parse_quirks("")).empty());
   for (const char* bad : {"Q7", "Q8", "Q11", "q1", "Q1,", "Q1;Q3", " Q1", "none"}) {
     INFO(bad);
     CHECK_THROWS_AS(parse_quirks(bad), std::invalid_argument);
@@ -617,4 +624,27 @@ TEST_CASE("clean oracle, every quirk on: vstats_cpu's rows bit for bit on fuzz g
     INFO("seed " << seed);
     CHECK(same_bits(got, want));
   }
+}
+
+// The reference of a profile (blz mine --backend oracle, fuzz-diff, metamorphic, coverage): the clean
+// oracle for a clean profile, with E16's quirks; the legacy oracle, at the profile's visibility, for
+// a legacy one.
+TEST_CASE("ProfileOracle: the clean oracle for a clean profile, with its quirks; the legacy oracle otherwise") {
+  const Graph g{{0, 1, 0}, {2, 1, 1}, {2, 1, 1}};
+  const std::string dir = std::string(BLZ_SOURCE_DIR) + "/configs/profiles/";
+  const Profile clean = load_profile(dir + "clean_default.yaml");
+  const auto deg_in = [&](Quirks q) {
+    Row r(g.m(), 0);
+    ProfileOracle(g.view(), clean, q).mine(Block::deg_in, clean.find(Block::deg_in)->params, 0, g.m(), r.data());
+    return r;
+  };
+  CHECK(deg_in({}) == Row{1, 3, 3});                  // R3: each tie sees the other
+  CHECK(deg_in(parse_quirks("Q4")) == Row{1, 2, 3});  // Q4: eid order inside the timestamp
+  const Profile legacy = load_profile(dir + "v1_default.yaml");
+  const BlockParams& p = legacy.find(Block::deg_in)->params;
+  Row want(g.m() * block_cols(p), 0), got(want.size(), 0);
+  Oracle(g.view(), legacy.visibility).mine(Block::deg_in, p, legacy.k_max, 0, g.m(), want.data());
+  ProfileOracle(g.view(), legacy).mine(Block::deg_in, p, 0, g.m(), got.data());
+  CHECK(got == want);
+  CHECK_THROWS_AS(ProfileOracle(g.view(), legacy, parse_quirks("Q4")), std::invalid_argument);
 }

@@ -34,8 +34,10 @@ struct MetamorphicResult {
 
 // Runs every test on the graphs of seeds [s0, s1), for every block of `prof` with its patterns
 // and k_max, each graph's own window, and fuzz_bins() (`bins`, each block's own bins when `bins` is
-// empty, none for a count block), on the profile's index (Profile::self_loops), on one backend (for cuda, once per light/heavy threshold in `thresholds`; the other backends ignore
-// it). Per graph:
+// empty, none for a count block), on one backend: the profile's oracle (ProfileOracle: the clean
+// oracle for a clean profile), or a generated backend on the profile's index (Profile::self_loops)
+// (for cuda, once per light/heavy threshold in `thresholds`; the other backends ignore it). Per
+// graph:
 //   - prefix closure: mining the first k edges gives the same rows for them as mining the whole
 //     graph, at two cuts k drawn from the seed (under timestamp visibility, k is moved forward
 //     to the next timestamp boundary);

@@ -255,10 +255,16 @@ TEST_CASE("profiles: a clean profile, its count blocks and E403 both ways (SPEC 
         "per trigger, so block sg needs bins: a count block (no bins, SPEC v3 R7) takes only patterns with at most "
         "one emit, at the root");
 
-  // The oracle computes the legacy definitions only.
+  // The clean oracle (SPEC v3 F6) computes a clean block from its family's pattern set, as the legacy
+  // oracle does a legacy one.
   CHECK(backend_error(c, Backend::oracle) ==
-        "c.yaml:3:9: error E404: the oracle computes the legacy definitions (SPEC §9); a clean profile (SPEC v3 "
-        "§3.2) runs on cpu, cuda or hybrid");
+        "c.yaml:9:3: error E404: the clean oracle computes block sg as the patterns [clean_sg_gather, "
+        "clean_sg_scatter] together; it cannot run another pattern list");
+  for (const char* name : {"clean_default", "clean_wc_hi_small", "clean_all"}) {
+    INFO(name);
+    CHECK(backend_error(load_profile(std::string(BLZ_SOURCE_DIR) + "/configs/profiles/" + name + ".yaml"),
+                        Backend::oracle) == "ok");
+  }
   CHECK(backend_error(c, Backend::cpu) == "ok");
 }
 

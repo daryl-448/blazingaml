@@ -10,6 +10,8 @@
 
 #include <omp.h>
 
+#include "oracle/profile_oracle.hpp"
+
 namespace blz {
 
 namespace {
@@ -88,13 +90,13 @@ IsolatedGraph isolated_graph(const CoverageGraph& g, std::span<const std::uint32
 }
 
 std::vector<std::uint64_t> oracle_eligible_rows(const IsolatedGraph& ig, const Profile& prof) {
-  const Oracle oracle(ig.stream(), prof.visibility);
+  const ProfileOracle oracle(ig.stream(), prof);
   const std::uint64_t k = ig.eids.size();
   std::vector<std::uint64_t> out;
   for (const ProfileBlock& pb : prof.blocks) {
-    const std::uint64_t cols = pb.params.bins.size();
+    const std::uint64_t cols = block_cols(pb.params);
     std::vector<std::uint32_t> rows(k * cols, 0);
-    oracle.mine(pb.block, pb.params, prof.k_max, 0, k, rows.data());
+    oracle.mine(pb.block, pb.params, 0, k, rows.data());
     std::uint64_t nz = 0;
     for (std::uint64_t i = 0; i < k; ++i) nz += row_nonzero(rows, cols, i);
     out.push_back(nz);

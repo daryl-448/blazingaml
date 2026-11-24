@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <map>
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -28,6 +29,8 @@ struct Quirks {
 // "" (clean), a comma-separated list of ledger ids ("Q1,Q3") or "all". Throws std::invalid_argument
 // on any other name.
 Quirks parse_quirks(std::string_view list);
+// The ledger ids of the quirks that are on, in ledger order ("Q1", "Q3"); none for the clean rules.
+std::vector<std::string> quirk_ids(const Quirks& q);
 
 // The clean reference (SPEC v3 §3.2): each rule R1-R11 computed literally, per trigger, from its own
 // per-node edge-id lists and std::set/std::map. It shares no index structure with the generated

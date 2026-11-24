@@ -160,6 +160,7 @@ add_library(blz_core
   src/runtime/widen.cpp
   src/oracle/oracle.cpp
   src/oracle/clean_oracle.cpp
+  src/oracle/profile_oracle.cpp
   src/ml/metrics.cpp)
 # SPEC v2 §8 S2, SPEC v3 R8: no fused multiply-add in the vertex statistics, so CPU = CUDA = the
 # clean oracle bit for bit.
