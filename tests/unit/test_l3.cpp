@@ -16,6 +16,7 @@
 #include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/interfaces/catch_interfaces_capture.hpp>
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -60,8 +61,30 @@ struct ShrinkTries : rc::detail::TestListenerAdapter {
   void onShrinkTried(const rc::detail::CaseDescription&, bool) override { ++tries; }
 };
 
-// Runs `property` on `cases` cases (times BLZ_L3_SCALE) from the test's seed. A failure FAILs with
-// RapidCheck's report (the shrunk case and the property's message) and the command that reruns it.
+// Shrinking stops kShrinkSeconds after it starts, at the smallest failing case so far: a case of
+// 65,536 cycles costs the oracle a tenth of a second a try, and its shrinking thousands of tries.
+constexpr int kShrinkSeconds = 60;
+struct ShrinkClock {
+  std::optional<std::chrono::steady_clock::time_point> start;
+  bool stopped = false;
+};
+using Described = rc::Shrinkable<rc::detail::CaseDescription>;
+Described timed(Described s, std::shared_ptr<ShrinkClock> clock) {
+  return rc::shrinkable::mapShrinks(std::move(s), [clock](rc::Seq<Described>&& shrinks) {
+    if (!clock->start) clock->start = std::chrono::steady_clock::now();
+    const auto more = [clock](const Described&) {
+      clock->stopped =
+          clock->stopped || std::chrono::steady_clock::now() - *clock->start > std::chrono::seconds(kShrinkSeconds);
+      return !clock->stopped;
+    };
+    return rc::seq::map(rc::seq::takeWhile(std::move(shrinks), more),
+                        [clock](Described&& d) { return timed(std::move(d), clock); });
+  });
+}
+
+// Runs `property` on `cases` cases (times BLZ_L3_SCALE) from the test's seed. A failure shrinks for up
+// to kShrinkSeconds, then FAILs with RapidCheck's report (the shrunk case and the property's message)
+// and the command that reruns it.
 template <class Property>
 void check(int cases, Property&& property) {
   const std::string name = Catch::getResultCapture().getCurrentTestName();
@@ -80,8 +103,11 @@ void check(int cases, Property&& property) {
   // drivers' chunks without twelve threads' fork cost on every small loop.
   const int threads = omp_get_max_threads();
   omp_set_num_threads(std::min(threads, 2));
-  const rc::detail::TestResult result = rc::detail::checkProperty(
-      rc::detail::toProperty(std::forward<Property>(property)), {name, name}, params, listener, {});
+  const rc::detail::Property prop = rc::detail::toProperty(std::forward<Property>(property));
+  const auto clock = std::make_shared<ShrinkClock>();
+  const rc::detail::Property timed_prop(
+      [prop, clock](const rc::Random& r, int size) { return timed(prop(r, size), clock); });
+  const rc::detail::TestResult result = rc::detail::checkProperty(timed_prop, {name, name}, params, listener, {});
   omp_set_num_threads(threads);
   std::ostringstream report;
   rc::detail::printResultMessage(result, report);
@@ -90,8 +116,10 @@ void check(int cases, Property&& property) {
     return;
   }
   FAIL(report.str() << "\n\n"
-                    << listener.tries << " shrinks tried\nrerun: BLZ_L3_SEED=" << seed << " BLZ_L3_SCALE=" << scale
-                    << " blz_unit_tests \"" << name << "\"");
+                    << listener.tries << " shrinks tried"
+                    << (clock->stopped ? ", then shrinking stopped at " + std::to_string(kShrinkSeconds) + " s" : "")
+                    << "\nrerun: BLZ_L3_SEED=" << seed << " BLZ_L3_SCALE=" << scale << " blz_unit_tests \"" << name
+                    << "\"");
 }
 
 // ---- Cases --------------------------------------------------------------------------------------
