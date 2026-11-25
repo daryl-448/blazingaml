@@ -12,7 +12,9 @@
 #             A; T4 at bound T4
 #   rel-cuda  cuda at H = 0, 4, all; cuda --fuse --pack at H = 0, 4, all (each fusion again with its
 #             members at different windows); the hybrid at every pair of H and C in 0, 4, all; each at
-#             bound A, against the oracle
+#             bound A, against the oracle; cuda with each graph alone and a work limit of 1 binding at
+#             bound LIMIT_GPU (a graph alone costs cuda about 6 ms, so not at A; the hybrid, at about
+#             170 ms a graph alone, has no work-limit check here)
 #   dev       ASan + UBSan: cpu with each graph alone (no batch), and T4, at bound DEV
 # A bound m=M,n=N,t=T is every edge list of 1..M edges over at most N nodes with ts in [0, T), once
 # per node relabelling, at the windows 1..T (blz fuzz-diff --bound). --smoke runs every check at
@@ -25,6 +27,7 @@ A=m=5,n=5,t=4      # every graph of <= 5 edges: the smallest sg, sg_ord and gs i
 B=m=6,n=4,t=3      # every graph of 6 edges on <= 4 nodes
 T4=m=5,n=5,t=4     # index contracts: lists of every length 0..5
 DEV=m=4,n=4,t=3    # sanitizers, each graph alone
+LIMIT_GPU=m=4,n=4,t=3  # cuda at a work limit of 1, each graph alone: the smallest bound where lcyc stops
 SMOKE=m=4,n=4,t=3  # every block has nonzero rows (sg, sg_ord and gs from 4 edges)
 
 smoke=0
@@ -39,7 +42,7 @@ done
 if [ ${#builds[@]} -eq 0 ]; then
   for b in rel rel-cuda dev; do [ -x "$root/build/$b/blz" ] && builds+=("$b"); done
 fi
-if [ $smoke -eq 1 ]; then A=$SMOKE B= T4=$SMOKE DEV=$SMOKE; fi
+if [ $smoke -eq 1 ]; then A=$SMOKE B= T4=$SMOKE DEV=$SMOKE LIMIT_GPU=m=3,n=3,t=3; fi
 
 out=$root/build/verify
 mkdir -p "$out"
@@ -80,6 +83,8 @@ for build in "${builds[@]}"; do
         run "$build/cuda/$pn/$A" "$build" fuzz-diff --backend cuda --bound "$A" --profile "$p"
         run "$build/cuda-fuse-pack/$pn/$A" "$build" fuzz-diff --backend cuda --fuse --pack --bound "$A" --profile "$p"
         run "$build/hybrid/$pn/$A" "$build" fuzz-diff --backend hybrid --bound "$A" --profile "$p"
+        run "$build/cuda-limit1/$pn/$LIMIT_GPU" "$build" fuzz-diff --backend cuda --bound "$LIMIT_GPU" --batch-edges 1 \
+          --work-limit 1 --profile "$p"
       done
       ;;
     dev)
