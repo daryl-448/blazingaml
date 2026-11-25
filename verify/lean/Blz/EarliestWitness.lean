@@ -62,20 +62,28 @@ theorem Witness.cons {b t x : Int} {L : List Int} {Ls : List (List Int)} {ts : L
   | nil => exact hxt
   | cons y ys => exact ⟨Order.rel_iff_next.2 (h.2.1 y rfl), h.2.2⟩
 
+/-- The first pick of a witness, and the witness for the rest from `o.next x`. -/
+theorem Witness.uncons {b t x : Int} {L : List Int} {Ls : List (List Int)} {ts : List Int}
+    (h : Witness o b t (L :: Ls) (x :: ts)) :
+    x ∈ L ∧ b ≤ x ∧ o.rel x t ∧ Witness o (o.next x) t Ls ts := by
+  obtain ⟨hp, hb, hc⟩ := h
+  refine ⟨hp.1, hb x rfl, Chain.head_rel hc, hp.2, ?_, ?_⟩
+  · cases ts with
+    | nil => simp
+    | cons y ys => intro z hz; simp at hz; subst hz; exact Order.rel_iff_next.1 hc.1
+  · cases ts with
+    | nil => trivial
+    | cons y ys => exact hc.2
+
 /-- Peel the first hop: a witness is a first pick x plus a witness for the rest from `o.next x`. -/
 theorem witness_cons {b t : Int} {L : List Int} {Ls : List (List Int)} :
     (∃ ts, Witness o b t (L :: Ls) ts) ↔
       ∃ x ∈ L, b ≤ x ∧ o.rel x t ∧ ∃ ts, Witness o (o.next x) t Ls ts := by
   constructor
-  · rintro ⟨_ | ⟨x, ts⟩, hp, hb, hc⟩
-    · simp [Picks] at hp
-    · refine ⟨x, hp.1, hb x rfl, Chain.head_rel hc, ts, hp.2, ?_, ?_⟩
-      · cases ts with
-        | nil => simp
-        | cons y ys => intro z hz; simp at hz; subst hz; exact Order.rel_iff_next.1 hc.1
-      · cases ts with
-        | nil => trivial
-        | cons y ys => exact hc.2
+  · rintro ⟨_ | ⟨x, ts⟩, hw⟩
+    · simp [Witness, Picks] at hw
+    · obtain ⟨hx, hb, hxt, hrest⟩ := hw.uncons
+      exact ⟨x, hx, hb, hxt, ts, hrest⟩
   · rintro ⟨x, hx, hb, hxt, ts, hw⟩
     exact ⟨x :: ts, Witness.cons hx hb hxt hw⟩
 
