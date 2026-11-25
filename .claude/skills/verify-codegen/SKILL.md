@@ -28,13 +28,15 @@ Sync commit: `7871cfe`. At it, the whole suite in section 2 passed and every mut
 `verify/mutants.py` was caught where recorded. Run:
 
 ```
-git diff --stat 7871cfe..HEAD -- patterns include/blz src/dsl src/ir src/codegen \
+git diff --stat 7871cfe -- patterns include/blz src/dsl src/ir src/codegen \
   src/graph/index.cpp src/graph/index.hpp src/graph/exhaustive.cpp src/graph/index_contracts.cpp \
   src/runtime/{cpu_backend,cuda_backend,hybrid,fusion,widen,triggers,registration,profile,fuzz_diff}.* \
   src/runtime/*vstats* src/oracle tests/snapshots tests/profiles configs/profiles/clean_all.yaml \
   tests/unit/test_l3.cpp verify/codegen.sh verify/mutants.py CMakeLists.txt tests/CMakeLists.txt
 ```
 
+This compares the sync commit with the working tree, so it lists uncommitted edits too. Don't
+write `7871cfe..HEAD`: that compares commits only and misses a change that isn't committed yet.
 If it lists nothing, the verification still describes the code. If it lists files, find them in
 the record:
 
@@ -79,7 +81,14 @@ nonzero rows) on the three profiles, plain and at a work limit of 1, plus cuda, 
 the hybrid in CUDA builds. It also holds T4 with `search` at that bound, every L3 property at its
 fixed seed, and the snapshot tests.
 
-**Full, at phase exits and for any change to an algorithm, a lowering or a check** (about 110 min at 7871cfe, E20):
+Run the quick check first on every change, an edit to an existing algorithm's code included. If it
+fails, the change is wrong, and the full run can't reverse that verdict. To confirm that a failure
+comes from your change and was not there before: at the sync commit the whole suite passed
+(results/e20_verification.md). If `git diff --stat 7871cfe HEAD` lists no covered code, your edit
+is the only code that changed since.
+
+**Full, before you commit a new algorithm, lowering, optimised path or check, and at phase exits**
+(about 110 min at 7871cfe, E20):
 
 ```
 verify/codegen.sh && ctest --test-dir build/rel-cuda -L verify -R l3_random && verify/mutants.py --escape

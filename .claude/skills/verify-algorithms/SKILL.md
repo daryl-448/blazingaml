@@ -23,10 +23,12 @@ generated text is the text the models describe; `verify/algorithms.sh --mutants`
 `blz index-contracts` checked every contract the proofs assume. Run:
 
 ```
-git diff --stat 7871cfe..HEAD -- src/ir/plan.cpp src/codegen/cpu_emitter.cpp include/blz/primitives.hpp \
+git diff --stat 7871cfe -- src/ir/plan.cpp src/codegen/cpu_emitter.cpp include/blz/primitives.hpp \
   include/blz/sweep.hpp include/blz/reach.hpp tests/snapshots verify/lean SPEC_V3.md patterns
 ```
 
+This compares the sync commit with the working tree, so uncommitted edits are listed too. Don't
+write `7871cfe..HEAD`, which compares commits only and misses a change before it is committed.
 If it lists nothing, the proofs still describe the code. If it lists files, read the matching rows
 of `verify/lean/COVERAGE.md`. The record, in short:
 
@@ -46,10 +48,20 @@ the executable check of each: `blz index-contracts` (contracts `range`, `distinc
 `distinct_first_ts`, `pair_exists`, `pair_latest`, `list`, `search`), `blzc_snapshots`, and E403.
 Those checks belong to `/verify-codegen`.
 
-The signal that a model went stale is ctest `blzc_snapshots` failing (label fast): the generated
-text changed. After a reviewed snapshot update, open COVERAGE.md for each changed snapshot and
-compare the generated bounds and loop order with the Lean definition that models them: `greedy`
-and `latestGreedy` with their bound arguments, `firsts`, `Sweep.advLo` and `advHi`, `relaxRound`.
+There are two ways a model goes stale, and `verify/algorithms.sh` notices neither, because Lean
+does not read C++:
+- **The generated text changed.** ctest `blzc_snapshots` fails (label fast). After a reviewed
+  snapshot update, open COVERAGE.md for each changed snapshot and compare the generated bounds and
+  loop order with the Lean definition that models them: `greedy` and `latestGreedy` with their bound
+  arguments, `firsts`, `Sweep.advLo` and `advHi`, `relaxRound`.
+- **A hand-written header changed**: include/blz/sweep.hpp, reach.hpp or primitives.hpp. No snapshot
+  changes, and L1 passes whatever the header says. Compare the edited lines with their model by
+  hand. The models' docstrings quote the C++ they transcribe: `Sweep.enter`, `leave` and `clear` for
+  `sweep_count`, `relaxRound` for `ReachScratch::search`, Scan.lean for the primitives. Then run
+  `/verify-codegen`, which runs the real header.
+
+A green `verify/algorithms.sh` after a C++ edit proves only that the proofs still check. It says
+nothing about whether the C++ still matches them.
 
 ## 2. Run it
 
@@ -100,9 +112,13 @@ is SPEC_V3 §3.2 or legacy Q5, written literally. The code side (`greedy`, `late
 
 1. Find which side moved. Compare the code side's definition with the snapshot named in COVERAGE.md,
    bound by bound and loop by loop.
-2. **The model no longer matches the code** (a renamed bound, a reordered loop, a new emitter idiom
-   that computes the same set): this is a modelling update. Change the definition to the new text,
-   keep the theorem's rule side unchanged, and re-prove.
+2. **The model no longer matches the code.** First find out whether the new code computes the same
+   set. Run `/verify-codegen`'s quick check (L2 on the real code), or copy verify/lean to a scratch
+   directory, transcribe the new line into the model, and run `lake build` there. If either shows a
+   difference, the change is a bug, so go to step 3's report. Don't re-prove. Only a change that
+   computes the same set (a renamed bound, a reordered loop, a new emitter idiom) is a modelling
+   update. For that, change the definition to the new text, keep the theorem's rule side
+   unchanged, and re-prove.
 3. **The model matches the code and the proof cannot be repaired**: the new shortcut may be unsound.
    Look for a concrete case first, with `verify/codegen.sh --smoke` or a hand graph. A failed proof
    is not yet a counterexample. If the case exists, it is a real bug: report it in the code's terms.
