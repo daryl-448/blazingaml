@@ -1559,59 +1559,33 @@ nlohmann::json optimised_paths(const blz::FuzzDiff& d, const std::string& backen
           {"hybrid_gpu_triggers", d.hybrid_gpu_triggers}};
 }
 
-// A fuzz-diff counterexample (SPEC v3 §4.3) in the code's terms, on stdout and as JSON: the graph's
-// edges in eid order as u->v@t, the block, window and path, and the trigger's got and want rows.
-nlohmann::json print_counterexample(const blz::Counterexample& cx, bool exhaustive) {
+// A fuzz-diff counterexample (SPEC v3 §4.3) in the code's terms, on stdout (blz::counterexample_text)
+// and as JSON: the graph's edges in eid order as u->v@t, the block, window and path, and the
+// trigger's got and want rows.
+nlohmann::json print_counterexample(const blz::Counterexample& cx, const blz::DiffSource& src) {
+  std::fputs(blz::counterexample_text(cx, src).c_str(), stdout);
   const blz::Mismatch& f = cx.first;
   const blz::EdgeList& g = cx.g;
-  const std::uint64_t m = g.src.size();
-  const auto edge = [&](std::uint64_t e) {
-    return std::to_string(g.src[e]) + "->" + std::to_string(g.dst[e]) + "@" + std::to_string(g.ts[e]);
-  };
-  std::string what = exhaustive ? "graph " + std::to_string(cx.graph) + " of the bound (batch " +
-                                      std::to_string(cx.case_id) + ")"
-                                : "seed " + std::to_string(cx.graph);
-  std::printf("  counterexample: %s, m = %llu, n = %u%s\n    block %s, window %d, path %s\n", what.c_str(),
-              (unsigned long long)m, g.n,
-              cx.alone ? "" : " (fails only inside its batch: no graph of the batch fails alone)", f.block.c_str(),
-              f.window, f.path.c_str());
-  std::string edges;
   nlohmann::json jedges = nlohmann::json::array();
-  for (std::uint64_t e = 0; e < m; ++e) {
-    edges += (e ? "  " : "") + std::to_string(e) + ": " + edge(e);
-    jedges.push_back(edge(e));
-  }
-  if (m <= 64) std::printf("    edges (eid: u->v@t): %s\n", edges.c_str());
+  for (std::uint64_t e = 0; e < g.src.size(); ++e) jedges.push_back(blz::edge_text(g, e));
   nlohmann::json j = {{"case", cx.case_id}, {"graph", cx.graph}, {"alone", cx.alone}, {"n", g.n},
                       {"edges", jedges},    {"block", f.block}, {"window", f.window},  {"path", f.path}};
   const auto stop = [](std::uint64_t x) { return x == UINT64_MAX ? std::string("completed") : std::to_string(x); };
   if (f.got_stop != UINT64_MAX || f.want_stop != UINT64_MAX) {
-    std::printf("    work limit: got %s, want %s (stop eids)\n", stop(f.got_stop).c_str(), stop(f.want_stop).c_str());
     j["got_stop"] = stop(f.got_stop);
     j["want_stop"] = stop(f.want_stop);
     return j;
   }
-  const std::string trig = f.eid < m ? " (" + edge(f.eid) + ")" : "";
   j["trigger_eid"] = f.eid;
   if (f.block == "vstats") {
     const std::vector<std::string> names = blz::clean_vstats_column_names();
-    std::printf("    trigger eid %llu%s, the columns that differ:\n", (unsigned long long)f.eid, trig.c_str());
     nlohmann::json cols = nlohmann::json::object();
     for (std::size_t k = 0; k < f.got_vstats.size(); ++k)
-      if (std::memcmp(&f.got_vstats[k], &f.want_vstats[k], sizeof(double)) != 0) {
-        std::printf("      %s: got %.17g, want %.17g\n", names[k].c_str(), f.got_vstats[k], f.want_vstats[k]);
+      if (std::memcmp(&f.got_vstats[k], &f.want_vstats[k], sizeof(double)) != 0)
         cols[names[k]] = {{"got", f.got_vstats[k]}, {"want", f.want_vstats[k]}};
-      }
     j["columns"] = cols;
     return j;
   }
-  const auto row = [](const std::vector<std::uint32_t>& r) {
-    std::string t = "[";
-    for (std::size_t k = 0; k < r.size(); ++k) t += (k ? " " : "") + std::to_string(r[k]);
-    return t + "]";
-  };
-  std::printf("    trigger eid %llu%s: got %s, want %s\n", (unsigned long long)f.eid, trig.c_str(), row(f.got).c_str(),
-              row(f.want).c_str());
   j["got"] = f.got;
   j["want"] = f.want;
   return j;
@@ -1748,7 +1722,7 @@ int fuzz_diff(const std::string& seeds, const std::string& bound_opt, std::uint6
                   (unsigned long long)work_limit);
   res["path_hits"] = path_hits(d.hits, d.nonzero_rows, prof, d.vstats_nonzero_rows, d.vstats_sides, !exhaustive);
   res["path_hits"]["optimised_paths"] = optimised_paths(d, backend, fuse, pack);
-  if (d.counterexample) res["counterexample"] = print_counterexample(*d.counterexample, exhaustive);
+  if (d.counterexample) res["counterexample"] = print_counterexample(*d.counterexample, src);
   if (bad) std::printf("  mismatching rows by block: %s\n", per_block.dump().c_str());
   merge_report(report, name, res);
   return bad == 0 ? 0 : 2;

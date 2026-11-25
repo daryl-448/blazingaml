@@ -20,7 +20,7 @@ struct DiffCase {
   EdgeList g;
   std::vector<std::int32_t> windows;
   std::vector<double> amount;
-  FuzzHits hits;  // a fuzz graph's (fuzz_hits); none for an exhaustive case
+  FuzzHits hits;  // a fuzz graph's (fuzz_hits); none for an exhaustive or a given case
   // An exhaustive case (GraphUnion): per eid, its canonical graph and its eid in that graph.
   std::vector<std::uint64_t> graph;
   std::vector<std::uint32_t> local;
@@ -34,11 +34,17 @@ struct DiffCase {
 //     each graph alone), each checked at every window 1..t. A batch never mixes edge counts, so
 //     batches run m ascending too. Canonical graph i's amounts are fuzz_amounts(i, m), by its own
 //     eids, alone or in a batch.
+//   - given(cases): the cases as they are, each alone (L3's generated graphs, SPEC v3 §4.3). Each
+//     has one amount per edge, at least one window, and no `graph` or `local`; std::invalid_argument
+//     otherwise.
 class DiffSource {
  public:
+  enum class Kind { fuzz, exhaustive, given };
   static DiffSource fuzz(std::uint64_t s0, std::uint64_t s1, FuzzSetting setting = FuzzSetting::dense);
   static DiffSource exhaustive(ExhaustiveBound b, std::uint64_t batch_edges);
+  static DiffSource given(std::vector<DiffCase> cases);
 
+  Kind kind() const { return kind_; }
   std::uint64_t size() const { return size_; }  // cases
   DiffCase get(std::uint64_t i) const;
   // An exhaustive batch's canonical graphs, each alone, in canonical order; none for a fuzz graph.
@@ -50,8 +56,10 @@ class DiffSource {
  private:
   DiffCase member(std::uint64_t graph, const std::vector<std::int32_t>& windows) const;
 
+  Kind kind_ = Kind::fuzz;
   std::uint64_t s0_ = 0, size_ = 0, batch_edges_ = 0;
   FuzzSetting setting_ = FuzzSetting::dense;
+  std::vector<DiffCase> given_;
   std::optional<ExhaustiveGraphs> graphs_;
   std::vector<std::uint64_t> batch_first_;  // per m - 1: the first batch with m edges; m_max + 1 entries
   std::vector<std::uint64_t> per_batch_;    // per m - 1: graphs per batch
@@ -104,6 +112,14 @@ struct Counterexample {
   EdgeList g;
   Mismatch first;  // its eids are g's
 };
+
+// Edge e of g as u->v@t.
+std::string edge_text(const EdgeList& g, std::uint64_t e);
+// A counterexample in the code's terms (SPEC v3 §4.3), as `blz fuzz-diff` prints it: the graph (by
+// seed, canonical index or given case, as `src` names them), the block, window and path, the edges
+// in eid order (up to 64 of them), and the trigger's got and want rows, the vstats columns that
+// differ, or both sides' stop eids. Lines end in '\n'.
+std::string counterexample_text(const Counterexample& cx, const DiffSource& src);
 
 struct FuzzDiff {
   std::uint64_t cases = 0;           // fuzz graphs, or exhaustive batches

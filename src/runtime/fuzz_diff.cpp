@@ -1,6 +1,7 @@
 #include "runtime/fuzz_diff.hpp"
 
 #include <algorithm>
+#include <cstdio>
 #include <cstring>
 #include <exception>
 #include <memory>
@@ -30,8 +31,20 @@ DiffSource DiffSource::fuzz(std::uint64_t s0, std::uint64_t s1, FuzzSetting sett
   return s;
 }
 
+DiffSource DiffSource::given(std::vector<DiffCase> cases) {
+  for (const DiffCase& c : cases)
+    if (c.amount.size() != c.g.src.size() || c.windows.empty() || !c.graph.empty() || !c.local.empty())
+      throw std::invalid_argument("fuzz-diff: a given case needs one amount per edge, a window, and no batch");
+  DiffSource s;
+  s.kind_ = Kind::given;
+  s.size_ = cases.size();
+  s.given_ = std::move(cases);
+  return s;
+}
+
 DiffSource DiffSource::exhaustive(ExhaustiveBound b, std::uint64_t batch_edges) {
   DiffSource s;
+  s.kind_ = Kind::exhaustive;
   s.graphs_.emplace(b);
   s.batch_edges_ = std::max<std::uint64_t>(batch_edges, 1);
   s.batch_first_.assign(b.m_max + 1, 0);
@@ -60,8 +73,9 @@ DiffCase DiffSource::member(std::uint64_t graph, const std::vector<std::int32_t>
 
 DiffCase DiffSource::get(std::uint64_t i) const {
   if (i >= size_) throw std::out_of_range("fuzz-diff: case index past the source");
+  if (kind_ == Kind::given) return given_[i];
   DiffCase c;
-  if (!graphs_) {
+  if (kind_ == Kind::fuzz) {
     FuzzGraph fg = fuzz_graph(s0_ + i, setting_);
     c.id = fg.seed;
     c.hits = fuzz_hits(fg);
@@ -87,7 +101,7 @@ DiffCase DiffSource::get(std::uint64_t i) const {
 }
 
 std::vector<DiffCase> DiffSource::members(const DiffCase& c) const {
-  if (!graphs_ || c.graph.empty()) return {};
+  if (kind_ != Kind::exhaustive || c.graph.empty()) return {};
   const auto [lo, hi] = std::minmax_element(c.graph.begin(), c.graph.end());
   std::vector<DiffCase> out;
   for (std::uint64_t k = *lo; k <= *hi; ++k) out.push_back(member(k, c.windows));
@@ -284,9 +298,9 @@ void add(FuzzDiff& a, const FuzzDiff& b) {
 // run in groups: `prepare` runs on each case of a group in parallel (the CPU's whole check, or the
 // GPU's reference), then `finish` on each in case order on this thread (the GPU's runs), which
 // returns the case's CaseResult. The oracle's and the drivers' own parallel loops inside `prepare`
-// run nested, i.e. on one thread each. Then the mismatching case with the smallest id is narrowed to
-// its counterexample: an exhaustive batch's first canonical graph that fails alone, through the same
-// prepare and finish.
+// run nested, i.e. on one thread each, unless the group is one case (L3 checks one given case at a
+// time): its loops then get the whole team, so its drivers cross their chunks on several threads. Then the mismatching case with the smallest id is narrowed to its counterexample: an
+// exhaustive batch's first canonical graph that fails alone, through the same prepare and finish.
 template <class Prepare, class Finish>
 FuzzDiff drive(const DiffSource& src, std::uint64_t group, Prepare prepare, Finish finish) {
   using Prepared = std::invoke_result_t<Prepare, const DiffCase&>;
@@ -297,7 +311,7 @@ FuzzDiff drive(const DiffSource& src, std::uint64_t group, Prepare prepare, Fini
     const std::uint64_t g1 = std::min(g0 + group, src.size());
     std::vector<std::optional<Prepared>> items(g1 - g0);
     std::exception_ptr error;
-#pragma omp parallel for schedule(dynamic, 1)
+#pragma omp parallel for schedule(dynamic, 1) if (items.size() > 1)
     for (std::int64_t i = 0; i < std::int64_t(items.size()); ++i) try {
         items[std::size_t(i)].emplace(prepare(src.get(g0 + std::uint64_t(i))));
       } catch (...) {
@@ -332,7 +346,7 @@ FuzzDiff drive(const DiffSource& src, std::uint64_t group, Prepare prepare, Fini
     }
     if (!found) {
       cx.first = *bad_first;
-      if (c.graph.empty()) {  // a fuzz graph: the case itself
+      if (c.graph.empty()) {  // a fuzz graph or a given case: the case itself
         cx.graph = c.id;
         cx.g = c.g;
       } else {  // no graph fails alone: the batch's mismatch, at its graph's eid
@@ -561,6 +575,50 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, const DiffSource& src, std::span<
     return r;
   };
   return drive(src, group_size(2), prepare, finish);
+}
+
+std::string edge_text(const EdgeList& g, std::uint64_t e) {
+  return std::to_string(g.src[e]) + "->" + std::to_string(g.dst[e]) + "@" + std::to_string(g.ts[e]);
+}
+
+std::string counterexample_text(const Counterexample& cx, const DiffSource& src) {
+  const Mismatch& f = cx.first;
+  const EdgeList& g = cx.g;
+  const std::uint64_t m = g.src.size();
+  const std::string what = src.kind() == DiffSource::Kind::exhaustive
+                               ? "graph " + std::to_string(cx.graph) + " of the bound (batch " + std::to_string(cx.case_id) + ")"
+                           : src.kind() == DiffSource::Kind::given ? "case " + std::to_string(cx.graph)
+                                                                   : "seed " + std::to_string(cx.graph);
+  std::string out = "  counterexample: " + what + ", m = " + std::to_string(m) + ", n = " + std::to_string(g.n) +
+                    (cx.alone ? "" : " (fails only inside its batch: no graph of the batch fails alone)") + "\n";
+  out += "    block " + f.block + ", window " + std::to_string(f.window) + ", path " + f.path + "\n";
+  if (m <= 64) {
+    out += "    edges (eid: u->v@t):";
+    for (std::uint64_t e = 0; e < m; ++e) out += (e ? "  " : " ") + std::to_string(e) + ": " + edge_text(g, e);
+    out += "\n";
+  }
+  const auto stop = [](std::uint64_t x) { return x == UINT64_MAX ? std::string("completed") : std::to_string(x); };
+  if (f.got_stop != UINT64_MAX || f.want_stop != UINT64_MAX)
+    return out + "    work limit: got " + stop(f.got_stop) + ", want " + stop(f.want_stop) + " (stop eids)\n";
+  const std::string trigger = "    trigger eid " + std::to_string(f.eid) + (f.eid < m ? " (" + edge_text(g, f.eid) + ")" : "");
+  if (f.block == "vstats") {
+    const std::vector<std::string> names = clean_vstats_column_names();
+    out += trigger + ", the columns that differ:\n";
+    for (std::size_t k = 0; k < f.got_vstats.size(); ++k)
+      if (std::memcmp(&f.got_vstats[k], &f.want_vstats[k], sizeof(double)) != 0) {
+        char buf[256];
+        std::snprintf(buf, sizeof buf, "      %s: got %.17g, want %.17g\n", names[k].c_str(), f.got_vstats[k],
+                      f.want_vstats[k]);
+        out += buf;
+      }
+    return out;
+  }
+  const auto row = [](const std::vector<std::uint32_t>& r) {
+    std::string t = "[";
+    for (std::size_t k = 0; k < r.size(); ++k) t += (k ? " " : "") + std::to_string(r[k]);
+    return t + "]";
+  };
+  return out + trigger + ": got " + row(f.got) + ", want " + row(f.want) + "\n";
 }
 
 }  // namespace blz
