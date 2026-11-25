@@ -185,15 +185,14 @@ binding check ld[c] > h.
 | `hin`, `hout` (R1) | the clean index has no self-loop entries; an eid fits in uint32 | `blz index-contracts`, contract `list` under SelfLoops::drop (it checks both modes); eid ≤ kAnyEid holds by the type `std::uint32_t` |
 | `hhi`, `hc`, `hcv`, `hvis` | vis_t is t (timestamp visibility) or kNoUpper (stream visibility) | the generated prologue `vis_t = p.ts_visibility ? t : kNoUpper` (`blzc_snapshots`); clean profiles pin timestamp visibility (E403, src/runtime/profile.cpp; unit test "profiles: a clean profile, its count blocks and E403 both ways (SPEC v3 §3.2, R7)") |
 | `hlower` | every driver's lower(t) is t − δ + 1 or t − δ | the generated `lower` lambdas (`blzc_snapshots`) |
-| `Search` (init, keep, relax) | ReachScratch's frontier search gives ld[U] ≥ t, never lowers an ld, and relaxes every visible edge x → y in [lo, hi] with x ≠ y and ts < ld[y] in the next round | **no direct check; this is a gap.** The end-to-end consequence is checked: fuzz-diff's cpu backend runs the reach-pruned path against the oracle at bounds A and B (the `rel/cpu/<profile>/<bound>` checks of verify/codegen.sh, which report `reach-pruned rows`). Unit tests: "reach: latest departure times towards the target, hop bound, window, visibility" and "reach: hand-checked tcyc rows are the same with and without pruning" |
+| `Search` (init, keep, relax) | ReachScratch's frontier search gives ld[U] ≥ t, never lowers an ld, and relaxes every visible edge x → y in [lo, hi] with x ≠ y and ts < ld[y] in the next round | `blz index-contracts`, contract `search` (src/graph/index_contracts.cpp), with the checks above. For every non-loop trigger, both visibilities and the windows 1..t, it calls `ReachScratch::search` with `tcyc_trigger_reach`'s arguments (hops 9, lo = t − δ, hi = `min_ts(t - 1, vis_t)`, `vis_e`), reusing one scratch per graph as the driver reuses one per thread. It then computes `ldJ`, a transcription of `relaxRound`, for 9 rounds over E, and requires `keep(x, ldJ[x] − 1)` for every node ldJ reaches. That is sufficient: `ldJ_search` shows ldJ meets `Search`, and the proofs read ld only at R = 9, so rounds below 9 can be ldJ's and round 9 the C++'s, which is at least ldJ's. At m=5,n=5,t=4: 195,616,496 searches, 0 violations, 33,335,148 nodes reached besides U (the path hit). The end-to-end consequence is also checked: fuzz-diff's cpu backend runs the reach-pruned path against the oracle at bounds A and B (`rel/cpu/<profile>/<bound>` in verify/codegen.sh, which report `reach-pruned rows`), and the unit tests "reach: latest departure times towards the target, hop bound, window, visibility" and "reach: hand-checked tcyc rows are the same with and without pruning" |
 
 ## Known gaps
 
-- **ReachScratch meets `Search`**: this is argued in reach.hpp's comment, not proved or checked
-  directly. In-round reads of raised values only raise ld, and `x == target` is skipped, which is
-  harmless since ld[U] = t is already maximal for edges that must have ts < t. L2's pruned paths
-  check the consequence. A direct check would compare `ld` after r rounds with the Jacobi rounds
-  of `ldJ`, a later unit's job.
+- **ReachScratch meets `Search` up to L2's bound.** The `search` contract runs on graphs of at most
+  5 edges, so it never sees a walk longer than 5 edges and cannot tell 9 rounds from 5. The 9-round
+  end is L3's: its k_max property catches the code mutant `reach_rounds_from_1` (verify/mutants.py),
+  which runs one round fewer.
 - **The DFS over node sequences** (T1) and the CUDA-only lowering are L2's and L3's, not L1's.
 - **Machine width**: L1's integers are unbounded. L3 arithmetic covers the int32 timestamps and int64
   bounds.
