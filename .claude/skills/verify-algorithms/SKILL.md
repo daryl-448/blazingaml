@@ -18,17 +18,17 @@ coverage record below is how a proof stays tied to the code.
 
 ## 1. Does my change touch covered code?
 
-Sync commit: `7871cfe`. At it, COVERAGE.md matched the code: `blzc_snapshots` passed, so the
+Sync commit: `3a02e81`. At it, COVERAGE.md matched the code: `blzc_snapshots` passed, so the
 generated text is the text the models describe; `verify/algorithms.sh --mutants` passed; and
 `blz index-contracts` checked every contract the proofs assume. Run:
 
 ```
-git diff --stat 7871cfe -- src/ir/plan.cpp src/codegen/cpu_emitter.cpp include/blz/primitives.hpp \
+git diff --stat 3a02e81 -- src/ir/plan.cpp src/codegen/cpu_emitter.cpp include/blz/primitives.hpp \
   include/blz/sweep.hpp include/blz/reach.hpp tests/snapshots verify/lean SPEC_V3.md patterns
 ```
 
 This compares the sync commit with the working tree, so uncommitted edits are listed too. Don't
-write `7871cfe..HEAD`, which compares commits only and misses a change before it is committed.
+write `3a02e81..HEAD`, which compares commits only and misses a change before it is committed.
 If it lists nothing, the proofs still describe the code. If it lists files, read the matching rows
 of `verify/lean/COVERAGE.md`. The record, in short:
 

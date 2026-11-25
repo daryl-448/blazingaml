@@ -752,16 +752,20 @@ of 0 gives skew and kurtosis 0 (D-58).
     - CBMC (L4) is not adopted in P14 (D-64).
 - [x] Result: each verify skill runs with one command and reports pass with its bounds. The skills
       are `.claude/skills/verify-algorithms` (L1) and `.claude/skills/verify-codegen` (L2, L3, T4,
-      V-mut), synced at 7871cfe.
+      V-mut), synced at 3a02e81.
 - [x] Unit: each check fails on its planted breaks (V-mut) and passes on the real code. E20
-      (results/e20_verification.{json,md}, 7871cfe) ran 79 checks and all passed.
-    - Proof mutants: 36 of 36 failed the build at their recorded declarations, and mutant 37 was
-      added after the Live run (fe68eeb, 37 of 37).
-    - Code mutants: 12 of 12 were caught by the check `verify/mutants.py` records for each (D-65).
-      Six were caught by L2 or T4, at 1 to 4 edges. The other six need L3 and pass L2 at its full
-      bounds (`--escape`): a K_MAX cycle in pruning, a count clamp at UINT32_MAX, int32
-      timestamps, packing at 4 bytes, the pack kernel's tail, and fused members at different
-      windows. That last one was caught after L2 learned to stagger the windows.
+      (results/e20_verification.{json,md}, 3a02e81) ran 79 checks and all passed. A check passes
+      only when its report shows the comparisons ran: every block compared, the limit reached in
+      the limit-1 runs, and the paths it asks for hit.
+    - Proof mutants: 37 of 37 failed the build at their recorded declarations (mutant 37 was added
+      after the Live run).
+    - Code mutants: 13 of 13 were caught by the check `verify/mutants.py` records for each (D-65),
+      and a catch counts only as a reported mismatch or a falsified property. Eight were caught by
+      L2 or T4, at 1 to 4 edges. Fused members at different windows is one, caught once L2
+      staggered the windows, and `keep_eq`, the review's break of the pruning check, is another.
+      The other five need L3 and pass L2 at its full bounds (`--escape`): a K_MAX cycle in
+      pruning, a count clamp at UINT32_MAX, int32 timestamps, packing at 4 bytes, and the pack
+      kernel's tail.
 - [x] Live: following each generated skill cold, on a scratch mutation of the artifact it checks (the proof project for the proof skill, the real C++ for the code skill), catches it.
     - verify-codegen, on a sweep.hpp line that counts a neighbour's second copy as new. The quick
       check failed at 2 edges (`0->1@0 0->1@0`, fan_in, got [2], want [1]).
@@ -773,11 +777,12 @@ of 0 gives skew and kurtosis 0 (D-58).
       hand-written header. A model-only edit is judged against the snapshot.
 - [x] Perf: the full verification run time, recorded (target: short enough to run on every
       relevant change).
-    - The quick per-change subset (D-66) took 3 s for `verify/algorithms.sh`, 134 s for
-      `ctest --preset rel` and 648 s for `ctest --preset rel-cuda`. About 600 s of the last
-      predates P14, so P14's own fast checks add about 46 s.
-    - The full run took 111 min: L2 on four builds 53 min, the code mutants with `--escape`
-      54 min, the rest under 4 min. Foreign load was 9 % to 39 % of a core per step (measured).
+    - The quick per-change subset (D-66) took 3 s for `verify/algorithms.sh`, 130 s for
+      `ctest --preset rel` and 630 s for `ctest --preset rel-cuda`. About 600 s of the last
+      predates P14, so P14's own fast checks add about 30 s.
+    - The full run took 108 min at 3a02e81: L2 on four builds 51 min, the code mutants with
+      `--escape` 53 min, the rest under 4 min. Foreign load averaged 8 % to 31 % of a core per
+      step, with peaks to 63 % (measured).
 - Not covered, by design or measured as out of reach (results/e20_verification.md):
   - CUDA under compute-sanitizer;
   - the hybrid's work limit;
@@ -786,6 +791,17 @@ of 0 gives skew and kurtosis 0 (D-58).
   - the `Search` check beyond L2's bound;
   - CPU races, run at 2 threads only, with no thread sanitizer;
   - CUDA on sm_80 (the A30 was not used).
+- The review: sol-loop on gpt-6.2-sol (max, then xhigh) approved in round 3. Then Gemini 4 Neon
+  (high) approved in round 2. Every finding was in the checks, not in the generated code.
+  - sol-loop found checks that could pass on wrong code. L2 compared only sg's sum of its two
+    roles, the `search` contract tested one threshold of `keep`, UBSan only warned, a run could
+    pass with nothing compared, any exit counted as a mutant catch, and E20 could mix revisions.
+    Fixed in 90b9ee7, e79b190 and 6b72ad8.
+  - Gemini found that the L3 k_max property failed on correct code in about a quarter of
+    `l3_random` runs: its sanity check read the case's random bins. It also found three missing
+    path gates. Fixed in 3a02e81.
+  - Declined: counting sweep and search work inside the hand-written hot headers. The mutants
+    caught at L2, T4 and L3 show those paths run at the checked bounds.
 
 ### P15 — Datasets
 

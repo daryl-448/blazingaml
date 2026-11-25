@@ -24,11 +24,11 @@ CBMC's m = 5 domain about 60× faster, on the code as it ships (SPEC_V3 §4.2).
 
 ## 1. Does my change touch covered code?
 
-Sync commit: `7871cfe`. At it, the whole suite in section 2 passed and every mutant of
+Sync commit: `3a02e81`. At it, the whole suite in section 2 passed and every mutant of
 `verify/mutants.py` was caught where recorded. Run:
 
 ```
-git diff --stat 7871cfe -- patterns include/blz src/dsl src/ir src/codegen \
+git diff --stat 3a02e81 -- patterns include/blz src/dsl src/ir src/codegen \
   src/graph/index.cpp src/graph/index.hpp src/graph/exhaustive.cpp src/graph/index_contracts.cpp \
   src/runtime/{cpu_backend,cuda_backend,hybrid,fusion,widen,triggers,registration,profile,fuzz_diff}.* \
   src/runtime/*vstats* src/oracle tests/snapshots tests/profiles configs/profiles/clean_all.yaml \
@@ -36,7 +36,7 @@ git diff --stat 7871cfe -- patterns include/blz src/dsl src/ir src/codegen \
 ```
 
 This compares the sync commit with the working tree, so it lists uncommitted edits too. Don't
-write `7871cfe..HEAD`: that compares commits only and misses a change that isn't committed yet.
+write `3a02e81..HEAD`: that compares commits only and misses a change that isn't committed yet.
 If it lists nothing, the verification still describes the code. If it lists files, find them in
 the record:
 
@@ -72,10 +72,10 @@ desktop is shared, and other jobs move the seconds but not the verdicts.
 **Quick, on every change that touches covered code** (the times are E20's, at the sync commit):
 
 ```
-ctest --preset rel-cuda       # 648 s at 7871cfe (E20); about 600 s of it predates P14
+ctest --preset rel-cuda       # 630 s at 3a02e81 (E20); about 600 s of it predates P14
 ```
 
-Without a GPU, or for a CPU-only change, `ctest --preset rel` (134 s at 7871cfe) runs the same checks
+Without a GPU, or for a CPU-only change, `ctest --preset rel` (130 s at 3a02e81) runs the same checks
 without the CUDA ones. Label `fast` holds the L2 smoke checks: every graph of m=4,n=4,t=3 (29,119 graphs; every block has
 nonzero rows) on the three profiles, plain and at a work limit of 1, plus cuda, `--fuse --pack` and
 the hybrid in CUDA builds. It also holds T4 with `search` at that bound, every L3 property at its
@@ -84,19 +84,19 @@ fixed seed, and the snapshot tests.
 Run the quick check first on every change, an edit to an existing algorithm's code included. If it
 fails, the change is wrong, and the full run can't reverse that verdict. To confirm that a failure
 comes from your change and was not there before: at the sync commit the whole suite passed
-(results/e20_verification.md). If `git diff --stat 7871cfe HEAD` lists no covered code, your edit
+(results/e20_verification.md). If `git diff --stat 3a02e81 HEAD` lists no covered code, your edit
 is the only code that changed since.
 
 **Full, before you commit a new algorithm, lowering, optimised path or check, and at phase exits**
-(about 110 min at 7871cfe, E20):
+(about 108 min at 3a02e81, E20):
 
 ```
 verify/codegen.sh && ctest --test-dir build/rel-cuda -L verify -R l3_random && verify/mutants.py --escape
 ```
 
-It stops at the first part that fails. The parts are L2 on every build present (53 min), L3 at
-fresh seeds with ten times the cases (25 s on rel, 85 s on rel-cuda), and V-mut, where every code mutant must be
-caught (54 min with --escape). `bench/e20.py run` runs the same parts with L1, the fixed seeds on each build
+It stops at the first part that fails. The parts are L2 on every build present (51 min), L3 at
+fresh seeds with ten times the cases (26 s on rel, 90 s on rel-cuda), and V-mut, where every code mutant must be
+caught (53 min with --escape). `bench/e20.py run` runs the same parts with L1, the fixed seeds on each build
 and a load sampler, and `bench/e20.py report` writes results/e20_verification.{json,md}.
 
 - `verify/codegen.sh [--smoke] [rel] [rel-cuda] [dev] [rel-noopt]` runs the checks of each build
