@@ -5,3 +5,4 @@ data/
 features/
 tools/gfp/.venv/
 __pycache__/
+verify/lean/.lake/

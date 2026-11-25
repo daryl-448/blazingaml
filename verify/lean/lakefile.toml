@@ -1,0 +1,6 @@
+name = "blzproof"
+defaultTargets = ["Blz"]
+
+[[lean_lib]]
+name = "Blz"
+leanOptions = { autoImplicit = false }
