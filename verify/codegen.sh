@@ -7,9 +7,12 @@
 #
 # The checks (profiles: clean_all, which enables every clean pattern and vstats, and
 # tests/profiles/l2_legacy_{stream,tsvis}.yaml, every legacy pattern under each visibility):
-#   rel       cpu (both schedules, reachability pruning both ways) at bounds A and B; T4 at bound T4
-#   rel-cuda  cuda at H = 0, 4, all; cuda --fuse --pack at H = 0, 4, all; the hybrid at every pair of
-#             H and C in 0, 4, all; each at bound A, against the oracle
+#   rel       cpu (both schedules, reachability pruning both ways) at bounds A and B; cpu with each
+#             graph alone and a work limit of 1 binding (R11: lcyc's stop eid, SPEC v3 §3.2) at bound
+#             A; T4 at bound T4
+#   rel-cuda  cuda at H = 0, 4, all; cuda --fuse --pack at H = 0, 4, all (each fusion again with its
+#             members at different windows); the hybrid at every pair of H and C in 0, 4, all; each at
+#             bound A, against the oracle
 #   dev       ASan + UBSan: cpu with each graph alone (no batch), and T4, at bound DEV
 # A bound m=M,n=N,t=T is every edge list of 1..M edges over at most N nodes with ts in [0, T), once
 # per node relabelling, at the windows 1..T (blz fuzz-diff --bound). --smoke runs every check at
@@ -67,6 +70,7 @@ for build in "${builds[@]}"; do
       for p in "${profiles[@]}"; do
         pn=$(basename "$p" .yaml)
         for bound in $A $B; do run "$build/cpu/$pn/$bound" "$build" fuzz-diff --bound "$bound" --profile "$p"; done
+        run "$build/cpu-limit1/$pn/$A" "$build" fuzz-diff --bound "$A" --batch-edges 1 --work-limit 1 --profile "$p"
       done
       run "$build/index-contracts/$T4" "$build" index-contracts --bound "$T4"
       ;;

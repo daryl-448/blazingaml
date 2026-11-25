@@ -107,8 +107,9 @@ endif()
 # SPEC v3 §4.3, L2: the bounded code check at its smoke bound, in seconds: every graph of <= 4 edges
 # over <= 4 nodes with ts in [0, 3), at the windows 1..3 (every block has nonzero rows), on
 # clean_all (every clean pattern and vstats) and the two legacy L2 profiles (every legacy pattern,
-# each visibility); and T4, the index primitives' contracts. CUDA builds also run cuda,
-# cuda --fuse --pack and the hybrid. The full suite is verify/codegen.sh (label verify, below).
+# each visibility), also with each graph alone at a work limit of 1 binding (R11's stop eids); and
+# T4, the index primitives' contracts. CUDA builds also run cuda, cuda --fuse --pack and the
+# hybrid. The full suite is verify/codegen.sh (label verify, below).
 set(BLZ_L2_SMOKE m=4,n=4,t=3)
 set(BLZ_L2_PROFILES
   ${PROJECT_SOURCE_DIR}/configs/profiles/clean_all.yaml
@@ -117,7 +118,9 @@ set(BLZ_L2_PROFILES
 foreach(prof IN LISTS BLZ_L2_PROFILES)
   get_filename_component(pn ${prof} NAME_WE)
   add_test(NAME l2_smoke_cpu_${pn} COMMAND blz fuzz-diff --bound ${BLZ_L2_SMOKE} --profile ${prof})
-  set_tests_properties(l2_smoke_cpu_${pn} PROPERTIES LABELS fast)
+  add_test(NAME l2_smoke_cpu_limit1_${pn}
+    COMMAND blz fuzz-diff --bound ${BLZ_L2_SMOKE} --batch-edges 1 --work-limit 1 --profile ${prof})
+  set_tests_properties(l2_smoke_cpu_${pn} l2_smoke_cpu_limit1_${pn} PROPERTIES LABELS fast)
   if(BLZ_ENABLE_CUDA)
     add_test(NAME l2_smoke_cuda_${pn} COMMAND blz fuzz-diff --backend cuda --bound ${BLZ_L2_SMOKE} --profile ${prof})
     add_test(NAME l2_smoke_cuda_fuse_pack_${pn}

@@ -1744,7 +1744,8 @@ int fuzz_diff(const std::string& seeds, const std::string& bound_opt, std::uint6
       std::printf("  %s: %llu %s completed, %llu reached the work limit of %llu bindings (inconclusive: their "
                   "stop eids compared, not their rows)\n",
                   std::string(blz::block_name(pb.block)).c_str(), (unsigned long long)(d.cases - l),
-                  exhaustive ? "batches" : "graphs", (unsigned long long)l, (unsigned long long)work_limit);
+                  exhaustive && d.cases != d.graphs ? "batches" : "graphs", (unsigned long long)l,
+                  (unsigned long long)work_limit);
   res["path_hits"] = path_hits(d.hits, d.nonzero_rows, prof, d.vstats_nonzero_rows, d.vstats_sides, !exhaustive);
   res["path_hits"]["optimised_paths"] = optimised_paths(d, backend, fuse, pack);
   if (d.counterexample) res["counterexample"] = print_counterexample(*d.counterexample, exhaustive);
