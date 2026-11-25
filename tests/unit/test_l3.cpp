@@ -569,12 +569,13 @@ Draft star(Rng& r, bool increasing, std::uint64_t& cell) {
 // V -> L1 -> ... -> Lj -> U with layers of w_i nodes, and the trigger U -> V last: prod w_i cycles
 // of j + 2 edges at it, and chains of j + 1. The product lands in `band` 0 (up to 255), 1
 // (256..65,535) or 2 (65,536..131,071: j = K_MAX - 2, 4^8 = 65,536 cycles of K_MAX edges and
-// more). Ties (every edge at one time, so every edge closes cycles) below band 2 only. `cell` is the
-// product.
-Draft layered(Rng& r, int band, std::uint64_t& cell) {
+// more). Ties (every edge at one time, so every edge closes cycles) below band 2 only. `at_end`:
+// j = K_MAX - 2 and no ties, so the cycle blocks' one large cell is their last (the last trigger's
+// last bin). `cell` is the product.
+Draft layered(Rng& r, int band, bool at_end, std::uint64_t& cell) {
   const int K = compiled_k_max();
-  const bool ties = band < 2 && r.chance(20);
-  const int j = band == 2 ? K - 2 : band == 1 ? int(r.in(4, K - 2)) : int(r.in(1, K - 1));
+  const bool ties = band < 2 && !at_end && r.chance(20);
+  const int j = band == 2 || at_end ? K - 2 : band == 1 ? int(r.in(4, K - 2)) : int(r.in(1, K - 1));
   std::vector<std::uint64_t> w(std::size_t(j), band == 2 ? 4 : 1);
   const auto prod = [&] { return std::accumulate(w.begin(), w.end(), std::uint64_t(1), std::multiplies<>()); };
   const std::uint64_t lo = band == 0 ? 1 : band == 1 ? 256 : 65536, hi = band == 0 ? 255 : band == 1 ? 65535 : 131071;
@@ -607,7 +608,7 @@ void tag_cell(Case& c, std::uint64_t cell) {
 // or, with `band` 2, a layered graph of cells past 65,535.
 Case wide_at(Rng& r, int band) {
   std::uint64_t cell = 0;
-  Draft d = band < 2 && r.chance(55) ? star(r, false, cell) : layered(r, band, cell);
+  Draft d = band < 2 && r.chance(55) ? star(r, false, cell) : layered(r, band, false, cell);
   for (std::int64_t c = r.in(0, 5); c > 0; --c)
     d.add(std::uint32_t(r.below(d.n)), std::uint32_t(r.below(d.n)), r.in(0, d.ts.back()));
   d.sort();
@@ -621,12 +622,12 @@ Case wide(Rng& r, int) { return wide_at(r, int(r.below(2))); }
 Case four_bytes(Rng& r, int) { return wide_at(r, 2); }
 
 // Position: a graph alone with its largest rows at the arrays' ends, as no member of an L2 batch but the
-// last has them (SPEC v3 §4.3, GraphUnion): a star with increasing times or a layered graph (cells
-// up to 65,535), its edges last after a few earlier noise edges, its hub or V at node 0, or
-// relabelled.
+// last has them (SPEC v3 §4.3, GraphUnion): a star with increasing times, or a layered graph whose
+// cycle blocks' one large cell (up to 65,535) is their last, its edges after a few earlier noise
+// edges, its hub or V at node 0, or relabelled.
 Case position(Rng& r, int) {
   std::uint64_t cell = 0;
-  Draft s = r.chance(50) ? star(r, true, cell) : layered(r, int(r.below(2)), cell);
+  Draft s = r.chance(50) ? star(r, true, cell) : layered(r, int(r.below(2)), true, cell);
   Draft d;
   d.n = s.n;
   for (std::int64_t c = r.in(0, 4); c > 0; --c)
