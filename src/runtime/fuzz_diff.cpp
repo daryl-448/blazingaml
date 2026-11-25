@@ -474,12 +474,12 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, const DiffSource& src, std::span<
       const Want& x = it.want[wi];
       for (const ProfileBlock& pb : prof.blocks)
         r.reference(pb.block, x.stop[int(pb.block)], x.rows[int(pb.block)], block_cols(run.bins[int(pb.block)]));
-      // One block's rows (or stop eid) against the reference's.
-      const auto check = [&](const ProfileBlock& pb, const std::string& path, const std::vector<std::uint32_t>& got,
-                             std::uint64_t got_stop) {
+      // One block's rows (or stop eid) at window c.windows[wk] against the reference's.
+      const auto check = [&](const ProfileBlock& pb, const std::string& path, std::size_t wk,
+                             const std::vector<std::uint32_t>& got, std::uint64_t got_stop) {
         const Block b = pb.block;
-        if (r.stops(b, path, w, got_stop, x.stop[int(b)])) return false;
-        r.rows(b, path, w, got, x.rows[int(b)], block_cols(run.bins[int(b)]));
+        if (r.stops(b, path, c.windows[wk], got_stop, it.want[wk].stop[int(b)])) return false;
+        r.rows(b, path, c.windows[wk], got, it.want[wk].rows[int(b)], block_cols(run.bins[int(b)]));
         return true;
       };
       const auto packed = [&](const CudaBlockTiming& t) {
@@ -499,10 +499,19 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, const DiffSource& src, std::span<
             }
             std::vector<std::vector<std::uint32_t>> got(unit.blocks.size());
             for (std::size_t sl = 0; sl < got.size(); ++sl) got[sl].assign(m * block_cols(params[sl]), 0xdeadbeefu);
-            if (unit.fusion) {  // no fused pattern counts work, so a fused run never stops
+            // A fused run (no fused pattern counts work, so it never stops) has every member at w, and
+            // then, with more than one window, member k at the k-th window after w (cyclically): a
+            // profile may give the members different windows, so their starts in the shared scan differ.
+            for (std::size_t shift = 0; unit.fusion && shift < std::min<std::size_t>(2, c.windows.size()); ++shift) {
+              std::vector<std::size_t> at(got.size());
+              std::string fused_path = path;
               std::vector<const BlockParams*> pp;
               std::vector<std::uint32_t*> outs;
               for (std::size_t sl = 0; sl < got.size(); ++sl) {
+                at[sl] = (wi + shift * sl) % c.windows.size();
+                params[sl] = run.params(unit.blocks[sl]->block, c.windows[at[sl]]);
+                got[sl].assign(m * block_cols(params[sl]), 0xdeadbeefu);
+                if (shift) fused_path += (sl ? "," : " at windows ") + std::to_string(c.windows[at[sl]]);
                 pp.push_back(&params[sl]);
                 outs.push_back(got[sl].data());
               }
@@ -511,12 +520,12 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, const DiffSource& src, std::span<
               r.d.light_triggers += t.group.light;
               r.d.heavy_triggers += t.group.heavy;
               for (std::size_t sl = 0; sl < got.size(); ++sl)
-                if (check(*unit.blocks[sl], path, got[sl], UINT64_MAX)) {
+                if (check(*unit.blocks[sl], fused_path, at[sl], got[sl], UINT64_MAX)) {
                   r.d.fused_rows += m;
                   packed(t.slots[sl]);
                 }
-              continue;
             }
+            if (unit.fusion) continue;
             const ProfileBlock& pb = *unit.blocks.front();
             CudaBlockTiming t;
             HybridTiming ht;
@@ -527,7 +536,7 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, const DiffSource& src, std::span<
               else
                 t = miner.mine(dg, pb.patterns, params[0], prof.visibility, 0, m, h, got[0].data(), opts.pack);
             });
-            if (!check(pb, path, got[0], got_stop)) continue;
+            if (!check(pb, path, wi, got[0], got_stop)) continue;
             if (hybrid) {
               r.d.hybrid_cpu_triggers += ht.cpu_triggers;
               r.d.hybrid_gpu_triggers += ht.gpu_triggers;

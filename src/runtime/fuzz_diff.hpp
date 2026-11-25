@@ -139,7 +139,9 @@ FuzzDiff fuzz_diff_cpu(const Profile& prof, const DiffSource& src, std::span<con
 // once per light/heavy threshold in `thresholds` (0 sends every trigger to the heavy kernel,
 // kAllLight every trigger to the light kernel). mismatched_rows sums over the thresholds.
 // SPEC v2 §8 S7: `opts.fuse` mines each compiled fusion's blocks in one kernel (cuda_units), and
-// `opts.pack` copies the rows packed; the rows must not change.
+// `opts.pack` copies the rows packed; the rows must not change. A fused kernel runs with every
+// member at the window, and again (a case with more than one window) with member k at the k-th
+// window after it, cyclically, since a profile may give a fusion's members different windows.
 struct CudaOptions {
   bool fuse = false;
   bool pack = false;
