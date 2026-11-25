@@ -488,10 +488,10 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, const DiffSource& src, std::span<
       for (const CudaUnit& unit : units)
         for (std::uint32_t h : thresholds)
           for (std::uint32_t hc : splits) {
-            std::string path = hybrid ? "hybrid H=" + threshold_text(h) + " C=" + threshold_text(hc)
-                                      : "cuda H=" + threshold_text(h);
-            if (unit.fusion) path += " fused";
-            if (opts.pack) path += " packed";
+            const std::string run_text = hybrid ? "hybrid H=" + threshold_text(h) + " C=" + threshold_text(hc)
+                                                : "cuda H=" + threshold_text(h);
+            const std::string pack_text = opts.pack ? " packed" : "";
+            const std::string path = run_text + pack_text;  // an unfused run's
             std::vector<BlockParams> params;
             for (const ProfileBlock* pb : unit.blocks) {
               BlockParams& p = params.emplace_back(run.params(pb->block, w));
@@ -504,17 +504,18 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, const DiffSource& src, std::span<
             // profile may give the members different windows, so their starts in the shared scan differ.
             for (std::size_t shift = 0; unit.fusion && shift < std::min<std::size_t>(2, c.windows.size()); ++shift) {
               std::vector<std::size_t> at(got.size());
-              std::string fused_path = path;
+              std::string windows_text;
               std::vector<const BlockParams*> pp;
               std::vector<std::uint32_t*> outs;
               for (std::size_t sl = 0; sl < got.size(); ++sl) {
                 at[sl] = (wi + shift * sl) % c.windows.size();
                 params[sl] = run.params(unit.blocks[sl]->block, c.windows[at[sl]]);
                 got[sl].assign(m * block_cols(params[sl]), 0xdeadbeefu);
-                if (shift) fused_path += (sl ? "," : " at windows ") + std::to_string(c.windows[at[sl]]);
+                if (shift) windows_text += (sl ? "," : " at windows ") + std::to_string(c.windows[at[sl]]);
                 pp.push_back(&params[sl]);
                 outs.push_back(got[sl].data());
               }
+              const std::string fused_path = run_text + " fused" + windows_text + pack_text;
               const CudaMiner::FusedTiming t =
                   miner.mine_fused(dg, *unit.fusion, pp, prof.visibility, 0, m, h, outs, opts.pack);
               r.d.light_triggers += t.group.light;
