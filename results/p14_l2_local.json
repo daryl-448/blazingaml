@@ -33,7 +33,7 @@
      "first_mismatched_batches": [],
      "git": {
       "dirty": false,
-      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
      },
      "graphs": 29119,
      "k_max": 10,
@@ -111,7 +111,7 @@
       "dynamic",
       "sorted"
      ],
-     "seconds": 14.507600381,
+     "seconds": 14.506058084,
      "threads": 12,
      "trigger_checks": 345774,
      "work_limit": 100000000
@@ -148,7 +148,7 @@
      "first_mismatched_batches": [],
      "git": {
       "dirty": false,
-      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
      },
      "graphs": 29119,
      "k_max": 10,
@@ -223,7 +223,7 @@
       "dynamic",
       "sorted"
      ],
-     "seconds": 11.144535663,
+     "seconds": 11.002738958,
      "threads": 12,
      "trigger_checks": 345774,
      "work_limit": 100000000
@@ -260,7 +260,7 @@
      "first_mismatched_batches": [],
      "git": {
       "dirty": false,
-      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
      },
      "graphs": 29119,
      "k_max": 10,
@@ -335,7 +335,7 @@
       "dynamic",
       "sorted"
      ],
-     "seconds": 11.311377262,
+     "seconds": 11.379952235,
      "threads": 12,
      "trigger_checks": 345774,
      "work_limit": 100000000
@@ -381,11 +381,11 @@
     },
     "git": {
      "dirty": false,
-     "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+     "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
     },
     "graphs": 29119,
     "queries": 643228030,
-    "seconds": 23.146139224,
+    "seconds": 22.641087354,
     "threads": 12,
     "violations": 0
    }
@@ -425,7 +425,7 @@
      "first_mismatched_batches": [],
      "git": {
       "dirty": false,
-      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
      },
      "graphs": 3105502,
      "k_max": 10,
@@ -503,7 +503,7 @@
       "dynamic",
       "sorted"
      ],
-     "seconds": 23.533583042,
+     "seconds": 23.485943007,
      "threads": 12,
      "trigger_checks": 61785528,
      "work_limit": 100000000
@@ -539,7 +539,7 @@
      "first_mismatched_batches": [],
      "git": {
       "dirty": false,
-      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
      },
      "graphs": 15389899,
      "k_max": 10,
@@ -617,7 +617,7 @@
       "dynamic",
       "sorted"
      ],
-     "seconds": 111.799172779,
+     "seconds": 111.363227719,
      "threads": 12,
      "trigger_checks": 274862199,
      "work_limit": 100000000
@@ -654,7 +654,7 @@
      "first_mismatched_batches": [],
      "git": {
       "dirty": false,
-      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
      },
      "graphs": 3105502,
      "k_max": 10,
@@ -729,7 +729,7 @@
       "dynamic",
       "sorted"
      ],
-     "seconds": 13.232315023,
+     "seconds": 13.094039577,
      "threads": 12,
      "trigger_checks": 61785528,
      "work_limit": 100000000
@@ -764,7 +764,7 @@
      "first_mismatched_batches": [],
      "git": {
       "dirty": false,
-      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
      },
      "graphs": 15389899,
      "k_max": 10,
@@ -839,7 +839,7 @@
       "dynamic",
       "sorted"
      ],
-     "seconds": 62.148578067,
+     "seconds": 61.213540272,
      "threads": 12,
      "trigger_checks": 274862199,
      "work_limit": 100000000
@@ -876,7 +876,7 @@
      "first_mismatched_batches": [],
      "git": {
       "dirty": false,
-      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
      },
      "graphs": 3105502,
      "k_max": 10,
@@ -951,7 +951,7 @@
       "dynamic",
       "sorted"
      ],
-     "seconds": 14.158016931,
+     "seconds": 13.988925413,
      "threads": 12,
      "trigger_checks": 61785528,
      "work_limit": 100000000
@@ -986,7 +986,7 @@
      "first_mismatched_batches": [],
      "git": {
       "dirty": false,
-      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
      },
      "graphs": 15389899,
      "k_max": 10,
@@ -1061,10 +1061,415 @@
       "dynamic",
       "sorted"
      ],
-     "seconds": 67.021291138,
+     "seconds": 66.156722127,
      "threads": 12,
      "trigger_checks": 274862199,
      "work_limit": 100000000
+    }
+   }
+  },
+  "cpu-limit1": {
+   "clean_all": {
+    "m=5,n=5,t=4": {
+     "backend": "cpu",
+     "batch_edges": 1,
+     "batches": 3105502,
+     "bins": "profile",
+     "bound": {
+      "m_max": 5,
+      "n_max": 5,
+      "t": 4,
+      "windows": "1..4"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 3105502,
+      "deg_out": 3105502,
+      "fan_in": 3105502,
+      "fan_oneway_out": 3105502,
+      "fan_out": 3105502,
+      "fan_total": 3105502,
+      "gs": 3105502,
+      "lcyc": 2403911,
+      "sg": 3105502,
+      "sg_ord": 3105502,
+      "tchain": 3105502,
+      "tcyc": 3105502,
+      "vstats": 12422008
+     },
+     "edges": 15446382,
+     "first_limited_batches": [
+      902,
+      903,
+      904,
+      905,
+      906,
+      907,
+      908,
+      909,
+      910,
+      911,
+      1222,
+      1262,
+      1272,
+      1273,
+      1274,
+      1275,
+      1276,
+      1277,
+      1278,
+      1279
+     ],
+     "first_mismatched_batches": [],
+     "git": {
+      "dirty": false,
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
+     },
+     "graphs": 3105502,
+     "k_max": 10,
+     "limited_batches": 701591,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 701591,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0,
+      "vstats": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0,
+      "vstats": 0
+     },
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 48904124,
+       "deg_out": 48904124,
+       "fan_in": 48904124,
+       "fan_oneway_out": 45497765,
+       "fan_out": 48904124,
+       "fan_total": 48904124,
+       "gs": 10786427,
+       "lcyc": 4006268,
+       "sg": 188628,
+       "sg_ord": 72624,
+       "tchain": 10786427,
+       "tcyc": 4963644,
+       "vstats": 55361936
+      },
+      "optimised_paths": {
+       "fused_rows": 0,
+       "heavy_kernel_triggers": 0,
+       "hybrid_cpu_triggers": 0,
+       "hybrid_gpu_triggers": 0,
+       "light_kernel_triggers": 0,
+       "packed_rows_by_width": {
+        "1": 0,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 0,
+       "sweep_rows": 494284224
+      },
+      "vstats_sides": 173678864
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/configs/profiles/clean_all.yaml",
+      "id": "1687128491d0e283",
+      "name": "clean_all"
+     },
+     "row_checks": 1526018646,
+     "schedules": [
+      "dynamic",
+      "sorted"
+     ],
+     "seconds": 94.58589593,
+     "threads": 12,
+     "trigger_checks": 61785528,
+     "work_limit": 1
+    }
+   },
+   "l2_legacy_stream": {
+    "m=5,n=5,t=4": {
+     "backend": "cpu",
+     "batch_edges": 1,
+     "batches": 3105502,
+     "bins": "profile",
+     "bound": {
+      "m_max": 5,
+      "n_max": 5,
+      "t": 4,
+      "windows": "1..4"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 3105502,
+      "deg_out": 3105502,
+      "fan_in": 3105502,
+      "fan_oneway_out": 3105502,
+      "fan_out": 3105502,
+      "fan_total": 3105502,
+      "gs": 3105502,
+      "lcyc": 2808306,
+      "sg": 3105502,
+      "sg_ord": 3105502,
+      "tchain": 3105502,
+      "tcyc": 3105502
+     },
+     "edges": 15446382,
+     "first_limited_batches": [
+      903,
+      904,
+      905,
+      907,
+      908,
+      910,
+      1273,
+      1274,
+      1275,
+      1277,
+      1278,
+      1280,
+      1463,
+      1464,
+      1465,
+      1467,
+      1468,
+      1470,
+      3763,
+      3764
+     ],
+     "first_mismatched_batches": [],
+     "git": {
+      "dirty": false,
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
+     },
+     "graphs": 3105502,
+     "k_max": 10,
+     "limited_batches": 297196,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 297196,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 9780487,
+       "deg_out": 9780487,
+       "fan_in": 7408145,
+       "fan_oneway_out": 6493127,
+       "fan_out": 7408145,
+       "fan_total": 13511928,
+       "gs": 33501,
+       "lcyc": 2254334,
+       "sg": 233280,
+       "sg_ord": 23144,
+       "tchain": 5586922,
+       "tcyc": 2226185
+      },
+      "optimised_paths": {
+       "fused_rows": 0,
+       "heavy_kernel_triggers": 0,
+       "hybrid_cpu_triggers": 0,
+       "hybrid_gpu_triggers": 0,
+       "light_kernel_triggers": 0,
+       "packed_rows_by_width": {
+        "1": 0,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 123571056,
+       "sweep_rows": 494284224
+      },
+      "vstats_sides": 0
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_stream.yaml",
+      "id": "dfe2e7143c19d0fc",
+      "name": "l2_legacy_stream"
+     },
+     "row_checks": 1597989806,
+     "schedules": [
+      "dynamic",
+      "sorted"
+     ],
+     "seconds": 78.39144512,
+     "threads": 12,
+     "trigger_checks": 61785528,
+     "work_limit": 1
+    }
+   },
+   "l2_legacy_tsvis": {
+    "m=5,n=5,t=4": {
+     "backend": "cpu",
+     "batch_edges": 1,
+     "batches": 3105502,
+     "bins": "profile",
+     "bound": {
+      "m_max": 5,
+      "n_max": 5,
+      "t": 4,
+      "windows": "1..4"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 3105502,
+      "deg_out": 3105502,
+      "fan_in": 3105502,
+      "fan_oneway_out": 3105502,
+      "fan_out": 3105502,
+      "fan_total": 3105502,
+      "gs": 3105502,
+      "lcyc": 2808306,
+      "sg": 3105502,
+      "sg_ord": 3105502,
+      "tchain": 3105502,
+      "tcyc": 3105502
+     },
+     "edges": 15446382,
+     "first_limited_batches": [
+      903,
+      904,
+      905,
+      907,
+      908,
+      910,
+      1273,
+      1274,
+      1275,
+      1277,
+      1278,
+      1280,
+      1463,
+      1464,
+      1465,
+      1467,
+      1468,
+      1470,
+      3763,
+      3764
+     ],
+     "first_mismatched_batches": [],
+     "git": {
+      "dirty": false,
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
+     },
+     "graphs": 3105502,
+     "k_max": 10,
+     "limited_batches": 297196,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 297196,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 14132960,
+       "deg_out": 14132960,
+       "fan_in": 10786427,
+       "fan_oneway_out": 9180965,
+       "fan_out": 10786427,
+       "fan_total": 19274584,
+       "gs": 39471,
+       "lcyc": 2254334,
+       "sg": 441744,
+       "sg_ord": 34640,
+       "tchain": 5586922,
+       "tcyc": 2226185
+      },
+      "optimised_paths": {
+       "fused_rows": 0,
+       "heavy_kernel_triggers": 0,
+       "hybrid_cpu_triggers": 0,
+       "hybrid_gpu_triggers": 0,
+       "light_kernel_triggers": 0,
+       "packed_rows_by_width": {
+        "1": 0,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 123571056,
+       "sweep_rows": 494284224
+      },
+      "vstats_sides": 0
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_tsvis.yaml",
+      "id": "bb3689659b5ef38d",
+      "name": "l2_legacy_tsvis"
+     },
+     "row_checks": 1597989806,
+     "schedules": [
+      "dynamic",
+      "sorted"
+     ],
+     "seconds": 79.853518362,
+     "threads": 12,
+     "trigger_checks": 61785528,
+     "work_limit": 1
     }
    }
   },
@@ -1107,11 +1512,11 @@
     },
     "git": {
      "dirty": false,
-     "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+     "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
     },
     "graphs": 3105502,
     "queries": 159287316520,
-    "seconds": 135.276539176,
+    "seconds": 135.049885992,
     "threads": 12,
     "violations": 0
    }
@@ -1152,7 +1557,7 @@
       "device": "NVIDIA GeForce GTX 1650 SUPER",
       "driver_version": 13040,
       "memory_mb": {
-       "free": 2971,
+       "free": 3016,
        "total": 3728
       },
       "runtime_version": 13040,
@@ -1164,7 +1569,7 @@
      "fuse": false,
      "git": {
       "dirty": false,
-      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
      },
      "graphs": 3105502,
      "heavy_thresholds": [
@@ -1244,7 +1649,7 @@
       "name": "clean_all"
      },
      "row_checks": 2286064536,
-     "seconds": 64.261790519,
+     "seconds": 64.896395091,
      "threads": 12,
      "trigger_checks": 61785528,
      "work_limit": 100000000
@@ -1282,7 +1687,7 @@
       "device": "NVIDIA GeForce GTX 1650 SUPER",
       "driver_version": 13040,
       "memory_mb": {
-       "free": 2970,
+       "free": 3016,
        "total": 3728
       },
       "runtime_version": 13040,
@@ -1294,7 +1699,7 @@
      "fuse": false,
      "git": {
       "dirty": false,
-      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
      },
      "graphs": 3105502,
      "heavy_thresholds": [
@@ -1371,7 +1776,7 @@
       "name": "l2_legacy_stream"
      },
      "row_checks": 2224279008,
-     "seconds": 43.983634822,
+     "seconds": 43.321058206,
      "threads": 12,
      "trigger_checks": 61785528,
      "work_limit": 100000000
@@ -1409,7 +1814,7 @@
       "device": "NVIDIA GeForce GTX 1650 SUPER",
       "driver_version": 13040,
       "memory_mb": {
-       "free": 2970,
+       "free": 3000,
        "total": 3728
       },
       "runtime_version": 13040,
@@ -1421,7 +1826,7 @@
      "fuse": false,
      "git": {
       "dirty": false,
-      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
      },
      "graphs": 3105502,
      "heavy_thresholds": [
@@ -1498,7 +1903,7 @@
       "name": "l2_legacy_tsvis"
      },
      "row_checks": 2224279008,
-     "seconds": 44.363650044,
+     "seconds": 44.16692153,
      "threads": 12,
      "trigger_checks": 61785528,
      "work_limit": 100000000
@@ -1539,7 +1944,7 @@
       "device": "NVIDIA GeForce GTX 1650 SUPER",
       "driver_version": 13040,
       "memory_mb": {
-       "free": 2971,
+       "free": 3016,
        "total": 3728
       },
       "runtime_version": 13040,
@@ -1551,7 +1956,7 @@
      "fuse": true,
      "git": {
       "dirty": false,
-      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
      },
      "graphs": 3105502,
      "heavy_thresholds": [
@@ -1610,13 +2015,13 @@
        "vstats": 55361936
       },
       "optimised_paths": {
-       "fused_rows": 741426336,
-       "heavy_kernel_triggers": 680431394,
+       "fused_rows": 1482852672,
+       "heavy_kernel_triggers": 804516018,
        "hybrid_cpu_triggers": 0,
        "hybrid_gpu_triggers": 0,
-       "light_kernel_triggers": 1358491030,
+       "light_kernel_triggers": 1605119574,
        "packed_rows_by_width": {
-        "1": 2224279008,
+        "1": 2965705344,
         "2": 0,
         "4": 0
        },
@@ -1630,8 +2035,8 @@
       "id": "1687128491d0e283",
       "name": "clean_all"
      },
-     "row_checks": 2286064536,
-     "seconds": 63.958008557,
+     "row_checks": 3027490872,
+     "seconds": 73.872262673,
      "threads": 12,
      "trigger_checks": 61785528,
      "work_limit": 100000000
@@ -1669,7 +2074,7 @@
       "device": "NVIDIA GeForce GTX 1650 SUPER",
       "driver_version": 13040,
       "memory_mb": {
-       "free": 2970,
+       "free": 3016,
        "total": 3728
       },
       "runtime_version": 13040,
@@ -1681,7 +2086,7 @@
      "fuse": true,
      "git": {
       "dirty": false,
-      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
      },
      "graphs": 3105502,
      "heavy_thresholds": [
@@ -1737,13 +2142,13 @@
        "tcyc": 2226185
       },
       "optimised_paths": {
-       "fused_rows": 741426336,
-       "heavy_kernel_triggers": 680843798,
+       "fused_rows": 1482852672,
+       "heavy_kernel_triggers": 805142450,
        "hybrid_cpu_triggers": 0,
        "hybrid_gpu_triggers": 0,
-       "light_kernel_triggers": 1358078626,
+       "light_kernel_triggers": 1604493142,
        "packed_rows_by_width": {
-        "1": 2224279008,
+        "1": 2965705344,
         "2": 0,
         "4": 0
        },
@@ -1757,8 +2162,8 @@
       "id": "dfe2e7143c19d0fc",
       "name": "l2_legacy_stream"
      },
-     "row_checks": 2224279008,
-     "seconds": 40.644461627,
+     "row_checks": 2965705344,
+     "seconds": 48.241375358,
      "threads": 12,
      "trigger_checks": 61785528,
      "work_limit": 100000000
@@ -1796,7 +2201,7 @@
       "device": "NVIDIA GeForce GTX 1650 SUPER",
       "driver_version": 13040,
       "memory_mb": {
-       "free": 2970,
+       "free": 3000,
        "total": 3728
       },
       "runtime_version": 13040,
@@ -1808,7 +2213,7 @@
      "fuse": true,
      "git": {
       "dirty": false,
-      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
      },
      "graphs": 3105502,
      "heavy_thresholds": [
@@ -1864,13 +2269,13 @@
        "tcyc": 2226185
       },
       "optimised_paths": {
-       "fused_rows": 741426336,
-       "heavy_kernel_triggers": 682003834,
+       "fused_rows": 1482852672,
+       "heavy_kernel_triggers": 806938470,
        "hybrid_cpu_triggers": 0,
        "hybrid_gpu_triggers": 0,
-       "light_kernel_triggers": 1356918590,
+       "light_kernel_triggers": 1602697122,
        "packed_rows_by_width": {
-        "1": 2224279008,
+        "1": 2965705344,
         "2": 0,
         "4": 0
        },
@@ -1884,11 +2289,461 @@
       "id": "bb3689659b5ef38d",
       "name": "l2_legacy_tsvis"
      },
-     "row_checks": 2224279008,
-     "seconds": 41.195956653,
+     "row_checks": 2965705344,
+     "seconds": 48.841631387,
      "threads": 12,
      "trigger_checks": 61785528,
      "work_limit": 100000000
+    }
+   }
+  },
+  "cuda-limit1": {
+   "clean_all": {
+    "m=4,n=4,t=3": {
+     "backend": "cuda",
+     "batch_edges": 1,
+     "batches": 29119,
+     "bins": "profile",
+     "bound": {
+      "m_max": 4,
+      "n_max": 4,
+      "t": 3,
+      "windows": "1..3"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 29119,
+      "deg_out": 29119,
+      "fan_in": 29119,
+      "fan_oneway_out": 29119,
+      "fan_out": 29119,
+      "fan_total": 29119,
+      "gs": 29119,
+      "lcyc": 26305,
+      "sg": 29119,
+      "sg_ord": 29119,
+      "tchain": 29119,
+      "tcyc": 29119,
+      "vstats": 87357
+     },
+     "cuda": {
+      "build": "nvcc 13.4.92, sm 75,80, -O3 -DNDEBUG",
+      "compute_capability": "7.5",
+      "device": "NVIDIA GeForce GTX 1650 SUPER",
+      "driver_version": 13040,
+      "memory_mb": {
+       "free": 3016,
+       "total": 3728
+      },
+      "runtime_version": 13040,
+      "sm_count": 20
+     },
+     "edges": 115258,
+     "first_limited_batches": [
+      545,
+      546,
+      547,
+      548,
+      549,
+      550,
+      731,
+      755,
+      761,
+      762,
+      763,
+      764,
+      765,
+      766,
+      803,
+      806,
+      808,
+      827,
+      830,
+      832
+     ],
+     "first_mismatched_batches": [],
+     "fuse": false,
+     "git": {
+      "dirty": false,
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
+     },
+     "graphs": 29119,
+     "heavy_thresholds": [
+      "0",
+      "4",
+      "all"
+     ],
+     "k_max": 10,
+     "limited_batches": 2814,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 2814,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0,
+      "vstats": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0,
+      "vstats": 0
+     },
+     "pack": false,
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 257127,
+       "deg_out": 257127,
+       "fan_in": 257127,
+       "fan_oneway_out": 233957,
+       "fan_out": 257127,
+       "fan_total": 257127,
+       "gs": 49115,
+       "lcyc": 28483,
+       "sg": 408,
+       "sg_ord": 164,
+       "tchain": 49115,
+       "tcyc": 30642,
+       "vstats": 300941
+      },
+      "optimised_paths": {
+       "fused_rows": 0,
+       "heavy_kernel_triggers": 4474967,
+       "hybrid_cpu_triggers": 0,
+       "hybrid_gpu_triggers": 0,
+       "light_kernel_triggers": 8941366,
+       "packed_rows_by_width": {
+        "1": 0,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 0,
+       "sweep_rows": 0
+      },
+      "vstats_sides": 919308
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/configs/profiles/clean_all.yaml",
+      "id": "1687128491d0e283",
+      "name": "clean_all"
+     },
+     "row_checks": 12724785,
+     "seconds": 181.817612006,
+     "threads": 12,
+     "trigger_checks": 345774,
+     "work_limit": 1
+    }
+   },
+   "l2_legacy_stream": {
+    "m=4,n=4,t=3": {
+     "backend": "cuda",
+     "batch_edges": 1,
+     "batches": 29119,
+     "bins": "profile",
+     "bound": {
+      "m_max": 4,
+      "n_max": 4,
+      "t": 3,
+      "windows": "1..3"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 29119,
+      "deg_out": 29119,
+      "fan_in": 29119,
+      "fan_oneway_out": 29119,
+      "fan_out": 29119,
+      "fan_total": 29119,
+      "gs": 29119,
+      "lcyc": 28274,
+      "sg": 29119,
+      "sg_ord": 29119,
+      "tchain": 29119,
+      "tcyc": 29119
+     },
+     "cuda": {
+      "build": "nvcc 13.4.92, sm 75,80, -O3 -DNDEBUG",
+      "compute_capability": "7.5",
+      "device": "NVIDIA GeForce GTX 1650 SUPER",
+      "driver_version": 13040,
+      "memory_mb": {
+       "free": 3000,
+       "total": 3728
+      },
+      "runtime_version": 13040,
+      "sm_count": 20
+     },
+     "edges": 115258,
+     "first_limited_batches": [
+      546,
+      547,
+      549,
+      762,
+      763,
+      765,
+      870,
+      871,
+      873,
+      2000,
+      2001,
+      2003,
+      2006,
+      2360,
+      2361,
+      2363,
+      2366,
+      2540,
+      2541,
+      2543
+     ],
+     "first_mismatched_batches": [],
+     "fuse": false,
+     "git": {
+      "dirty": false,
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
+     },
+     "graphs": 29119,
+     "heavy_thresholds": [
+      "0",
+      "4",
+      "all"
+     ],
+     "k_max": 10,
+     "limited_batches": 845,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 845,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "pack": false,
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 46940,
+       "deg_out": 46940,
+       "fan_in": 31694,
+       "fan_oneway_out": 27624,
+       "fan_out": 31694,
+       "fan_total": 59228,
+       "gs": 38,
+       "lcyc": 13027,
+       "sg": 576,
+       "sg_ord": 44,
+       "tchain": 22075,
+       "tcyc": 12259
+      },
+      "optimised_paths": {
+       "fused_rows": 0,
+       "heavy_kernel_triggers": 4492349,
+       "hybrid_cpu_triggers": 0,
+       "hybrid_gpu_triggers": 0,
+       "light_kernel_triggers": 8968768,
+       "packed_rows_by_width": {
+        "1": 0,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 0,
+       "sweep_rows": 0
+      },
+      "vstats_sides": 0
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_stream.yaml",
+      "id": "dfe2e7143c19d0fc",
+      "name": "l2_legacy_stream"
+     },
+     "row_checks": 12423795,
+     "seconds": 164.768371827,
+     "threads": 12,
+     "trigger_checks": 345774,
+     "work_limit": 1
+    }
+   },
+   "l2_legacy_tsvis": {
+    "m=4,n=4,t=3": {
+     "backend": "cuda",
+     "batch_edges": 1,
+     "batches": 29119,
+     "bins": "profile",
+     "bound": {
+      "m_max": 4,
+      "n_max": 4,
+      "t": 3,
+      "windows": "1..3"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 29119,
+      "deg_out": 29119,
+      "fan_in": 29119,
+      "fan_oneway_out": 29119,
+      "fan_out": 29119,
+      "fan_total": 29119,
+      "gs": 29119,
+      "lcyc": 28274,
+      "sg": 29119,
+      "sg_ord": 29119,
+      "tchain": 29119,
+      "tcyc": 29119
+     },
+     "cuda": {
+      "build": "nvcc 13.4.92, sm 75,80, -O3 -DNDEBUG",
+      "compute_capability": "7.5",
+      "device": "NVIDIA GeForce GTX 1650 SUPER",
+      "driver_version": 13040,
+      "memory_mb": {
+       "free": 3000,
+       "total": 3728
+      },
+      "runtime_version": 13040,
+      "sm_count": 20
+     },
+     "edges": 115258,
+     "first_limited_batches": [
+      546,
+      547,
+      549,
+      762,
+      763,
+      765,
+      870,
+      871,
+      873,
+      2000,
+      2001,
+      2003,
+      2006,
+      2360,
+      2361,
+      2363,
+      2366,
+      2540,
+      2541,
+      2543
+     ],
+     "first_mismatched_batches": [],
+     "fuse": false,
+     "git": {
+      "dirty": false,
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
+     },
+     "graphs": 29119,
+     "heavy_thresholds": [
+      "0",
+      "4",
+      "all"
+     ],
+     "k_max": 10,
+     "limited_batches": 845,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 845,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "pack": false,
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 72081,
+       "deg_out": 72081,
+       "fan_in": 49115,
+       "fan_oneway_out": 41227,
+       "fan_out": 49115,
+       "fan_total": 90138,
+       "gs": 46,
+       "lcyc": 13027,
+       "sg": 1200,
+       "sg_ord": 72,
+       "tchain": 22075,
+       "tcyc": 12259
+      },
+      "optimised_paths": {
+       "fused_rows": 0,
+       "heavy_kernel_triggers": 4498943,
+       "hybrid_cpu_triggers": 0,
+       "hybrid_gpu_triggers": 0,
+       "light_kernel_triggers": 8962174,
+       "packed_rows_by_width": {
+        "1": 0,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 0,
+       "sweep_rows": 0
+      },
+      "vstats_sides": 0
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_tsvis.yaml",
+      "id": "bb3689659b5ef38d",
+      "name": "l2_legacy_tsvis"
+     },
+     "row_checks": 12423795,
+     "seconds": 165.936811056,
+     "threads": 12,
+     "trigger_checks": 345774,
+     "work_limit": 1
     }
    }
   },
@@ -1931,7 +2786,7 @@
       "device": "NVIDIA GeForce GTX 1650 SUPER",
       "driver_version": 13040,
       "memory_mb": {
-       "free": 2959,
+       "free": 3016,
        "total": 3728
       },
       "runtime_version": 13040,
@@ -1942,7 +2797,7 @@
      "first_mismatched_batches": [],
      "git": {
       "dirty": false,
-      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
      },
      "graphs": 3105502,
      "heavy_thresholds": [
@@ -2025,7 +2880,7 @@
       "name": "clean_all"
      },
      "row_checks": 6734622552,
-     "seconds": 372.242993941,
+     "seconds": 369.239751865,
      "threads": 12,
      "trigger_checks": 61785528,
      "work_limit": 100000000
@@ -2068,7 +2923,7 @@
       "device": "NVIDIA GeForce GTX 1650 SUPER",
       "driver_version": 13040,
       "memory_mb": {
-       "free": 2970,
+       "free": 3000,
        "total": 3728
       },
       "runtime_version": 13040,
@@ -2079,7 +2934,7 @@
      "first_mismatched_batches": [],
      "git": {
       "dirty": false,
-      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
      },
      "graphs": 3105502,
      "heavy_thresholds": [
@@ -2159,7 +3014,7 @@
       "name": "l2_legacy_stream"
      },
      "row_checks": 6672837024,
-     "seconds": 373.247481824,
+     "seconds": 379.294989497,
      "threads": 12,
      "trigger_checks": 61785528,
      "work_limit": 100000000
@@ -2202,7 +3057,7 @@
       "device": "NVIDIA GeForce GTX 1650 SUPER",
       "driver_version": 13040,
       "memory_mb": {
-       "free": 2970,
+       "free": 3000,
        "total": 3728
       },
       "runtime_version": 13040,
@@ -2213,7 +3068,7 @@
      "first_mismatched_batches": [],
      "git": {
       "dirty": false,
-      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+      "sha": "7431ee692c94384a3471940ad11f41b8c9b5f7d3"
      },
      "graphs": 3105502,
      "heavy_thresholds": [
@@ -2293,7 +3148,7 @@
       "name": "l2_legacy_tsvis"
      },
      "row_checks": 6672837024,
-     "seconds": 379.410978171,
+     "seconds": 380.715140418,
      "threads": 12,
      "trigger_checks": 61785528,
      "work_limit": 100000000
