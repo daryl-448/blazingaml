@@ -877,7 +877,11 @@ TEST_CASE("L3 packing and chunks: stars and layered cycles with cells past 255",
 
 TEST_CASE("L3 packing at 4 bytes: 4^8 and more cycles of K_MAX edges at one trigger", "[l3]") {
   Hits hits;
+#if defined(BLZ_WITH_CUDA)
   check(3, [&] { diff_property(*cases(four_bytes), hits, Gpu::packed_heavy); });
+#else
+  check(1, [&] { diff_property(*cases(four_bytes), hits, Gpu::packed_heavy); });  // no packing: one CPU case
+#endif
   hits.print();
   CHECK(hits.at("a cell past 65,535") > 0);
 #if defined(BLZ_WITH_CUDA)
