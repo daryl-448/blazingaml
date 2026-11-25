@@ -9,6 +9,7 @@ add_executable(blz_unit_tests
   unit/test_stats.cpp
   unit/test_features.cpp
   unit/test_fuzz_gen.cpp
+  unit/test_exhaustive.cpp
   unit/test_oracle.cpp
   unit/test_clean_oracle.cpp
   unit/test_vstats.cpp
