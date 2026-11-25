@@ -104,6 +104,38 @@ if(BLZ_ENABLE_CUDA)
   set_tests_properties(fuzz_diff_cuda_s7_10k fuzz_diff_cuda_s7_tsvis_10k PROPERTIES LABELS slow)
 endif()
 
+# SPEC v3 §4.3, L2: the bounded code check at its smoke bound, in seconds: every graph of <= 4 edges
+# over <= 4 nodes with ts in [0, 3), at the windows 1..3 (every block has nonzero rows), on
+# clean_all (every clean pattern and vstats) and the two legacy L2 profiles (every legacy pattern,
+# each visibility); and T4, the index primitives' contracts. CUDA builds also run cuda,
+# cuda --fuse --pack and the hybrid. The full suite is verify/codegen.sh (label verify, below).
+set(BLZ_L2_SMOKE m=4,n=4,t=3)
+set(BLZ_L2_PROFILES
+  ${PROJECT_SOURCE_DIR}/configs/profiles/clean_all.yaml
+  ${CMAKE_CURRENT_SOURCE_DIR}/profiles/l2_legacy_stream.yaml
+  ${CMAKE_CURRENT_SOURCE_DIR}/profiles/l2_legacy_tsvis.yaml)
+foreach(prof IN LISTS BLZ_L2_PROFILES)
+  get_filename_component(pn ${prof} NAME_WE)
+  add_test(NAME l2_smoke_cpu_${pn} COMMAND blz fuzz-diff --bound ${BLZ_L2_SMOKE} --profile ${prof})
+  set_tests_properties(l2_smoke_cpu_${pn} PROPERTIES LABELS fast)
+  if(BLZ_ENABLE_CUDA)
+    add_test(NAME l2_smoke_cuda_${pn} COMMAND blz fuzz-diff --backend cuda --bound ${BLZ_L2_SMOKE} --profile ${prof})
+    add_test(NAME l2_smoke_cuda_fuse_pack_${pn}
+      COMMAND blz fuzz-diff --backend cuda --fuse --pack --bound ${BLZ_L2_SMOKE} --profile ${prof})
+    add_test(NAME l2_smoke_hybrid_${pn} COMMAND blz fuzz-diff --backend hybrid --bound ${BLZ_L2_SMOKE} --profile ${prof})
+    set_tests_properties(l2_smoke_cuda_${pn} l2_smoke_cuda_fuse_pack_${pn} l2_smoke_hybrid_${pn} PROPERTIES LABELS fast)
+  endif()
+endforeach()
+add_test(NAME l2_smoke_index_contracts COMMAND blz index-contracts --bound ${BLZ_L2_SMOKE})
+set_tests_properties(l2_smoke_index_contracts PROPERTIES LABELS fast)
+# The full L2 suite for this build, when it is one of the presets' (build/rel, build/rel-cuda,
+# build/dev): `ctest --test-dir build/<preset> -L verify`.
+get_filename_component(BLZ_BUILD_NAME ${PROJECT_BINARY_DIR} NAME)
+if(PROJECT_BINARY_DIR STREQUAL "${PROJECT_SOURCE_DIR}/build/${BLZ_BUILD_NAME}" AND BLZ_BUILD_NAME MATCHES "^(rel|rel-cuda|dev)$")
+  add_test(NAME verify_codegen COMMAND ${PROJECT_SOURCE_DIR}/verify/codegen.sh ${BLZ_BUILD_NAME})
+  set_tests_properties(verify_codegen PROPERTIES LABELS verify TIMEOUT 7200)
+endif()
+
 # SPEC v2 §3.6: the DG-2 ledger's budget, stop rule and entry checks.
 add_test(NAME dg2_ledger_selftest COMMAND python3 ${PROJECT_SOURCE_DIR}/bench/dg2/ledger.py selftest)
 set_tests_properties(dg2_ledger_selftest PROPERTIES LABELS fast)

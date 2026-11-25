@@ -1725,10 +1725,13 @@ int fuzz_diff(const std::string& seeds, const std::string& bound_opt, std::uint6
   const char* vs = ref == blz::Reference::oracle ? "oracle" : "cpu (dynamic)";
   if (exhaustive) {
     const blz::ExhaustiveBound& b = src.graphs()->bound();
-    std::printf("fuzz-diff %s vs %s, bound %s (windows 1..%d), %s: %llu graphs in %llu batches of up to %llu edges, "
+    const std::string batches = d.cases == d.graphs ? "each alone"
+                                                    : "in " + std::to_string(d.cases) + " batches of up to " +
+                                                          std::to_string(src.batch_edges()) + " edges";
+    std::printf("fuzz-diff %s vs %s, bound %s (windows 1..%d), %s: %llu graphs %s, "
                 "%llu edges, %llu trigger checks, %llu row checks, %llu mismatching rows (%.1f s, %d threads)\n",
                 backend.c_str(), vs, blz::bound_name(b).c_str(), b.t, prof.name.c_str(), (unsigned long long)d.graphs,
-                (unsigned long long)d.cases, (unsigned long long)src.batch_edges(), (unsigned long long)d.edges,
+                batches.c_str(), (unsigned long long)d.edges,
                 (unsigned long long)d.trigger_checks, (unsigned long long)d.row_checks, (unsigned long long)bad, seconds,
                 omp_get_max_threads());
   } else {
