@@ -725,18 +725,67 @@ of 0 gives skew and kurtosis 0 (D-58).
 
 ### P14 — Verification stack
 
-- [ ] Depends on: P13 (the clean reference to verify against).
-- [ ] Change: pin the tools of §4.3; run `/create-formal-verification-skill` for each area of §4.5;
+- [x] Depends on: P13 (the clean reference to verify against).
+- [x] Change: pin the tools of §4.3; run `/create-formal-verification-skill` for each area of §4.5;
       re-prove R4's earliest-witness rule and its latest-witness mirror (`pair_latest`,
       V2 `witness: latest`) for the non-strict order; cover T1 for every pattern in `patterns/`, T2
       for the existing optimisations (sweep lowering, scan fusion, packing, reachability pruning:
       note that V2's planner applies pruning only to strict-order chains, so under R4 either extend
       and re-prove it or record it as legacy-only) and T4.
-- [ ] Result: each verify skill runs with one command and reports pass with its bounds.
-- [ ] Unit: each check fails on its planted breaks (V-mut) and passes on the real code.
-- [ ] Live: following each generated skill cold, on a scratch mutation of the artifact it checks (the proof project for the proof skill, the real C++ for the code skill), catches it.
-- [ ] Perf: the full verification run time, recorded (target: short enough to run on every
+    - L1 (D-63): `verify/algorithms.sh`, Lean 4.36.0 pinned in verify/lean/lean-toolchain. It has
+      24 main theorems, among them R4's earliest witness (`clean_tcyc_earliest_witness`) and its
+      mirror (`clean_tchain_latest_witness`), each also in the legacy strict form. It also proves
+      sg_ord's and gs's order tests, the distinct-first scan, the sweep lowering under both
+      visibilities, and pruning for the strict order only (D-60). verify/lean/COVERAGE.md maps
+      each theorem to the generated function and snapshot it describes, and each contract to its
+      executable check.
+    - L2 (D-61): `verify/codegen.sh`. `blz fuzz-diff --bound` checks every canonical graph of a
+      bound, packed into disjoint unions, against the oracle. It covers every spec of `patterns/`
+      (tests/profiles/l2_legacy_{stream,tsvis}.yaml, both visibilities) and of `patterns/clean/`
+      (clean_all, with vstats), on CPU (both schedules, pruning both ways), CUDA (H = 0, 4, all;
+      fuse and pack, the fused members at different windows), the hybrid, the `blzc --disable`
+      build (rel-noopt) and ASan + UBSan (dev). `blz index-contracts` checks T4 and the `Search`
+      contract that the pruning proofs assume.
+    - L3 (D-62): RapidCheck pinned at commit 2c3c4365 in cmake/deps.cmake. tests/unit/test_l3.cpp
+      has nine properties for what L2's bound cannot reach: K_MAX cycles and chains, R10
+      saturation, packing at 2 and 4 bytes, int32 limits and batch position.
+    - CBMC (L4) is not adopted in P14 (D-64).
+- [x] Result: each verify skill runs with one command and reports pass with its bounds. The skills
+      are `.claude/skills/verify-algorithms` (L1) and `.claude/skills/verify-codegen` (L2, L3, T4,
+      V-mut), synced at 7871cfe.
+- [x] Unit: each check fails on its planted breaks (V-mut) and passes on the real code. E20
+      (results/e20_verification.{json,md}, 7871cfe) ran 79 checks and all passed.
+    - Proof mutants: 36 of 36 failed the build at their recorded declarations, and mutant 37 was
+      added after the Live run (fe68eeb, 37 of 37).
+    - Code mutants: 12 of 12 were caught by the check `verify/mutants.py` records for each (D-65).
+      Six were caught by L2 or T4, at 1 to 4 edges. The other six need L3 and pass L2 at its full
+      bounds (`--escape`): a K_MAX cycle in pruning, a count clamp at UINT32_MAX, int32
+      timestamps, packing at 4 bytes, the pack kernel's tail, and fused members at different
+      windows. That last one was caught after L2 learned to stagger the windows.
+- [x] Live: following each generated skill cold, on a scratch mutation of the artifact it checks (the proof project for the proof skill, the real C++ for the code skill), catches it.
+    - verify-codegen, on a sweep.hpp line that counts a neighbour's second copy as new. The quick
+      check failed at 2 edges (`0->1@0 0->1@0`, fan_in, got [2], want [1]).
+    - verify-algorithms, on `orderTest` answering true for a missing witness. `order_test` failed
+      with "Missing cases" exactly at the missing-witness inputs, and the agent named
+      clean_sg_ord.hpp's `if (pw_intermediates == kNoTs) continue;` as the reference.
+    - Both runs found gaps in the skills, now fixed (28839d3, fe68eeb). The staleness diff
+      `SYNC..HEAD` missed uncommitted edits. A green L1 says nothing about an edit to a
+      hand-written header. A model-only edit is judged against the snapshot.
+- [x] Perf: the full verification run time, recorded (target: short enough to run on every
       relevant change).
+    - The quick per-change subset (D-66) took 3 s for `verify/algorithms.sh`, 134 s for
+      `ctest --preset rel` and 648 s for `ctest --preset rel-cuda`. About 600 s of the last
+      predates P14, so P14's own fast checks add about 46 s.
+    - The full run took 111 min: L2 on four builds 53 min, the code mutants with `--escape`
+      54 min, the rest under 4 min. Foreign load was 9 % to 39 % of a core per step (measured).
+- Not covered, by design or measured as out of reach (results/e20_verification.md):
+  - CUDA under compute-sanitizer;
+  - the hybrid's work limit;
+  - a single theorem for sg_ord's count `len_I`;
+  - the DFS over node sequences and machine width, which are L2's and L3's, not L1's;
+  - the `Search` check beyond L2's bound;
+  - CPU races, run at 2 threads only, with no thread sanitizer;
+  - CUDA on sm_80 (the A30 was not used).
 
 ### P15 — Datasets
 
@@ -819,6 +868,13 @@ of 0 gives skew and kurtosis 0 (D-58).
 | D-57 | R8's vertex statistics have four sides, GFP's: u's out-edges, u's in-edges, v's out-edges and v's in-edges, 13 columns each (`fan, deg, ratio`, then mean, sum, var, skew and kurt of the age and of the amount; 52 in all, named `vs_<side>_<stat>` with sides `u_out, u_in, v_out, v_in`). R8's first text listed two. V2's F1 and E16's comparison use four, and the side count is not a quirk of §3.1. |
 | D-58 | R8's skew and kurtosis are 0 whenever their computed denominator (m2·√m2 or m2²) is 0, which includes a positive m2 that underflows (m2 = 10⁻³²⁰), not only m2 = 0; never 0/0. Q10 keeps GFP's own division, which its variance guard protects. |
 | D-59 | On 2026-11-24 the user removed §2.5's limit of one A30 campaign, at the end: a campaign runs whenever a phase needs one, with the user's approval. |
+| D-60 | Reachability pruning (V2 D-43) stays legacy-only in P14. The planner applies it only to strict-order chains (clean tcyc has `cpu_reach` false), and its binding check `ld[c] > h` is unsound under R4's ≤: proof mutant 36 ("prune: extended to R4's ≤ greedy") is rejected by the checker. A pruner for R4 is a P16 candidate with its own §4.4 evidence. |
+| D-61 | L2's domain is every canonical graph of a bound {m, n, t}: 1..m edges over at most n nodes with ts in [0, t), ts[0] = 0, node ids in first-appearance order (one graph per relabelling orbit), every tie order, the windows 1..t (src/graph/exhaustive.hpp). Graphs are checked in disjoint-union batches through fuzz_diff's one comparison owner (`DiffSource`): every row depends only on its trigger's component, and the stable merge keeps each member's eid order (checked). The bounds are A = m=5,n=5,t=4 (the smallest sg, sg_ord and gs instance plus one edge, cycles to 5) on every backend, B = m=6,n=4,t=3 on the CPU, and m=4,n=4,t=3 for the smoke tests (label fast), the sanitizer run and the CUDA work-limit run. Each graph runs alone at a work limit of 1 to check R11's stop eids. Fused members run again at different windows. CUDA is compared with the oracle, which cost no more than comparing with the CPU (measured). |
+| D-62 | L3 is RapidCheck at commit 2c3c4365, run inside Catch2 v3 by test_l3.cpp's own `check()` (not `RC_ENABLE_CATCH`, which builds an old Catch). Each test's fixed seed is a hash of its name (label fast); `l3_random` (label verify) runs fresh seeds with 10× the cases, rerun with `BLZ_L3_SEED` and `BLZ_L3_SCALE`. Shrinking stops after 60 s at the smallest failing case. CUDA is compared with the CPU's rows after CPU = oracle on the same case. Generator ranges come from the compiled K_MAX, the profiles' bins and the windows; negative timestamps are in the domain. |
+| D-63 | L1 models a primitive's answer as a function whose contract (`IsEarliest`, `IsLatest`, `Search`) is a hypothesis, and timestamps as unbounded integers (machine width is L3's). `blz index-contracts` checks each contract on the real code. `Search` is checked as `keep(x, ldJ[x] − 1)` against a transcription of the proof's round-by-round `ldJ` after 9 rounds, which is sufficient because the proofs read ld at round 9 only. `verify/algorithms.sh` builds a fresh copy of verify/lean, so every run starts from an empty `.lake`. |
+| D-64 | CBMC (L4) is not adopted in P14. No lemma needs machine-width reasoning beyond what L3's int32-limit property reaches; the code mutant that narrows `first_ts_at_least`'s bound to int32 is caught there. |
+| D-65 | V-mut for code is `verify/mutants.py`: one-line, text-matched mutants applied in a scratch worktree (never the main tree), built CPU-only or for sm_75 with XGBoost off, and checked cheapest first. The unmutated tree must pass every check up to the deepest recorded catch first. A mutant caught by another check than recorded (MOVED) fails the run, because its record is stale. `--escape` confirms that the L3-only mutants pass L2 at its full bounds. |
+| D-66 | The quick per-change verification is `verify/algorithms.sh` plus `ctest --preset rel-cuda` (`ctest --preset rel` without a GPU). The full verification, at phase exits and before a new algorithm, lowering, optimised path or check lands, is `verify/algorithms.sh --mutants`, `verify/codegen.sh`, `l3_random` and `verify/mutants.py --escape`; `bench/e20.py` runs it with a load sampler. |
 
 ## Appendix E — planning prototypes (not normative)
 
