@@ -52,7 +52,7 @@ DiffSource DiffSource::exhaustive(ExhaustiveBound b, std::uint64_t batch_edges) 
   for (std::uint32_t m = 1; m <= b.m_max; ++m) {
     const std::uint64_t graphs = s.graphs_->first(m + 1) - s.graphs_->first(m);
     s.per_batch_[m - 1] = std::max<std::uint64_t>(1, s.batch_edges_ / m);
-    s.batch_first_[m] = s.batch_first_[m - 1] + (graphs + s.per_batch_[m - 1] - 1) / s.per_batch_[m - 1];
+    s.batch_first_[m] = s.batch_first_[m - 1] + graphs / s.per_batch_[m - 1] + (graphs % s.per_batch_[m - 1] != 0);
   }
   s.size_ = s.batch_first_.back();
   return s;
@@ -139,6 +139,15 @@ bool has(const ProfileBlock& pb, bool PatternInfo::*flag) {
   return std::any_of(pb.patterns.begin(), pb.patterns.end(), [&](const PatternInfo* pi) { return pi->*flag; });
 }
 
+// An sg block's gather pattern, when the block sums both roles (§4.5), else null. Its rows are the
+// sum, so the gather role is also checked alone against the oracle's (T1 per pattern).
+const PatternInfo* sg_gather_of(const ProfileBlock& pb) {
+  if (pb.block != Block::sg || pb.patterns.size() != 2) return nullptr;
+  for (const PatternInfo* pi : pb.patterns)
+    if (std::string_view(pi->name).ends_with("sg_gather")) return pi;
+  return nullptr;
+}
+
 std::string threshold_text(std::uint32_t h) { return h == kAllLight ? "all" : std::to_string(h); }
 
 // The reference rows of one block: the profile's oracle's, or the CPU backend's (dynamic schedule,
@@ -207,6 +216,7 @@ struct CaseResult {
             std::span<const std::uint32_t> want, std::size_t cols) {
     const std::uint64_t m = want.size() / cols;
     d.row_checks += m;
+    d.compared_rows[int(b)] += m;
     for (std::uint64_t e = 0; e < m; ++e) {
       const auto g = got.subspan(e * cols, cols), x = want.subspan(e * cols, cols);
       if (std::equal(g.begin(), g.end(), x.begin())) continue;
@@ -220,6 +230,7 @@ struct CaseResult {
   // the rows; returns whether that was so.
   bool stops(Block b, const std::string& path, std::int32_t w, std::uint64_t got, std::uint64_t want) {
     if (got == UINT64_MAX && want == UINT64_MAX) return false;
+    ++d.compared_stops[int(b)];
     if (got != want) {
       ++d.mismatched_rows[int(b)];
       if (!first) {
@@ -276,6 +287,8 @@ void add(FuzzDiff& a, const FuzzDiff& b) {
     a.mismatched_rows[i] += b.mismatched_rows[i];
     a.limited_graphs[i] += b.limited_graphs[i];
     a.nonzero_rows[i] += b.nonzero_rows[i];
+    a.compared_rows[i] += b.compared_rows[i];
+    a.compared_stops[i] += b.compared_stops[i];
   }
   a.hits += b.hits;
   a.vstats_graphs += b.vstats_graphs;
@@ -408,6 +421,12 @@ CaseResult check_cpu(const Run& run, const DiffCase& c) {
         if (sweep) r.d.sweep_rows += m;
         if (q.reach_prune) r.d.reach_rows += m;
       }
+      if (const PatternInfo* g = sg_gather_of(pb); g && oracle) {
+        std::vector<std::uint32_t> want_g(m * nb, 0), got_g(m * nb, 0);
+        oracle->mine_sg_gather(p, 0, m, want_g.data());
+        mine_cpu(index.view(), std::span(&g, 1), p, prof.visibility, all, Schedule::dynamic, got_g.data());
+        r.rows(b, "cpu dynamic sg_gather alone", w, got_g, want_g, nb);
+      }
     }
   }
   r.close(c.id);
@@ -448,6 +467,7 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, const DiffSource& src, std::span<
     std::array<std::vector<std::uint32_t>, kAllBlocks.size()> rows;
     std::array<std::uint64_t, kAllBlocks.size()> stop;  // the reference's stop eid, or UINT64_MAX
     std::vector<double> vstats;
+    std::vector<std::uint32_t> sg_gather;  // the oracle's gather role alone, when sg_gather_of
   };
   struct Item {
     DiffCase c;
@@ -471,6 +491,10 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, const DiffSource& src, std::span<
         x.rows[int(pb.block)].assign(m * block_cols(p), 0);
         x.stop[int(pb.block)] = stop_eid(
             [&] { reference_rows(oracle ? &*oracle : nullptr, *it.index, pb, p, prof, m, x.rows[int(pb.block)].data()); });
+        if (sg_gather_of(pb) && oracle) {
+          x.sg_gather.assign(m * block_cols(p), 0);
+          oracle->mine_sg_gather(p, 0, m, x.sg_gather.data());
+        }
       }
     }
     return it;
@@ -562,6 +586,14 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, const DiffSource& src, std::span<
             }
             r.d.light_triggers += t.light;
             r.d.heavy_triggers += t.heavy;
+          }
+      for (const ProfileBlock& pb : prof.blocks)
+        if (const PatternInfo* g = sg_gather_of(pb); g && !x.sg_gather.empty() && !hybrid)
+          for (std::uint32_t h : thresholds) {
+            const BlockParams p = run.params(pb.block, w);
+            std::vector<std::uint32_t> got(x.sg_gather.size(), 0xdeadbeefu);
+            miner.mine(dg, std::span(&g, 1), p, prof.visibility, 0, m, h, got.data(), opts.pack);
+            r.rows(pb.block, "cuda H=" + threshold_text(h) + " sg_gather alone", w, got, x.sg_gather, block_cols(p));
           }
       if (prof.vstats) {  // on the GPU, for cuda and the hybrid alike
         std::vector<double> got(m * kVstatsCols);

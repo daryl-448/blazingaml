@@ -70,7 +70,12 @@ class ExhaustiveGraphs {
 //     them as alone. disjoint_union checks this. The offset keeps the order of node ids inside a
 //     member, which orders P-CSR neighbours and ties in the drivers;
 //   - the amounts of the vertex statistics are a function of (member, local eid), not of the batch.
-// So the union's row of e is the member's row of local[e]. What a union does not reproduce is a
+// So the union's row of e is the member's row of local[e]. That fixes the right answer for a union; it
+// does not show that a backend runs a member the same way in a union as alone. A backend bug that
+// depends on the launch size (a CUDA grid of exactly five rows, say) shows only at the sizes that the
+// checks run: L2 claims the unions and the each-alone runs of its bounds, and other standalone sizes
+// are L3's (random graphs, each alone). A mismatch in a union is a bug even when no member fails
+// alone (the counterexample then says so: alone = false). What a union does not reproduce is a
 // member's absolute position: only a batch's first member has node 0 and the arrays' first entries,
 // and only its last one the arrays' ends. A check that needs those for every graph (a sanitizer
 // run, which sees an overread only past an allocation) runs each graph alone (one per batch).

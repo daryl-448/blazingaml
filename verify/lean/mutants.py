@@ -204,11 +204,13 @@ MUTANTS = [  # (name, module, old, new, where, claim)
      "| 0 => fun x => if x = U then t else bot", "| 0 => fun x => if x = U then t - 1 else bot",
      ["Prune.ldJ_U", "Prune.ldJ_search", "Prune.two_rounds_keep"],
      "Prune.ldJ_U"),
+    # At the root, not in bindings_kept: a binding is already one hop along, so R rounds would
+    # still cover R + 1 hops there. one_round_cuts is the root's counterexample.
     ("prune: one round fewer than hops", "Prune",
-     "(V :: cs).Nodup → (V :: cs).getLast? = some U → cs.length ≤ R →",
-     "(V :: cs).Nodup → (V :: cs).getLast? = some U → cs.length ≤ R + 1 →",
-     ["Prune.bindings_kept", "Prune.greedy_bindings_kept"],
-     "Prune.bindings_kept"),
+     "(hR : cs.length ≤ R) (hw : Witness .lt lo t (hopLists E (V :: cs)) ts) : lo ≤ ld R V",
+     "(hR : cs.length ≤ R + 1) (hw : Witness .lt lo t (hopLists E (V :: cs)) ts) : lo ≤ ld R V",
+     ["Prune.root_kept"],
+     "Prune.root_kept"),
     ("prune: the root check keep(V, t - δ)", "Prune",
      "(hR : cs.length ≤ R) (hw : Witness .lt lo t (hopLists E (V :: cs)) ts) : lo ≤ ld R V := by",
      "(hR : cs.length ≤ R) (hw : Witness .lt lo t (hopLists E (V :: cs)) ts) : lo < ld R V := by",

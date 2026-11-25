@@ -236,11 +236,15 @@ struct Direction {
             if (next == ld) break;  // a fixed point: the later rounds change nothing
             ld.swap(next);
           }
+          // keep(x, h) must hold at every threshold below ldJ that tcyc_trigger_reach tests: t - delta - 1
+          // at the root, then hop times in [lo, t - 1].
           std::uint32_t bad = g.n;
+          std::int64_t bad_h = 0;
           for (std::uint32_t x = 0; x < g.n; ++x) {
             if (ld[x] == kBot) continue;
             res.search_nodes += x != U;
-            if (bad == g.n && !reach.keep(x, ld[x] - 1)) bad = x;
+            for (std::int64_t h = lo - 1; h < ld[x] && bad == g.n; ++h)
+              if (!reach.keep(x, h)) bad = x, bad_h = h;
           }
           count(Contract::search, bad == g.n, [&] {
             std::string want;
@@ -250,7 +254,7 @@ struct Direction {
                    std::to_string(t) + "), " + (ts_vis ? "timestamp" : "stream") + " visibility, window " +
                    std::to_string(delta) + ": after search(in, " + std::to_string(U) + ", " + std::to_string(t) + ", " +
                    std::to_string(lo) + ", " + bound_text(hi) + ", " + eid_text(vis_e) + ", " + std::to_string(kHops) +
-                   "), keep(" + std::to_string(bad) + ", " + std::to_string(ld[bad] - 1) + ") is false; want ld >= " +
+                   "), keep(" + std::to_string(bad) + ", " + std::to_string(bad_h) + ") is false; want ld >= " +
                    std::to_string(ld[bad]) + ", as ldJ after " + std::to_string(kHops) + " rounds gives (node ld: " +
                    want + ")";
           });

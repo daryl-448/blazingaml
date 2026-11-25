@@ -67,7 +67,10 @@ theorem clean_gs_row (Lin Lout : List Entry) (x w : Nat) (δ t : Int)
     simp only [inRange, Bool.and_eq_true, decide_eq_true_eq, true_and]
     omega
 
-/-- **Legacy gs** (V2 S5, D-42; self-loops kept, so the code filters them). Visible means
+/-- **Legacy gs** (V2 S5, D-42; self-loops kept, so the code filters them). The theorem gives the
+size `gs_trigger` emits, 0 meaning no emit, not the row: the legacy block is a histogram, whose sink
+bins that size and drops one below the first bin (|A| = |B| = 1 adds nothing). The binning is L2's.
+Visible means
 ts ≤ vis_t and eid ≤ me (vis_t = t, me = kAnyEid under timestamp visibility; vis_t = kNoUpper,
 me = the trigger's eid under stream visibility). A's order test is ts < t, the range's bound
 min(t − 1, vis_t). Contracts: `range` and `distinct_first`. -/

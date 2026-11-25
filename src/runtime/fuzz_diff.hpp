@@ -129,6 +129,9 @@ struct FuzzDiff {
   std::uint64_t row_checks = 0;      // rows compared: per trigger check, block (and vstats) and path
   std::array<std::uint64_t, kAllBlocks.size()> mismatched_rows{};  // per block, every path
   std::array<std::uint64_t, kAllBlocks.size()> limited_graphs{};   // per block: cases where the reference hit the limit
+  // Per block, the comparisons that ran, every path: rows compared, and runs whose stop eids were
+  // compared instead (either side hit the work limit).
+  std::array<std::uint64_t, kAllBlocks.size()> compared_rows{}, compared_stops{};
   // Path hit (SPEC v3 §4.4 item 6): what the cases exercise (fuzz graphs only), and per block the
   // reference's nonzero rows, summed over windows, where it completed.
   FuzzHits hits;

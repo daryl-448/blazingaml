@@ -17,7 +17,9 @@ check fails: that check caught it. A mutant is
   CAUGHT   by the check its record names (`caught_by`),
   MOVED    by another check: the record is stale; update `caught_by`,
   ESCAPED  by none: every rung passed, so no check sees the bug,
-  BAD      when its `old` text is not on exactly one line, or the mutant does not build.
+  BAD      when its `old` text is not on exactly one line, the mutant does not build, or a check
+           fails without a mismatch: an exit other than blz's 2 with a counterexample or violation
+           in its report, or an L3 failure that is not a falsified property (a crash, a timeout).
 
 --escape then runs each mutant's `escapes`, the full-bound L2 and T4 checks that run its code path,
 and requires that they pass: such a mutant is out of L2's reach, and only L3 sees it. A check that
@@ -48,7 +50,7 @@ NVCC = "/opt/cuda/bin/nvcc"
 DEPS = ("catch2", "nlohmann_json", "cli11", "yaml-cpp", "rapidcheck")
 PROFILES = ("configs/profiles/clean_all.yaml", "tests/profiles/l2_legacy_stream.yaml",
             "tests/profiles/l2_legacy_tsvis.yaml")
-CHECK_TIMEOUT = 3600  # s; a mutant that hangs a check is caught by the timeout
+CHECK_TIMEOUT = 3600  # s; a check that hangs is an error (BAD), not a catch
 
 # L2's bounds, read from verify/codegen.sh so the two never disagree: A, B, T4, DEV, LIMIT_GPU, SMOKE.
 with open(os.path.join(ROOT, "verify", "codegen.sh"), encoding="utf-8") as _f:
@@ -162,6 +164,11 @@ MUTANTS = [
            "if (ld_[x] >= ts) continue;",
            "cpu", "t4-smoke", "the pruning search trusts an ld left by an earlier trigger (or the initial 0)",
            "P14 Search check"),
+    Mutant("keep_eq", "include/blz/reach.hpp",
+           "std::int64_t(ld_[x]) > h; }",
+           "std::int64_t(ld_[x]) == h + 1; }",
+           "cpu", "t4-smoke", "keep holds only at the threshold ld - 1, not below it (drops 0->1@0, 1->0@2)",
+           "sol-loop P14 S2"),
 ]
 
 
@@ -251,6 +258,8 @@ def run_check(check, build, log, report):
         for name in tests:
             rc, dt, out = sh([exe, name], log, timeout=CHECK_TIMEOUT)
             res["seconds"] += dt
+            if rc != 0 and "Falsifiable after" not in out:  # a crash, a timeout or a setup error
+                return {**res, "error": f"{name}: exit {rc} without a property failure: {tail(out)}"}
             if rc != 0:
                 res.update(caught=True, rc=rc, part=name, counterexample=l3_counterexample(out))
                 return res
@@ -264,12 +273,19 @@ def run_check(check, build, log, report):
         res["seconds"] += dt
         if rc != 0:
             part = os.path.basename(prof)[:-5] if prof else check.args[0]
-            res.update(caught=True, rc=rc, part=part, counterexample=blz_counterexample(report, out))
+            cx = blz_counterexample(report) if rc == 2 else None
+            if cx is None:  # blz exits 2 on a mismatch, with its counterexample in the report
+                return {**res, "error": f"{part}: exit {rc} without a mismatch in the report: {tail(out)}"}
+            res.update(caught=True, rc=rc, part=part, counterexample=cx)
             return res
     return res
 
 
-def blz_counterexample(report, out):
+def tail(out):
+    return " / ".join([l for l in out.splitlines() if l.strip()][-3:])
+
+
+def blz_counterexample(report):
     try:
         with open(report, encoding="utf-8") as f:
             r = json.load(f)["x"]
@@ -283,8 +299,7 @@ def blz_counterexample(report, out):
     if "first_violation" in r:  # index-contracts
         v = r["first_violation"]
         return {"edges": v.get("edges"), "text": v["text"]}
-    tail = [l for l in out.splitlines() if l.strip()][-3:]
-    return {"edges": None, "text": " / ".join(tail)}  # a crash or an error exit: its last lines
+    return None
 
 
 def l3_counterexample(out):

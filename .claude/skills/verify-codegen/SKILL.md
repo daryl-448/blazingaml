@@ -211,7 +211,9 @@ rule (SPEC_V2, frozen) out by hand on it first.
   fused and packed rows, the light, heavy and hybrid triggers. T4 prints `search: ldJ reached N
   nodes`. Two zeros are expected. Reach-pruned rows are 0 on clean_all, because pruning is legacy
   only (clean tcyc has `cpu_reach` false). Packed rows at 2 and 4 bytes are 0 in L2, because no cell
-  passes 255 at m ≤ 6. Any other zero means the check did not run that path.
+  passes 255 at m ≤ 6. Any other zero means the check did not run that path, and verify/codegen.sh
+  fails it as `FAIL (<what is missing>)`: a block with no rows or stop eids compared, a limit-1 run
+  where no graph reached the limit, or a zero on a path the check asks for.
 - **Bound errors.** L2's bound cannot reach k_max-length cycles and chains (10 edges), R10's
   saturation, packing at 2 and 4 bytes, int32 extremes or batch positions. Those are L3's, and its
   generators take their ranges from the spec constants (K_MAX, the bins). A mutant that escapes L2
@@ -222,7 +224,9 @@ rule (SPEC_V2, frozen) out by hand on it first.
 - **verify/mutants.py**: `ESCAPED` means no check sees that bug, which is a coverage gap: add or
   widen a check. `MOVED` means another rung caught it first. It is a record update once you know
   why, for example a new cheaper check. `NOT ESCAPED` means a full-bound L2 check caught an
-  L3-only mutant: drop that check from its `escapes`. `BAD` means the mutant's `old` text is gone.
+  L3-only mutant: drop that check from its `escapes`. `BAD` means the mutant's `old` text is gone,
+  it does not build, or a check failed without a mismatch (a crash, a timeout, a setup error): read
+  its log in build/mutants/logs before you count it as caught.
   Find the same line in the new code and update the entry; deleting it is not the fix.
 
 ## 5. Update the verification for an intended change

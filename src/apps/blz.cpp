@@ -1629,11 +1629,14 @@ int fuzz_diff(const std::string& seeds, const std::string& bound_opt, std::uint6
   // SPEC v3 R11: a block of a graph where the reference hit the work limit is inconclusive; a gate
   // counts the completed ones.
   nlohmann::json per_block = nlohmann::json::object(), completed = nlohmann::json::object(),
-                 limited = nlohmann::json::object();
+                 limited = nlohmann::json::object(), compared_rows = nlohmann::json::object(),
+                 compared_stops = nlohmann::json::object();
   std::uint64_t bad = 0;
   for (const blz::ProfileBlock& pb : prof.blocks) {
     const std::string bn(blz::block_name(pb.block));
     per_block[bn] = d.mismatched_rows[int(pb.block)];
+    compared_rows[bn] = d.compared_rows[int(pb.block)];
+    compared_stops[bn] = d.compared_stops[int(pb.block)];
     completed[bn] = d.cases - d.limited_graphs[int(pb.block)];
     limited[bn] = d.limited_graphs[int(pb.block)];
     bad += d.mismatched_rows[int(pb.block)];
@@ -1655,6 +1658,8 @@ int fuzz_diff(const std::string& seeds, const std::string& bound_opt, std::uint6
                         {"bins", bins.empty() ? nlohmann::json("profile") : nlohmann::json(bins)},
                         {"k_max", prof.k_max},
                         {"mismatched_rows_by_block", per_block},
+                        {"compared_rows_by_block", compared_rows},
+                        {"compared_stops_by_block", compared_stops},
                         {"mismatched_" + ids, d.bad_seeds.size()},
                         {"first_mismatched_" + ids, first_bad},
                         {"work_limit", work_limit},

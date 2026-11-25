@@ -22,7 +22,9 @@
 # A bound m=M,n=N,t=T is every edge list of 1..M edges over at most N nodes with ts in [0, T), once
 # per node relabelling, at the windows 1..T (blz fuzz-diff --bound). --smoke runs every check at
 # bound SMOKE instead, in seconds. Reports go to build/verify/codegen.json (--report), logs to
-# build/verify/codegen.log. Exit status 0 if every check passed.
+# build/verify/codegen.log. A check passes when blz exits 0 and its report shows the comparisons
+# ran: rows or stop eids compared in every block, a graph at the work limit in each limit-1 run, and
+# nonzero counts on the paths the check asks for. Exit status 0 if every check passed.
 set -uo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 
@@ -45,7 +47,10 @@ done
 if [ ${#builds[@]} -eq 0 ]; then
   for b in rel rel-cuda dev rel-noopt; do [ -x "$root/build/$b/blz" ] && builds+=("$b"); done
 fi
-if [ $smoke -eq 1 ]; then A=$SMOKE B= T4=$SMOKE DEV=$SMOKE LIMIT_GPU=m=3,n=3,t=3; fi
+# The smoke LIMIT_GPU: 3 edges on up to 4 nodes still give lcyc 2 bindings at a trigger, so it stops.
+if [ $smoke -eq 1 ]; then A=$SMOKE B= T4=$SMOKE DEV=$SMOKE LIMIT_GPU=m=3,n=4,t=2; fi
+# A UBSan report stops the run (exit 1) instead of printing and going on with matching rows.
+export UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1
 
 out=$root/build/verify
 mkdir -p "$out"
@@ -116,11 +121,40 @@ def at(path):
         node = node.get(k) if isinstance(node, dict) else None
         if node is None: return None
     return node
+def missing(name, build, r):
+    """What a passing check's report does not show ran (SPEC v3 §4.4 item 6), or None."""
+    if not r:
+        return "no report"
+    if "queries" in r:  # index-contracts
+        return None if r["queries"] else "no queries"
+    parts = name.split("/")
+    check, legacy = parts[1], parts[2].startswith("l2_legacy")
+    blocks, rows, stops = r["mismatched_rows_by_block"], r["compared_rows_by_block"], r["compared_stops_by_block"]
+    idle = [b for b in blocks if b != "vstats" and not rows[b] and not stops[b]]
+    if "vstats" in blocks and not r["completed_batches_by_block"]["vstats"]:
+        idle.append("vstats")
+    if idle:
+        return "nothing compared in " + ", ".join(idle)
+    if check.endswith("limit1") and not r["limited_batches"]:
+        return "no graph reached the work limit"
+    op = r["path_hits"]["optimised_paths"]
+    need = {"cuda": ["light_kernel_triggers", "heavy_kernel_triggers"],
+            "cuda-fuse-pack": ["light_kernel_triggers", "heavy_kernel_triggers", "fused_rows"],
+            "hybrid": ["hybrid_cpu_triggers", "hybrid_gpu_triggers"] + ["reach_pruned_rows"] * legacy}
+    if build == "rel":  # rel-noopt has no sweep (blzc --disable)
+        need["cpu"] = ["sweep_rows"] + ["reach_pruned_rows"] * legacy
+    zero = [k for k in need.get(check, []) if not op[k]]
+    if check == "cuda-fuse-pack" and not any(op["packed_rows_by_width"].values()):
+        zero.append("packed_rows")
+    return "no " + ", ".join(zero) if zero else None
+
 rows, bad = [], 0
 for line in open(sys.argv[2]):
     name, build, rc = line.rstrip("\n").split("\t")
     r = at(name) or {}
     verdict = {"0": "pass", "2": "FAIL"}.get(rc, f"error {rc}")
+    if rc == "0" and (why := missing(name, build, r)):
+        verdict, rc = f"FAIL ({why})", "evidence"
     bad += rc != "0"
     parts = name.split("/")
     check = parts[1] if len(parts) > 1 else name
