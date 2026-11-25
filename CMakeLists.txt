@@ -145,6 +145,7 @@ add_library(blz_core
   src/graph/stats.cpp
   src/graph/fuzz_gen.cpp
   src/graph/exhaustive.cpp
+  src/graph/index_contracts.cpp
   src/graph/index.cpp
   src/graph/gt_join.cpp
   src/runtime/features.cpp

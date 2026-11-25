@@ -28,6 +28,7 @@
 #include "common/sha256.hpp"
 #include "graph/fuzz_gen.hpp"
 #include "graph/gt_join.hpp"
+#include "graph/index_contracts.hpp"
 #include "graph/index.hpp"
 #include "graph/prepare.hpp"
 #include "graph/stats.hpp"
@@ -1749,6 +1750,39 @@ int fuzz_diff(const std::string& seeds, const std::string& bound_opt, std::uint6
   return bad == 0 ? 0 : 2;
 }
 
+// T4 of SPEC v3 §4.1 in L2 (§4.3): the index primitives' contracts against naive definitions on
+// every graph of a bound, both self-loop modes, both directions. Exit code 0 if every query agrees,
+// 2 if not.
+int index_contracts(const std::string& bound_opt, const std::string& report, const std::string& name) {
+  const blz::ExhaustiveGraphs gs(blz::parse_exhaustive_bound(bound_opt));
+  auto t0 = Clock::now();
+  const blz::IndexContracts r = blz::check_index_contracts(gs);
+  const double seconds = secs(t0);
+  std::uint64_t checks = 0, bad = 0;
+  std::string line;
+  nlohmann::json by = nlohmann::json::object();
+  for (std::size_t c = 0; c < blz::kContracts; ++c) {
+    const char* cn = blz::contract_name(blz::Contract(c));
+    checks += r.checks[c];
+    bad += r.violations[c];
+    line += std::string(c ? ", " : "") + cn + " " + std::to_string(r.checks[c]);
+    by[cn] = {{"checks", r.checks[c]}, {"violations", r.violations[c]}};
+  }
+  std::printf("index-contracts, bound %s, self-loops kept and dropped, out- and in-lists: %llu graphs, %llu queries, "
+              "%llu violations (%.1f s, %d threads)\n  queries: %s\n",
+              blz::bound_name(gs.bound()).c_str(), (unsigned long long)r.graphs, (unsigned long long)checks,
+              (unsigned long long)bad, seconds, omp_get_max_threads(), line.c_str());
+  nlohmann::json res = {{"bound", blz::bound_name(gs.bound())}, {"graphs", r.graphs}, {"queries", checks},
+                        {"violations", bad}, {"by_contract", by}, {"seconds", seconds},
+                        {"threads", omp_get_max_threads()}, {"git", git_info()}};
+  if (bad) {
+    std::printf("  first violation: %s\n", r.first.c_str());
+    res["first_violation"] = {{"graph", r.first_graph}, {"text", r.first}};
+  }
+  merge_report(report, name, res);
+  return bad == 0 ? 0 : 2;
+}
+
 // SPEC v2 §3.4: the metamorphic tests on fuzz graphs, for one backend. Exit code 0 if every row
 // is unchanged, 2 if not.
 int metamorphic(const std::string& seeds, const std::string& bins_opt, const std::string& backend,
@@ -2107,6 +2141,13 @@ int main(int argc, char** argv) {
   fd->add_option("--report", report, "merge the summary into this JSON file");
   fd->add_option("--name", name, "key (JSON pointer path) in --report")->needs("--report");
 
+  std::string ic_bound;
+  auto* ic = app.add_subcommand("index-contracts", "T4 in L2 (SPEC v3 §4.1, §4.3): the index primitives against naive "
+                                                   "definitions on every graph within a bound");
+  ic->add_option("--bound", ic_bound, "m=<edges>,n=<nodes>,t=<timestamps>, as fuzz-diff --bound")->required();
+  ic->add_option("--report", report, "merge the summary into this JSON file");
+  ic->add_option("--name", name, "key (JSON pointer path) in --report")->needs("--report");
+
   std::string mt_backend = "cpu";
   auto* mt = app.add_subcommand("metamorphic", "SPEC v2 §3.4: prefix closure, relabeling, time shift, tcyc and tchain visibility invariance, order relaxation on fuzz graphs");
   mt->add_option("--seeds", seeds, "a:b")->required();
@@ -2182,6 +2223,10 @@ int main(int argc, char** argv) {
         throw std::runtime_error("--setting is for fuzz graphs (--seeds), not --bound");
       return fuzz_diff(seeds, fd_bound, batch_edges, fd_bins, fd_backend, fd_heavy, fd_cpu_heavy, profile, work_limit,
                        fuse, pack, fd_reference, setting, report, name);
+    }
+    if (*ic) {
+      if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");
+      return index_contracts(ic_bound, report, name);
     }
     if (*mt) {
       if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");
