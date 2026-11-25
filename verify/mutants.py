@@ -262,7 +262,7 @@ def run_check(check, build, log, report):
             # A catch is Catch2's test-failure exit (42) on a falsified property; a property that threw
             # (a backend error), a crash, a timeout or a setup error is not.
             falsified = rc == 42 and "Falsifiable after" in out and not any(
-                x in out for x in ("Exception thrown with message", "Unknown exception"))
+                x in out for x in ("Exception thrown with message", "Unknown object thrown", "Unknown exception"))
             if rc != 0 and not falsified:
                 return {**res, "error": f"{name}: exit {rc} without a falsified property: {tail(out)}"}
             if rc != 0:
