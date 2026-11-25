@@ -491,7 +491,7 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, const DiffSource& src, std::span<
         x.rows[int(pb.block)].assign(m * block_cols(p), 0);
         x.stop[int(pb.block)] = stop_eid(
             [&] { reference_rows(oracle ? &*oracle : nullptr, *it.index, pb, p, prof, m, x.rows[int(pb.block)].data()); });
-        if (sg_gather_of(pb) && oracle) {
+        if (sg_gather_of(pb) && oracle && !hybrid) {
           x.sg_gather.assign(m * block_cols(p), 0);
           oracle->mine_sg_gather(p, 0, m, x.sg_gather.data());
         }
@@ -588,7 +588,7 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, const DiffSource& src, std::span<
             r.d.heavy_triggers += t.heavy;
           }
       for (const ProfileBlock& pb : prof.blocks)
-        if (const PatternInfo* g = sg_gather_of(pb); g && !x.sg_gather.empty() && !hybrid)
+        if (const PatternInfo* g = sg_gather_of(pb); g && !x.sg_gather.empty())
           for (std::uint32_t h : thresholds) {
             const BlockParams p = run.params(pb.block, w);
             std::vector<std::uint32_t> got(x.sg_gather.size(), 0xdeadbeefu);

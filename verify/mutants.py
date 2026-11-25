@@ -19,7 +19,8 @@ check fails: that check caught it. A mutant is
   ESCAPED  by none: every rung passed, so no check sees the bug,
   BAD      when its `old` text is not on exactly one line, the mutant does not build, or a check
            fails without a mismatch: an exit other than blz's 2 with a counterexample or violation
-           in its report, or an L3 failure that is not a falsified property (a crash, a timeout).
+           in its report, or an L3 failure that is not Catch2's exit 42 on a falsified property (a
+           property that threw, a crash, a timeout).
 
 --escape then runs each mutant's `escapes`, the full-bound L2 and T4 checks that run its code path,
 and requires that they pass: such a mutant is out of L2's reach, and only L3 sees it. A check that
@@ -258,8 +259,12 @@ def run_check(check, build, log, report):
         for name in tests:
             rc, dt, out = sh([exe, name], log, timeout=CHECK_TIMEOUT)
             res["seconds"] += dt
-            if rc != 0 and "Falsifiable after" not in out:  # a crash, a timeout or a setup error
-                return {**res, "error": f"{name}: exit {rc} without a property failure: {tail(out)}"}
+            # A catch is Catch2's test-failure exit (42) on a falsified property; a property that threw
+            # (a backend error), a crash, a timeout or a setup error is not.
+            falsified = rc == 42 and "Falsifiable after" in out and not any(
+                x in out for x in ("Exception thrown with message", "Unknown exception"))
+            if rc != 0 and not falsified:
+                return {**res, "error": f"{name}: exit {rc} without a falsified property: {tail(out)}"}
             if rc != 0:
                 res.update(caught=True, rc=rc, part=name, counterexample=l3_counterexample(out))
                 return res

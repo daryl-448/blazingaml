@@ -24,7 +24,8 @@
 # bound SMOKE instead, in seconds. Reports go to build/verify/codegen.json (--report), logs to
 # build/verify/codegen.log. A check passes when blz exits 0 and its report shows the comparisons
 # ran: rows or stop eids compared in every block, a graph at the work limit in each limit-1 run, and
-# nonzero counts on the paths the check asks for. Exit status 0 if every check passed.
+# nonzero counts on the paths the check asks for. Each check's verdict is written into the report.
+# Exit status 0 if every check passed.
 set -uo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 
@@ -121,22 +122,29 @@ def at(path):
         node = node.get(k) if isinstance(node, dict) else None
         if node is None: return None
     return node
+# Every profile enables every block (clean_all also vstats); T4 checks every contract.
+BLOCKS = {"fan_in", "fan_out", "deg_in", "deg_out", "sg", "sg_ord", "tcyc", "lcyc", "tchain", "gs", "fan_oneway_out",
+          "fan_total"}
+CONTRACTS = {"list", "prev_same", "range", "head_range", "distinct_first", "distinct_first_ts", "pair_exists",
+             "pair_latest", "search"}
 def missing(name, build, r):
     """What a passing check's report does not show ran (SPEC v3 §4.4 item 6), or None."""
     if not r:
         return "no report"
     if "queries" in r:  # index-contracts
-        return None if r["queries"] else "no queries"
+        idle = sorted(c for c in CONTRACTS if not r["by_contract"].get(c, {}).get("checks"))
+        return "no checks of " + ", ".join(idle) if idle else None
     parts = name.split("/")
     check, legacy = parts[1], parts[2].startswith("l2_legacy")
     blocks, rows, stops = r["mismatched_rows_by_block"], r["compared_rows_by_block"], r["compared_stops_by_block"]
-    idle = [b for b in blocks if b != "vstats" and not rows[b] and not stops[b]]
+    idle = sorted(b for b in BLOCKS | ({"vstats"} if not legacy else set()) if b not in blocks)
+    idle += [b for b in blocks if b != "vstats" and not rows[b] and not stops[b]]
     if "vstats" in blocks and not r["completed_batches_by_block"]["vstats"]:
         idle.append("vstats")
     if idle:
         return "nothing compared in " + ", ".join(idle)
-    if check.endswith("limit1") and not r["limited_batches"]:
-        return "no graph reached the work limit"
+    if check.endswith("limit1") and not (r["limited_batches"] and stops["lcyc"]):
+        return "no lcyc stop eids compared at the work limit"
     op = r["path_hits"]["optimised_paths"]
     need = {"cuda": ["light_kernel_triggers", "heavy_kernel_triggers"],
             "cuda-fuse-pack": ["light_kernel_triggers", "heavy_kernel_triggers", "fused_rows"],
@@ -144,8 +152,8 @@ def missing(name, build, r):
     if build == "rel":  # rel-noopt has no sweep (blzc --disable)
         need["cpu"] = ["sweep_rows"] + ["reach_pruned_rows"] * legacy
     zero = [k for k in need.get(check, []) if not op[k]]
-    if check == "cuda-fuse-pack" and not any(op["packed_rows_by_width"].values()):
-        zero.append("packed_rows")
+    if check == "cuda-fuse-pack" and not op["packed_rows_by_width"]["1"]:  # every cell fits a byte at L2's bounds
+        zero.append("packed rows at 1 byte")
     return "no " + ", ".join(zero) if zero else None
 
 rows, bad = [], 0
@@ -156,6 +164,8 @@ for line in open(sys.argv[2]):
     if rc == "0" and (why := missing(name, build, r)):
         verdict, rc = f"FAIL ({why})", "evidence"
     bad += rc != "0"
+    if r:
+        r["verdict"] = verdict  # what E20 reads
     parts = name.split("/")
     check = parts[1] if len(parts) > 1 else name
     profile = parts[2] if len(parts) > 3 else "-"
@@ -172,6 +182,8 @@ print()
 print("L2 bounded code check (SPEC v3 §4.3)")
 for x in [head] + rows:
     print("  ".join(str(c).ljust(w[i]) if i < 3 else str(c).rjust(w[i]) for i, c in enumerate(x)))
+if report:
+    json.dump(report, open(sys.argv[1], "w"), indent=1)
 print(f"{len(rows) - bad} of {len(rows)} checks passed")
 sys.exit(1 if bad else 0)
 EOF
