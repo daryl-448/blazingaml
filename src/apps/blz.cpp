@@ -1729,8 +1729,8 @@ int fuzz_diff(const std::string& seeds, const std::string& bound_opt, std::uint6
 }
 
 // T4 of SPEC v3 §4.1 in L2 (§4.3): the index primitives' contracts against naive definitions on
-// every graph of a bound, both self-loop modes, both directions. Exit code 0 if every query agrees,
-// 2 if not.
+// every graph of a bound, both self-loop modes, both directions, and the search contract of L1's
+// pruning proofs (§4.4 item 2). Exit code 0 if every query agrees, 2 if not.
 int index_contracts(const std::string& bound_opt, const std::string& report, const std::string& name) {
   const blz::ExhaustiveGraphs gs(blz::parse_exhaustive_bound(bound_opt));
   auto t0 = Clock::now();
@@ -1747,15 +1747,17 @@ int index_contracts(const std::string& bound_opt, const std::string& report, con
     by[cn] = {{"checks", r.checks[c]}, {"violations", r.violations[c]}};
   }
   std::printf("index-contracts, bound %s, self-loops kept and dropped, out- and in-lists: %llu graphs, %llu queries, "
-              "%llu violations (%.1f s, %d threads)\n  queries: %s\n",
+              "%llu violations (%.1f s, %d threads)\n  queries: %s\n  search: ldJ reached %llu nodes besides the "
+              "target\n",
               blz::bound_name(gs.bound()).c_str(), (unsigned long long)r.graphs, (unsigned long long)checks,
-              (unsigned long long)bad, seconds, omp_get_max_threads(), line.c_str());
+              (unsigned long long)bad, seconds, omp_get_max_threads(), line.c_str(),
+              (unsigned long long)r.search_nodes);
   nlohmann::json res = {{"bound", blz::bound_name(gs.bound())}, {"graphs", r.graphs}, {"queries", checks},
-                        {"violations", bad}, {"by_contract", by}, {"seconds", seconds},
-                        {"threads", omp_get_max_threads()}, {"git", git_info()}};
+                        {"violations", bad}, {"by_contract", by}, {"search_nodes", r.search_nodes},
+                        {"seconds", seconds}, {"threads", omp_get_max_threads()}, {"git", git_info()}};
   if (bad) {
     std::printf("  first violation: %s\n", r.first.c_str());
-    res["first_violation"] = {{"graph", r.first_graph}, {"text", r.first}};
+    res["first_violation"] = {{"graph", r.first_graph}, {"edges", gs.edges(r.first_graph)}, {"text", r.first}};
   }
   merge_report(report, name, res);
   return bad == 0 ? 0 : 2;
@@ -2121,7 +2123,8 @@ int main(int argc, char** argv) {
 
   std::string ic_bound;
   auto* ic = app.add_subcommand("index-contracts", "T4 in L2 (SPEC v3 §4.1, §4.3): the index primitives against naive "
-                                                   "definitions on every graph within a bound");
+                                                   "definitions, and ReachScratch::search against L1's ldJ, on every "
+                                                   "graph within a bound");
   ic->add_option("--bound", ic_bound, "m=<edges>,n=<nodes>,t=<timestamps>, as fuzz-diff --bound")->required();
   ic->add_option("--report", report, "merge the summary into this JSON file");
   ic->add_option("--name", name, "key (JSON pointer path) in --report")->needs("--report");

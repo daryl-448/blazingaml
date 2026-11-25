@@ -5,6 +5,8 @@
 #include <span>
 #include <vector>
 
+#include "blz/reach.hpp"
+
 namespace blz {
 
 const char* contract_name(Contract c) {
@@ -17,6 +19,7 @@ const char* contract_name(Contract c) {
     case Contract::distinct_first_ts: return "distinct_first_ts";
     case Contract::pair_exists: return "pair_exists";
     case Contract::pair_latest: return "pair_latest";
+    case Contract::search: return "search";
   }
   return "?";
 }
@@ -198,6 +201,62 @@ struct Direction {
             }
     }
   }
+
+  // search, on the in-lists: for trigger e = U -> V at t and window delta, ReachScratch::search with
+  // tcyc_trigger_reach's arguments against ldJ (verify/lean/Blz/Prune.lean) over Prune.lean's search
+  // set E, the visible edges with t - delta <= ts <= t - 1, after the same number of rounds.
+  void check_search(std::int32_t windows) {
+    constexpr int kHops = 9;                  // tcyc_trigger_reach's rounds
+    constexpr std::int64_t kBot = INT64_MIN;  // ldJ's bot: not reached
+    ReachScratch reach(g.n);
+    std::vector<std::int64_t> ld(g.n), next(g.n);
+    std::vector<std::uint32_t> E;
+    for (std::uint32_t e = 0; e < g.src.size(); ++e) {
+      const std::uint32_t U = g.src[e];
+      if (U == g.dst[e]) continue;  // tcyc_trigger_reach returns before its search
+      const std::int64_t t = g.ts[e];
+      for (const bool ts_vis : {false, true})
+        for (std::int32_t delta = 1; delta <= windows; ++delta) {
+          const std::uint32_t vis_e = ts_vis ? kAnyEid : e;
+          const std::int64_t vis_t = ts_vis ? t : kNoUpper;
+          const std::int64_t lo = t - delta, hi = min_ts(t - 1, vis_t);
+          reach.search(L, U, t, lo, hi, vis_e, kHops);
+          E.clear();
+          for (std::uint32_t f = 0; f < g.src.size(); ++f)
+            if ((ts_vis ? g.ts[f] <= t : f <= e) && g.ts[f] >= lo && g.ts[f] <= t - 1) E.push_back(f);
+          // ldJ 0 = t at U, bot elsewhere; ldJ (r + 1) = relaxRound E U (ldJ r).
+          std::fill(ld.begin(), ld.end(), kBot);
+          ld[U] = t;
+          for (int r = 0; r < kHops; ++r) {
+            next = ld;
+            for (const std::uint32_t f : E) {
+              const std::uint32_t x = g.src[f], y = g.dst[f];
+              if (x != U && x != y && g.ts[f] < ld[y]) next[x] = std::max<std::int64_t>(next[x], g.ts[f]);
+            }
+            if (next == ld) break;  // a fixed point: the later rounds change nothing
+            ld.swap(next);
+          }
+          std::uint32_t bad = g.n;
+          for (std::uint32_t x = 0; x < g.n; ++x) {
+            if (ld[x] == kBot) continue;
+            res.search_nodes += x != U;
+            if (bad == g.n && !reach.keep(x, ld[x] - 1)) bad = x;
+          }
+          count(Contract::search, bad == g.n, [&] {
+            std::string want;
+            for (std::uint32_t x = 0; x < g.n; ++x)
+              if (ld[x] != kBot) want += (want.empty() ? "" : ", ") + std::to_string(x) + " " + std::to_string(ld[x]);
+            return "trigger " + std::to_string(e) + " (" + std::to_string(U) + "->" + std::to_string(g.dst[e]) + "@" +
+                   std::to_string(t) + "), " + (ts_vis ? "timestamp" : "stream") + " visibility, window " +
+                   std::to_string(delta) + ": after search(in, " + std::to_string(U) + ", " + std::to_string(t) + ", " +
+                   std::to_string(lo) + ", " + bound_text(hi) + ", " + eid_text(vis_e) + ", " + std::to_string(kHops) +
+                   "), keep(" + std::to_string(bad) + ", " + std::to_string(ld[bad] - 1) + ") is false; want ld >= " +
+                   std::to_string(ld[bad]) + ", as ldJ after " + std::to_string(kHops) + " rounds gives (node ld: " +
+                   want + ")";
+          });
+        }
+    }
+  }
 };
 
 std::string Direction::where() const {
@@ -207,7 +266,8 @@ std::string Direction::where() const {
 
 }  // namespace
 
-void check_index_contracts(const EdgeList& g, std::uint64_t id, SelfLoops mode, IndexContracts& res) {
+void check_index_contracts(const EdgeList& g, std::uint64_t id, SelfLoops mode, std::int32_t windows,
+                           IndexContracts& res) {
   const GraphIndex index(g.src, g.dst, g.ts, g.n, mode);
   const GraphView& v = index.view();
   const bool had = !res.first.empty();
@@ -217,6 +277,7 @@ void check_index_contracts(const EdgeList& g, std::uint64_t id, SelfLoops mode, 
     for (std::uint32_t e = 0; e < g.src.size(); ++e)
       if (mode == SelfLoops::keep || g.src[e] != g.dst[e]) d.list[out ? g.src[e] : g.dst[e]].push_back(e);
     d.check();
+    if (!out) d.check_search(windows);
   }
   if (!had && !res.first.empty()) res.first_graph = id;
 }
@@ -232,8 +293,10 @@ IndexContracts check_index_contracts(const ExhaustiveGraphs& gs) {
         const EdgeList g = gs.graph(std::uint64_t(i));
         // The first violation of this thread's smallest graph: a later graph's never replaces it.
         IndexContracts one;
-        for (const SelfLoops mode : {SelfLoops::keep, SelfLoops::drop}) check_index_contracts(g, std::uint64_t(i), mode, one);
+        for (const SelfLoops mode : {SelfLoops::keep, SelfLoops::drop})
+          check_index_contracts(g, std::uint64_t(i), mode, gs.bound().t, one);
         ++mine.graphs;
+        mine.search_nodes += one.search_nodes;
         for (std::size_t c = 0; c < kContracts; ++c) {
           mine.checks[c] += one.checks[c];
           mine.violations[c] += one.violations[c];
@@ -249,6 +312,7 @@ IndexContracts check_index_contracts(const ExhaustiveGraphs& gs) {
 #pragma omp critical
     {
       res.graphs += mine.graphs;
+      res.search_nodes += mine.search_nodes;
       for (std::size_t c = 0; c < kContracts; ++c) {
         res.checks[c] += mine.checks[c];
         res.violations[c] += mine.violations[c];
