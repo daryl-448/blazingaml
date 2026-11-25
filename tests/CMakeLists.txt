@@ -145,6 +145,20 @@ endif()
 #   BLZ_L3_SEED=<seed> BLZ_L3_SCALE=10 build/<preset>/tests/blz_unit_tests "<test name>"
 add_test(NAME l3_random COMMAND blz_unit_tests "[l3]")
 set_tests_properties(l3_random PROPERTIES LABELS verify ENVIRONMENT "BLZ_L3_SEED=random;BLZ_L3_SCALE=10" TIMEOUT 1800)
+# SPEC v3 §4.3, L1: the Lean proofs of the generated code's shortcuts (verify/lean, T3), built from
+# scratch, then every proof mutant, when elan's lake is installed ($ELAN_HOME, or the default
+# ~/.cache/blz-fv/lean/elan) at configure time. verify/lean/COVERAGE.md maps theorems to code.
+set(BLZ_ELAN_BINS $ENV{HOME}/.cache/blz-fv/lean/elan/bin)
+if(DEFINED ENV{ELAN_HOME})
+  list(PREPEND BLZ_ELAN_BINS $ENV{ELAN_HOME}/bin)
+endif()
+find_program(BLZ_LAKE lake PATHS ${BLZ_ELAN_BINS} NO_DEFAULT_PATH)
+if(BLZ_LAKE)
+  get_filename_component(BLZ_ELAN_HOME ${BLZ_LAKE} DIRECTORY)
+  get_filename_component(BLZ_ELAN_HOME ${BLZ_ELAN_HOME} DIRECTORY)
+  add_test(NAME verify_algorithms COMMAND ${PROJECT_SOURCE_DIR}/verify/algorithms.sh --mutants)
+  set_tests_properties(verify_algorithms PROPERTIES LABELS verify ENVIRONMENT "ELAN_HOME=${BLZ_ELAN_HOME}" TIMEOUT 1800)
+endif()
 
 # SPEC v2 §3.6: the DG-2 ledger's budget, stop rule and entry checks.
 add_test(NAME dg2_ledger_selftest COMMAND python3 ${PROJECT_SOURCE_DIR}/bench/dg2/ledger.py selftest)
