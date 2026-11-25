@@ -130,7 +130,7 @@ TEST_CASE("cpu backend matches the GFP golden probes") {
 // AC1, fast share: every row of every block on 1,000 fuzz graphs, both schedules.
 TEST_CASE("cpu backend equals the oracle on fuzz graphs (seeds 0..999)") {
   const std::vector<std::uint32_t> bins = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
-  const FuzzDiff d = fuzz_diff_cpu(0, 1000, bins);
+  const FuzzDiff d = fuzz_diff_cpu(registry_profile(), DiffSource::fuzz(0, 1000), bins);
   CHECK(d.graphs == 1000);
   for (Block b : kAllBlocks) {
     INFO(block_name(b));
@@ -145,7 +145,7 @@ TEST_CASE("cpu backend equals the oracle on fuzz graphs under timestamp visibili
   Profile ts = registry_profile();
   ts.visibility = Visibility::timestamp;
   const std::vector<std::uint32_t> bins = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
-  const FuzzDiff d = fuzz_diff_cpu(ts, 0, 500, bins);
+  const FuzzDiff d = fuzz_diff_cpu(ts, DiffSource::fuzz(0, 500), bins);
   CHECK(d.graphs == 500);
   for (const ProfileBlock& pb : ts.blocks) {
     INFO(block_name(pb.block));

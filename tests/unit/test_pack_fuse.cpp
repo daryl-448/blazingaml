@@ -84,7 +84,7 @@ TEST_CASE("fuse, pack: rows equal the oracle's on 300 fuzz graphs, every thresho
     const std::vector<std::uint32_t> bins = {2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 16, 20};
     for (const CudaOptions opts : {CudaOptions{true, true}, CudaOptions{true, false}, CudaOptions{false, true}}) {
       INFO("visibility " << int(vis) << " fuse " << opts.fuse << " pack " << opts.pack);
-      const FuzzDiff d = fuzz_diff_cuda(prof, 0, 300, bins, kThresholds, kDefaultWorkLimit, opts);
+      const FuzzDiff d = fuzz_diff_cuda(prof, DiffSource::fuzz(0, 300), bins, kThresholds, kDefaultWorkLimit, opts);
       CHECK(d.graphs == 300);
       for (const ProfileBlock& pb : prof.blocks) {
         INFO(block_name(pb.block));

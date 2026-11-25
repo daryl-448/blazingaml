@@ -107,12 +107,12 @@ TEST_CASE("cuda, hybrid: clean_all equals the clean oracle on fuzz graphs, every
   };
   for (const CudaOptions opts : {CudaOptions{false, false}, CudaOptions{true, true}, CudaOptions{false, true}}) {
     INFO("fuse " << opts.fuse << " pack " << opts.pack);
-    check(rest, fuzz_diff_cuda(rest, 0, 120, {}, kThresholds, kDefaultWorkLimit, opts), 120);
-    check(lcyc, fuzz_diff_cuda(lcyc, 0, 24, {}, kThresholds, 20'000, opts), 24);
+    check(rest, fuzz_diff_cuda(rest, DiffSource::fuzz(0, 120), {}, kThresholds, kDefaultWorkLimit, opts), 120);
+    check(lcyc, fuzz_diff_cuda(lcyc, DiffSource::fuzz(0, 24), {}, kThresholds, 20'000, opts), 24);
   }
   const std::uint32_t cpu_thresholds[] = {0, 4, kAllGpu};
-  check(rest, fuzz_diff_hybrid(rest, 0, 40, {}, kThresholds, cpu_thresholds), 40);
-  check(lcyc, fuzz_diff_hybrid(lcyc, 0, 12, {}, kThresholds, cpu_thresholds, 20'000), 12);
+  check(rest, fuzz_diff_hybrid(rest, DiffSource::fuzz(0, 40), {}, kThresholds, cpu_thresholds), 40);
+  check(lcyc, fuzz_diff_hybrid(lcyc, DiffSource::fuzz(0, 12), {}, kThresholds, cpu_thresholds, 20'000), 12);
   // The sparse-time setting (SPEC v3 §4.4), every block at once.
   const auto sparse = [&](const FuzzDiff& d, std::uint64_t graphs) {
     check(all, d, graphs);
@@ -120,12 +120,10 @@ TEST_CASE("cuda, hybrid: clean_all equals the clean oracle on fuzz graphs, every
     CHECK(d.vstats_nonzero_rows > 0);
     CHECK(d.vstats_sides > 0);
   };
-  sparse(fuzz_diff_cuda(all, 0, 300, {}, kThresholds, kDefaultWorkLimit, {true, true}, Reference::oracle,
-                        FuzzSetting::sparse),
+  sparse(fuzz_diff_cuda(all, DiffSource::fuzz(0, 300, FuzzSetting::sparse), {}, kThresholds, kDefaultWorkLimit,
+                        {true, true}),
          300);
-  sparse(fuzz_diff_hybrid(all, 0, 40, {}, kThresholds, cpu_thresholds, kDefaultWorkLimit, {}, Reference::oracle,
-                          FuzzSetting::sparse),
-         40);
+  sparse(fuzz_diff_hybrid(all, DiffSource::fuzz(0, 40, FuzzSetting::sparse), {}, kThresholds, cpu_thresholds), 40);
 }
 
 // The metamorphic suite on clean_all (SPEC v3 §4.4: every clean pattern), lcyc at a low work limit

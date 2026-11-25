@@ -96,7 +96,7 @@ TEST_CASE("cuda backend matches the GFP golden probes") {
 // AC1, fast share: every row of every block on 500 fuzz graphs, at every threshold.
 TEST_CASE("cuda backend equals the oracle on fuzz graphs (seeds 0..499)") {
   const std::vector<std::uint32_t> bins = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
-  const FuzzDiff d = fuzz_diff_cuda(0, 500, bins, kThresholds);
+  const FuzzDiff d = fuzz_diff_cuda(registry_profile(), DiffSource::fuzz(0, 500), bins, kThresholds);
   CHECK(d.graphs == 500);
   for (Block b : kAllBlocks) {
     INFO(block_name(b));
@@ -123,7 +123,7 @@ TEST_CASE("cuda backend under timestamp visibility: oracle parity and metamorphi
   Profile ts = registry_profile();
   ts.visibility = Visibility::timestamp;
   const std::vector<std::uint32_t> bins = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
-  const FuzzDiff d = fuzz_diff_cuda(ts, 0, 300, bins, kThresholds);
+  const FuzzDiff d = fuzz_diff_cuda(ts, DiffSource::fuzz(0, 300), bins, kThresholds);
   CHECK(d.graphs == 300);
   for (const ProfileBlock& pb : ts.blocks) {
     INFO(block_name(pb.block));

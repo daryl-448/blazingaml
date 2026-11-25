@@ -1,84 +1,161 @@
 #pragma once
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <span>
+#include <string>
 #include <vector>
 
+#include "graph/exhaustive.hpp"
 #include "graph/fuzz_gen.hpp"
 #include "runtime/cpu_backend.hpp"
 #include "runtime/profile.hpp"
 
 namespace blz {
 
-// AC1 on fuzz graphs (SPEC §13.3): the generated CPU backend against the profile's oracle
-// (ProfileOracle: the clean oracle for a clean profile, SPEC v3 §3.2), every row of every block, on
-// the graphs of seeds [s0, s1) in `setting` (fuzz_gen.hpp: dense or sparse-time, SPEC v3 §4.4).
-// Each graph uses its own window for every block, `bins`, and the compiled K_MAX for the oracle's
-// tcyc cap. Both schedules are checked, and for a
-// block with a pattern planned for reachability pruning (tcyc, SPEC v2 §8 S6) both again with it.
-// The profile forms (SPEC v2 §10) take the blocks, their patterns and k_max from `prof`; the
-// windows still come from each graph, and the bins from fuzz_bins(): `bins`, or each profile
-// block's own when `bins` is empty, and none for a count block (SPEC v3 R7). The graphs are indexed
-// as the profile says (Profile::self_loops). The forms without a profile use registry_profile():
-// every registered legacy block (v1's six, and sg_ord from P10).
+// One graph that fuzz_diff checks: an edge stream in stream order, the windows at which every block
+// (and the vertex statistics) is checked, and one amount per edge for the vertex statistics.
+struct DiffCase {
+  std::uint64_t id = 0;  // a fuzz graph's seed; an exhaustive batch's index; a member's canonical index
+  EdgeList g;
+  std::vector<std::int32_t> windows;
+  std::vector<double> amount;
+  FuzzHits hits;  // a fuzz graph's (fuzz_hits); none for an exhaustive case
+  // An exhaustive case (GraphUnion): per eid, its canonical graph and its eid in that graph.
+  std::vector<std::uint64_t> graph;
+  std::vector<std::uint32_t> local;
+};
+
+// Where fuzz_diff's graphs come from.
+//   - fuzz(s0, s1, setting): fuzz_graph(s) for the seeds [s0, s1), each at its own window, with
+//     fuzz_amounts(s).
+//   - exhaustive(b, batch_edges): L2's domain (SPEC v3 §4.3), every canonical graph of bound b
+//     (ExhaustiveGraphs), as disjoint unions of up to batch_edges edges (at least one graph; 1 gives
+//     each graph alone), each checked at every window 1..t. A batch never mixes edge counts, so
+//     batches run m ascending too. Canonical graph i's amounts are fuzz_amounts(i, m), by its own
+//     eids, alone or in a batch.
+class DiffSource {
+ public:
+  static DiffSource fuzz(std::uint64_t s0, std::uint64_t s1, FuzzSetting setting = FuzzSetting::dense);
+  static DiffSource exhaustive(ExhaustiveBound b, std::uint64_t batch_edges);
+
+  std::uint64_t size() const { return size_; }  // cases
+  DiffCase get(std::uint64_t i) const;
+  // An exhaustive batch's canonical graphs, each alone, in canonical order; none for a fuzz graph.
+  std::vector<DiffCase> members(const DiffCase& c) const;
+  const ExhaustiveGraphs* graphs() const { return graphs_ ? &*graphs_ : nullptr; }
+  std::uint64_t batch_edges() const { return batch_edges_; }
+  FuzzSetting setting() const { return setting_; }
+
+ private:
+  DiffCase member(std::uint64_t graph, const std::vector<std::int32_t>& windows) const;
+
+  std::uint64_t s0_ = 0, size_ = 0, batch_edges_ = 0;
+  FuzzSetting setting_ = FuzzSetting::dense;
+  std::optional<ExhaustiveGraphs> graphs_;
+  std::vector<std::uint64_t> batch_first_;  // per m - 1: the first batch with m edges; m_max + 1 entries
+  std::vector<std::uint64_t> per_batch_;    // per m - 1: graphs per batch
+};
+
+// AC1 on fuzz graphs (SPEC §13.3), and L2's bounded code check on an exhaustive source (SPEC v3
+// §4.3): the generated CPU backend against the profile's oracle (ProfileOracle: the clean oracle
+// for a clean profile, SPEC v3 §3.2), every row of every block, on every case of `src`, at each of
+// the case's windows, with `bins`, and the compiled K_MAX for the oracle's tcyc cap. Both schedules
+// are checked, and for a block with a pattern planned for reachability pruning (tcyc, SPEC v2 §8
+// S6) both again with it. The blocks, their patterns and k_max come from `prof`; the windows come
+// from the cases, and the bins from fuzz_bins(): `bins`, or each profile block's own when `bins` is
+// empty, and none for a count block (SPEC v3 R7). The graphs are indexed as the profile says
+// (Profile::self_loops). registry_profile() gives every registered legacy block (v1's six, and
+// sg_ord from P10).
 //
 // Work limit (SPEC v2 §8 S3, SPEC v3 R11): every run has `work_limit`. Where the reference stops a
-// block (lcyc), the graph is limited for that block, i.e. inconclusive: its rows are not compared and
-// it counts in no gate, but the backend must stop at the same eid, the smallest over the limit; a
-// backend that stops elsewhere, or not at all, or stops where the reference does not, counts as one
-// mismatched row.
+// block (lcyc) at a window, the case is limited for that block, i.e. inconclusive: its rows are not
+// compared and it counts in no gate, but the backend must stop at the same eid, the smallest over
+// the limit; a backend that stops elsewhere, or not at all, or stops where the reference does not,
+// counts as one mismatched row.
 // A profile with vstats (SPEC v3 R8) also has its vertex statistics compared, bit for bit, at each
-// graph's window with fuzz_amounts(seed): CleanVstats on the backend's device (the GPU for cuda and
-// the hybrid) against the reference's.
+// window with the case's amounts: CleanVstats on the backend's device (the GPU for cuda and the
+// hybrid) against the reference's.
 // What the rows are compared against: the oracle, or the CPU backend with the dynamic schedule
 // (backend against backend, cheaper than the oracle). With Reference::cpu, fuzz_diff_cpu checks the
 // sorted schedule (and reachability pruning) against it, and no vstats: the CPU's are the reference.
 enum class Reference { oracle, cpu };
 
-struct FuzzDiff {
-  std::uint64_t graphs = 0, edges = 0;
-  std::array<std::uint64_t, kAllBlocks.size()> mismatched_rows{};  // per block, both schedules
-  std::array<std::uint64_t, kAllBlocks.size()> limited_graphs{};   // per block: the reference hit the limit
-  // Path hit (SPEC v3 §4.4 item 6): what the graphs exercise, and per block the reference's nonzero
-  // rows on the graphs it completed.
-  FuzzHits hits;
-  std::array<std::uint64_t, kAllBlocks.size()> nonzero_rows{};
-  // vstats: the graphs compared, the rows that differ in any bit, the reference's rows with a
-  // nonzero column, and the distinct sides the backend computed (path hit).
-  std::uint64_t vstats_graphs = 0, vstats_mismatched_rows = 0, vstats_nonzero_rows = 0, vstats_sides = 0;
-  std::vector<std::uint64_t> bad_seeds;                             // ascending
-  std::vector<std::uint64_t> limited_seeds;                         // ascending: limited in some block
+// The first row a check found different, in check order (window, block, path, trigger).
+struct Mismatch {
+  std::string block;  // a block's name, or "vstats"
+  std::string path;   // the run that computed `got`: "cpu sorted reach", "cuda H=4 fused packed", "hybrid H=0 C=4", ...
+  std::int32_t window = 0;
+  std::uint64_t eid = 0;                  // the trigger (a work-limit mismatch: the smaller stop eid)
+  std::vector<std::uint32_t> got, want;   // a block's rows
+  std::vector<double> got_vstats, want_vstats;
+  // A work-limit mismatch (SPEC v3 R11): where each side stopped, UINT64_MAX if it completed; no rows.
+  std::uint64_t got_stop = UINT64_MAX, want_stop = UINT64_MAX;
 };
 
-FuzzDiff fuzz_diff_cpu(std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins);
-FuzzDiff fuzz_diff_cpu(const Profile& prof, std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
-                       std::uint64_t work_limit = kDefaultWorkLimit, Reference ref = Reference::oracle,
-                       FuzzSetting setting = FuzzSetting::dense);
+// What a failing run reports (SPEC v3 §4.3): the mismatching case with the smallest id and, for an
+// exhaustive source, its first canonical graph that fails alone, re-run through the same paths.
+struct Counterexample {
+  std::uint64_t case_id = 0;  // the seed, or the batch
+  std::uint64_t graph = 0;    // the seed, or the canonical index of `g`
+  // false: no graph of the batch fails alone (the bug needs a graph's position in the batch); `first`
+  // is then the batch's own first mismatch, its eid that of its graph `g`.
+  bool alone = true;
+  EdgeList g;
+  Mismatch first;  // its eids are g's
+};
+
+struct FuzzDiff {
+  std::uint64_t cases = 0;           // fuzz graphs, or exhaustive batches
+  std::uint64_t graphs = 0;          // fuzz graphs, or the canonical graphs in the batches
+  std::uint64_t edges = 0;           // of the cases
+  std::uint64_t trigger_checks = 0;  // (trigger, window) pairs
+  std::uint64_t row_checks = 0;      // rows compared: per trigger check, block (and vstats) and path
+  std::array<std::uint64_t, kAllBlocks.size()> mismatched_rows{};  // per block, every path
+  std::array<std::uint64_t, kAllBlocks.size()> limited_graphs{};   // per block: cases where the reference hit the limit
+  // Path hit (SPEC v3 §4.4 item 6): what the cases exercise (fuzz graphs only), and per block the
+  // reference's nonzero rows, summed over windows, where it completed.
+  FuzzHits hits;
+  std::array<std::uint64_t, kAllBlocks.size()> nonzero_rows{};
+  // vstats: the cases compared, the rows that differ in any bit, the reference's rows with a
+  // nonzero column, and the distinct sides the backend computed (path hit), summed over windows.
+  std::uint64_t vstats_graphs = 0, vstats_mismatched_rows = 0, vstats_nonzero_rows = 0, vstats_sides = 0;
+  // Path hits of the optimised paths: the compared rows that each one computed (SPEC v3 §4.1 T2).
+  std::uint64_t sweep_rows = 0;  // the CPU sweep drivers (SPEC v2 §7.1)
+  std::uint64_t reach_rows = 0;  // reachability pruning (SPEC v2 §8 S6), on the CPU or the hybrid's CPU side
+  std::uint64_t fused_rows = 0;  // fused CUDA kernels (SPEC v2 §8 S7)
+  std::array<std::uint64_t, 3> packed_rows{};  // --pack: rows copied at 1, 2 and 4 bytes per cell
+  std::uint64_t light_triggers = 0, heavy_triggers = 0;            // cuda: triggers per kernel
+  std::uint64_t hybrid_cpu_triggers = 0, hybrid_gpu_triggers = 0;  // hybrid: triggers per side
+  std::vector<std::uint64_t> bad_seeds;      // the mismatching cases' ids, ascending
+  std::vector<std::uint64_t> limited_seeds;  // ascending: limited in some block
+  std::optional<Counterexample> counterexample;
+};
+
+FuzzDiff fuzz_diff_cpu(const Profile& prof, const DiffSource& src, std::span<const std::uint32_t> bins,
+                       std::uint64_t work_limit = kDefaultWorkLimit, Reference ref = Reference::oracle);
 
 // AC1 for the generated CUDA backend, the same way: every row of every block against the oracle,
 // once per light/heavy threshold in `thresholds` (0 sends every trigger to the heavy kernel,
 // kAllLight every trigger to the light kernel). mismatched_rows sums over the thresholds.
-FuzzDiff fuzz_diff_cuda(std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
-                        std::span<const std::uint32_t> thresholds);
 // SPEC v2 §8 S7: `opts.fuse` mines each compiled fusion's blocks in one kernel (cuda_units), and
 // `opts.pack` copies the rows packed; the rows must not change.
 struct CudaOptions {
   bool fuse = false;
   bool pack = false;
 };
-FuzzDiff fuzz_diff_cuda(const Profile& prof, std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
+FuzzDiff fuzz_diff_cuda(const Profile& prof, const DiffSource& src, std::span<const std::uint32_t> bins,
                         std::span<const std::uint32_t> thresholds, std::uint64_t work_limit = kDefaultWorkLimit,
-                        CudaOptions opts = {}, Reference ref = Reference::oracle,
-                        FuzzSetting setting = FuzzSetting::dense);
+                        CudaOptions opts = {}, Reference ref = Reference::oracle);
 
 // AC1 for the hybrid (SPEC v2 §8 S6): mine_hybrid with reachability pruning on its CPU side and
 // the sorted schedule, once per pair of a GPU light/heavy threshold in `thresholds` and a CPU
 // threshold in `cpu_thresholds` (0: every trigger on the CPU, kAllGpu: every trigger on the GPU).
 // With no CPU threshold it is fuzz_diff_cuda.
 // `opts` is for the plain CUDA runs only (no CPU threshold).
-FuzzDiff fuzz_diff_hybrid(const Profile& prof, std::uint64_t s0, std::uint64_t s1, std::span<const std::uint32_t> bins,
+FuzzDiff fuzz_diff_hybrid(const Profile& prof, const DiffSource& src, std::span<const std::uint32_t> bins,
                           std::span<const std::uint32_t> thresholds, std::span<const std::uint32_t> cpu_thresholds,
                           std::uint64_t work_limit = kDefaultWorkLimit, CudaOptions opts = {},
-                          Reference ref = Reference::oracle, FuzzSetting setting = FuzzSetting::dense);
+                          Reference ref = Reference::oracle);
 
 }  // namespace blz

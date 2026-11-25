@@ -167,19 +167,19 @@ TEST_CASE("clean_all: the CPU backend equals the clean oracle on fuzz graphs, bo
     CHECK(d.vstats_mismatched_rows == 0);
     CHECK(d.bad_seeds.empty());
   };
-  const FuzzDiff r = fuzz_diff_cpu(rest, 0, 200, {});
+  const FuzzDiff r = fuzz_diff_cpu(rest, DiffSource::fuzz(0, 200), {});
   check(rest, r, 200);
   CHECK(r.limited_seeds.empty());
-  const FuzzDiff l = fuzz_diff_cpu(lcyc, 0, 100, {}, 100'000);
+  const FuzzDiff l = fuzz_diff_cpu(lcyc, DiffSource::fuzz(0, 100), {}, 100'000);
   check(lcyc, l, 100);
   CHECK(l.limited_graphs[int(Block::lcyc)] > 0);
   CHECK(l.limited_graphs[int(Block::lcyc)] < 50);
   CHECK(l.limited_graphs[int(Block::lcyc)] == l.limited_seeds.size());
   // The CPU's sorted schedule against its dynamic one (--reference cpu), every block; the CPU's
   // vstats are the reference, so they are not compared.
-  check(all, fuzz_diff_cpu(all, 0, 60, {}, 100'000, Reference::cpu), 60, false);
+  check(all, fuzz_diff_cpu(all, DiffSource::fuzz(0, 60), {}, 100'000, Reference::cpu), 60, false);
   // The sparse-time setting (SPEC v3 §4.4), every block, each with nonzero rows (path hit).
-  const FuzzDiff sp = fuzz_diff_cpu(all, 0, 1000, {}, kDefaultWorkLimit, Reference::oracle, FuzzSetting::sparse);
+  const FuzzDiff sp = fuzz_diff_cpu(all, DiffSource::fuzz(0, 1000, FuzzSetting::sparse), {});
   check(all, sp, 1000);
   CHECK(sp.limited_seeds.empty());
   CHECK(sp.hits.multi_component_graphs == 1000);

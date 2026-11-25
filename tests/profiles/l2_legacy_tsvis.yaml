@@ -1,0 +1,24 @@
+# Test profile (SPEC v3 §4.3, L2): every legacy pattern of patterns/ under timestamp visibility, for
+# the bounded code check (verify/codegen.sh); l2_legacy_stream.yaml has the other visibility. No
+# legacy spec pins a visibility, so one profile per visibility holds them all. Bins 2..10 give each
+# instance size up to 9 its own bin, every size that a graph of the L2 bounds (m <= 6) reaches.
+# fuzz-diff takes the windows from its graphs, so the windows here are placeholders. Not a
+# modelling profile.
+version: 2
+profile: l2_legacy_tsvis
+visibility: timestamp
+credit: trigger
+k_max: 10
+blocks:
+  fan_in:         {patterns: [fan_in],  window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}
+  fan_out:        {patterns: [fan_out], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}
+  deg_in:         {patterns: [deg_in],  window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}
+  deg_out:        {patterns: [deg_out], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}
+  sg:             {patterns: [sg_gather, sg_scatter], window: 21600, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}
+  sg_ord:         {patterns: [sg_ordered], window: 21600, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}
+  tcyc:           {patterns: [tcyc], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}
+  lcyc:           {patterns: [lcyc], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}
+  tchain:         {patterns: [tchain], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}
+  gs:             {patterns: [gs], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}
+  fan_oneway_out: {patterns: [fan_oneway_out], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}
+  fan_total:      {patterns: [fan_total], window: 86400, bins: [2, 3, 4, 5, 6, 7, 8, 9, 10]}

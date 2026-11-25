@@ -21,7 +21,7 @@ using namespace blz;
 TEST_CASE("hybrid: rows equal the oracle's on 150 fuzz graphs, every split (SPEC v2 §8 S6)") {
   const std::vector<std::uint32_t> bins = {2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 16};
   const std::vector<std::uint32_t> gpu = {0, kAllLight}, cpu = {0, 4, kAllGpu};
-  const FuzzDiff d = fuzz_diff_hybrid(registry_profile(), 0, 150, bins, gpu, cpu);
+  const FuzzDiff d = fuzz_diff_hybrid(registry_profile(), DiffSource::fuzz(0, 150), bins, gpu, cpu);
   CHECK(d.graphs == 150);
   for (Block b : kAllBlocks) {
     INFO(block_name(b));

@@ -3,10 +3,12 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <map>
+#include <optional>
 #include <set>
 #include <tuple>
 
 #include "graph/exhaustive.hpp"
+#include "runtime/fuzz_diff.hpp"
 
 using namespace blz;
 
@@ -119,5 +121,42 @@ TEST_CASE("exhaustive: a disjoint union keeps each member as it is alone", "[exh
       CHECK(u.g.dst[e] == base[i - first] + g.dst[u.local[e]]);
       CHECK(u.g.ts[e] == g.ts[u.local[e]]);
     }
+  }
+}
+
+TEST_CASE("exhaustive fuzz-diff: every graph checked at every window, the first failure alone", "[exhaustive]") {
+  const ExhaustiveBound b{3, 3, 2};
+  const ExhaustiveGraphs gs(b);
+  std::uint64_t edges = 0;
+  for (std::uint64_t i = 0; i < gs.size(); ++i) edges += gs.edges(i);
+  const Profile prof = registry_profile();
+  const std::vector<std::uint32_t> bins = {2, 3, 4};
+  for (const std::uint64_t batch : {1, 7, 1 << 14}) {
+    INFO("batch edges " << batch);
+    const FuzzDiff d = fuzz_diff_cpu(prof, DiffSource::exhaustive(b, batch), bins);
+    CHECK(d.graphs == gs.size());
+    CHECK(d.edges == edges);
+    CHECK(d.trigger_checks == edges * 2);  // windows 1 and 2
+    CHECK(d.bad_seeds.empty());
+    CHECK(!d.counterexample);
+  }
+  // A profile whose fan_in block runs the fan_out pattern disagrees with the oracle's fan_in: the
+  // counterexample is the first such graph in canonical order, whatever the batch size, re-run alone.
+  Profile wrong = prof;
+  for (ProfileBlock& pb : wrong.blocks)
+    if (pb.block == Block::fan_in) pb.patterns = patterns_for(Block::fan_out);
+  std::optional<std::uint64_t> first;
+  for (const std::uint64_t batch : {1, 7, 1 << 14}) {
+    INFO("batch edges " << batch);
+    const FuzzDiff d = fuzz_diff_cpu(wrong, DiffSource::exhaustive(b, batch), bins);
+    REQUIRE(d.counterexample);
+    const Counterexample& cx = *d.counterexample;
+    CHECK(cx.alone);
+    CHECK(cx.first.block == "fan_in");
+    CHECK(cx.first.got != cx.first.want);
+    CHECK(cx.g.src == gs.graph(cx.graph).src);
+    CHECK(cx.g.src.size() == 2);  // two in-neighbours of v, one out-neighbour of u
+    if (!first) first = cx.graph;
+    CHECK(cx.graph == *first);
   }
 }
