@@ -367,7 +367,7 @@ def report():
                                  "caught_by": r.get("caught_by"), "layer": r.get("layer"), "part": r.get("part"),
                                  "counterexample_edges": cx.get("edges"), "check_seconds": r.get("check_seconds"),
                                  "seconds_with_builds": r["seconds"],
-                                 "escapes": {k: "passes" if not v.get("caught") else "CAUGHT"
+                                 "escapes": {k: "ERROR" if "error" in v else "CAUGHT" if v.get("caught") else "passes"
                                              for k, v in r.get("escapes", {}).items()}})
     quick = {k: steps[k]["seconds"] for k in ("quick-l1", "quick-rel", "quick-rel-cuda") if k in steps}
     full_steps = [k for k in steps if not k.startswith("quick")]

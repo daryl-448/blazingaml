@@ -470,7 +470,8 @@ def main():
                         if "caught_by" in rec else f": {rec.get('why', 'no rung failed')}")
                 esc = rec.get("escapes")
                 if esc:
-                    tail += "; escapes " + ", ".join(f"{k} {'FAILS' if v.get('caught') else 'passes'}" for k, v in esc.items())
+                    tail += "; escapes " + ", ".join(
+                        f"{k} {'ERROR' if 'error' in v else 'FAILS' if v.get('caught') else 'passes'}" for k, v in esc.items())
                 print(f"{rec['status']:11} {m.name:20}{tail} [{rec['seconds']} s with builds]", flush=True)
     finally:
         out.update(seconds=round(time.monotonic() - t_run, 1), load_end=load(),

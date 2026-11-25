@@ -133,6 +133,8 @@ def missing(name, build, r):
         return "no report"
     if "queries" in r:  # index-contracts
         idle = sorted(c for c in CONTRACTS if not r["by_contract"].get(c, {}).get("checks"))
+        if not r.get("search_nodes"):
+            idle.append("search reaching a node besides the target")
         return "no checks of " + ", ".join(idle) if idle else None
     parts = name.split("/")
     check, legacy = parts[1], parts[2].startswith("l2_legacy")
@@ -149,9 +151,11 @@ def missing(name, build, r):
     need = {"cuda": ["light_kernel_triggers", "heavy_kernel_triggers"],
             "cuda-fuse-pack": ["light_kernel_triggers", "heavy_kernel_triggers", "fused_rows"],
             "hybrid": ["hybrid_cpu_triggers", "hybrid_gpu_triggers"] + ["reach_pruned_rows"] * legacy}
-    if build == "rel":  # rel-noopt has no sweep (blzc --disable)
-        need["cpu"] = ["sweep_rows"] + ["reach_pruned_rows"] * legacy
+    need["cpu"] = ["sweep_rows"] * (build == "rel") + ["reach_pruned_rows"] * legacy
+    need["cpu-alone"] = ["sweep_rows"] + ["reach_pruned_rows"] * legacy
     zero = [k for k in need.get(check, []) if not op[k]]
+    if build == "rel-noopt" and op["sweep_rows"]:  # blzc --disable sweep: no sweep driver
+        return f"{op['sweep_rows']:,} sweep rows in a build without the sweep"
     if check == "cuda-fuse-pack" and not op["packed_rows_by_width"]["1"]:  # every cell fits a byte at L2's bounds
         zero.append("packed rows at 1 byte")
     return "no " + ", ".join(zero) if zero else None

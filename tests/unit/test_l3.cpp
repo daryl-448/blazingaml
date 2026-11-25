@@ -715,7 +715,8 @@ TEST_CASE("L3 k_max: cycles and chains of K_MAX - 1 to K_MAX + 1 edges on every 
       for (const Profile& p : profiles()) {
         const ProfileOracle o(EdgeStream{c.g.src, c.g.dst, c.g.ts, c.g.n}, p, Quirks{}, c.amount);
         for (const Block b : {c.plant_block, c.plant_block == Block::tcyc ? Block::lcyc : Block::tchain}) {
-          BlockParams bp{c.windows.front(), fuzz_bins(p, *p.find(b), c.bins)};
+          // The profile's own bins, which start at 2: c.bins may hold no bin up to the instance's size.
+          BlockParams bp{c.windows.front(), fuzz_bins(p, *p.find(b), {})};
           std::vector<std::uint32_t> row(bp.bins.size(), 0);
           const std::uint32_t eid[] = {c.plant_eid};
           o.mine(b, bp, eid, row.data());
