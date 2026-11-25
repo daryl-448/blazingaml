@@ -1,4 +1,4 @@
-# Third-party dependencies, each pinned to an exact tag (SPEC §2.2).
+# Third-party dependencies, each pinned to an exact tag, or a commit where there is none (SPEC §2.2).
 # Only the ones a phase needs are made available; the rest are declared here so the pins live
 # in one place.
 include(FetchContent)
@@ -16,6 +16,14 @@ FetchContent_Declare(yaml-cpp
 FetchContent_Declare(xgboost
   GIT_REPOSITORY https://github.com/dmlc/xgboost.git GIT_TAG v3.4.2 GIT_SHALLOW TRUE
   GIT_SUBMODULES_RECURSE TRUE)
+# RapidCheck: L3's properties (SPEC v3 §4.3), test builds only. It has no tags, so the pin is a
+# commit. The library alone, without its submodules (an old Catch, googletest): RC_ENABLE_CATCH
+# would build that old Catch, and its rc::prop takes one seed and case count per process
+# (RC_PARAMS). The properties run in Catch2 v3 test cases through check() in
+# tests/unit/test_l3.cpp, which gives each its own seed and case count.
+FetchContent_Declare(rapidcheck
+  GIT_REPOSITORY https://github.com/emil-e/rapidcheck.git GIT_TAG 2c3c4365aca21ef4e612768fdc95b1ce8b39a651
+  GIT_SUBMODULES "")
 
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 set(CLI11_BUILD_TESTS OFF CACHE INTERNAL "")
@@ -28,10 +36,12 @@ set(YAML_CPP_INSTALL OFF CACHE INTERNAL "")
 set(BUILD_STATIC_LIB ON CACHE INTERNAL "")
 set(USE_OPENMP ON CACHE INTERNAL "")
 set(USE_CUDA OFF CACHE INTERNAL "")  # CPU-only XGBoost (D-13)
+set(RC_ENABLE_TESTS OFF CACHE INTERNAL "")
+set(RC_ENABLE_EXAMPLES OFF CACHE INTERNAL "")
 FetchContent_MakeAvailable(nlohmann_json CLI11 yaml-cpp)
 if(BLZ_WITH_XGBOOST)
   FetchContent_MakeAvailable(xgboost)
 endif()
 if(BUILD_TESTING)
-  FetchContent_MakeAvailable(Catch2)
+  FetchContent_MakeAvailable(Catch2 rapidcheck)
 endif()

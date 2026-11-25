@@ -34,7 +34,8 @@ add_executable(blz_unit_tests
   unit/test_sweep.cpp
   unit/test_reach.cpp
   unit/test_fusion.cpp
-  unit/test_clean.cpp)
+  unit/test_clean.cpp
+  unit/test_l3.cpp)
 if(BLZ_WITH_XGBOOST)
   target_sources(blz_unit_tests PRIVATE unit/test_xgb.cpp)
 endif()
@@ -42,7 +43,7 @@ if(BLZ_ENABLE_CUDA)
   target_sources(blz_unit_tests PRIVATE unit/test_cuda_backend.cpp unit/test_hybrid.cpp unit/test_pack_fuse.cpp
     unit/test_clean_cuda.cpp)
 endif()
-target_link_libraries(blz_unit_tests PRIVATE blz_core blz_codegen Catch2::Catch2WithMain)
+target_link_libraries(blz_unit_tests PRIVATE blz_core blz_codegen Catch2::Catch2WithMain rapidcheck)
 # The vertex-statistics references must round as vstats.cpp and clean_oracle.cpp do (SPEC v2 §8 S2, v3 R8).
 set_source_files_properties(unit/test_vstats.cpp unit/test_clean_oracle.cpp unit/test_clean_vstats.cpp PROPERTIES
   COMPILE_OPTIONS -ffp-contract=off)
@@ -138,6 +139,12 @@ if(PROJECT_BINARY_DIR STREQUAL "${PROJECT_SOURCE_DIR}/build/${BLZ_BUILD_NAME}" A
   add_test(NAME verify_codegen COMMAND ${PROJECT_SOURCE_DIR}/verify/codegen.sh ${BLZ_BUILD_NAME})
   set_tests_properties(verify_codegen PROPERTIES LABELS verify TIMEOUT 7200)
 endif()
+# SPEC v3 §4.3, L3: the RapidCheck properties (unit/test_l3.cpp, tag [l3]) run at fixed seeds with the
+# unit tests (label fast), and here at fresh random seeds with ten times the cases (label verify).
+# Each prints its seed; a failure also prints the line that reruns it:
+#   BLZ_L3_SEED=<seed> BLZ_L3_SCALE=10 build/<preset>/tests/blz_unit_tests "<test name>"
+add_test(NAME l3_random COMMAND blz_unit_tests "[l3]")
+set_tests_properties(l3_random PROPERTIES LABELS verify ENVIRONMENT "BLZ_L3_SEED=random;BLZ_L3_SCALE=10" TIMEOUT 1800)
 
 # SPEC v2 §3.6: the DG-2 ledger's budget, stop rule and entry checks.
 add_test(NAME dg2_ledger_selftest COMMAND python3 ${PROJECT_SOURCE_DIR}/bench/dg2/ledger.py selftest)
