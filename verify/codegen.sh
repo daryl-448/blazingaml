@@ -3,7 +3,7 @@
 # against the oracle on every graph within a bound, every trigger, every window (T1, T2), and the
 # index primitives' contracts (T4), for the builds present. One summary table at the end.
 #
-#   verify/codegen.sh [--smoke] [rel] [rel-cuda] [dev]     (default: every build present)
+#   verify/codegen.sh [--smoke] [rel] [rel-cuda] [dev] [rel-noopt]     (default: every build present)
 #
 # The checks (profiles: clean_all, which enables every clean pattern and vstats, and
 # tests/profiles/l2_legacy_{stream,tsvis}.yaml, every legacy pattern under each visibility):
@@ -16,6 +16,9 @@
 #             bound LIMIT_GPU (a graph alone costs cuda about 6 ms, so not at A; the hybrid, at about
 #             170 ms a graph alone, has no work-limit check here)
 #   dev       ASan + UBSan: cpu with each graph alone (no batch), and T4, at bound DEV
+#   rel-noopt the generated code with every blzc --disable optimisation (the rel-noopt preset,
+#             BLZ_DISABLE_OPTS): cpu and cpu with each graph alone at a work limit of 1, as rel, at
+#             bound A
 # A bound m=M,n=N,t=T is every edge list of 1..M edges over at most N nodes with ts in [0, T), once
 # per node relabelling, at the windows 1..T (blz fuzz-diff --bound). --smoke runs every check at
 # bound SMOKE instead, in seconds. Reports go to build/verify/codegen.json (--report), logs to
@@ -35,12 +38,12 @@ builds=()
 for a in "$@"; do
   case $a in
     --smoke) smoke=1 ;;
-    rel | rel-cuda | dev) builds+=("$a") ;;
-    *) echo "usage: $0 [--smoke] [rel] [rel-cuda] [dev]" >&2; exit 64 ;;
+    rel | rel-cuda | dev | rel-noopt) builds+=("$a") ;;
+    *) echo "usage: $0 [--smoke] [rel] [rel-cuda] [dev] [rel-noopt]" >&2; exit 64 ;;
   esac
 done
 if [ ${#builds[@]} -eq 0 ]; then
-  for b in rel rel-cuda dev; do [ -x "$root/build/$b/blz" ] && builds+=("$b"); done
+  for b in rel rel-cuda dev rel-noopt; do [ -x "$root/build/$b/blz" ] && builds+=("$b"); done
 fi
 if [ $smoke -eq 1 ]; then A=$SMOKE B= T4=$SMOKE DEV=$SMOKE LIMIT_GPU=m=3,n=3,t=3; fi
 
@@ -93,6 +96,13 @@ for build in "${builds[@]}"; do
         run "$build/cpu-alone/$pn/$DEV" "$build" fuzz-diff --bound "$DEV" --batch-edges 1 --profile "$p"
       done
       run "$build/index-contracts/$DEV" "$build" index-contracts --bound "$DEV"
+      ;;
+    rel-noopt)
+      for p in "${profiles[@]}"; do
+        pn=$(basename "$p" .yaml)
+        run "$build/cpu/$pn/$A" "$build" fuzz-diff --bound "$A" --profile "$p"
+        run "$build/cpu-limit1/$pn/$A" "$build" fuzz-diff --bound "$A" --batch-edges 1 --work-limit 1 --profile "$p"
+      done
       ;;
   esac
 done

@@ -133,9 +133,9 @@ endforeach()
 add_test(NAME l2_smoke_index_contracts COMMAND blz index-contracts --bound ${BLZ_L2_SMOKE})
 set_tests_properties(l2_smoke_index_contracts PROPERTIES LABELS fast)
 # The full L2 suite for this build, when it is one of the presets' (build/rel, build/rel-cuda,
-# build/dev): `ctest --test-dir build/<preset> -L verify`.
+# build/dev, build/rel-noopt): `ctest --test-dir build/<preset> -L verify`.
 get_filename_component(BLZ_BUILD_NAME ${PROJECT_BINARY_DIR} NAME)
-if(PROJECT_BINARY_DIR STREQUAL "${PROJECT_SOURCE_DIR}/build/${BLZ_BUILD_NAME}" AND BLZ_BUILD_NAME MATCHES "^(rel|rel-cuda|dev)$")
+if(PROJECT_BINARY_DIR STREQUAL "${PROJECT_SOURCE_DIR}/build/${BLZ_BUILD_NAME}" AND BLZ_BUILD_NAME MATCHES "^(rel|rel-cuda|dev|rel-noopt)$")
   add_test(NAME verify_codegen COMMAND ${PROJECT_SOURCE_DIR}/verify/codegen.sh ${BLZ_BUILD_NAME})
   set_tests_properties(verify_codegen PROPERTIES LABELS verify TIMEOUT 7200)
 endif()

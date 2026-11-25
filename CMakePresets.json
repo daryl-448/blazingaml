@@ -30,12 +30,23 @@
         "CMAKE_CUDA_COMPILER": "/opt/cuda/bin/nvcc",
         "CMAKE_CUDA_ARCHITECTURES": "75;80"
       }
+    },
+    {
+      "name": "rel-noopt",
+      "inherits": "base",
+      "displayName": "Release, CPU, every blzc optimization disabled (L2, verify/codegen.sh)",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BLZ_WITH_XGBOOST": "OFF",
+        "BLZ_DISABLE_OPTS": "find_start,distinct_first,degree_order,count_only,sweep"
+      }
     }
   ],
   "buildPresets": [
     {"name": "dev", "configurePreset": "dev"},
     {"name": "rel", "configurePreset": "rel"},
-    {"name": "rel-cuda", "configurePreset": "rel-cuda"}
+    {"name": "rel-cuda", "configurePreset": "rel-cuda"},
+    {"name": "rel-noopt", "configurePreset": "rel-noopt"}
   ],
   "testPresets": [
     {"name": "dev", "configurePreset": "dev", "filter": {"include": {"label": "fast"}}, "output": {"outputOnFailure": true}},
