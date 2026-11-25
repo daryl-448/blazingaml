@@ -1,0 +1,2304 @@
+{
+ "dev": {
+  "cpu-alone": {
+   "clean_all": {
+    "m=4,n=4,t=3": {
+     "backend": "cpu",
+     "batch_edges": 1,
+     "batches": 29119,
+     "bins": "profile",
+     "bound": {
+      "m_max": 4,
+      "n_max": 4,
+      "t": 3,
+      "windows": "1..3"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 29119,
+      "deg_out": 29119,
+      "fan_in": 29119,
+      "fan_oneway_out": 29119,
+      "fan_out": 29119,
+      "fan_total": 29119,
+      "gs": 29119,
+      "lcyc": 29119,
+      "sg": 29119,
+      "sg_ord": 29119,
+      "tchain": 29119,
+      "tcyc": 29119,
+      "vstats": 87357
+     },
+     "edges": 115258,
+     "first_limited_batches": [],
+     "first_mismatched_batches": [],
+     "git": {
+      "dirty": false,
+      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+     },
+     "graphs": 29119,
+     "k_max": 10,
+     "limited_batches": 0,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0,
+      "vstats": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0,
+      "vstats": 0
+     },
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 257127,
+       "deg_out": 257127,
+       "fan_in": 257127,
+       "fan_oneway_out": 233957,
+       "fan_out": 257127,
+       "fan_total": 257127,
+       "gs": 49115,
+       "lcyc": 31364,
+       "sg": 408,
+       "sg_ord": 164,
+       "tchain": 49115,
+       "tcyc": 30642,
+       "vstats": 300941
+      },
+      "optimised_paths": {
+       "fused_rows": 0,
+       "heavy_kernel_triggers": 0,
+       "hybrid_cpu_triggers": 0,
+       "hybrid_gpu_triggers": 0,
+       "light_kernel_triggers": 0,
+       "packed_rows_by_width": {
+        "1": 0,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 0,
+       "sweep_rows": 2766192
+      },
+      "vstats_sides": 919308
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/configs/profiles/clean_all.yaml",
+      "id": "1687128491d0e283",
+      "name": "clean_all"
+     },
+     "row_checks": 8644350,
+     "schedules": [
+      "dynamic",
+      "sorted"
+     ],
+     "seconds": 14.507600381,
+     "threads": 12,
+     "trigger_checks": 345774,
+     "work_limit": 100000000
+    }
+   },
+   "l2_legacy_stream": {
+    "m=4,n=4,t=3": {
+     "backend": "cpu",
+     "batch_edges": 1,
+     "batches": 29119,
+     "bins": "profile",
+     "bound": {
+      "m_max": 4,
+      "n_max": 4,
+      "t": 3,
+      "windows": "1..3"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 29119,
+      "deg_out": 29119,
+      "fan_in": 29119,
+      "fan_oneway_out": 29119,
+      "fan_out": 29119,
+      "fan_total": 29119,
+      "gs": 29119,
+      "lcyc": 29119,
+      "sg": 29119,
+      "sg_ord": 29119,
+      "tchain": 29119,
+      "tcyc": 29119
+     },
+     "edges": 115258,
+     "first_limited_batches": [],
+     "first_mismatched_batches": [],
+     "git": {
+      "dirty": false,
+      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+     },
+     "graphs": 29119,
+     "k_max": 10,
+     "limited_batches": 0,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 46940,
+       "deg_out": 46940,
+       "fan_in": 31694,
+       "fan_oneway_out": 27624,
+       "fan_out": 31694,
+       "fan_total": 59228,
+       "gs": 38,
+       "lcyc": 13477,
+       "sg": 576,
+       "sg_ord": 44,
+       "tchain": 22075,
+       "tcyc": 12259
+      },
+      "optimised_paths": {
+       "fused_rows": 0,
+       "heavy_kernel_triggers": 0,
+       "hybrid_cpu_triggers": 0,
+       "hybrid_gpu_triggers": 0,
+       "light_kernel_triggers": 0,
+       "packed_rows_by_width": {
+        "1": 0,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 691548,
+       "sweep_rows": 2766192
+      },
+      "vstats_sides": 0
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_stream.yaml",
+      "id": "dfe2e7143c19d0fc",
+      "name": "l2_legacy_stream"
+     },
+     "row_checks": 8990124,
+     "schedules": [
+      "dynamic",
+      "sorted"
+     ],
+     "seconds": 11.144535663,
+     "threads": 12,
+     "trigger_checks": 345774,
+     "work_limit": 100000000
+    }
+   },
+   "l2_legacy_tsvis": {
+    "m=4,n=4,t=3": {
+     "backend": "cpu",
+     "batch_edges": 1,
+     "batches": 29119,
+     "bins": "profile",
+     "bound": {
+      "m_max": 4,
+      "n_max": 4,
+      "t": 3,
+      "windows": "1..3"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 29119,
+      "deg_out": 29119,
+      "fan_in": 29119,
+      "fan_oneway_out": 29119,
+      "fan_out": 29119,
+      "fan_total": 29119,
+      "gs": 29119,
+      "lcyc": 29119,
+      "sg": 29119,
+      "sg_ord": 29119,
+      "tchain": 29119,
+      "tcyc": 29119
+     },
+     "edges": 115258,
+     "first_limited_batches": [],
+     "first_mismatched_batches": [],
+     "git": {
+      "dirty": false,
+      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+     },
+     "graphs": 29119,
+     "k_max": 10,
+     "limited_batches": 0,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 72081,
+       "deg_out": 72081,
+       "fan_in": 49115,
+       "fan_oneway_out": 41227,
+       "fan_out": 49115,
+       "fan_total": 90138,
+       "gs": 46,
+       "lcyc": 13477,
+       "sg": 1200,
+       "sg_ord": 72,
+       "tchain": 22075,
+       "tcyc": 12259
+      },
+      "optimised_paths": {
+       "fused_rows": 0,
+       "heavy_kernel_triggers": 0,
+       "hybrid_cpu_triggers": 0,
+       "hybrid_gpu_triggers": 0,
+       "light_kernel_triggers": 0,
+       "packed_rows_by_width": {
+        "1": 0,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 691548,
+       "sweep_rows": 2766192
+      },
+      "vstats_sides": 0
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_tsvis.yaml",
+      "id": "bb3689659b5ef38d",
+      "name": "l2_legacy_tsvis"
+     },
+     "row_checks": 8990124,
+     "schedules": [
+      "dynamic",
+      "sorted"
+     ],
+     "seconds": 11.311377262,
+     "threads": 12,
+     "trigger_checks": 345774,
+     "work_limit": 100000000
+    }
+   }
+  },
+  "index-contracts": {
+   "m=4,n=4,t=3": {
+    "bound": "m=4,n=4,t=3",
+    "by_contract": {
+     "distinct_first": {
+      "checks": 537588,
+      "violations": 0
+     },
+     "distinct_first_ts": {
+      "checks": 2208540,
+      "violations": 0
+     },
+     "head_range": {
+      "checks": 13531784,
+      "violations": 0
+     },
+     "list": {
+      "checks": 412968,
+      "violations": 0
+     },
+     "pair_exists": {
+      "checks": 275331120,
+      "violations": 0
+     },
+     "pair_latest": {
+      "checks": 275331120,
+      "violations": 0
+     },
+     "prev_same": {
+      "checks": 401934,
+      "violations": 0
+     },
+     "range": {
+      "checks": 75472976,
+      "violations": 0
+     }
+    },
+    "git": {
+     "dirty": false,
+     "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+    },
+    "graphs": 29119,
+    "queries": 643228030,
+    "seconds": 23.146139224,
+    "threads": 12,
+    "violations": 0
+   }
+  }
+ },
+ "rel": {
+  "cpu": {
+   "clean_all": {
+    "m=5,n=5,t=4": {
+     "backend": "cpu",
+     "batch_edges": 16384,
+     "batches": 946,
+     "bins": "profile",
+     "bound": {
+      "m_max": 5,
+      "n_max": 5,
+      "t": 4,
+      "windows": "1..4"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 946,
+      "deg_out": 946,
+      "fan_in": 946,
+      "fan_oneway_out": 946,
+      "fan_out": 946,
+      "fan_total": 946,
+      "gs": 946,
+      "lcyc": 946,
+      "sg": 946,
+      "sg_ord": 946,
+      "tchain": 946,
+      "tcyc": 946,
+      "vstats": 3784
+     },
+     "edges": 15446382,
+     "first_limited_batches": [],
+     "first_mismatched_batches": [],
+     "git": {
+      "dirty": false,
+      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+     },
+     "graphs": 3105502,
+     "k_max": 10,
+     "limited_batches": 0,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0,
+      "vstats": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0,
+      "vstats": 0
+     },
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 48904124,
+       "deg_out": 48904124,
+       "fan_in": 48904124,
+       "fan_oneway_out": 45497765,
+       "fan_out": 48904124,
+       "fan_total": 48904124,
+       "gs": 10786427,
+       "lcyc": 5170280,
+       "sg": 188628,
+       "sg_ord": 72624,
+       "tchain": 10786427,
+       "tcyc": 4963644,
+       "vstats": 55361936
+      },
+      "optimised_paths": {
+       "fused_rows": 0,
+       "heavy_kernel_triggers": 0,
+       "hybrid_cpu_triggers": 0,
+       "hybrid_gpu_triggers": 0,
+       "light_kernel_triggers": 0,
+       "packed_rows_by_width": {
+        "1": 0,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 0,
+       "sweep_rows": 494284224
+      },
+      "vstats_sides": 173678864
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/configs/profiles/clean_all.yaml",
+      "id": "1687128491d0e283",
+      "name": "clean_all"
+     },
+     "row_checks": 1544638200,
+     "schedules": [
+      "dynamic",
+      "sorted"
+     ],
+     "seconds": 23.533583042,
+     "threads": 12,
+     "trigger_checks": 61785528,
+     "work_limit": 100000000
+    },
+    "m=6,n=4,t=3": {
+     "backend": "cpu",
+     "batch_edges": 16384,
+     "batches": 5598,
+     "bins": "profile",
+     "bound": {
+      "m_max": 6,
+      "n_max": 4,
+      "t": 3,
+      "windows": "1..3"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 5598,
+      "deg_out": 5598,
+      "fan_in": 5598,
+      "fan_oneway_out": 5598,
+      "fan_out": 5598,
+      "fan_total": 5598,
+      "gs": 5598,
+      "lcyc": 5598,
+      "sg": 5598,
+      "sg_ord": 5598,
+      "tchain": 5598,
+      "tcyc": 5598,
+      "vstats": 16794
+     },
+     "edges": 91620733,
+     "first_limited_batches": [],
+     "first_mismatched_batches": [],
+     "git": {
+      "dirty": false,
+      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+     },
+     "graphs": 15389899,
+     "k_max": 10,
+     "limited_batches": 0,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0,
+      "vstats": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0,
+      "vstats": 0
+     },
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 206033127,
+       "deg_out": 206033127,
+       "fan_in": 206033127,
+       "fan_oneway_out": 180362340,
+       "fan_out": 206033127,
+       "fan_total": 206033127,
+       "gs": 63665363,
+       "lcyc": 45590072,
+       "sg": 3198204,
+       "sg_ord": 1345051,
+       "tchain": 63665363,
+       "tcyc": 43999252,
+       "vstats": 252083469
+      },
+      "optimised_paths": {
+       "fused_rows": 0,
+       "heavy_kernel_triggers": 0,
+       "hybrid_cpu_triggers": 0,
+       "hybrid_gpu_triggers": 0,
+       "light_kernel_triggers": 0,
+       "packed_rows_by_width": {
+        "1": 0,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 0,
+       "sweep_rows": 2198897592
+      },
+      "vstats_sides": 615215256
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/configs/profiles/clean_all.yaml",
+      "id": "1687128491d0e283",
+      "name": "clean_all"
+     },
+     "row_checks": 6871554975,
+     "schedules": [
+      "dynamic",
+      "sorted"
+     ],
+     "seconds": 111.799172779,
+     "threads": 12,
+     "trigger_checks": 274862199,
+     "work_limit": 100000000
+    }
+   },
+   "l2_legacy_stream": {
+    "m=5,n=5,t=4": {
+     "backend": "cpu",
+     "batch_edges": 16384,
+     "batches": 946,
+     "bins": "profile",
+     "bound": {
+      "m_max": 5,
+      "n_max": 5,
+      "t": 4,
+      "windows": "1..4"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 946,
+      "deg_out": 946,
+      "fan_in": 946,
+      "fan_oneway_out": 946,
+      "fan_out": 946,
+      "fan_total": 946,
+      "gs": 946,
+      "lcyc": 946,
+      "sg": 946,
+      "sg_ord": 946,
+      "tchain": 946,
+      "tcyc": 946
+     },
+     "edges": 15446382,
+     "first_limited_batches": [],
+     "first_mismatched_batches": [],
+     "git": {
+      "dirty": false,
+      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+     },
+     "graphs": 3105502,
+     "k_max": 10,
+     "limited_batches": 0,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 9780487,
+       "deg_out": 9780487,
+       "fan_in": 7408145,
+       "fan_oneway_out": 6493127,
+       "fan_out": 7408145,
+       "fan_total": 13511928,
+       "gs": 33501,
+       "lcyc": 2531810,
+       "sg": 233280,
+       "sg_ord": 23144,
+       "tchain": 5586922,
+       "tcyc": 2226185
+      },
+      "optimised_paths": {
+       "fused_rows": 0,
+       "heavy_kernel_triggers": 0,
+       "hybrid_cpu_triggers": 0,
+       "hybrid_gpu_triggers": 0,
+       "light_kernel_triggers": 0,
+       "packed_rows_by_width": {
+        "1": 0,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 123571056,
+       "sweep_rows": 494284224
+      },
+      "vstats_sides": 0
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_stream.yaml",
+      "id": "dfe2e7143c19d0fc",
+      "name": "l2_legacy_stream"
+     },
+     "row_checks": 1606423728,
+     "schedules": [
+      "dynamic",
+      "sorted"
+     ],
+     "seconds": 13.232315023,
+     "threads": 12,
+     "trigger_checks": 61785528,
+     "work_limit": 100000000
+    },
+    "m=6,n=4,t=3": {
+     "backend": "cpu",
+     "batch_edges": 16384,
+     "batches": 5598,
+     "bins": "profile",
+     "bound": {
+      "m_max": 6,
+      "n_max": 4,
+      "t": 3,
+      "windows": "1..3"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 5598,
+      "deg_out": 5598,
+      "fan_in": 5598,
+      "fan_oneway_out": 5598,
+      "fan_out": 5598,
+      "fan_total": 5598,
+      "gs": 5598,
+      "lcyc": 5598,
+      "sg": 5598,
+      "sg_ord": 5598,
+      "tchain": 5598,
+      "tcyc": 5598
+     },
+     "edges": 91620733,
+     "first_limited_batches": [],
+     "first_mismatched_batches": [],
+     "git": {
+      "dirty": false,
+      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+     },
+     "graphs": 15389899,
+     "k_max": 10,
+     "limited_batches": 0,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 58112557,
+       "deg_out": 58112557,
+       "fan_in": 41313062,
+       "fan_oneway_out": 31803284,
+       "fan_out": 41313062,
+       "fan_total": 72556252,
+       "gs": 255302,
+       "lcyc": 17806273,
+       "sg": 4147344,
+       "sg_ord": 311556,
+       "tchain": 27202483,
+       "tcyc": 14893045
+      },
+      "optimised_paths": {
+       "fused_rows": 0,
+       "heavy_kernel_triggers": 0,
+       "hybrid_cpu_triggers": 0,
+       "hybrid_gpu_triggers": 0,
+       "light_kernel_triggers": 0,
+       "packed_rows_by_width": {
+        "1": 0,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 549724398,
+       "sweep_rows": 2198897592
+      },
+      "vstats_sides": 0
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_stream.yaml",
+      "id": "dfe2e7143c19d0fc",
+      "name": "l2_legacy_stream"
+     },
+     "row_checks": 7146417174,
+     "schedules": [
+      "dynamic",
+      "sorted"
+     ],
+     "seconds": 62.148578067,
+     "threads": 12,
+     "trigger_checks": 274862199,
+     "work_limit": 100000000
+    }
+   },
+   "l2_legacy_tsvis": {
+    "m=5,n=5,t=4": {
+     "backend": "cpu",
+     "batch_edges": 16384,
+     "batches": 946,
+     "bins": "profile",
+     "bound": {
+      "m_max": 5,
+      "n_max": 5,
+      "t": 4,
+      "windows": "1..4"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 946,
+      "deg_out": 946,
+      "fan_in": 946,
+      "fan_oneway_out": 946,
+      "fan_out": 946,
+      "fan_total": 946,
+      "gs": 946,
+      "lcyc": 946,
+      "sg": 946,
+      "sg_ord": 946,
+      "tchain": 946,
+      "tcyc": 946
+     },
+     "edges": 15446382,
+     "first_limited_batches": [],
+     "first_mismatched_batches": [],
+     "git": {
+      "dirty": false,
+      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+     },
+     "graphs": 3105502,
+     "k_max": 10,
+     "limited_batches": 0,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 14132960,
+       "deg_out": 14132960,
+       "fan_in": 10786427,
+       "fan_oneway_out": 9180965,
+       "fan_out": 10786427,
+       "fan_total": 19274584,
+       "gs": 39471,
+       "lcyc": 2531810,
+       "sg": 441744,
+       "sg_ord": 34640,
+       "tchain": 5586922,
+       "tcyc": 2226185
+      },
+      "optimised_paths": {
+       "fused_rows": 0,
+       "heavy_kernel_triggers": 0,
+       "hybrid_cpu_triggers": 0,
+       "hybrid_gpu_triggers": 0,
+       "light_kernel_triggers": 0,
+       "packed_rows_by_width": {
+        "1": 0,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 123571056,
+       "sweep_rows": 494284224
+      },
+      "vstats_sides": 0
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_tsvis.yaml",
+      "id": "bb3689659b5ef38d",
+      "name": "l2_legacy_tsvis"
+     },
+     "row_checks": 1606423728,
+     "schedules": [
+      "dynamic",
+      "sorted"
+     ],
+     "seconds": 14.158016931,
+     "threads": 12,
+     "trigger_checks": 61785528,
+     "work_limit": 100000000
+    },
+    "m=6,n=4,t=3": {
+     "backend": "cpu",
+     "batch_edges": 16384,
+     "batches": 5598,
+     "bins": "profile",
+     "bound": {
+      "m_max": 6,
+      "n_max": 4,
+      "t": 3,
+      "windows": "1..3"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 5598,
+      "deg_out": 5598,
+      "fan_in": 5598,
+      "fan_oneway_out": 5598,
+      "fan_out": 5598,
+      "fan_total": 5598,
+      "gs": 5598,
+      "lcyc": 5598,
+      "sg": 5598,
+      "sg_ord": 5598,
+      "tchain": 5598,
+      "tcyc": 5598
+     },
+     "edges": 91620733,
+     "first_limited_batches": [],
+     "first_mismatched_batches": [],
+     "git": {
+      "dirty": false,
+      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+     },
+     "graphs": 15389899,
+     "k_max": 10,
+     "limited_batches": 0,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 87896648,
+       "deg_out": 87896648,
+       "fan_in": 63665363,
+       "fan_oneway_out": 45344241,
+       "fan_out": 63665363,
+       "fan_total": 107734682,
+       "gs": 305328,
+       "lcyc": 17806273,
+       "sg": 8826504,
+       "sg_ord": 513100,
+       "tchain": 27202483,
+       "tcyc": 14893045
+      },
+      "optimised_paths": {
+       "fused_rows": 0,
+       "heavy_kernel_triggers": 0,
+       "hybrid_cpu_triggers": 0,
+       "hybrid_gpu_triggers": 0,
+       "light_kernel_triggers": 0,
+       "packed_rows_by_width": {
+        "1": 0,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 549724398,
+       "sweep_rows": 2198897592
+      },
+      "vstats_sides": 0
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_tsvis.yaml",
+      "id": "bb3689659b5ef38d",
+      "name": "l2_legacy_tsvis"
+     },
+     "row_checks": 7146417174,
+     "schedules": [
+      "dynamic",
+      "sorted"
+     ],
+     "seconds": 67.021291138,
+     "threads": 12,
+     "trigger_checks": 274862199,
+     "work_limit": 100000000
+    }
+   }
+  },
+  "index-contracts": {
+   "m=5,n=5,t=4": {
+    "bound": "m=5,n=5,t=4",
+    "by_contract": {
+     "distinct_first": {
+      "checks": 76093842,
+      "violations": 0
+     },
+     "distinct_first_ts": {
+      "checks": 354034024,
+      "violations": 0
+     },
+     "head_range": {
+      "checks": 2417615544,
+      "violations": 0
+     },
+     "list": {
+      "checks": 54172004,
+      "violations": 0
+     },
+     "pair_exists": {
+      "checks": 70310744936,
+      "violations": 0
+     },
+     "pair_latest": {
+      "checks": 70310744936,
+      "violations": 0
+     },
+     "prev_same": {
+      "checks": 55344826,
+      "violations": 0
+     },
+     "range": {
+      "checks": 15708566408,
+      "violations": 0
+     }
+    },
+    "git": {
+     "dirty": false,
+     "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+    },
+    "graphs": 3105502,
+    "queries": 159287316520,
+    "seconds": 135.276539176,
+    "threads": 12,
+    "violations": 0
+   }
+  }
+ },
+ "rel-cuda": {
+  "cuda": {
+   "clean_all": {
+    "m=5,n=5,t=4": {
+     "backend": "cuda",
+     "batch_edges": 16384,
+     "batches": 946,
+     "bins": "profile",
+     "bound": {
+      "m_max": 5,
+      "n_max": 5,
+      "t": 4,
+      "windows": "1..4"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 946,
+      "deg_out": 946,
+      "fan_in": 946,
+      "fan_oneway_out": 946,
+      "fan_out": 946,
+      "fan_total": 946,
+      "gs": 946,
+      "lcyc": 946,
+      "sg": 946,
+      "sg_ord": 946,
+      "tchain": 946,
+      "tcyc": 946,
+      "vstats": 3784
+     },
+     "cuda": {
+      "build": "nvcc 13.4.92, sm 75,80, -O3 -DNDEBUG",
+      "compute_capability": "7.5",
+      "device": "NVIDIA GeForce GTX 1650 SUPER",
+      "driver_version": 13040,
+      "memory_mb": {
+       "free": 2971,
+       "total": 3728
+      },
+      "runtime_version": 13040,
+      "sm_count": 20
+     },
+     "edges": 15446382,
+     "first_limited_batches": [],
+     "first_mismatched_batches": [],
+     "fuse": false,
+     "git": {
+      "dirty": false,
+      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+     },
+     "graphs": 3105502,
+     "heavy_thresholds": [
+      "0",
+      "4",
+      "all"
+     ],
+     "k_max": 10,
+     "limited_batches": 0,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0,
+      "vstats": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0,
+      "vstats": 0
+     },
+     "pack": false,
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 48904124,
+       "deg_out": 48904124,
+       "fan_in": 48904124,
+       "fan_oneway_out": 45497765,
+       "fan_out": 48904124,
+       "fan_total": 48904124,
+       "gs": 10786427,
+       "lcyc": 5170280,
+       "sg": 188628,
+       "sg_ord": 72624,
+       "tchain": 10786427,
+       "tcyc": 4963644,
+       "vstats": 55361936
+      },
+      "optimised_paths": {
+       "fused_rows": 0,
+       "heavy_kernel_triggers": 804368868,
+       "hybrid_cpu_triggers": 0,
+       "hybrid_gpu_triggers": 0,
+       "light_kernel_triggers": 1605266724,
+       "packed_rows_by_width": {
+        "1": 0,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 0,
+       "sweep_rows": 0
+      },
+      "vstats_sides": 173678864
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/configs/profiles/clean_all.yaml",
+      "id": "1687128491d0e283",
+      "name": "clean_all"
+     },
+     "row_checks": 2286064536,
+     "seconds": 64.261790519,
+     "threads": 12,
+     "trigger_checks": 61785528,
+     "work_limit": 100000000
+    }
+   },
+   "l2_legacy_stream": {
+    "m=5,n=5,t=4": {
+     "backend": "cuda",
+     "batch_edges": 16384,
+     "batches": 946,
+     "bins": "profile",
+     "bound": {
+      "m_max": 5,
+      "n_max": 5,
+      "t": 4,
+      "windows": "1..4"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 946,
+      "deg_out": 946,
+      "fan_in": 946,
+      "fan_oneway_out": 946,
+      "fan_out": 946,
+      "fan_total": 946,
+      "gs": 946,
+      "lcyc": 946,
+      "sg": 946,
+      "sg_ord": 946,
+      "tchain": 946,
+      "tcyc": 946
+     },
+     "cuda": {
+      "build": "nvcc 13.4.92, sm 75,80, -O3 -DNDEBUG",
+      "compute_capability": "7.5",
+      "device": "NVIDIA GeForce GTX 1650 SUPER",
+      "driver_version": 13040,
+      "memory_mb": {
+       "free": 2970,
+       "total": 3728
+      },
+      "runtime_version": 13040,
+      "sm_count": 20
+     },
+     "edges": 15446382,
+     "first_limited_batches": [],
+     "first_mismatched_batches": [],
+     "fuse": false,
+     "git": {
+      "dirty": false,
+      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+     },
+     "graphs": 3105502,
+     "heavy_thresholds": [
+      "0",
+      "4",
+      "all"
+     ],
+     "k_max": 10,
+     "limited_batches": 0,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "pack": false,
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 9780487,
+       "deg_out": 9780487,
+       "fan_in": 7408145,
+       "fan_oneway_out": 6493127,
+       "fan_out": 7408145,
+       "fan_total": 13511928,
+       "gs": 33501,
+       "lcyc": 2531810,
+       "sg": 233280,
+       "sg_ord": 23144,
+       "tchain": 5586922,
+       "tcyc": 2226185
+      },
+      "optimised_paths": {
+       "fused_rows": 0,
+       "heavy_kernel_triggers": 804901242,
+       "hybrid_cpu_triggers": 0,
+       "hybrid_gpu_triggers": 0,
+       "light_kernel_triggers": 1604734350,
+       "packed_rows_by_width": {
+        "1": 0,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 0,
+       "sweep_rows": 0
+      },
+      "vstats_sides": 0
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_stream.yaml",
+      "id": "dfe2e7143c19d0fc",
+      "name": "l2_legacy_stream"
+     },
+     "row_checks": 2224279008,
+     "seconds": 43.983634822,
+     "threads": 12,
+     "trigger_checks": 61785528,
+     "work_limit": 100000000
+    }
+   },
+   "l2_legacy_tsvis": {
+    "m=5,n=5,t=4": {
+     "backend": "cuda",
+     "batch_edges": 16384,
+     "batches": 946,
+     "bins": "profile",
+     "bound": {
+      "m_max": 5,
+      "n_max": 5,
+      "t": 4,
+      "windows": "1..4"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 946,
+      "deg_out": 946,
+      "fan_in": 946,
+      "fan_oneway_out": 946,
+      "fan_out": 946,
+      "fan_total": 946,
+      "gs": 946,
+      "lcyc": 946,
+      "sg": 946,
+      "sg_ord": 946,
+      "tchain": 946,
+      "tcyc": 946
+     },
+     "cuda": {
+      "build": "nvcc 13.4.92, sm 75,80, -O3 -DNDEBUG",
+      "compute_capability": "7.5",
+      "device": "NVIDIA GeForce GTX 1650 SUPER",
+      "driver_version": 13040,
+      "memory_mb": {
+       "free": 2970,
+       "total": 3728
+      },
+      "runtime_version": 13040,
+      "sm_count": 20
+     },
+     "edges": 15446382,
+     "first_limited_batches": [],
+     "first_mismatched_batches": [],
+     "fuse": false,
+     "git": {
+      "dirty": false,
+      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+     },
+     "graphs": 3105502,
+     "heavy_thresholds": [
+      "0",
+      "4",
+      "all"
+     ],
+     "k_max": 10,
+     "limited_batches": 0,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "pack": false,
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 14132960,
+       "deg_out": 14132960,
+       "fan_in": 10786427,
+       "fan_oneway_out": 9180965,
+       "fan_out": 10786427,
+       "fan_total": 19274584,
+       "gs": 39471,
+       "lcyc": 2531810,
+       "sg": 441744,
+       "sg_ord": 34640,
+       "tchain": 5586922,
+       "tcyc": 2226185
+      },
+      "optimised_paths": {
+       "fused_rows": 0,
+       "heavy_kernel_triggers": 806552326,
+       "hybrid_cpu_triggers": 0,
+       "hybrid_gpu_triggers": 0,
+       "light_kernel_triggers": 1603083266,
+       "packed_rows_by_width": {
+        "1": 0,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 0,
+       "sweep_rows": 0
+      },
+      "vstats_sides": 0
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_tsvis.yaml",
+      "id": "bb3689659b5ef38d",
+      "name": "l2_legacy_tsvis"
+     },
+     "row_checks": 2224279008,
+     "seconds": 44.363650044,
+     "threads": 12,
+     "trigger_checks": 61785528,
+     "work_limit": 100000000
+    }
+   }
+  },
+  "cuda-fuse-pack": {
+   "clean_all": {
+    "m=5,n=5,t=4": {
+     "backend": "cuda",
+     "batch_edges": 16384,
+     "batches": 946,
+     "bins": "profile",
+     "bound": {
+      "m_max": 5,
+      "n_max": 5,
+      "t": 4,
+      "windows": "1..4"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 946,
+      "deg_out": 946,
+      "fan_in": 946,
+      "fan_oneway_out": 946,
+      "fan_out": 946,
+      "fan_total": 946,
+      "gs": 946,
+      "lcyc": 946,
+      "sg": 946,
+      "sg_ord": 946,
+      "tchain": 946,
+      "tcyc": 946,
+      "vstats": 3784
+     },
+     "cuda": {
+      "build": "nvcc 13.4.92, sm 75,80, -O3 -DNDEBUG",
+      "compute_capability": "7.5",
+      "device": "NVIDIA GeForce GTX 1650 SUPER",
+      "driver_version": 13040,
+      "memory_mb": {
+       "free": 2971,
+       "total": 3728
+      },
+      "runtime_version": 13040,
+      "sm_count": 20
+     },
+     "edges": 15446382,
+     "first_limited_batches": [],
+     "first_mismatched_batches": [],
+     "fuse": true,
+     "git": {
+      "dirty": false,
+      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+     },
+     "graphs": 3105502,
+     "heavy_thresholds": [
+      "0",
+      "4",
+      "all"
+     ],
+     "k_max": 10,
+     "limited_batches": 0,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0,
+      "vstats": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0,
+      "vstats": 0
+     },
+     "pack": true,
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 48904124,
+       "deg_out": 48904124,
+       "fan_in": 48904124,
+       "fan_oneway_out": 45497765,
+       "fan_out": 48904124,
+       "fan_total": 48904124,
+       "gs": 10786427,
+       "lcyc": 5170280,
+       "sg": 188628,
+       "sg_ord": 72624,
+       "tchain": 10786427,
+       "tcyc": 4963644,
+       "vstats": 55361936
+      },
+      "optimised_paths": {
+       "fused_rows": 741426336,
+       "heavy_kernel_triggers": 680431394,
+       "hybrid_cpu_triggers": 0,
+       "hybrid_gpu_triggers": 0,
+       "light_kernel_triggers": 1358491030,
+       "packed_rows_by_width": {
+        "1": 2224279008,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 0,
+       "sweep_rows": 0
+      },
+      "vstats_sides": 173678864
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/configs/profiles/clean_all.yaml",
+      "id": "1687128491d0e283",
+      "name": "clean_all"
+     },
+     "row_checks": 2286064536,
+     "seconds": 63.958008557,
+     "threads": 12,
+     "trigger_checks": 61785528,
+     "work_limit": 100000000
+    }
+   },
+   "l2_legacy_stream": {
+    "m=5,n=5,t=4": {
+     "backend": "cuda",
+     "batch_edges": 16384,
+     "batches": 946,
+     "bins": "profile",
+     "bound": {
+      "m_max": 5,
+      "n_max": 5,
+      "t": 4,
+      "windows": "1..4"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 946,
+      "deg_out": 946,
+      "fan_in": 946,
+      "fan_oneway_out": 946,
+      "fan_out": 946,
+      "fan_total": 946,
+      "gs": 946,
+      "lcyc": 946,
+      "sg": 946,
+      "sg_ord": 946,
+      "tchain": 946,
+      "tcyc": 946
+     },
+     "cuda": {
+      "build": "nvcc 13.4.92, sm 75,80, -O3 -DNDEBUG",
+      "compute_capability": "7.5",
+      "device": "NVIDIA GeForce GTX 1650 SUPER",
+      "driver_version": 13040,
+      "memory_mb": {
+       "free": 2970,
+       "total": 3728
+      },
+      "runtime_version": 13040,
+      "sm_count": 20
+     },
+     "edges": 15446382,
+     "first_limited_batches": [],
+     "first_mismatched_batches": [],
+     "fuse": true,
+     "git": {
+      "dirty": false,
+      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+     },
+     "graphs": 3105502,
+     "heavy_thresholds": [
+      "0",
+      "4",
+      "all"
+     ],
+     "k_max": 10,
+     "limited_batches": 0,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "pack": true,
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 9780487,
+       "deg_out": 9780487,
+       "fan_in": 7408145,
+       "fan_oneway_out": 6493127,
+       "fan_out": 7408145,
+       "fan_total": 13511928,
+       "gs": 33501,
+       "lcyc": 2531810,
+       "sg": 233280,
+       "sg_ord": 23144,
+       "tchain": 5586922,
+       "tcyc": 2226185
+      },
+      "optimised_paths": {
+       "fused_rows": 741426336,
+       "heavy_kernel_triggers": 680843798,
+       "hybrid_cpu_triggers": 0,
+       "hybrid_gpu_triggers": 0,
+       "light_kernel_triggers": 1358078626,
+       "packed_rows_by_width": {
+        "1": 2224279008,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 0,
+       "sweep_rows": 0
+      },
+      "vstats_sides": 0
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_stream.yaml",
+      "id": "dfe2e7143c19d0fc",
+      "name": "l2_legacy_stream"
+     },
+     "row_checks": 2224279008,
+     "seconds": 40.644461627,
+     "threads": 12,
+     "trigger_checks": 61785528,
+     "work_limit": 100000000
+    }
+   },
+   "l2_legacy_tsvis": {
+    "m=5,n=5,t=4": {
+     "backend": "cuda",
+     "batch_edges": 16384,
+     "batches": 946,
+     "bins": "profile",
+     "bound": {
+      "m_max": 5,
+      "n_max": 5,
+      "t": 4,
+      "windows": "1..4"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 946,
+      "deg_out": 946,
+      "fan_in": 946,
+      "fan_oneway_out": 946,
+      "fan_out": 946,
+      "fan_total": 946,
+      "gs": 946,
+      "lcyc": 946,
+      "sg": 946,
+      "sg_ord": 946,
+      "tchain": 946,
+      "tcyc": 946
+     },
+     "cuda": {
+      "build": "nvcc 13.4.92, sm 75,80, -O3 -DNDEBUG",
+      "compute_capability": "7.5",
+      "device": "NVIDIA GeForce GTX 1650 SUPER",
+      "driver_version": 13040,
+      "memory_mb": {
+       "free": 2970,
+       "total": 3728
+      },
+      "runtime_version": 13040,
+      "sm_count": 20
+     },
+     "edges": 15446382,
+     "first_limited_batches": [],
+     "first_mismatched_batches": [],
+     "fuse": true,
+     "git": {
+      "dirty": false,
+      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+     },
+     "graphs": 3105502,
+     "heavy_thresholds": [
+      "0",
+      "4",
+      "all"
+     ],
+     "k_max": 10,
+     "limited_batches": 0,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "pack": true,
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 14132960,
+       "deg_out": 14132960,
+       "fan_in": 10786427,
+       "fan_oneway_out": 9180965,
+       "fan_out": 10786427,
+       "fan_total": 19274584,
+       "gs": 39471,
+       "lcyc": 2531810,
+       "sg": 441744,
+       "sg_ord": 34640,
+       "tchain": 5586922,
+       "tcyc": 2226185
+      },
+      "optimised_paths": {
+       "fused_rows": 741426336,
+       "heavy_kernel_triggers": 682003834,
+       "hybrid_cpu_triggers": 0,
+       "hybrid_gpu_triggers": 0,
+       "light_kernel_triggers": 1356918590,
+       "packed_rows_by_width": {
+        "1": 2224279008,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 0,
+       "sweep_rows": 0
+      },
+      "vstats_sides": 0
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_tsvis.yaml",
+      "id": "bb3689659b5ef38d",
+      "name": "l2_legacy_tsvis"
+     },
+     "row_checks": 2224279008,
+     "seconds": 41.195956653,
+     "threads": 12,
+     "trigger_checks": 61785528,
+     "work_limit": 100000000
+    }
+   }
+  },
+  "hybrid": {
+   "clean_all": {
+    "m=5,n=5,t=4": {
+     "backend": "hybrid",
+     "batch_edges": 16384,
+     "batches": 946,
+     "bins": "profile",
+     "bound": {
+      "m_max": 5,
+      "n_max": 5,
+      "t": 4,
+      "windows": "1..4"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 946,
+      "deg_out": 946,
+      "fan_in": 946,
+      "fan_oneway_out": 946,
+      "fan_out": 946,
+      "fan_total": 946,
+      "gs": 946,
+      "lcyc": 946,
+      "sg": 946,
+      "sg_ord": 946,
+      "tchain": 946,
+      "tcyc": 946,
+      "vstats": 3784
+     },
+     "cpu_thresholds": [
+      "0",
+      "4",
+      "all"
+     ],
+     "cuda": {
+      "build": "nvcc 13.4.92, sm 75,80, -O3 -DNDEBUG",
+      "compute_capability": "7.5",
+      "device": "NVIDIA GeForce GTX 1650 SUPER",
+      "driver_version": 13040,
+      "memory_mb": {
+       "free": 2959,
+       "total": 3728
+      },
+      "runtime_version": 13040,
+      "sm_count": 20
+     },
+     "edges": 15446382,
+     "first_limited_batches": [],
+     "first_mismatched_batches": [],
+     "git": {
+      "dirty": false,
+      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+     },
+     "graphs": 3105502,
+     "heavy_thresholds": [
+      "0",
+      "4",
+      "all"
+     ],
+     "hybrid_cpu": {
+      "reach_prune": true,
+      "schedule": "sorted"
+     },
+     "k_max": 10,
+     "limited_batches": 0,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0,
+      "vstats": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0,
+      "vstats": 0
+     },
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 48904124,
+       "deg_out": 48904124,
+       "fan_in": 48904124,
+       "fan_oneway_out": 45497765,
+       "fan_out": 48904124,
+       "fan_total": 48904124,
+       "gs": 10786427,
+       "lcyc": 5170280,
+       "sg": 188628,
+       "sg_ord": 72624,
+       "tchain": 10786427,
+       "tcyc": 4963644,
+       "vstats": 55361936
+      },
+      "optimised_paths": {
+       "fused_rows": 0,
+       "heavy_kernel_triggers": 1606431853,
+       "hybrid_cpu_triggers": 2227725270,
+       "hybrid_gpu_triggers": 4445111754,
+       "light_kernel_triggers": 3209368319,
+       "packed_rows_by_width": {
+        "1": 0,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 0,
+       "sweep_rows": 0
+      },
+      "vstats_sides": 173678864
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/configs/profiles/clean_all.yaml",
+      "id": "1687128491d0e283",
+      "name": "clean_all"
+     },
+     "row_checks": 6734622552,
+     "seconds": 372.242993941,
+     "threads": 12,
+     "trigger_checks": 61785528,
+     "work_limit": 100000000
+    }
+   },
+   "l2_legacy_stream": {
+    "m=5,n=5,t=4": {
+     "backend": "hybrid",
+     "batch_edges": 16384,
+     "batches": 946,
+     "bins": "profile",
+     "bound": {
+      "m_max": 5,
+      "n_max": 5,
+      "t": 4,
+      "windows": "1..4"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 946,
+      "deg_out": 946,
+      "fan_in": 946,
+      "fan_oneway_out": 946,
+      "fan_out": 946,
+      "fan_total": 946,
+      "gs": 946,
+      "lcyc": 946,
+      "sg": 946,
+      "sg_ord": 946,
+      "tchain": 946,
+      "tcyc": 946
+     },
+     "cpu_thresholds": [
+      "0",
+      "4",
+      "all"
+     ],
+     "cuda": {
+      "build": "nvcc 13.4.92, sm 75,80, -O3 -DNDEBUG",
+      "compute_capability": "7.5",
+      "device": "NVIDIA GeForce GTX 1650 SUPER",
+      "driver_version": 13040,
+      "memory_mb": {
+       "free": 2970,
+       "total": 3728
+      },
+      "runtime_version": 13040,
+      "sm_count": 20
+     },
+     "edges": 15446382,
+     "first_limited_batches": [],
+     "first_mismatched_batches": [],
+     "git": {
+      "dirty": false,
+      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+     },
+     "graphs": 3105502,
+     "heavy_thresholds": [
+      "0",
+      "4",
+      "all"
+     ],
+     "hybrid_cpu": {
+      "reach_prune": true,
+      "schedule": "sorted"
+     },
+     "k_max": 10,
+     "limited_batches": 0,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 9780487,
+       "deg_out": 9780487,
+       "fan_in": 7408145,
+       "fan_oneway_out": 6493127,
+       "fan_out": 7408145,
+       "fan_total": 13511928,
+       "gs": 33501,
+       "lcyc": 2531810,
+       "sg": 233280,
+       "sg_ord": 23144,
+       "tchain": 5586922,
+       "tcyc": 2226185
+      },
+      "optimised_paths": {
+       "fused_rows": 0,
+       "heavy_kernel_triggers": 1606517706,
+       "hybrid_cpu_triggers": 2229051816,
+       "hybrid_gpu_triggers": 4443785208,
+       "light_kernel_triggers": 3207685344,
+       "packed_rows_by_width": {
+        "1": 0,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 185378400,
+       "sweep_rows": 0
+      },
+      "vstats_sides": 0
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_stream.yaml",
+      "id": "dfe2e7143c19d0fc",
+      "name": "l2_legacy_stream"
+     },
+     "row_checks": 6672837024,
+     "seconds": 373.247481824,
+     "threads": 12,
+     "trigger_checks": 61785528,
+     "work_limit": 100000000
+    }
+   },
+   "l2_legacy_tsvis": {
+    "m=5,n=5,t=4": {
+     "backend": "hybrid",
+     "batch_edges": 16384,
+     "batches": 946,
+     "bins": "profile",
+     "bound": {
+      "m_max": 5,
+      "n_max": 5,
+      "t": 4,
+      "windows": "1..4"
+     },
+     "completed_batches_by_block": {
+      "deg_in": 946,
+      "deg_out": 946,
+      "fan_in": 946,
+      "fan_oneway_out": 946,
+      "fan_out": 946,
+      "fan_total": 946,
+      "gs": 946,
+      "lcyc": 946,
+      "sg": 946,
+      "sg_ord": 946,
+      "tchain": 946,
+      "tcyc": 946
+     },
+     "cpu_thresholds": [
+      "0",
+      "4",
+      "all"
+     ],
+     "cuda": {
+      "build": "nvcc 13.4.92, sm 75,80, -O3 -DNDEBUG",
+      "compute_capability": "7.5",
+      "device": "NVIDIA GeForce GTX 1650 SUPER",
+      "driver_version": 13040,
+      "memory_mb": {
+       "free": 2970,
+       "total": 3728
+      },
+      "runtime_version": 13040,
+      "sm_count": 20
+     },
+     "edges": 15446382,
+     "first_limited_batches": [],
+     "first_mismatched_batches": [],
+     "git": {
+      "dirty": false,
+      "sha": "da552bd4b62c2fb37a42031a2052b4fb980fc58a"
+     },
+     "graphs": 3105502,
+     "heavy_thresholds": [
+      "0",
+      "4",
+      "all"
+     ],
+     "hybrid_cpu": {
+      "reach_prune": true,
+      "schedule": "sorted"
+     },
+     "k_max": 10,
+     "limited_batches": 0,
+     "limited_batches_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "mismatched_batches": 0,
+     "mismatched_rows_by_block": {
+      "deg_in": 0,
+      "deg_out": 0,
+      "fan_in": 0,
+      "fan_oneway_out": 0,
+      "fan_out": 0,
+      "fan_total": 0,
+      "gs": 0,
+      "lcyc": 0,
+      "sg": 0,
+      "sg_ord": 0,
+      "tchain": 0,
+      "tcyc": 0
+     },
+     "path_hits": {
+      "nonzero_rows_by_block": {
+       "deg_in": 14132960,
+       "deg_out": 14132960,
+       "fan_in": 10786427,
+       "fan_oneway_out": 9180965,
+       "fan_out": 10786427,
+       "fan_total": 19274584,
+       "gs": 39471,
+       "lcyc": 2531810,
+       "sg": 441744,
+       "sg_ord": 34640,
+       "tchain": 5586922,
+       "tcyc": 2226185
+      },
+      "optimised_paths": {
+       "fused_rows": 0,
+       "heavy_kernel_triggers": 1606602230,
+       "hybrid_cpu_triggers": 2233738158,
+       "hybrid_gpu_triggers": 4439098866,
+       "light_kernel_triggers": 3202647568,
+       "packed_rows_by_width": {
+        "1": 0,
+        "2": 0,
+        "4": 0
+       },
+       "reach_pruned_rows": 185378400,
+       "sweep_rows": 0
+      },
+      "vstats_sides": 0
+     },
+     "profile": {
+      "file": "/home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_tsvis.yaml",
+      "id": "bb3689659b5ef38d",
+      "name": "l2_legacy_tsvis"
+     },
+     "row_checks": 6672837024,
+     "seconds": 379.410978171,
+     "threads": 12,
+     "trigger_checks": 61785528,
+     "work_limit": 100000000
+    }
+   }
+  }
+ }
+}

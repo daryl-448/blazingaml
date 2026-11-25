@@ -1,0 +1,113 @@
+# verify/codegen.sh rel rel-cuda dev at da552bd, local (Ryzen 5 3600, GTX 1650 SUPER), 12 threads
+# load at start (the 1-minute average is my own build just before; no foreign process above 5% CPU):
+# Wed Nov 25 17:09:34 +08 2026
+#  17:09:34 up 1 day,  5:47,  1 user,  load average: 16.46, 17.16, 17.03
+# Mem:              15           6           3           2           7           9
+# 1566080  4.1    03:36:34 t3code
+#    2992  2.7  1-05:45:33 Hyprland
+# 1566104  2.5    03:36:34 t3code
+# 1566047  1.7    03:36:34 t3code
+#    3137  1.6  1-05:45:32 gjs
+== rel/cpu/clean_all/m=5,n=5,t=4: blz fuzz-diff --bound m=5,n=5,t=4 --profile /home/daryl/Projects/blazingaml/configs/profiles/clean_all.yaml
+fuzz-diff cpu vs oracle, bound m=5,n=5,t=4 (windows 1..4), clean_all: 3105502 graphs in 946 batches of up to 16384 edges, 15446382 edges, 61785528 trigger checks, 1544638200 row checks, 0 mismatching rows (23.5 s, 12 threads)
+  nonzero rows (the reference's, over every window): fan_in=48904124 fan_out=48904124 deg_in=48904124 deg_out=48904124 sg=188628 sg_ord=72624 tcyc=4963644 lcyc=5170280 tchain=10786427 gs=10786427 fan_oneway_out=45497765 fan_total=48904124 vstats=55361936 (173678864 sides computed)
+  optimised paths: sweep rows 494284224, reach-pruned rows 0
+== rel/cpu/clean_all/m=6,n=4,t=3: blz fuzz-diff --bound m=6,n=4,t=3 --profile /home/daryl/Projects/blazingaml/configs/profiles/clean_all.yaml
+fuzz-diff cpu vs oracle, bound m=6,n=4,t=3 (windows 1..3), clean_all: 15389899 graphs in 5598 batches of up to 16384 edges, 91620733 edges, 274862199 trigger checks, 6871554975 row checks, 0 mismatching rows (111.8 s, 12 threads)
+  nonzero rows (the reference's, over every window): fan_in=206033127 fan_out=206033127 deg_in=206033127 deg_out=206033127 sg=3198204 sg_ord=1345051 tcyc=43999252 lcyc=45590072 tchain=63665363 gs=63665363 fan_oneway_out=180362340 fan_total=206033127 vstats=252083469 (615215256 sides computed)
+  optimised paths: sweep rows 2198897592, reach-pruned rows 0
+== rel/cpu/l2_legacy_stream/m=5,n=5,t=4: blz fuzz-diff --bound m=5,n=5,t=4 --profile /home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_stream.yaml
+fuzz-diff cpu vs oracle, bound m=5,n=5,t=4 (windows 1..4), l2_legacy_stream: 3105502 graphs in 946 batches of up to 16384 edges, 15446382 edges, 61785528 trigger checks, 1606423728 row checks, 0 mismatching rows (13.2 s, 12 threads)
+  nonzero rows (the reference's, over every window): fan_in=7408145 fan_out=7408145 deg_in=9780487 deg_out=9780487 sg=233280 sg_ord=23144 tcyc=2226185 lcyc=2531810 tchain=5586922 gs=33501 fan_oneway_out=6493127 fan_total=13511928
+  optimised paths: sweep rows 494284224, reach-pruned rows 123571056
+== rel/cpu/l2_legacy_stream/m=6,n=4,t=3: blz fuzz-diff --bound m=6,n=4,t=3 --profile /home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_stream.yaml
+fuzz-diff cpu vs oracle, bound m=6,n=4,t=3 (windows 1..3), l2_legacy_stream: 15389899 graphs in 5598 batches of up to 16384 edges, 91620733 edges, 274862199 trigger checks, 7146417174 row checks, 0 mismatching rows (62.1 s, 12 threads)
+  nonzero rows (the reference's, over every window): fan_in=41313062 fan_out=41313062 deg_in=58112557 deg_out=58112557 sg=4147344 sg_ord=311556 tcyc=14893045 lcyc=17806273 tchain=27202483 gs=255302 fan_oneway_out=31803284 fan_total=72556252
+  optimised paths: sweep rows 2198897592, reach-pruned rows 549724398
+== rel/cpu/l2_legacy_tsvis/m=5,n=5,t=4: blz fuzz-diff --bound m=5,n=5,t=4 --profile /home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_tsvis.yaml
+fuzz-diff cpu vs oracle, bound m=5,n=5,t=4 (windows 1..4), l2_legacy_tsvis: 3105502 graphs in 946 batches of up to 16384 edges, 15446382 edges, 61785528 trigger checks, 1606423728 row checks, 0 mismatching rows (14.2 s, 12 threads)
+  nonzero rows (the reference's, over every window): fan_in=10786427 fan_out=10786427 deg_in=14132960 deg_out=14132960 sg=441744 sg_ord=34640 tcyc=2226185 lcyc=2531810 tchain=5586922 gs=39471 fan_oneway_out=9180965 fan_total=19274584
+  optimised paths: sweep rows 494284224, reach-pruned rows 123571056
+== rel/cpu/l2_legacy_tsvis/m=6,n=4,t=3: blz fuzz-diff --bound m=6,n=4,t=3 --profile /home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_tsvis.yaml
+fuzz-diff cpu vs oracle, bound m=6,n=4,t=3 (windows 1..3), l2_legacy_tsvis: 15389899 graphs in 5598 batches of up to 16384 edges, 91620733 edges, 274862199 trigger checks, 7146417174 row checks, 0 mismatching rows (67.0 s, 12 threads)
+  nonzero rows (the reference's, over every window): fan_in=63665363 fan_out=63665363 deg_in=87896648 deg_out=87896648 sg=8826504 sg_ord=513100 tcyc=14893045 lcyc=17806273 tchain=27202483 gs=305328 fan_oneway_out=45344241 fan_total=107734682
+  optimised paths: sweep rows 2198897592, reach-pruned rows 549724398
+== rel/index-contracts/m=5,n=5,t=4: blz index-contracts --bound m=5,n=5,t=4
+index-contracts, bound m=5,n=5,t=4, self-loops kept and dropped, out- and in-lists: 3105502 graphs, 159287316520 queries, 0 violations (135.3 s, 12 threads)
+  queries: list 54172004, prev_same 55344826, range 15708566408, head_range 2417615544, distinct_first 76093842, distinct_first_ts 354034024, pair_exists 70310744936, pair_latest 70310744936
+== rel-cuda/cuda/clean_all/m=5,n=5,t=4: blz fuzz-diff --backend cuda --bound m=5,n=5,t=4 --profile /home/daryl/Projects/blazingaml/configs/profiles/clean_all.yaml
+fuzz-diff cuda vs oracle, bound m=5,n=5,t=4 (windows 1..4), clean_all: 3105502 graphs in 946 batches of up to 16384 edges, 15446382 edges, 61785528 trigger checks, 2286064536 row checks, 0 mismatching rows (64.3 s, 12 threads)
+  nonzero rows (the reference's, over every window): fan_in=48904124 fan_out=48904124 deg_in=48904124 deg_out=48904124 sg=188628 sg_ord=72624 tcyc=4963644 lcyc=5170280 tchain=10786427 gs=10786427 fan_oneway_out=45497765 fan_total=48904124 vstats=55361936 (173678864 sides computed)
+  optimised paths: light-kernel triggers 1605266724, heavy-kernel triggers 804368868
+== rel-cuda/cuda-fuse-pack/clean_all/m=5,n=5,t=4: blz fuzz-diff --backend cuda --fuse --pack --bound m=5,n=5,t=4 --profile /home/daryl/Projects/blazingaml/configs/profiles/clean_all.yaml
+fuzz-diff cuda vs oracle, bound m=5,n=5,t=4 (windows 1..4), clean_all: 3105502 graphs in 946 batches of up to 16384 edges, 15446382 edges, 61785528 trigger checks, 2286064536 row checks, 0 mismatching rows (64.0 s, 12 threads)
+  nonzero rows (the reference's, over every window): fan_in=48904124 fan_out=48904124 deg_in=48904124 deg_out=48904124 sg=188628 sg_ord=72624 tcyc=4963644 lcyc=5170280 tchain=10786427 gs=10786427 fan_oneway_out=45497765 fan_total=48904124 vstats=55361936 (173678864 sides computed)
+  optimised paths: light-kernel triggers 1358491030, heavy-kernel triggers 680431394, fused rows 741426336, packed rows at 1/2/4 bytes 2224279008/0/0
+== rel-cuda/hybrid/clean_all/m=5,n=5,t=4: blz fuzz-diff --backend hybrid --bound m=5,n=5,t=4 --profile /home/daryl/Projects/blazingaml/configs/profiles/clean_all.yaml
+fuzz-diff hybrid vs oracle, bound m=5,n=5,t=4 (windows 1..4), clean_all: 3105502 graphs in 946 batches of up to 16384 edges, 15446382 edges, 61785528 trigger checks, 6734622552 row checks, 0 mismatching rows (372.2 s, 12 threads)
+  nonzero rows (the reference's, over every window): fan_in=48904124 fan_out=48904124 deg_in=48904124 deg_out=48904124 sg=188628 sg_ord=72624 tcyc=4963644 lcyc=5170280 tchain=10786427 gs=10786427 fan_oneway_out=45497765 fan_total=48904124 vstats=55361936 (173678864 sides computed)
+  optimised paths: light-kernel triggers 3209368319, heavy-kernel triggers 1606431853, CPU-side triggers 2227725270 (reach-pruned rows 0), GPU-side triggers 4445111754
+== rel-cuda/cuda/l2_legacy_stream/m=5,n=5,t=4: blz fuzz-diff --backend cuda --bound m=5,n=5,t=4 --profile /home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_stream.yaml
+fuzz-diff cuda vs oracle, bound m=5,n=5,t=4 (windows 1..4), l2_legacy_stream: 3105502 graphs in 946 batches of up to 16384 edges, 15446382 edges, 61785528 trigger checks, 2224279008 row checks, 0 mismatching rows (44.0 s, 12 threads)
+  nonzero rows (the reference's, over every window): fan_in=7408145 fan_out=7408145 deg_in=9780487 deg_out=9780487 sg=233280 sg_ord=23144 tcyc=2226185 lcyc=2531810 tchain=5586922 gs=33501 fan_oneway_out=6493127 fan_total=13511928
+  optimised paths: light-kernel triggers 1604734350, heavy-kernel triggers 804901242
+== rel-cuda/cuda-fuse-pack/l2_legacy_stream/m=5,n=5,t=4: blz fuzz-diff --backend cuda --fuse --pack --bound m=5,n=5,t=4 --profile /home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_stream.yaml
+fuzz-diff cuda vs oracle, bound m=5,n=5,t=4 (windows 1..4), l2_legacy_stream: 3105502 graphs in 946 batches of up to 16384 edges, 15446382 edges, 61785528 trigger checks, 2224279008 row checks, 0 mismatching rows (40.6 s, 12 threads)
+  nonzero rows (the reference's, over every window): fan_in=7408145 fan_out=7408145 deg_in=9780487 deg_out=9780487 sg=233280 sg_ord=23144 tcyc=2226185 lcyc=2531810 tchain=5586922 gs=33501 fan_oneway_out=6493127 fan_total=13511928
+  optimised paths: light-kernel triggers 1358078626, heavy-kernel triggers 680843798, fused rows 741426336, packed rows at 1/2/4 bytes 2224279008/0/0
+== rel-cuda/hybrid/l2_legacy_stream/m=5,n=5,t=4: blz fuzz-diff --backend hybrid --bound m=5,n=5,t=4 --profile /home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_stream.yaml
+fuzz-diff hybrid vs oracle, bound m=5,n=5,t=4 (windows 1..4), l2_legacy_stream: 3105502 graphs in 946 batches of up to 16384 edges, 15446382 edges, 61785528 trigger checks, 6672837024 row checks, 0 mismatching rows (373.2 s, 12 threads)
+  nonzero rows (the reference's, over every window): fan_in=7408145 fan_out=7408145 deg_in=9780487 deg_out=9780487 sg=233280 sg_ord=23144 tcyc=2226185 lcyc=2531810 tchain=5586922 gs=33501 fan_oneway_out=6493127 fan_total=13511928
+  optimised paths: light-kernel triggers 3207685344, heavy-kernel triggers 1606517706, CPU-side triggers 2229051816 (reach-pruned rows 185378400), GPU-side triggers 4443785208
+== rel-cuda/cuda/l2_legacy_tsvis/m=5,n=5,t=4: blz fuzz-diff --backend cuda --bound m=5,n=5,t=4 --profile /home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_tsvis.yaml
+fuzz-diff cuda vs oracle, bound m=5,n=5,t=4 (windows 1..4), l2_legacy_tsvis: 3105502 graphs in 946 batches of up to 16384 edges, 15446382 edges, 61785528 trigger checks, 2224279008 row checks, 0 mismatching rows (44.4 s, 12 threads)
+  nonzero rows (the reference's, over every window): fan_in=10786427 fan_out=10786427 deg_in=14132960 deg_out=14132960 sg=441744 sg_ord=34640 tcyc=2226185 lcyc=2531810 tchain=5586922 gs=39471 fan_oneway_out=9180965 fan_total=19274584
+  optimised paths: light-kernel triggers 1603083266, heavy-kernel triggers 806552326
+== rel-cuda/cuda-fuse-pack/l2_legacy_tsvis/m=5,n=5,t=4: blz fuzz-diff --backend cuda --fuse --pack --bound m=5,n=5,t=4 --profile /home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_tsvis.yaml
+fuzz-diff cuda vs oracle, bound m=5,n=5,t=4 (windows 1..4), l2_legacy_tsvis: 3105502 graphs in 946 batches of up to 16384 edges, 15446382 edges, 61785528 trigger checks, 2224279008 row checks, 0 mismatching rows (41.2 s, 12 threads)
+  nonzero rows (the reference's, over every window): fan_in=10786427 fan_out=10786427 deg_in=14132960 deg_out=14132960 sg=441744 sg_ord=34640 tcyc=2226185 lcyc=2531810 tchain=5586922 gs=39471 fan_oneway_out=9180965 fan_total=19274584
+  optimised paths: light-kernel triggers 1356918590, heavy-kernel triggers 682003834, fused rows 741426336, packed rows at 1/2/4 bytes 2224279008/0/0
+== rel-cuda/hybrid/l2_legacy_tsvis/m=5,n=5,t=4: blz fuzz-diff --backend hybrid --bound m=5,n=5,t=4 --profile /home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_tsvis.yaml
+fuzz-diff hybrid vs oracle, bound m=5,n=5,t=4 (windows 1..4), l2_legacy_tsvis: 3105502 graphs in 946 batches of up to 16384 edges, 15446382 edges, 61785528 trigger checks, 6672837024 row checks, 0 mismatching rows (379.4 s, 12 threads)
+  nonzero rows (the reference's, over every window): fan_in=10786427 fan_out=10786427 deg_in=14132960 deg_out=14132960 sg=441744 sg_ord=34640 tcyc=2226185 lcyc=2531810 tchain=5586922 gs=39471 fan_oneway_out=9180965 fan_total=19274584
+  optimised paths: light-kernel triggers 3202647568, heavy-kernel triggers 1606602230, CPU-side triggers 2233738158 (reach-pruned rows 185378400), GPU-side triggers 4439098866
+== dev/cpu-alone/clean_all/m=4,n=4,t=3: blz fuzz-diff --bound m=4,n=4,t=3 --batch-edges 1 --profile /home/daryl/Projects/blazingaml/configs/profiles/clean_all.yaml
+fuzz-diff cpu vs oracle, bound m=4,n=4,t=3 (windows 1..3), clean_all: 29119 graphs each alone, 115258 edges, 345774 trigger checks, 8644350 row checks, 0 mismatching rows (14.5 s, 12 threads)
+  nonzero rows (the reference's, over every window): fan_in=257127 fan_out=257127 deg_in=257127 deg_out=257127 sg=408 sg_ord=164 tcyc=30642 lcyc=31364 tchain=49115 gs=49115 fan_oneway_out=233957 fan_total=257127 vstats=300941 (919308 sides computed)
+  optimised paths: sweep rows 2766192, reach-pruned rows 0
+== dev/cpu-alone/l2_legacy_stream/m=4,n=4,t=3: blz fuzz-diff --bound m=4,n=4,t=3 --batch-edges 1 --profile /home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_stream.yaml
+fuzz-diff cpu vs oracle, bound m=4,n=4,t=3 (windows 1..3), l2_legacy_stream: 29119 graphs each alone, 115258 edges, 345774 trigger checks, 8990124 row checks, 0 mismatching rows (11.1 s, 12 threads)
+  nonzero rows (the reference's, over every window): fan_in=31694 fan_out=31694 deg_in=46940 deg_out=46940 sg=576 sg_ord=44 tcyc=12259 lcyc=13477 tchain=22075 gs=38 fan_oneway_out=27624 fan_total=59228
+  optimised paths: sweep rows 2766192, reach-pruned rows 691548
+== dev/cpu-alone/l2_legacy_tsvis/m=4,n=4,t=3: blz fuzz-diff --bound m=4,n=4,t=3 --batch-edges 1 --profile /home/daryl/Projects/blazingaml/tests/profiles/l2_legacy_tsvis.yaml
+fuzz-diff cpu vs oracle, bound m=4,n=4,t=3 (windows 1..3), l2_legacy_tsvis: 29119 graphs each alone, 115258 edges, 345774 trigger checks, 8990124 row checks, 0 mismatching rows (11.3 s, 12 threads)
+  nonzero rows (the reference's, over every window): fan_in=49115 fan_out=49115 deg_in=72081 deg_out=72081 sg=1200 sg_ord=72 tcyc=12259 lcyc=13477 tchain=22075 gs=46 fan_oneway_out=41227 fan_total=90138
+  optimised paths: sweep rows 2766192, reach-pruned rows 691548
+== dev/index-contracts/m=4,n=4,t=3: blz index-contracts --bound m=4,n=4,t=3
+index-contracts, bound m=4,n=4,t=3, self-loops kept and dropped, out- and in-lists: 29119 graphs, 643228030 queries, 0 violations (23.1 s, 12 threads)
+  queries: list 412968, prev_same 401934, range 75472976, head_range 13531784, distinct_first 537588, distinct_first_ts 2208540, pair_exists 275331120, pair_latest 275331120
+
+L2 bounded code check (SPEC v3 §4.3)
+build     check            profile                 bound      graphs           trigger checks  mismatches  seconds  result
+rel       cpu              clean_all         m=5,n=5,t=4   3,105,502               61,785,528           0     23.5    pass
+rel       cpu              clean_all         m=6,n=4,t=3  15,389,899              274,862,199           0    111.8    pass
+rel       cpu              l2_legacy_stream  m=5,n=5,t=4   3,105,502               61,785,528           0     13.2    pass
+rel       cpu              l2_legacy_stream  m=6,n=4,t=3  15,389,899              274,862,199           0     62.1    pass
+rel       cpu              l2_legacy_tsvis   m=5,n=5,t=4   3,105,502               61,785,528           0     14.2    pass
+rel       cpu              l2_legacy_tsvis   m=6,n=4,t=3  15,389,899              274,862,199           0     67.0    pass
+rel       index-contracts  -                 m=5,n=5,t=4   3,105,502  159,287,316,520 queries           0    135.3    pass
+rel-cuda  cuda             clean_all         m=5,n=5,t=4   3,105,502               61,785,528           0     64.3    pass
+rel-cuda  cuda-fuse-pack   clean_all         m=5,n=5,t=4   3,105,502               61,785,528           0     64.0    pass
+rel-cuda  hybrid           clean_all         m=5,n=5,t=4   3,105,502               61,785,528           0    372.2    pass
+rel-cuda  cuda             l2_legacy_stream  m=5,n=5,t=4   3,105,502               61,785,528           0     44.0    pass
+rel-cuda  cuda-fuse-pack   l2_legacy_stream  m=5,n=5,t=4   3,105,502               61,785,528           0     40.6    pass
+rel-cuda  hybrid           l2_legacy_stream  m=5,n=5,t=4   3,105,502               61,785,528           0    373.2    pass
+rel-cuda  cuda             l2_legacy_tsvis   m=5,n=5,t=4   3,105,502               61,785,528           0     44.4    pass
+rel-cuda  cuda-fuse-pack   l2_legacy_tsvis   m=5,n=5,t=4   3,105,502               61,785,528           0     41.2    pass
+rel-cuda  hybrid           l2_legacy_tsvis   m=5,n=5,t=4   3,105,502               61,785,528           0    379.4    pass
+dev       cpu-alone        clean_all         m=4,n=4,t=3      29,119                  345,774           0     14.5    pass
+dev       cpu-alone        l2_legacy_stream  m=4,n=4,t=3      29,119                  345,774           0     11.1    pass
+dev       cpu-alone        l2_legacy_tsvis   m=4,n=4,t=3      29,119                  345,774           0     11.3    pass
+dev       index-contracts  -                 m=4,n=4,t=3      29,119      643,228,030 queries           0     23.1    pass
+20 of 20 checks passed
+1913.08 s wall total
