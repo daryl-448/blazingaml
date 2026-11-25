@@ -2,7 +2,7 @@
 
 L1 (SPEC v3 §4.3) proves T3 (§4.1) for all sizes: each algorithmic shortcut the generated code takes
 over the literal rule of §3.2 gives the rule's answer. `verify/algorithms.sh` builds this project
-from scratch and fails on `sorryAx`; `verify/algorithms.sh --mutants` also runs the 36 proof
+from scratch and fails on `sorryAx`; `verify/algorithms.sh --mutants` also runs the 37 proof
 mutants in `mutants.py` (ctest `verify_algorithms`, label `verify`). Toolchain: Lean 4.36.0, core
 only.
 

@@ -71,7 +71,8 @@ Quick, on every change that touches the files above (4 s):
 verify/algorithms.sh
 ```
 
-Full, at phase exits and after any change to verify/lean (30 s):
+Full, at phase exits and after any change to verify/lean, once the quick form passes (30 s). It
+stops at the build, so it runs no mutants while the build fails:
 
 ```
 verify/algorithms.sh --mutants
@@ -80,7 +81,7 @@ verify/algorithms.sh --mutants
 It builds a fresh copy of verify/lean in a temporary directory from an empty `.lake`. It fails on
 any build error, on `declaration uses sorry`, and on any main theorem whose axioms go beyond
 `propext`, `Classical.choice` and `Quot.sound` (Axioms.lean lists the 24 main theorems). With
-`--mutants` it then runs the 36 proof mutants of verify/lean/mutants.py. Each must fail to build at
+`--mutants` it then runs the 37 proof mutants of verify/lean/mutants.py. Each must fail to build at
 the declarations recorded for it. ctest runs the full form as `verify_algorithms` (label verify)
 when lake is found at configure time.
 
@@ -93,6 +94,11 @@ install commands (elan, then `elan toolchain install leanprover/lean4:v4.36.0`, 
   contains the line is the one that no longer holds. Lean's message gives the unsolved goal: the
   hypotheses in scope, then `⊢` and what was left to prove. Read the goal as a claim about the code:
   for example `⊢ x < t` inside `greedy_sound` says the greedy took a time the rule forbids.
+- **`Missing cases:`** under a line of a theorem: a `match` in the proof can no longer cover every
+  input, because the model now gives another answer there. Each listed case is an input shape, and
+  together they are the counterexample's shape. For example, `none, (some _), ...` in `order_test`
+  means: no s → y witness, one y → w witness, and the model now answers true where no ordered pair
+  exists.
 - **`L1 FAILED: a declaration uses sorry`** or **`... depends on sorryAx`**: someone left a proof
   unfinished. That is never a pass.
 - **The axioms check fails** when a theorem was renamed or removed without editing Axioms.lean, or
@@ -111,7 +117,10 @@ is SPEC_V3 §3.2 or legacy Q5, written literally. The code side (`greedy`, `late
 `sweep`, `ldJ`) is a hand model of the generated text. When a proof breaks after a change:
 
 1. Find which side moved. Compare the code side's definition with the snapshot named in COVERAGE.md,
-   bound by bound and loop by loop.
+   bound by bound and loop by loop. If section 1's diff lists only verify/lean, the C++ is the
+   code that passed at the sync commit, so the snapshot is the reference. An edited model that no
+   longer matches it is a model error: restore the model. Don't re-prove a claim that has become
+   false, and skip `/verify-codegen`, since its code did not change.
 2. **The model no longer matches the code.** First find out whether the new code computes the same
    set. Run `/verify-codegen`'s quick check (L2 on the real code), or copy verify/lean to a scratch
    directory, transcribe the new line into the model, and run `lake build` there. If either shows a
