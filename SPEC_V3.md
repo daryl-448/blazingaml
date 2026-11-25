@@ -186,7 +186,8 @@ with no optimisation, and is the reference for every check in §4.
     gs = min(|A|, |B|).
   Bins remain a profile option for anyone who wants a histogram of a count; the clean default emits
   counts.
-- **R8. Vertex statistics.** For each side (u's out-edges, v's in-edges) in `W(e)` and each value
+- **R8. Vertex statistics.** For each of the four sides (u's out- and in-edges, v's out- and
+  in-edges, D-57) in `W(e)` and each value
   column (Amount Received, as V2's F1 used, and the age t − ts' in seconds): fan, degree,
   ratio = degree / fan, and the sum, mean, population variance, skew = m3 / m2^1.5 and kurtosis =
   m4 / m2² (not excess) of the values. Outputs are float64.
@@ -201,8 +202,9 @@ with no optimisation, and is the reference for every check in §4.
     kurtosis = 0, fan = degree = 1, ratio = 1. When every value of the side is equal (min = max,
     tested on the values, not on the computed variance, which rounding can leave positive),
     variance = skew = kurtosis = 0. Otherwise the variance is the computed m2, even when rounding
-    makes it 0 (distinct values such as 10⁻²⁰⁰ and 2·10⁻²⁰⁰); whenever the computed m2 is 0, skew
-    and kurtosis are 0, never 0/0. No other guard.
+    makes it 0 (distinct values such as 10⁻²⁰⁰ and 2·10⁻²⁰⁰); whenever a computed denominator is
+    0 (m2 is 0, or a positive m2 whose m2·√m2 or m2² underflows, D-58), skew and kurtosis are 0,
+    never 0/0. No other guard.
 - **R9. Credit.** A row holds the instances its trigger edge completes (D-5). Which edges complete
   an instance is part of each pattern's definition: every trigger for count blocks (R7); the
   trigger as a latest edge for tcyc and tchain (R4); the trigger as one of the cycle's edges for
@@ -628,17 +630,98 @@ lose the GFP ts offset (D-56).
 
 ### P13 — Clean semantics
 
-- [ ] Depends on: P12.
-- [ ] Change: the clean oracle (R1–R11, literal), the compiler and runtime support for the clean
+- [x] Depends on: P12.
+- [x] Change: the clean oracle (R1–R11, literal), the compiler and runtime support for the clean
       profiles (R1's loop-free index, R2's single window, R3's timestamp-only ranges, R4's order,
       R6's two sg blocks, R7's count blocks, R8's statistics), `clean_default` and `clean_wc`, and the
       new metamorphic relations (tie permutation, duplicate (u, v, t)).
-- [ ] Result: `blz mine --profile clean_default` runs on HI-Small on every backend.
-- [ ] Unit: oracle unit tests written from §3.2's rules, one per rule, each with a hand-checked
+- [x] Result: `blz mine --profile clean_default` runs on HI-Small on every backend.
+- [x] Unit: oracle unit tests written from §3.2's rules, one per rule, each with a hand-checked
       graph; the metamorphic suite.
-- [ ] Live: AC-V3-1's HI-Small and fuzz parts (CPU, CUDA at the default thresholds, the
+- [x] Live: AC-V3-1's HI-Small and fuzz parts (CPU, CUDA at the default thresholds, the
       sparse-time setting); E16's HI-Small part.
-- [ ] Perf: none gating; timings here are informal (the harness and baseline are frozen in P15).
+- [x] Perf: none gating; timings here are informal (the harness and baseline are frozen in P15).
+
+**Outcome (2026-11-25): done.** `clean_wc` is `configs/profiles/clean_wc_hi_small.yaml`, with
+HI-Small's W-C windows (V2 D-25). LI-Small's and HI-Medium's W-C profiles come with their
+`Patterns.txt` joins in P15. `configs/profiles/clean_all.yaml` has every clean block plus R8's
+statistics at 86,400 s, and the gates run on it. R8 has four sides (D-57). A computed denominator
+of 0 gives skew and kurtosis 0 (D-58).
+- The commits:
+  - count blocks and the loop-free index: 9d4ca75, ae5c432, a2deb4f, f4e51e4, 216503f (the
+    thirteen clean specs), f84b6c2 (`clean_default`, `clean_wc_hi_small`, `clean_all`), 1a8867c;
+  - the clean oracle: 5ffb04d, dbf2b64 and 08f25d2 (its tests), 94af16b (D-58), fcb7b2a (the
+    reference of clean profiles, with `blz mine --backend oracle --quirks`);
+  - fuzz and metamorphic: d0c0e91 (metamorphic on the hybrid; a block at the work limit is
+    inconclusive), 50c6b50 (tie permutation, duplicate (u, v, t)), 10021cb (the dense fuzz
+    graphs pinned by a hash), 422af7e (the sparse-time setting);
+  - the vertex statistics: d132baf, c69a84a, a916a1e, b5b80b5;
+  - the review's fixes: 86c7776, 89523d2;
+  - the gates and the A30 campaign: df0af58, f3c946b. bec68e8 lets `bench/p11_checks.py` read a
+    sweep block's plan by value, so the clean profiles' `clean_<block>` patterns pass. E16:
+    bfb6691, 55619aa;
+  - the exit checks' results, committed with this outcome.
+- The checks:
+  - Unit: `tests/unit/test_clean_oracle.cpp` has one test case per rule (R1–R11, with R6a and
+    R6b as two), each on a hand-checked graph. It also checks the legacy equivalence: with every quirk
+    on, the clean oracle gives the legacy oracle's rows and `vstats_cpu`'s bits on fuzz graphs.
+    `ctest -L fast` passes at HEAD: 168 tests on `rel` (one CUDA-only test skipped), 187 on
+    `rel-cuda`.
+  - AC-V3-0: `bench/ac1_cpu.sh` and `bench/ac1_cuda.sh` pass at HEAD
+    (`results/ac1_{cpu,cuda}_p13_run.log`). Every block's fnv1a equals P12's.
+  - HI-Small on the A30 (`results/p13_a30.json`): `clean_default`, `clean_wc_hi_small` and
+    `clean_all` give the same `output_fnv1a` for every block on the oracle, cpu, cuda and hybrid.
+    The vertex statistics are included.
+  - Fuzz graphs on the A30 (`results/ac_v3_1_a30.json`, logs in `results/ac_v3_1_a30_logs.tgz`;
+    `bench/ac_v3_1.sh`, `clean_all`, work limit 10⁶). The four gates are fuzz-diff of cpu and
+    cuda against the oracle, dense and sparse. Every block, the vertex statistics included, has
+    0 mismatching rows. Dense: 11,000 graphs; lcyc reached the work limit on 658, so 10,342
+    completed (R11). Sparse: 10,000 graphs, none at the limit. cuda ran at its default heavy
+    thresholds (0, 4, all).
+  - Scope: the user stopped the campaign after these gates on 2026-11-25. The hybrid fuzz-diff
+    and the metamorphic suite on every backend would have taken about 54 more hours on the A30.
+    They ran only at smoke scale in U2b, with 0 mismatching rows:
+    - hybrid fuzz-diff: 200 dense and 300 sparse graphs;
+    - metamorphic, dense / sparse: oracle 200 / 1,000, cpu 300 / 1,000, cuda 100 / 500, hybrid
+      50 / 200.
+  - Run time (informal): fd_cpu_dense took 39 min on 16 vCPUs. fd_cuda_dense took 8.7 h, against
+    the 5 h projected from the 1650S's smoke rate (1.65 s per graph); not investigated. Two
+    likely parts: each 256-seed batch waits for its slowest oracle graph (one sampled batch's
+    oracle phase took about 3 minutes, with the 16 threads about 30 % busy), and lcyc's few-warp
+    searches leave most of the A30 idle (inferred).
+  - E16's HI-Small part (`results/e16_clean.{json,md}`, `bench/e16.py`):
+    - The setup: each quirk alone over `clean_e16` on the oracle, Q7 and Q8 as profile variants,
+      and `v1_e16` as the legacy comparison. Each is fit on the fit rows with V2 R0's XGBoost
+      settings and scored on validation, which ends at eid 4,062,463 (§6.3). No test row was
+      scored.
+    - Q2 (vertex statistics that keep self-loops) is the only quirk whose effect exceeds training
+      noise. It adds +27.07 F1 points in the main fit and +10.26 to +13.57 in three resampled
+      fits, against a clean F1 of 9.89. Reinvestment self-loops carry the signal: 481,056 of the
+      569,769 self-loops in the fit and validation rows, none of them laundering.
+    - Q4, Q8, Q9 and Q10 gain 5 to 12 points in the main fit but lose 0.06 to 7.62 points in the
+      resamples. Q1, Q3, Q5, Q6 and Q7 leave the main fit's F1 unchanged.
+    - The legacy check holds: `clean_e16_q8` with `--quirks all` gives `v1_e16`'s output on every
+      block, the vertex statistics bit for bit.
+- For §3.5 (the user's decision): whether a clean feature should keep the self-loop signal that
+  Q2 shows. Nothing was changed.
+- The review: sol-loop on gpt-6.2-sol (max, then xhigh) approved in round 3. Then Gemini 4 Neon
+  (high) approved in round 1.
+  - Round 1 found that a clean mine reaching the work limit could leave rows from earlier blocks.
+    Fixed in 86c7776: lcyc runs first, and the sample's eids are written with the first block.
+  - Round 1 also found `compiled_k_max` reading the clean patterns. Fixed in 89523d2.
+  - Round 1's concern that work-limit stops could hide a mismatch was resolved without a change.
+    Every implementation counts the same bindings, so a stop on one side only is itself a mismatch
+    and fails the gate.
+- Follow-ups, not fixed:
+  - `CleanVstats` rejects a non-finite amount even on a self-loop, whose amount R1 keeps out of
+    the values.
+  - `blz bench --blocks vstats` drops the block without an error.
+  - `CleanVstats::rows` trusts that sampled eids are below m; blz's trigger selection ensures it.
+  - CUDA vstats issues a 0-byte copy on an empty graph.
+  - `bench/a30.sh`'s wait loop runs in the local session. When the session ended mid-campaign,
+    the instance kept billing with nothing waiting to stop it. A stand-in watcher downloaded the
+    outputs and destroyed the instance. `jl run` has no stop-on-exit for detached runs, so the
+    wait needs a way to re-attach to a running run.
 
 ### P14 — Verification stack
 
@@ -733,6 +816,8 @@ lose the GFP ts offset (D-56).
 | D-54 | The user confirmed timestamp visibility (Q4, R3) and non-decreasing hop order (Q5, R4) on 2026-11-22, and chose to keep both SG variants for Q7: unordered `sg` (R6a) and ordered `sg_ord` (R6b), as two blocks of the clean profiles. |
 | D-55 | P12 deletes GFP batch mode and `credit: participants` instead of isolating them. No GFP parity helper needs them once `fuzz_vs_gfp.py --batch`, `coverage_gfp.py` and E9's G1 path retire. `credit:` stays a required profile key whose only value is `trigger`, so every remaining profile id is unchanged. The frozen DG-2 recipe can no longer be recomputed in C++ (§3.4). |
 | D-56 | The vertex statistics lose D-12's ts offset: `VstatsParams::ts_offset`, `blz vstats --ts-offset`, and the +1 of `blz fuzz --vstats`. `tools/gfp/vstats_vs_gfp.py` sends GFP raw ts. GFP's ts-0 artifact (A33) only drops temporal cycles, and the tool compares no temp-cycle column. The tool's HI-Small mode is retired, because F1 was mined at ts + 1. `fuzz_amounts` stays, because its ties, repeats, tiny values and large values are the cases that R8's equal-value and small-side rules need. |
+| D-57 | R8's vertex statistics have four sides, GFP's: u's out-edges, u's in-edges, v's out-edges and v's in-edges, 13 columns each (`fan, deg, ratio`, then mean, sum, var, skew and kurt of the age and of the amount; 52 in all, named `vs_<side>_<stat>` with sides `u_out, u_in, v_out, v_in`). R8's first text listed two. V2's F1 and E16's comparison use four, and the side count is not a quirk of §3.1. |
+| D-58 | R8's skew and kurtosis are 0 whenever their computed denominator (m2·√m2 or m2²) is 0, which includes a positive m2 that underflows (m2 = 10⁻³²⁰), not only m2 = 0; never 0/0. Q10 keeps GFP's own division, which its variance guard protects. |
 | D-59 | On 2026-11-24 the user removed §2.5's limit of one A30 campaign, at the end: a campaign runs whenever a phase needs one, with the user's approval. |
 
 ## Appendix E — planning prototypes (not normative)

@@ -1,0 +1,404 @@
+--- run r_44f81322 | machine 586938 | failed (exit 143) ---
+
+        Start 108: metamorphic: 200 fuzz graphs, oracle and cpu, the registry and v1_parity profiles
+105/184 Test #108: metamorphic: 200 fuzz graphs, oracle and cpu, the registry and v1_parity profiles .............................   Passed   10.71 sec
+        Start 109: metamorphic: 200 fuzz graphs, oracle and cpu, under timestamp visibility (SPEC v2 §6.1)
+106/184 Test #109: metamorphic: 200 fuzz graphs, oracle and cpu, under timestamp visibility (SPEC v2 §6.1) ......................   Passed   11.93 sec
+        Start 110: metamorphic: E404 for a profile the backend cannot run
+107/184 Test #110: metamorphic: E404 for a profile the backend cannot run ........................................................   Passed    0.01 sec
+        Start 111: metamorphic: a clean profile's vstats are compared in every test that applies
+108/184 Test #111: metamorphic: a clean profile's vstats are compared in every test that applies .................................   Passed    0.13 sec
+        Start 112: metamorphic: clean_all on the clean oracle and cpu, lcyc limited on some graphs (SPEC v3 F6, R11)
+109/184 Test #112: metamorphic: clean_all on the clean oracle and cpu, lcyc limited on some graphs (SPEC v3 F6, R11) .............   Passed   41.16 sec
+        Start 113: metamorphic: every row of every block is compared
+110/184 Test #113: metamorphic: every row of every block is compared .............................................................   Passed    2.16 sec
+        Start 114: metrics: average precision, with tied scores as one step
+111/184 Test #114: metrics: average precision, with tied scores as one step ......................................................   Passed    0.01 sec
+        Start 115: metrics: confusion, F1 and the strict > threshold
+112/184 Test #115: metrics: confusion, F1 and the strict > threshold .............................................................   Passed    0.00 sec
+        Start 116: metrics: undefined ratios are 0
+113/184 Test #116: metrics: undefined ratios are 0 ...............................................................................   Passed    0.01 sec
+        Start 117: oracle matches the GFP golden probes
+114/184 Test #117: oracle matches the GFP golden probes ..........................................................................   Passed    4.30 sec
+        Start 118: oracle rows do not depend on the trigger range or the thread count
+115/184 Test #118: oracle rows do not depend on the trigger range or the thread count ............................................   Passed    4.89 sec
+        Start 119: pack: the copy is lossless, as narrow as the block's largest cell allows
+116/184 Test #119: pack: the copy is lossless, as narrow as the block's largest cell allows ......................................   Passed    2.05 sec
+        Start 120: parse_csv errors carry the line number
+117/184 Test #120: parse_csv errors carry the line number ........................................................................   Passed    0.01 sec
+        Start 121: parse_csv fixture
+118/184 Test #121: parse_csv fixture .............................................................................................   Passed    0.01 sec
+        Start 122: parse_csv without a trailing newline
+119/184 Test #122: parse_csv without a trailing newline ..........................................................................   Passed    0.01 sec
+        Start 123: parse_quirks: ledger ids, all, or nothing
+120/184 Test #123: parse_quirks: ledger ids, all, or nothing .....................................................................   Passed    0.01 sec
+        Start 124: parse_timestamp
+121/184 Test #124: parse_timestamp ...............................................................................................   Passed    0.01 sec
+        Start 125: plan: blzc --disable names (SPEC v2 §7.2)
+122/184 Test #125: plan: blzc --disable names (SPEC v2 §7.2) ....................................................................   Passed    0.01 sec
+        Start 126: plan: inclusive bounds, deduplicated
+123/184 Test #126: plan: inclusive bounds, deduplicated ..........................................................................   Passed    0.01 sec
+        Start 127: plan: the sweep lowering's recognition (SPEC v2 §7.1)
+124/184 Test #127: plan: the sweep lowering's recognition (SPEC v2 §7.1) ........................................................   Passed    0.02 sec
+        Start 128: primitives: range, distinct_first, pair_exists, pair_latest and the counts equal naive scans
+125/184 Test #128: primitives: range, distinct_first, pair_exists, pair_latest and the counts equal naive scans ..................   Passed   17.34 sec
+        Start 129: profile_stream on a small stream
+126/184 Test #129: profile_stream on a small stream ..............................................................................   Passed    0.22 sec
+        Start 130: profiles: E403 at load, with the file, line and column of the pattern
+127/184 Test #130: profiles: E403 at load, with the file, line and column of the pattern .........................................   Passed    0.01 sec
+        Start 131: profiles: E404 names the backend and the profile key
+128/184 Test #131: profiles: E404 names the backend and the profile key ..........................................................   Passed    0.01 sec
+        Start 132: profiles: a clean profile, its count blocks and E403 both ways (SPEC v3 §3.2, R7)
+129/184 Test #132: profiles: a clean profile, its count blocks and E403 both ways (SPEC v3 §3.2, R7) ............................   Passed    0.01 sec
+        Start 133: profiles: registry_profile is every registered block with the compiled K_MAX
+130/184 Test #133: profiles: registry_profile is every registered block with the compiled K_MAX ..................................   Passed    0.01 sec
+        Start 134: profiles: schema errors carry the location
+131/184 Test #134: profiles: schema errors carry the location ....................................................................   Passed    0.01 sec
+        Start 135: profiles: the family key keeps every legacy id (SPEC v3 F1, AC-V3-0)
+132/184 Test #135: profiles: the family key keeps every legacy id (SPEC v3 F1, AC-V3-0) ..........................................   Passed    0.01 sec
+        Start 136: profiles: the frozen profiles load and match the v1 configs' ids (SPEC v2 §3.1)
+133/184 Test #136: profiles: the frozen profiles load and match the v1 configs' ids (SPEC v2 §3.1) ..............................   Passed    0.01 sec
+        Start 137: profiles: the id follows every semantic field and the block order
+134/184 Test #137: profiles: the id follows every semantic field and the block order .............................................   Passed    0.01 sec
+        Start 138: profiles: v1 configs and registry_profile are legacy; clean_registry_profile is every clean block
+135/184 Test #138: profiles: v1 configs and registry_profile are legacy; clean_registry_profile is every clean block .............   Passed    0.01 sec
+        Start 139: profiles: vstats, a clean profile's vertex statistics (SPEC v3 R8)
+136/184 Test #139: profiles: vstats, a clean profile's vertex statistics (SPEC v3 R8) ............................................   Passed    0.01 sec
+        Start 140: reach: hand-checked tcyc rows are the same with and without pruning
+137/184 Test #140: reach: hand-checked tcyc rows are the same with and without pruning ...........................................   Passed    1.54 sec
+        Start 141: reach: latest departure times towards the target, hop bound, window, visibility
+138/184 Test #141: reach: latest departure times towards the target, hop bound, window, visibility ...............................   Passed    0.11 sec
+        Start 142: reach: the cut fires on fuzz graphs
+139/184 Test  #59: cuda, hybrid: clean_all equals the clean oracle on fuzz graphs, every threshold, fused and packed .............   Passed  391.22 sec
+        Start 143: reach: the planner prunes chain patterns only
+140/184 Test #143: reach: the planner prunes chain patterns only .................................................................   Passed    0.03 sec
+        Start 144: registration: a block missing from the feature config is E402 (SPEC §6.7, §13.1)
+141/184 Test #144: registration: a block missing from the feature config is E402 (SPEC §6.7, §13.1) ............................   Passed    0.00 sec
+        Start 145: registry: start-up checks use the generated E402 locations and the compiled K_MAX
+142/184 Test #145: registry: start-up checks use the generated E402 locations and the compiled K_MAX .............................   Passed    0.00 sec
+        Start 146: registry: the library's thirteen patterns, one block each, sg from two; and their clean family
+143/184 Test #146: registry: the library's thirteen patterns, one block each, sg from two; and their clean family ................   Passed    0.00 sec
+        Start 147: set ops: fan_oneway_out <= fan_out and fan_total >= fan_in on fuzz graphs, often strictly
+144/184 Test #142: reach: the cut fires on fuzz graphs ...........................................................................   Passed   17.33 sec
+        Start 148: set ops: fan_oneway_out and fan_total on hand-checked cases, every backend
+145/184 Test #148: set ops: fan_oneway_out and fan_total on hand-checked cases, every backend ....................................   Passed    3.84 sec
+        Start 149: sha256 FIPS 180-4 vectors
+146/184 Test #149: sha256 FIPS 180-4 vectors .....................................................................................   Passed    0.02 sec
+        Start 150: sha256 in pieces equals one call
+147/184 Test #150: sha256 in pieces equals one call ..............................................................................   Passed    0.01 sec
+        Start 151: sparse-time fuzz graphs are reproducible, within their ranges, and exercise what they claim
+148/184 Test #151: sparse-time fuzz graphs are reproducible, within their ranges, and exercise what they claim ...................   Passed    0.13 sec
+        Start 152: substitute: arithmetic and prefixed ranges (SPEC §6.5)
+149/184 Test #152: substitute: arithmetic and prefixed ranges (SPEC §6.5) .......................................................   Passed    0.00 sec
+        Start 153: summarize
+150/184 Test #153: summarize .....................................................................................................   Passed    0.01 sec
+        Start 154: sweep: sweep_count equals the primitives with a closed bound and a neighbour filter
+151/184 Test #154: sweep: sweep_count equals the primitives with a closed bound and a neighbour filter ...........................   Passed    0.29 sec
+        Start 155: sweep: sweep_order lists the non-empty lists, longest first, ties by node id
+152/184 Test #155: sweep: sweep_order lists the non-empty lists, longest first, ties by node id ..................................   Passed    0.10 sec
+        Start 156: sweep: the drivers equal the per-trigger plan, every window, both visibilities, ranges and samples
+153/184 Test #147: set ops: fan_oneway_out <= fan_out and fan_total >= fan_in on fuzz graphs, often strictly .....................   Passed   20.46 sec
+        Start 157: sweep: the library's fan and degree patterns are planned as sweeps
+154/184 Test #157: sweep: the library's fan and degree patterns are planned as sweeps ............................................   Passed    0.00 sec
+        Start 158: tcyc needs some parallel edge after the previous hop, not the earliest
+155/184 Test #158: tcyc needs some parallel edge after the previous hop, not the earliest ........................................   Passed    0.05 sec
+        Start 159: tcyc respects k_max
+156/184 Test #159: tcyc respects k_max ...........................................................................................   Passed    0.07 sec
+        Start 160: tcyc.yaml at the default K_MAX = 10
+157/184 Test #160: tcyc.yaml at the default K_MAX = 10 ...........................................................................   Passed    0.01 sec
+        Start 161: tcyc.yaml expanded with K_MAX = 5 equals the fixture (SPEC §13.4)
+158/184 Test #161: tcyc.yaml expanded with K_MAX = 5 equals the fixture (SPEC §13.4) ............................................   Passed    0.00 sec
+        Start 162: the dense fuzz graphs are the recorded ones
+159/184 Test #162: the dense fuzz graphs are the recorded ones ...................................................................   Passed    0.02 sec
+        Start 163: the loop-free index: sg no longer counts an endpoint through its self-loop (R1, R6a)
+160/184 Test #163: the loop-free index: sg no longer counts an endpoint through its self-loop (R1, R6a) ..........................   Passed    0.33 sec
+        Start 164: timestamp visibility = stream visibility with the trigger last in its timestamp group
+161/184 Test  #87: hybrid: rows equal the oracle's on 150 fuzz graphs, every split (SPEC v2 §8 S6) ..............................   Passed  223.74 sec
+        Start 165: timestamp visibility: same-timestamp edges later in the stream are visible
+162/184 Test #165: timestamp visibility: same-timestamp edges later in the stream are visible ....................................   Passed    0.11 sec
+        Start 166: triggers: a sample is reproducible, independent of m, and near its percentage
+163/184 Test #166: triggers: a sample is reproducible, independent of m, and near its percentage .................................   Passed    0.01 sec
+        Start 167: triggers: sampled rows equal the full run's rows at those eids (oracle, cpu)
+164/184 Test #156: sweep: the drivers equal the per-trigger plan, every window, both visibilities, ranges and samples ............   Passed   17.53 sec
+        Start 168: triggers: the named selections
+165/184 Test #168: triggers: the named selections ................................................................................   Passed    0.00 sec
+        Start 169: typologies: gs <= fan_out and long chains on fuzz graphs
+166/184 Test #164: timestamp visibility = stream visibility with the trigger last in its timestamp group .........................   Passed   17.74 sec
+        Start 170: typologies: tchain and gs on hand-checked cases, every backend
+167/184 Test #170: typologies: tchain and gs on hand-checked cases, every backend ................................................   Passed    4.73 sec
+        Start 171: vstats: CPU = CUDA, bit for bit
+168/184 Test #169: typologies: gs <= fan_out and long chains on fuzz graphs ......................................................   Passed   16.57 sec
+        Start 172: vstats: GFP's column names and order
+169/184 Test #172: vstats: GFP's column names and order ..........................................................................   Passed    0.01 sec
+        Start 173: vstats: the CPU module equals the definition, bit for bit, at any thread count
+170/184 Test #171: vstats: CPU = CUDA, bit for bit ...............................................................................   Passed   27.16 sec
+        Start 174: vstats: the CPU module matches the GFP vertex-statistics probes
+171/184 Test #167: triggers: sampled rows equal the full run's rows at those eids (oracle, cpu) ..................................   Passed   40.08 sec
+        Start 175: vstats: the guard, the n = 1 case and the moments
+172/184 Test #175: vstats: the guard, the n = 1 case and the moments .............................................................   Passed    0.01 sec
+        Start 176: blzc_check_library
+173/184 Test #176: blzc_check_library ............................................................................................   Passed    0.02 sec
+        Start 177: blzc_snapshots
+174/184 Test #177: blzc_snapshots ................................................................................................   Passed    0.03 sec
+        Start 178: blzc_snapshots_disable_find_start
+175/184 Test #178: blzc_snapshots_disable_find_start .............................................................................   Passed    0.01 sec
+        Start 179: blzc_snapshots_disable_distinct_first
+176/184 Test #179: blzc_snapshots_disable_distinct_first .........................................................................   Passed    0.01 sec
+        Start 180: blzc_snapshots_disable_degree_order
+177/184 Test #180: blzc_snapshots_disable_degree_order ...........................................................................   Passed    0.01 sec
+        Start 181: blzc_snapshots_disable_count_only
+178/184 Test #181: blzc_snapshots_disable_count_only .............................................................................   Passed    0.01 sec
+        Start 182: blzc_snapshots_disable_sweep
+179/184 Test #182: blzc_snapshots_disable_sweep ..................................................................................   Passed    0.01 sec
+        Start 189: dg2_ledger_selftest
+180/184 Test #174: vstats: the CPU module matches the GFP vertex-statistics probes ...............................................   Passed    0.89 sec
+        Start 215: cuda_smoke
+181/184 Test #189: dg2_ledger_selftest ...........................................................................................   Passed    0.14 sec
+182/184 Test #173: vstats: the CPU module equals the definition, bit for bit, at any thread count ................................   Passed   23.21 sec
+183/184 Test #215: cuda_smoke ....................................................................................................   Passed    0.62 sec
+184/184 Test  #60: cuda, hybrid: the metamorphic tests on clean_all, every threshold .............................................   Passed  463.18 sec
+
+100% tests passed out of 184
+
+Label Time Summary:
+fast    = 2040.02 sec*proc (184 tests)
+
+Total Test time (real) = 515.25 sec
++ BLZ=build/rel-cuda/blz
++ '[' p13 = s7 ']'
++ '[' p13 = p13 ']'
++ R=results/p13_a30.json
++ for p in clean_default clean_wc_hi_small clean_all
++ for be in oracle cpu cuda hybrid
+++ date +%s
++ t0=1795542995
++ build/rel-cuda/blz mine --graph data/hi_small.blzg --profile configs/profiles/clean_default.yaml --backend oracle --out features/a30_clean_default
+oracle index built in 0.6 s (m=5078345, n=515088); profile clean_default (abbd3459e1336a69); triggers all: 5078345 rows
+fan_in        0.2 s  saturated=0  fnv1a=989329027223035354
+fan_out      23.1 s  saturated=0  fnv1a=11183728284829485247
+deg_in        0.2 s  saturated=0  fnv1a=18211911083083195014
+deg_out      23.1 s  saturated=0  fnv1a=9524113901528553380
+sg            3.6 s  saturated=0  fnv1a=884033388477590431
+sg_ord        3.5 s  saturated=0  fnv1a=3889885039108109068
+tcyc          1.5 s  saturated=0  fnv1a=11166385018636528593
+++ date +%s
++ python3 - results/p13_a30.json clean_default oracle 58 features/a30_clean_default/features.json
++ rm -rf features/a30_clean_default
++ for be in oracle cpu cuda hybrid
+++ date +%s
++ t0=1795543053
++ build/rel-cuda/blz mine --graph data/hi_small.blzg --profile configs/profiles/clean_default.yaml --backend cpu --out features/a30_clean_default
+cpu index built in 0.4 s (m=5078345, n=515088); profile clean_default (abbd3459e1336a69); triggers all: 5078345 rows
+fan_in        0.0 s  saturated=0  fnv1a=989329027223035354
+fan_out       0.0 s  saturated=0  fnv1a=11183728284829485247
+deg_in        0.0 s  saturated=0  fnv1a=18211911083083195014
+deg_out       0.0 s  saturated=0  fnv1a=9524113901528553380
+sg            0.2 s  saturated=0  fnv1a=884033388477590431
+sg_ord        0.1 s  saturated=0  fnv1a=3889885039108109068
+tcyc          0.2 s  saturated=0  fnv1a=11166385018636528593
+++ date +%s
++ python3 - results/p13_a30.json clean_default cpu 3 features/a30_clean_default/features.json
++ rm -rf features/a30_clean_default
++ for be in oracle cpu cuda hybrid
+++ date +%s
++ t0=1795543056
++ build/rel-cuda/blz mine --graph data/hi_small.blzg --profile configs/profiles/clean_default.yaml --backend cuda --out features/a30_clean_default
+cuda index built in 0.4 s (m=5078345, n=515088); profile clean_default (abbd3459e1336a69); triggers all: 5078345 rows
+graph uploaded in 0.022 s (295 MB)
+fan_in        0.0 s  saturated=0  fnv1a=989329027223035354
+fan_out       0.0 s  saturated=0  fnv1a=11183728284829485247
+deg_in        0.0 s  saturated=0  fnv1a=18211911083083195014
+deg_out       0.0 s  saturated=0  fnv1a=9524113901528553380
+sg            0.0 s  saturated=0  fnv1a=884033388477590431
+sg_ord        0.0 s  saturated=0  fnv1a=3889885039108109068
+tcyc          0.1 s  saturated=0  fnv1a=11166385018636528593
+++ date +%s
++ python3 - results/p13_a30.json clean_default cuda 4 features/a30_clean_default/features.json
++ rm -rf features/a30_clean_default
++ for be in oracle cpu cuda hybrid
+++ date +%s
++ t0=1795543060
++ build/rel-cuda/blz mine --graph data/hi_small.blzg --profile configs/profiles/clean_default.yaml --backend hybrid --out features/a30_clean_default
+hybrid index built in 0.4 s (m=5078345, n=515088); profile clean_default (abbd3459e1336a69); triggers all: 5078345 rows
+graph uploaded in 0.022 s (295 MB)
+fan_in        0.0 s  saturated=0  fnv1a=989329027223035354
+fan_out       0.1 s  saturated=0  fnv1a=11183728284829485247
+deg_in        0.0 s  saturated=0  fnv1a=18211911083083195014
+deg_out       0.1 s  saturated=0  fnv1a=9524113901528553380
+sg            0.0 s  saturated=0  fnv1a=884033388477590431
+sg_ord        0.0 s  saturated=0  fnv1a=3889885039108109068
+tcyc          0.1 s  saturated=0  fnv1a=11166385018636528593
+++ date +%s
++ python3 - results/p13_a30.json clean_default hybrid 3 features/a30_clean_default/features.json
++ rm -rf features/a30_clean_default
++ for p in clean_default clean_wc_hi_small clean_all
++ for be in oracle cpu cuda hybrid
+++ date +%s
++ t0=1795543063
++ build/rel-cuda/blz mine --graph data/hi_small.blzg --profile configs/profiles/clean_wc_hi_small.yaml --backend oracle --out features/a30_clean_wc_hi_small
+oracle index built in 0.6 s (m=5078345, n=515088); profile clean_wc_hi_small (d46576bd06654fdf); triggers all: 5078345 rows
+fan_in        0.3 s  saturated=0  fnv1a=14049843626550186020
+fan_out      61.2 s  saturated=0  fnv1a=6827340666947231606
+deg_in        0.3 s  saturated=0  fnv1a=14756625639117019686
+deg_out      61.3 s  saturated=0  fnv1a=10774860425172930340
+sg          147.6 s  saturated=0  fnv1a=3491313483528536066
+sg_ord      161.4 s  saturated=0  fnv1a=16573333899968333430
+tcyc          4.7 s  saturated=0  fnv1a=16566457954538582099
+++ date +%s
++ python3 - results/p13_a30.json clean_wc_hi_small oracle 440 features/a30_clean_wc_hi_small/features.json
++ rm -rf features/a30_clean_wc_hi_small
++ for be in oracle cpu cuda hybrid
+++ date +%s
++ t0=1795543503
++ build/rel-cuda/blz mine --graph data/hi_small.blzg --profile configs/profiles/clean_wc_hi_small.yaml --backend cpu --out features/a30_clean_wc_hi_small
+cpu index built in 0.4 s (m=5078345, n=515088); profile clean_wc_hi_small (d46576bd06654fdf); triggers all: 5078345 rows
+fan_in        0.0 s  saturated=0  fnv1a=14049843626550186020
+fan_out       0.0 s  saturated=0  fnv1a=6827340666947231606
+deg_in        0.0 s  saturated=0  fnv1a=14756625639117019686
+deg_out       0.0 s  saturated=0  fnv1a=10774860425172930340
+sg            0.9 s  saturated=0  fnv1a=3491313483528536066
+sg_ord        0.5 s  saturated=0  fnv1a=16573333899968333430
+tcyc          0.6 s  saturated=0  fnv1a=16566457954538582099
+++ date +%s
++ python3 - results/p13_a30.json clean_wc_hi_small cpu 5 features/a30_clean_wc_hi_small/features.json
++ rm -rf features/a30_clean_wc_hi_small
++ for be in oracle cpu cuda hybrid
+++ date +%s
++ t0=1795543508
++ build/rel-cuda/blz mine --graph data/hi_small.blzg --profile configs/profiles/clean_wc_hi_small.yaml --backend cuda --out features/a30_clean_wc_hi_small
+cuda index built in 0.4 s (m=5078345, n=515088); profile clean_wc_hi_small (d46576bd06654fdf); triggers all: 5078345 rows
+graph uploaded in 0.022 s (295 MB)
+fan_in        0.0 s  saturated=0  fnv1a=14049843626550186020
+fan_out       0.0 s  saturated=0  fnv1a=6827340666947231606
+deg_in        0.0 s  saturated=0  fnv1a=14756625639117019686
+deg_out       0.0 s  saturated=0  fnv1a=10774860425172930340
+sg            0.1 s  saturated=0  fnv1a=3491313483528536066
+sg_ord        0.0 s  saturated=0  fnv1a=16573333899968333430
+tcyc          0.3 s  saturated=0  fnv1a=16566457954538582099
+++ date +%s
++ python3 - results/p13_a30.json clean_wc_hi_small cuda 4 features/a30_clean_wc_hi_small/features.json
++ rm -rf features/a30_clean_wc_hi_small
++ for be in oracle cpu cuda hybrid
+++ date +%s
++ t0=1795543512
++ build/rel-cuda/blz mine --graph data/hi_small.blzg --profile configs/profiles/clean_wc_hi_small.yaml --backend hybrid --out features/a30_clean_wc_hi_small
+hybrid index built in 0.4 s (m=5078345, n=515088); profile clean_wc_hi_small (d46576bd06654fdf); triggers all: 5078345 rows
+graph uploaded in 0.022 s (295 MB)
+fan_in        0.0 s  saturated=0  fnv1a=14049843626550186020
+fan_out       0.1 s  saturated=0  fnv1a=6827340666947231606
+deg_in        0.0 s  saturated=0  fnv1a=14756625639117019686
+deg_out       0.1 s  saturated=0  fnv1a=10774860425172930340
+sg            0.2 s  saturated=0  fnv1a=3491313483528536066
+sg_ord        0.2 s  saturated=0  fnv1a=16573333899968333430
+tcyc          0.4 s  saturated=0  fnv1a=16566457954538582099
+++ date +%s
++ python3 - results/p13_a30.json clean_wc_hi_small hybrid 4 features/a30_clean_wc_hi_small/features.json
++ rm -rf features/a30_clean_wc_hi_small
++ for p in clean_default clean_wc_hi_small clean_all
++ for be in oracle cpu cuda hybrid
+++ date +%s
++ t0=1795543516
++ build/rel-cuda/blz mine --graph data/hi_small.blzg --profile configs/profiles/clean_all.yaml --backend oracle --out features/a30_clean_all
+oracle index built in 0.6 s (m=5078345, n=515088); profile clean_all (1687128491d0e283); triggers all: 5078345 rows
+lcyc          2.7 s  saturated=0  fnv1a=7087469534045282803
+fan_in        0.2 s  saturated=0  fnv1a=989329027223035354
+fan_out      23.6 s  saturated=0  fnv1a=11183728284829485247
+deg_in        0.2 s  saturated=0  fnv1a=18211911083083195014
+deg_out      23.7 s  saturated=0  fnv1a=9524113901528553380
+sg            3.7 s  saturated=0  fnv1a=884033388477590431
+sg_ord        3.5 s  saturated=0  fnv1a=3889885039108109068
+tcyc          1.5 s  saturated=0  fnv1a=11166385018636528593
+tchain        0.7 s  saturated=0  fnv1a=15515437621869336968
+gs           24.1 s  saturated=0  fnv1a=3913858072095818927
+fan_oneway_out     25.7 s  saturated=0  fnv1a=8977465227021487154
+fan_total      0.6 s  saturated=0  fnv1a=15742489989069488211
+vstats       52.2 s  fnv1a=17116854999687057760
+++ date +%s
++ python3 - results/p13_a30.json clean_all oracle 170 features/a30_clean_all/features.json
++ rm -rf features/a30_clean_all
++ for be in oracle cpu cuda hybrid
+++ date +%s
++ t0=1795543686
++ build/rel-cuda/blz mine --graph data/hi_small.blzg --profile configs/profiles/clean_all.yaml --backend cpu --out features/a30_clean_all
+cpu index built in 0.4 s (m=5078345, n=515088); profile clean_all (1687128491d0e283); triggers all: 5078345 rows
+lcyc          0.6 s  saturated=0  fnv1a=7087469534045282803
+fan_in        0.0 s  saturated=0  fnv1a=989329027223035354
+fan_out       0.0 s  saturated=0  fnv1a=11183728284829485247
+deg_in        0.0 s  saturated=0  fnv1a=18211911083083195014
+deg_out       0.0 s  saturated=0  fnv1a=9524113901528553380
+sg            0.2 s  saturated=0  fnv1a=884033388477590431
+sg_ord        0.1 s  saturated=0  fnv1a=3889885039108109068
+tcyc          0.2 s  saturated=0  fnv1a=11166385018636528593
+tchain        0.2 s  saturated=0  fnv1a=15515437621869336968
+gs            0.1 s  saturated=0  fnv1a=3913858072095818927
+fan_oneway_out      4.2 s  saturated=0  fnv1a=8977465227021487154
+fan_total      0.1 s  saturated=0  fnv1a=15742489989069488211
+vstats        2.9 s  fnv1a=17116854999687057760
+++ date +%s
++ python3 - results/p13_a30.json clean_all cpu 15 features/a30_clean_all/features.json
++ rm -rf features/a30_clean_all
++ for be in oracle cpu cuda hybrid
+++ date +%s
++ t0=1795543701
++ build/rel-cuda/blz mine --graph data/hi_small.blzg --profile configs/profiles/clean_all.yaml --backend cuda --out features/a30_clean_all
+cuda index built in 0.4 s (m=5078345, n=515088); profile clean_all (1687128491d0e283); triggers all: 5078345 rows
+graph uploaded in 0.022 s (295 MB)
+lcyc          0.3 s  saturated=0  fnv1a=7087469534045282803
+fan_in        0.0 s  saturated=0  fnv1a=989329027223035354
+fan_out       0.0 s  saturated=0  fnv1a=11183728284829485247
+deg_in        0.0 s  saturated=0  fnv1a=18211911083083195014
+deg_out       0.0 s  saturated=0  fnv1a=9524113901528553380
+sg            0.0 s  saturated=0  fnv1a=884033388477590431
+sg_ord        0.0 s  saturated=0  fnv1a=3889885039108109068
+tcyc          0.0 s  saturated=0  fnv1a=11166385018636528593
+tchain        0.1 s  saturated=0  fnv1a=15515437621869336968
+gs            0.1 s  saturated=0  fnv1a=3913858072095818927
+fan_oneway_out      1.1 s  saturated=0  fnv1a=8977465227021487154
+fan_total      0.0 s  saturated=0  fnv1a=15742489989069488211
+vstats        3.4 s  fnv1a=17116854999687057760
+++ date +%s
++ python3 - results/p13_a30.json clean_all cuda 13 features/a30_clean_all/features.json
++ rm -rf features/a30_clean_all
++ for be in oracle cpu cuda hybrid
+++ date +%s
++ t0=1795543714
++ build/rel-cuda/blz mine --graph data/hi_small.blzg --profile configs/profiles/clean_all.yaml --backend hybrid --out features/a30_clean_all
+hybrid index built in 0.4 s (m=5078345, n=515088); profile clean_all (1687128491d0e283); triggers all: 5078345 rows
+graph uploaded in 0.022 s (295 MB)
+lcyc          0.5 s  saturated=0  fnv1a=7087469534045282803
+fan_in        0.0 s  saturated=0  fnv1a=989329027223035354
+fan_out       0.1 s  saturated=0  fnv1a=11183728284829485247
+deg_in        0.0 s  saturated=0  fnv1a=18211911083083195014
+deg_out       0.1 s  saturated=0  fnv1a=9524113901528553380
+sg            0.1 s  saturated=0  fnv1a=884033388477590431
+sg_ord        0.0 s  saturated=0  fnv1a=3889885039108109068
+tcyc          0.1 s  saturated=0  fnv1a=11166385018636528593
+tchain        0.1 s  saturated=0  fnv1a=15515437621869336968
+gs            0.0 s  saturated=0  fnv1a=3913858072095818927
+fan_oneway_out      3.9 s  saturated=0  fnv1a=8977465227021487154
+fan_total      0.0 s  saturated=0  fnv1a=15742489989069488211
+vstats        3.5 s  fnv1a=17116854999687057760
+++ date +%s
++ python3 - results/p13_a30.json clean_all hybrid 15 features/a30_clean_all/features.json
++ rm -rf features/a30_clean_all
++ python3 - results/p13_a30.json
+hi_small clean_default: equal on oracle, cpu, cuda, hybrid
+hi_small clean_wc_hi_small: equal on oracle, cpu, cuda, hybrid
+hi_small clean_all: equal on oracle, cpu, cuda, hybrid
++ gates=0
++ BLZ=build/rel-cuda/blz
++ OUT=results/ac_v3_1_a30
++ bench/ac_v3_1.sh all
+fd_cpu_dense rc=0 2328 s: fuzz-diff cpu vs oracle, seeds 0:11000 (dense): 11000 graphs, 2251949 edges, 0 mismatching rows (2327.3 s)
+fd_cpu_sparse rc=0 3 s: fuzz-diff cpu vs oracle, seeds 0:10000 (sparse): 10000 graphs, 2101458 edges, 0 mismatching rows (3.6 s)
+fd_cuda_dense rc=0 31231 s: fuzz-diff cuda vs oracle, seeds 0:11000 (dense): 11000 graphs, 2251949 edges, 0 mismatching rows (31230.3 s)
+fd_cuda_sparse rc=0 85 s: fuzz-diff cuda vs oracle, seeds 0:10000 (sparse): 10000 graphs, 2101458 edges, 0 mismatching rows (84.7 s)
+Terminated
++ gates=143
++ tar -czf results/ac_v3_1_a30_logs.tgz -C results ac_v3_1_a30
+++ date +%s
++ echo 'a30_remote (p13): done in 583 min, gates rc 143'
+a30_remote (p13): done in 583 min, gates rc 143
++ exit 143
+
+--- failed | exit code: 143 | log: /home/jl-runs/r_44f81322/output.log ---

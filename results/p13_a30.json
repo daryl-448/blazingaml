@@ -1,0 +1,286 @@
+{
+ "hi_small": {
+  "clean_default": {
+   "oracle": {
+    "profile_id": "abbd3459e1336a69",
+    "wall_seconds": 58,
+    "peak_rss_mb": 416.76171875,
+    "cuda": null,
+    "output_fnv1a": {
+     "deg_in": 18211911083083195014,
+     "deg_out": 9524113901528553380,
+     "fan_in": 989329027223035354,
+     "fan_out": 11183728284829485247,
+     "sg": 884033388477590431,
+     "sg_ord": 3889885039108109068,
+     "tcyc": 11166385018636528593
+    }
+   },
+   "cpu": {
+    "profile_id": "abbd3459e1336a69",
+    "wall_seconds": 3,
+    "peak_rss_mb": 576.92578125,
+    "cuda": null,
+    "output_fnv1a": {
+     "deg_in": 18211911083083195014,
+     "deg_out": 9524113901528553380,
+     "fan_in": 989329027223035354,
+     "fan_out": 11183728284829485247,
+     "sg": 884033388477590431,
+     "sg_ord": 3889885039108109068,
+     "tcyc": 11166385018636528593
+    }
+   },
+   "cuda": {
+    "profile_id": "abbd3459e1336a69",
+    "wall_seconds": 4,
+    "peak_rss_mb": 615.51953125,
+    "cuda": {
+     "build": "nvcc 12.6.77, sm 80, -O3 -DNDEBUG",
+     "compute_capability": "8.0",
+     "device": "NVIDIA A30",
+     "driver_version": 13000,
+     "memory_mb": {
+      "free": 23644,
+      "total": 24163
+     },
+     "runtime_version": 12060,
+     "sm_count": 56
+    },
+    "output_fnv1a": {
+     "deg_in": 18211911083083195014,
+     "deg_out": 9524113901528553380,
+     "fan_in": 989329027223035354,
+     "fan_out": 11183728284829485247,
+     "sg": 884033388477590431,
+     "sg_ord": 3889885039108109068,
+     "tcyc": 11166385018636528593
+    }
+   },
+   "hybrid": {
+    "profile_id": "abbd3459e1336a69",
+    "wall_seconds": 3,
+    "peak_rss_mb": 647.4609375,
+    "cuda": {
+     "build": "nvcc 12.6.77, sm 80, -O3 -DNDEBUG",
+     "compute_capability": "8.0",
+     "device": "NVIDIA A30",
+     "driver_version": 13000,
+     "memory_mb": {
+      "free": 23644,
+      "total": 24163
+     },
+     "runtime_version": 12060,
+     "sm_count": 56
+    },
+    "output_fnv1a": {
+     "deg_in": 18211911083083195014,
+     "deg_out": 9524113901528553380,
+     "fan_in": 989329027223035354,
+     "fan_out": 11183728284829485247,
+     "sg": 884033388477590431,
+     "sg_ord": 3889885039108109068,
+     "tcyc": 11166385018636528593
+    }
+   }
+  },
+  "clean_wc_hi_small": {
+   "oracle": {
+    "profile_id": "d46576bd06654fdf",
+    "wall_seconds": 440,
+    "peak_rss_mb": 448.40625,
+    "cuda": null,
+    "output_fnv1a": {
+     "deg_in": 14756625639117019686,
+     "deg_out": 10774860425172930340,
+     "fan_in": 14049843626550186020,
+     "fan_out": 6827340666947231606,
+     "sg": 3491313483528536066,
+     "sg_ord": 16573333899968333430,
+     "tcyc": 16566457954538582099
+    }
+   },
+   "cpu": {
+    "profile_id": "d46576bd06654fdf",
+    "wall_seconds": 5,
+    "peak_rss_mb": 554.72265625,
+    "cuda": null,
+    "output_fnv1a": {
+     "deg_in": 14756625639117019686,
+     "deg_out": 10774860425172930340,
+     "fan_in": 14049843626550186020,
+     "fan_out": 6827340666947231606,
+     "sg": 3491313483528536066,
+     "sg_ord": 16573333899968333430,
+     "tcyc": 16566457954538582099
+    }
+   },
+   "cuda": {
+    "profile_id": "d46576bd06654fdf",
+    "wall_seconds": 4,
+    "peak_rss_mb": 615.40234375,
+    "cuda": {
+     "build": "nvcc 12.6.77, sm 80, -O3 -DNDEBUG",
+     "compute_capability": "8.0",
+     "device": "NVIDIA A30",
+     "driver_version": 13000,
+     "memory_mb": {
+      "free": 23644,
+      "total": 24163
+     },
+     "runtime_version": 12060,
+     "sm_count": 56
+    },
+    "output_fnv1a": {
+     "deg_in": 14756625639117019686,
+     "deg_out": 10774860425172930340,
+     "fan_in": 14049843626550186020,
+     "fan_out": 6827340666947231606,
+     "sg": 3491313483528536066,
+     "sg_ord": 16573333899968333430,
+     "tcyc": 16566457954538582099
+    }
+   },
+   "hybrid": {
+    "profile_id": "d46576bd06654fdf",
+    "wall_seconds": 4,
+    "peak_rss_mb": 656.921875,
+    "cuda": {
+     "build": "nvcc 12.6.77, sm 80, -O3 -DNDEBUG",
+     "compute_capability": "8.0",
+     "device": "NVIDIA A30",
+     "driver_version": 13000,
+     "memory_mb": {
+      "free": 23644,
+      "total": 24163
+     },
+     "runtime_version": 12060,
+     "sm_count": 56
+    },
+    "output_fnv1a": {
+     "deg_in": 14756625639117019686,
+     "deg_out": 10774860425172930340,
+     "fan_in": 14049843626550186020,
+     "fan_out": 6827340666947231606,
+     "sg": 3491313483528536066,
+     "sg_ord": 16573333899968333430,
+     "tcyc": 16566457954538582099
+    }
+   }
+  },
+  "clean_all": {
+   "oracle": {
+    "profile_id": "1687128491d0e283",
+    "wall_seconds": 170,
+    "peak_rss_mb": 417.140625,
+    "cuda": null,
+    "output_fnv1a": {
+     "deg_in": 18211911083083195014,
+     "deg_out": 9524113901528553380,
+     "fan_in": 989329027223035354,
+     "fan_oneway_out": 8977465227021487154,
+     "fan_out": 11183728284829485247,
+     "fan_total": 15742489989069488211,
+     "gs": 3913858072095818927,
+     "lcyc": 7087469534045282803,
+     "sg": 884033388477590431,
+     "sg_ord": 3889885039108109068,
+     "tchain": 15515437621869336968,
+     "tcyc": 11166385018636528593,
+     "vstats": 17116854999687057760
+    }
+   },
+   "cpu": {
+    "profile_id": "1687128491d0e283",
+    "wall_seconds": 15,
+    "peak_rss_mb": 721.984375,
+    "cuda": null,
+    "output_fnv1a": {
+     "deg_in": 18211911083083195014,
+     "deg_out": 9524113901528553380,
+     "fan_in": 989329027223035354,
+     "fan_oneway_out": 8977465227021487154,
+     "fan_out": 11183728284829485247,
+     "fan_total": 15742489989069488211,
+     "gs": 3913858072095818927,
+     "lcyc": 7087469534045282803,
+     "sg": 884033388477590431,
+     "sg_ord": 3889885039108109068,
+     "tchain": 15515437621869336968,
+     "tcyc": 11166385018636528593,
+     "vstats": 17116854999687057760
+    }
+   },
+   "cuda": {
+    "profile_id": "1687128491d0e283",
+    "wall_seconds": 13,
+    "peak_rss_mb": 816.48046875,
+    "cuda": {
+     "build": "nvcc 12.6.77, sm 80, -O3 -DNDEBUG",
+     "compute_capability": "8.0",
+     "device": "NVIDIA A30",
+     "driver_version": 13000,
+     "memory_mb": {
+      "free": 23644,
+      "total": 24163
+     },
+     "runtime_version": 12060,
+     "sm_count": 56
+    },
+    "output_fnv1a": {
+     "deg_in": 18211911083083195014,
+     "deg_out": 9524113901528553380,
+     "fan_in": 989329027223035354,
+     "fan_oneway_out": 8977465227021487154,
+     "fan_out": 11183728284829485247,
+     "fan_total": 15742489989069488211,
+     "gs": 3913858072095818927,
+     "lcyc": 7087469534045282803,
+     "sg": 884033388477590431,
+     "sg_ord": 3889885039108109068,
+     "tchain": 15515437621869336968,
+     "tcyc": 11166385018636528593,
+     "vstats": 17116854999687057760
+    }
+   },
+   "hybrid": {
+    "profile_id": "1687128491d0e283",
+    "wall_seconds": 15,
+    "peak_rss_mb": 843.140625,
+    "cuda": {
+     "build": "nvcc 12.6.77, sm 80, -O3 -DNDEBUG",
+     "compute_capability": "8.0",
+     "device": "NVIDIA A30",
+     "driver_version": 13000,
+     "memory_mb": {
+      "free": 23644,
+      "total": 24163
+     },
+     "runtime_version": 12060,
+     "sm_count": 56
+    },
+    "output_fnv1a": {
+     "deg_in": 18211911083083195014,
+     "deg_out": 9524113901528553380,
+     "fan_in": 989329027223035354,
+     "fan_oneway_out": 8977465227021487154,
+     "fan_out": 11183728284829485247,
+     "fan_total": 15742489989069488211,
+     "gs": 3913858072095818927,
+     "lcyc": 7087469534045282803,
+     "sg": 884033388477590431,
+     "sg_ord": 3889885039108109068,
+     "tchain": 15515437621869336968,
+     "tcyc": 11166385018636528593,
+     "vstats": 17116854999687057760
+    }
+   }
+  }
+ },
+ "git": {
+  "dirty": true,
+  "from": "BLZ_GIT_SHA",
+  "sha": "f3c946b9a25a30fcc5c08731aba7c392f510bbee"
+ },
+ "hi_small_equal": true
+}
