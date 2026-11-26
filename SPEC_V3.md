@@ -805,21 +805,83 @@ of 0 gives skew and kurtosis 0 (D-58).
 
 ### P15 — Datasets
 
-- [ ] Depends on: P13.
-- [ ] Change: dataset descriptors, bounded-memory `blz prepare` (§6.2) for both schemas and
+- [x] Depends on: P13.
+- [x] Change: dataset descriptors, bounded-memory `blz prepare` (§6.2) for both schemas and
       TransXion's node tables, per-dataset epoch and range checks (Q13), the `Patterns.txt` joins
       for LI-Small and HI-Medium and their W-C windows (§3.3; the join is preflighted on its own,
       since today's `blz` join scans the whole CSV and allocates a per-row inverse index, and it is
       made bounded-memory if it exceeds the cap), the HI-Medium preflight, and
       trigger-range mining with the bounded sink (§5.1, H7).
-- [ ] Result: `.blzg` caches for LI-Small, HI-Medium and TransXion; clean rows for each.
-- [ ] Unit: prepare invariants per dataset (§6.1); trigger-range mining equals whole-graph mining
+    - Datasets: `configs/datasets/<id>.yaml` for hi_small, li_small, hi_medium and transxion (D-67).
+      `blz prepare` streams the CSV through a 4 MiB buffer into `.blzg` v3, whose dataset section
+      holds the epoch, the splits and the descriptor hash (D-68 to D-71). HI-Small's v2 sections
+      are unchanged byte for byte. TransXion's node tables are checked for resolution and not
+      stored (D-72).
+    - Joins: `blz gt-join` reads the CSV through the same buffer and maps only matched rows (D-73).
+      The LI-Small and HI-Medium joins (D-74) give `clean_wc_li_small` and `clean_wc_hi_medium`
+      (D-75). TransXion borrows `clean_wc_hi_small` (D-76).
+    - Range mining: `blz mine`, `blz measure` (§5.1's M, D-80) and `blz fuzz-diff --chunk-rows`
+      run through one chunk driver into block sinks (D-77 to D-79, D-84). The harness chunk is 2^20
+      triggers (D-81). `blz train` scores a test split only with `--score-test` (§6.4).
+    - Preflight: every backend P15 runs on HI-Medium fits `local`, and no step was aborted (D-82,
+      D-91).
+- [x] Result: `.blzg` caches for LI-Small, HI-Medium and TransXion; clean rows for each. Their
+      prepare peaks are under the stated cap: LI-Small 403 MiB, HI-Medium 1,643 MiB and TransXion
+      145 MiB (D-68). Every block of clean_default and the dataset's W-C profile is mined on cpu,
+      cuda and hybrid (E17), and clean_all on LI-Small and TransXion (AC-V3-1).
+- [x] Unit: prepare invariants per dataset (§6.1); trigger-range mining equals whole-graph mining
       on HI-Small, by row hash, for several chunk sizes.
-- [ ] Live: AC-V3-1's dataset parts: oracle = CPU = CUDA on LI-Small and TransXion, oracle = CPU on
+    - Invariants: `prepare` asserts each descriptor's pinned values, which come from an independent
+      count (`bench/p15_counts.py`) that reproduces HI-Small's. E17 recounts the 8 that need no
+      test label from each `.blzg`: 8 of 8 equal on all four datasets, and each descriptor hash
+      matches.
+    - Range mining: HI-Small chunked equals whole on cpu, cuda, cuda --fuse --pack and hybrid, at
+      the whole stream, 2^20, 1,000,003 and 65,537 rows. That is 573 checks with 0 failures
+      (results/p15_chunks_local.json, 0c14c04), among them AC-V3-0's v1_parity hashes and the oracle
+      against P13's.
+    - H7 against §4.4: V-proof Chunks.lean (8 theorems, proof mutants 38 to 48, D-86); V-code L2 at
+      chunk sizes 1 to 3 within the bound (D-83) and L3's chunked property past it (D-87); V-mut 8
+      driver mutants, all caught (D-87); path hits per block and vstats (D-83). The 10,000-graph
+      fuzz-diff was not rerun in chunks (D-90, the user's call), and D-90 lists what covers it.
+- [x] Live: AC-V3-1's dataset parts: oracle = CPU = CUDA on LI-Small and TransXion, oracle = CPU on
       HI-Medium in ranges; E16's TransXion part; E17.
-- [ ] Perf: E17 records M and the §6.2 budgets per dataset and backend. **The harness (§5.1, the
+    - AC-V3-1 (results/ac_v3_1_datasets_local.{json,md}, 42d880c): PASS, 15 comparisons equal per
+      block by row hash. LI-Small and TransXion ran whole on every profile, except
+      clean_wc_li_small's oracle (3 ranges, 76.8 % of triggers). HI-Medium ran in 3 ranges per
+      profile: clean_default 18.8 % and clean_wc_hi_medium 2.0 % of triggers. The oracle took 3,143 s
+      of D-92's 3,600 s budget.
+    - E16 on TransXion (results/e16_clean_transxion.{json,md}, af5dc36): the v1 check holds on
+      every block, vstats bit for bit. On validation, clean scores F1 ×100 28.93. Q8's histograms
+      add +7.12 [+4.21, +9.98], Q10 −14.11 and all quirks −20.70. Test rows were neither mined nor
+      read (D-93). The report took 23 min 44 s at a 5.6 GB peak RSS.
+    - E17 (results/e17_datasets_local.{json,md}, 7e419b5): 24 cells, 0 errors, each measured after
+      an idle window. Row hashes agree across backends in every dataset and profile.
+- [x] Perf: E17 records M and the §6.2 budgets per dataset and backend. **The harness (§5.1, the
       bounded sink included) and the clean baseline M for every §5.2 workload are frozen here,
       once**, after range mining is verified against §4.4, as the hillclimb's starting point.
+    - Frozen in results/p15_baseline_local.{json,md}: harness 7e419b5, chunk 2^20, 9 workloads, 0
+      capacity limits. The primary targets on cpu are HI-Medium clean_default, M 35.023 s
+      [34.251, 35.240], and clean_wc_hi_medium, 124.759 s [123.783, 124.881]. HI-Medium on cuda is
+      14.338 s and 48.973 s, at a 1,902 MiB device peak. Foreign load (firefox, t3code, syncthing)
+      averaged 5 % to 42 % of one core per cell.
+    - HI-Medium training is estimated, not run: about 3.5 GB for clean_default's recipe and 4.7 GB
+      for clean_all's (D-91). Both are over §2.5's 3 GiB, so the user chooses at P17.
+- Departures: no chunked 10,000-graph fuzz-diff (D-90); HI-Medium's oracle in sampled ranges, not
+  whole (D-92); TransXion's test split scored once by accident in a smoke test and ruled not spent
+  (D-94).
+- The review: sol-loop on gpt-6.2-sol (max, then xhigh) approved in round 4. Then Gemini 4 Neon
+  (high) approved in round 3.
+  - sol-loop round 1 raised the accidental TransXion test score, recorded as D-94 (`--score-test`
+    came in 6b38fbb, before the review, and was hardened in 60f0dfc). It also found harness gates
+    that could pass a bad cell (no idle window, a stale smoke record, a missing block), and chunked
+    fuzz-diff counts that called a stopped case completed, fixed in 60f0dfc. Rounds 2 and 3 found
+    that an incomplete rep still counted toward M, that vstats counted a stopped case as completed,
+    cleanup that could fail silently, and E17 cells that report or freeze misread. Fixed in 475246a
+    and b04709e.
+  - Gemini found oracle ranges resized from the wrong rate, legacy stopped runs counted completed,
+    and missing block-set checks (b88f9ba). Then it found E17 reading a stale M after a run died
+    (42d880c).
+  - Declined: S14, a guard for `--edges` with a named split, which no caller uses.
 
 ### P16 — Hillclimb
 
