@@ -87,9 +87,18 @@ std::uint32_t* ChunkDriver::rows_buffer(std::size_t slot, std::uint64_t cells) {
     return host_.data();
   }
   if (pinned_.size() <= slot) pinned_.resize(slot + 1);
-  if (!pinned_[slot] || pinned_[slot]->size() < cells)
+  if (!pinned_[slot] || pinned_[slot]->size() < cells) {
+    pinned_[slot].reset();  // before the larger one is pinned
     pinned_[slot] = std::make_unique<PinnedBuffer>(std::max<std::uint64_t>(cells, 1));
+  }
   return pinned_[slot]->data();
+}
+
+std::uint64_t ChunkDriver::row_buffer_bytes() const {
+  std::uint64_t b = host_.capacity() * sizeof(std::uint32_t) + vstats_.capacity() * sizeof(double);
+  for (const std::unique_ptr<PinnedBuffer>& p : pinned_)
+    if (p) b += p->size() * sizeof(std::uint32_t);
+  return b;
 }
 
 std::uint64_t ChunkDriver::mine_part(const ProfileBlock& pb, BlockRun& r, const TriggerSel& part, std::uint32_t* out) {
@@ -211,17 +220,16 @@ BlockRun ChunkDriver::run_vstats(const TriggerSel& sel, BlockSink& sink) {
   std::optional<CleanVstats> vs;  // the CPU's or (cuda, hybrid) the GPU's; the oracle has its own
   if (!oracle_) vs.emplace(index_->view(), amount_, window, gpu_ ? &*dev_ : nullptr);
   r.mine_seconds += since(t0);
-  std::vector<double> buf;
   for (std::uint64_t a = 0; a < rows; a += o_.chunk_rows) {
     const std::uint64_t b = a + std::min(o_.chunk_rows, rows - a);
     const TriggerSel part = slice(sel, a, b);
-    buf.resize((b - a) * kVstatsCols);
+    vstats_.resize((b - a) * kVstatsCols);
     t0 = Clock::now();
-    if (vs) vs->rows(part, buf.data());
-    else oracle_->vstats(window, part, buf.data());
+    if (vs) vs->rows(part, vstats_.data());
+    else oracle_->vstats(window, part, vstats_.data());
     r.mine_seconds += since(t0);
     t0 = Clock::now();
-    stream->put(std::span<const double>(buf));
+    stream->put(std::span<const double>(vstats_));
     r.sink_seconds += since(t0);
   }
   t0 = Clock::now();

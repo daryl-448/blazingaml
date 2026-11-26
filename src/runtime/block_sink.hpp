@@ -17,7 +17,7 @@ namespace blz {
 // FNV-1a 64 over the bytes, continuing from `h`. The cell forms give the same value as the bytes
 // in memory order (little-endian), but multiply by FNV's prime to a power over a run of zero bytes
 // and over a small cell's zero high bytes: on HI-Small clean_default's 670 MB of rows, 0.07 s
-// instead of 0.69 s (D-77). fnv1a_cells also adds the cells into `sum`.
+// instead of 0.69 s (D-78). fnv1a_cells also adds the cells into `sum`.
 inline constexpr std::uint64_t kFnv1aBasis = 1469598103934665603ULL;
 std::uint64_t fnv1a_bytes(const void* data, std::size_t bytes, std::uint64_t h = kFnv1aBasis);
 std::uint64_t fnv1a_cells(std::span<const std::uint32_t> cells, std::uint64_t h, std::uint64_t& sum);

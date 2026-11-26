@@ -67,6 +67,17 @@ double peak_rss_mb() {
   return double(ru.ru_maxrss) / 1024.0;
 }
 
+// /proc/self/status's peak and current RSS, split into anonymous memory, mapped files (the
+// .blzg) and shared memory (the CUDA driver's mappings), in MiB.
+nlohmann::json rss_json() {
+  nlohmann::json j = nlohmann::json::object();
+  std::ifstream in("/proc/self/status");
+  for (std::string line; std::getline(in, line);)
+    for (const char* k : {"VmHWM", "VmRSS", "RssAnon", "RssFile", "RssShmem"})
+      if (line.rfind(std::string(k) + ":", 0) == 0) j[std::string(k) + "_mb"] = std::stod(line.substr(line.find(':') + 1)) / 1024.0;
+  return j;
+}
+
 void ensure_parent(const std::string& path) {
   auto parent = std::filesystem::path(path).parent_path();
   if (!parent.empty()) std::filesystem::create_directories(parent);
@@ -498,6 +509,9 @@ int mine(const std::string& graph, const std::string& profile_path, const blz::M
     triggers_written = true;
     meta["blocks"][r.name] = block_json(r, prof, o, sel, m);
     meta["peak_rss_mb"] = peak_rss_mb();
+    meta["memory"] = {{"index_bytes", driver.index() ? driver.index()->bytes() : 0},
+                      {"row_buffer_bytes", driver.row_buffer_bytes()},
+                      {"rss", rss_json()}};
     total_saturated += r.out.saturated;
     std::fprintf(stderr, "%-8s %8.1f s  saturated=%llu  fnv1a=%llu\n", r.name.c_str(), r.mine_seconds,
                  (unsigned long long)r.out.saturated, (unsigned long long)r.out.fnv1a);
@@ -1979,6 +1993,9 @@ int measure(const std::string& graph, const std::string& profile_path, const blz
       jr.update({{"seconds", s},
                  {"index_build_seconds", driver.build_seconds()},
                  {"upload_seconds", driver.device() ? driver.device()->upload_seconds() : 0.0},
+                 {"index_bytes", driver.index() ? driver.index()->bytes() : 0},
+                 {"row_buffer_bytes", driver.row_buffer_bytes()},
+                 {"rss", rss_json()},
                  {"triggers", sel.rows()},
                  {"instances", instances},
                  {"saturated", saturated},

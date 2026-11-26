@@ -83,6 +83,8 @@ class ChunkDriver {
   double build_seconds() const { return build_s_; }  // the index, or the oracle's lists
   const GraphIndex* index() const { return index_ ? &*index_ : nullptr; }
   const DeviceGraph* device() const { return dev_ ? &*dev_ : nullptr; }  // cuda and hybrid
+  // The host row buffers held for chunks, vstats' included (pinned for cuda and hybrid), in bytes.
+  std::uint64_t row_buffer_bytes() const;
 
  private:
   BlockRun run_block(const ProfileBlock& pb, const TriggerSel& sel, BlockSink& sink);
@@ -105,6 +107,7 @@ class ChunkDriver {
   std::optional<CudaMiner> miner_;
   std::vector<std::unique_ptr<PinnedBuffer>> pinned_;
   std::vector<std::uint32_t> host_;
+  std::vector<double> vstats_;
 };
 
 }  // namespace blz
