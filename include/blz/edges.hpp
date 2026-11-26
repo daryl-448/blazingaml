@@ -13,7 +13,7 @@ namespace blz {
 // The prepared transaction stream (SPEC §3): edges in stream order, so eid = index.
 struct EdgeTable {
   std::vector<std::uint32_t> src, dst;
-  std::vector<std::int32_t> ts;  // seconds since 2022-09-01 00:00 (D-1)
+  std::vector<std::int32_t> ts;  // seconds since `epoch` (HI-Small: 2022-09-01 00:00, D-1)
   std::vector<std::uint8_t> label;
   std::vector<double> amount_paid, amount_received;
   std::vector<std::uint8_t> pay_ccy, recv_ccy, format;  // codes into the dictionaries
@@ -21,6 +21,7 @@ struct EdgeTable {
   std::vector<std::string> node_bank, node_account;      // node id -> raw key (D-2, D-3)
   std::vector<std::uint32_t> file_row;  // eid -> 0-based data row of the CSV (SPEC v2 §3.5, D-31)
   std::array<std::uint8_t, 32> csv_sha256{};
+  std::int64_t epoch = 0;  // unix seconds, no time zone, of ts = 0 (SPEC v3 §6.1)
 
   std::size_t m() const { return src.size(); }
   std::size_t n() const { return node_bank.size(); }

@@ -4,6 +4,7 @@ add_executable(blz_unit_tests
   unit/test_sha256.cpp
   unit/test_csv.cpp
   unit/test_prepare.cpp
+  unit/test_dataset.cpp
   unit/test_blzg.cpp
   unit/test_npy.cpp
   unit/test_stats.cpp
@@ -233,10 +234,11 @@ add_test(NAME metamorphic_tsvis_oracle_2k
   COMMAND blz metamorphic --seeds 0:2000 --backend oracle --profile ${CMAKE_CURRENT_SOURCE_DIR}/profiles/tsvis.yaml)
 set_tests_properties(metamorphic_tsvis_oracle_2k PROPERTIES LABELS slow)
 
-# HI-Small checks (SPEC §13.5): run manually with `ctest -L slow`.
-set(BLZ_HI_SMALL_CSV "${PROJECT_SOURCE_DIR}/dataset/HI-Small_Trans.csv")
+# HI-Small checks (SPEC §13.5): run manually with `ctest -L slow`. Descriptor paths are relative
+# to the repository root.
 add_test(NAME hi_small_prepare
-  COMMAND blz prepare --csv ${BLZ_HI_SMALL_CSV} --out ${CMAKE_CURRENT_BINARY_DIR}/tmp/hi_small.blzg)
+  COMMAND blz prepare --dataset configs/datasets/hi_small.yaml --out ${CMAKE_CURRENT_BINARY_DIR}/tmp/hi_small.blzg
+  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
 set_tests_properties(hi_small_prepare PROPERTIES LABELS slow)
 
 if(BLZ_ENABLE_CUDA)

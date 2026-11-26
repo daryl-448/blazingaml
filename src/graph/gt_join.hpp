@@ -9,6 +9,7 @@
 #include <nlohmann/json.hpp>
 
 #include "blz/edges.hpp"
+#include "io/csv.hpp"
 
 namespace blz {
 
@@ -18,6 +19,8 @@ struct GtGraph {
   std::span<const std::int32_t> ts;
   std::span<const std::uint8_t> label;
   Splits splits;
+  const CsvSchema& schema;  // the CSV's and Patterns.txt's
+  std::int64_t epoch;       // unix seconds of ts = 0; an attempt's ts_min and ts_max count from it
 };
 
 // Joins the attempts of `patterns_text` (Patterns.txt) to the rows of `csv_text` (the CSV the

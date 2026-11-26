@@ -10,21 +10,18 @@ Prints one JSON line with the test-split confusion counts and F1 (x100). Needs ~
 """
 import json
 import sys
+from pathlib import Path
 
 import numpy as np
 import xgboost as xgb
 
+sys.path.insert(0, str(Path(__file__).resolve().parent / "dg2"))
+from blzg import Blzg  # noqa: E402
+
 graph, feats = sys.argv[1], sys.argv[2]
 blocks = [b for b in sys.argv[3].split(",") if b]
-raw = np.memmap(graph, dtype=np.uint8, mode="r")
-assert bytes(raw[:4]) == b"BLZG"
-m = int(np.frombuffer(raw[8:16], np.uint64)[0])
-align = lambda x: (x + 63) // 64 * 64  # .blzg: 64-byte header, 64-byte aligned sections
-off = 64
-src = np.frombuffer(raw[off:off + 4 * m], np.uint32); off = align(off + 4 * m)
-dst = np.frombuffer(raw[off:off + 4 * m], np.uint32); off = align(off + 4 * m)
-off = align(off + 4 * m)  # ts
-label = np.frombuffer(raw[off:off + m], np.uint8)
+g = Blzg(graph)
+src, dst, label = g.src, g.dst, g.label
 
 cols = [src.astype(np.float32), dst.astype(np.float32)]
 for b in blocks:
@@ -32,7 +29,7 @@ for b in blocks:
     cols += [a[:, j].astype(np.float32) for j in range(a.shape[1])]
 X = np.stack(cols, axis=1)
 del cols
-ntr = m * 4 // 5  # SPEC §3.4
+ntr = g.splits()["test"][0]  # train = [0, b_test), as `blz train` reads it
 params = {"objective": "binary:logistic", "tree_method": "hist", "max_depth": 6, "eta": 0.3,
           "max_bin": 256, "seed": 0, "nthread": 12}
 bst = xgb.train(params, xgb.DMatrix(X[:ntr], label=label[:ntr], nthread=12), 100)

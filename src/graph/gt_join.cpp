@@ -162,7 +162,7 @@ nlohmann::ordered_json gt_join(std::string_view csv_text, std::string_view patte
       r.text = l;
       if (!split_fields(l, r.f)) bad("expected 11 comma-separated fields");
       try {
-        parse_timestamp(r.f[0]);
+        parse_timestamp(g.schema, r.f[0]);
       } catch (const std::invalid_argument& e) {
         bad(e.what());
       }
@@ -192,11 +192,11 @@ nlohmann::ordered_json gt_join(std::string_view csv_text, std::string_view patte
     header = true;
     for_each_line(csv_text, [&](std::size_t, std::string_view l) {
       if (header) {
-        if (l != kCsvHeader) throw std::runtime_error("csv line 1: unexpected header");
+        if (l != g.schema.header) throw std::runtime_error("csv line 1: unexpected header");
         header = false;
         return;
       }
-      if (l.empty()) return;  // parse_csv allows one, after the final newline
+      if (l.empty()) return;  // read_csv allows one, as the last line
       if (data_rows >= m)
         throw std::runtime_error("gt-join: the CSV has more data rows than the graph's m = " + std::to_string(m));
       f(data_rows, l);
@@ -278,7 +278,7 @@ nlohmann::ordered_json gt_join(std::string_view csv_text, std::string_view patte
     json jrows = json::array();
     for (std::size_t ri : a.rows) {
       const Row& r = rows[ri];
-      const std::int64_t t = parse_timestamp(r.f[0]);
+      const std::int64_t t = parse_timestamp(g.schema, r.f[0]) - g.epoch;
       ts_min = std::min(ts_min, t);
       ts_max = std::max(ts_max, t);
       accounts.insert({r.f[1], r.f[2]});

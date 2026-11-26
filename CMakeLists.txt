@@ -141,6 +141,7 @@ add_library(blz_core
   src/common/mmap_file.cpp
   src/io/csv.cpp
   src/io/blzg.cpp
+  src/io/dataset.cpp
   src/graph/prepare.cpp
   src/graph/stats.cpp
   src/graph/fuzz_gen.cpp

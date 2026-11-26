@@ -39,7 +39,10 @@ case $CAMPAIGN in
   p13) OUTPUTS="p13_a30.json ac_v3_1_a30.json ac_v3_1_a30_logs.tgz a30_p13_env.txt" ;;
   *) echo "unknown campaign $CAMPAIGN" >&2; exit 2 ;;
 esac
-[ -f data/hi_small.blzg ] || { echo "missing data/hi_small.blzg (blz prepare)" >&2; exit 1; }
+[ -f data/hi_small.blzg ] || {
+  echo "missing data/hi_small.blzg (blz prepare --dataset configs/datasets/hi_small.yaml --out data/hi_small.blzg)" >&2
+  exit 1
+}
 W=/home/blz
 TMP=$(mktemp -d)
 LOG=results/a30_${CAMPAIGN}_run.log

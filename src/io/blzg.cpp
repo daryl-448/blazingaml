@@ -94,8 +94,10 @@ class Reader {
 
 }  // namespace
 
-void write_blzg(const std::string& path, const EdgeTable& t) {
+void write_blzg(const std::string& path, const EdgeTable& t, const DatasetInfo& d) {
   const std::uint64_t m = t.m(), n = t.n();
+  if (!d.schema || d.id.empty() || t.epoch % 86400 != 0 || d.splits.b_fv > d.splits.b_test || d.splits.b_test > m)
+    throw std::invalid_argument("write_blzg: a bad dataset section");
   for (std::size_t len : {t.dst.size(), t.ts.size(), t.label.size(), t.amount_paid.size(),
                           t.amount_received.size(), t.pay_ccy.size(), t.recv_ccy.size(),
                           t.format.size(), t.file_row.size()})
@@ -125,6 +127,12 @@ void write_blzg(const std::string& path, const EdgeTable& t) {
   w.strings(t.format_dict);
   w.strings(t.node_bank);
   w.strings(t.node_account);
+  w.align();
+  w.pod(t.epoch);
+  w.pod(d.splits.b_fv);
+  w.pod(d.splits.b_test);
+  w.bytes(d.descriptor_sha256.data(), 32);
+  w.strings({d.id, civil_date(t.epoch / 86400), std::string(d.schema->name), std::string(split_rule_name(d.split))});
   w.close_at(size_at, w.pos());
   if (std::rename(tmp.c_str(), path.c_str()) != 0) throw std::runtime_error("rename failed: " + path);
 }
@@ -136,9 +144,11 @@ BlzgView::BlzgView(const std::string& path) : file_(path) {
   std::uint64_t file_size;
   if (size < kHeader || std::memcmp(p, "BLZG", 4) != 0) throw std::runtime_error(path + ": not a .blzg file");
   std::memcpy(&version, p + 4, 4);
-  if (version == 1)
-    throw std::runtime_error(path + ": .blzg version 1 (v1, no file_row); this build reads version " +
-                             std::to_string(kBlzgVersion) + ": re-run `blz prepare` to rebuild the cache");
+  if (version == 1 || version == 2)
+    throw std::runtime_error(path + ": .blzg version " + std::to_string(version) + " (" +
+                             (version == 1 ? "no file_row" : "no dataset section") + "); this build reads version " +
+                             std::to_string(kBlzgVersion) +
+                             ": re-run `blz prepare --dataset configs/datasets/<id>.yaml` to rebuild the cache");
   if (version != kBlzgVersion)
     throw std::runtime_error(path + ": unsupported .blzg version " + std::to_string(version));
   std::memcpy(&m_, p + 8, 8);
@@ -164,11 +174,29 @@ BlzgView::BlzgView(const std::string& path) : file_(path) {
   node_account = r.strings("node_account");
   if (node_bank.size() != n_ || node_account.size() != n_)
     throw std::runtime_error(path + ": node table size != n");
+  r.align();
+  const char* ds = r.take(56, "the dataset section");
+  std::memcpy(&epoch_, ds, 8);
+  std::memcpy(&dataset_.splits.b_fv, ds + 8, 8);
+  std::memcpy(&dataset_.splits.b_test, ds + 16, 8);
+  std::memcpy(dataset_.descriptor_sha256.data(), ds + 24, 32);
+  const StringTable info = r.strings("the dataset section");
+  if (info.size() != 4)
+    throw std::runtime_error(path + ": the dataset section has " + std::to_string(info.size()) + " strings, not 4");
+  dataset_.id = info[0];
+  dataset_.schema = find_schema(info[2]);
+  const auto rule = parse_split_rule(info[3]);
+  if (dataset_.id.empty() || !dataset_.schema || !rule || epoch_ % 86400 != 0 || info[1] != civil_date(epoch_ / 86400))
+    throw std::runtime_error(path + ": a bad dataset section");
+  dataset_.split = *rule;
   if (r.pos() != size) throw std::runtime_error(path + ": trailing bytes");
   for (std::uint64_t e = 0; e < m_; ++e)
     if (src[e] >= n_ || dst[e] >= n_) throw std::runtime_error(path + ": node id out of range");
   if (const std::string err = check_file_row(file_row, ts); !err.empty()) throw std::runtime_error(path + ": " + err);
-  splits_ = compute_splits(SplitRule::legacy_hi_small, ts);
+  if (dataset_.splits != compute_splits(dataset_.split, ts))
+    throw std::runtime_error(path + ": its splits [" + std::to_string(dataset_.splits.b_fv) + ", " +
+                             std::to_string(dataset_.splits.b_test) + "] are not " +
+                             std::string(split_rule_name(dataset_.split)) + "'s on its timestamps: re-run `blz prepare`");
 }
 
 }  // namespace blz

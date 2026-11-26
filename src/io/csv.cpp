@@ -1,12 +1,16 @@
 #include "io/csv.hpp"
 
+#include <algorithm>
 #include <array>
 #include <charconv>
+#include <cstdio>
+#include <cstring>
 
 namespace blz {
 namespace {
 
-// Days from 1970-01-01 to y-m-d in the proleptic Gregorian calendar (H. Hinnant's algorithm).
+// Days from 1970-01-01 to y-m-d in the proleptic Gregorian calendar, and back (H. Hinnant's
+// algorithms).
 constexpr std::int64_t days_from_civil(std::int64_t y, unsigned m, unsigned d) {
   y -= m <= 2;
   const std::int64_t era = (y >= 0 ? y : y - 399) / 400;
@@ -15,68 +19,148 @@ constexpr std::int64_t days_from_civil(std::int64_t y, unsigned m, unsigned d) {
   const unsigned doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
   return era * 146097 + std::int64_t(doe) - 719468;
 }
-constexpr std::int64_t kEpochDays = days_from_civil(2022, 9, 1);
 
 bool leap(int y) { return (y % 4 == 0 && y % 100 != 0) || y % 400 == 0; }
-
-int digits(std::string_view s, std::size_t pos, std::size_t n) {
-  int v = 0;
-  for (std::size_t i = pos; i < pos + n; ++i) {
-    if (s[i] < '0' || s[i] > '9') throw std::invalid_argument("bad timestamp: " + std::string(s));
-    v = v * 10 + (s[i] - '0');
-  }
-  return v;
-}
 
 constexpr std::size_t kFields = 11;
 
 }  // namespace
 
-std::int32_t parse_timestamp(std::string_view s) {
-  // YYYY/MM/DD HH:MM
-  if (s.size() != 16 || s[4] != '/' || s[7] != '/' || s[10] != ' ' || s[13] != ':')
-    throw std::invalid_argument("bad timestamp: " + std::string(s));
-  int y = digits(s, 0, 4), mo = digits(s, 5, 2), d = digits(s, 8, 2);
-  int h = digits(s, 11, 2), mi = digits(s, 14, 2);
-  static constexpr std::array<int, 12> mdays = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-  if (mo < 1 || mo > 12 || d < 1 || d > mdays[mo - 1] + (mo == 2 && leap(y)) || h > 23 || mi > 59)
-    throw std::invalid_argument("bad timestamp: " + std::string(s));
-  std::int64_t secs = (days_from_civil(y, unsigned(mo), unsigned(d)) - kEpochDays) * 86400 +
-                      std::int64_t(h) * 3600 + std::int64_t(mi) * 60;
-  if (secs < 0 || secs > kMaxTimestamp)
-    throw std::invalid_argument("timestamp out of range: " + std::string(s));
-  return std::int32_t(secs);
+const CsvSchema* find_schema(std::string_view name) {
+  for (const CsvSchema& s : kSchemas)
+    if (s.name == name) return &s;
+  return nullptr;
 }
 
-RawTable parse_csv(std::string_view text) {
-  RawTable t;
-  std::size_t pos = 0, line = 0;
-  auto next_line = [&](std::string_view& out) {
-    if (pos >= text.size()) return false;
-    std::size_t end = text.find('\n', pos);
-    if (end == std::string_view::npos) end = text.size();
-    out = text.substr(pos, end - pos);
-    if (!out.empty() && out.back() == '\r') out.remove_suffix(1);
-    pos = end + 1;
-    ++line;
-    return true;
+std::int64_t parse_timestamp(const CsvSchema& s, std::string_view t) {
+  // YYYY-MM-DD HH:MM[:SS], '-' being the schema's date separator
+  const auto bad = [&] { return std::invalid_argument("bad timestamp: " + std::string(t)); };
+  const std::size_t len = s.seconds ? 19 : 16;
+  if (t.size() != len || t[4] != s.date_sep || t[7] != s.date_sep || t[10] != ' ' || t[13] != ':' ||
+      (s.seconds && t[16] != ':'))
+    throw bad();
+  const auto num = [&](std::size_t pos, std::size_t n) {
+    int v = 0;
+    for (std::size_t i = pos; i < pos + n; ++i) {
+      if (t[i] < '0' || t[i] > '9') throw bad();
+      v = v * 10 + (t[i] - '0');
+    }
+    return v;
   };
+  const int y = num(0, 4), mo = num(5, 2), d = num(8, 2), h = num(11, 2), mi = num(14, 2);
+  const int sec = s.seconds ? num(17, 2) : 0;
+  static constexpr std::array<int, 12> mdays = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+  if (mo < 1 || mo > 12 || d < 1 || d > mdays[mo - 1] + (mo == 2 && leap(y)) || h > 23 || mi > 59 || sec > 59)
+    throw bad();
+  return days_from_civil(y, unsigned(mo), unsigned(d)) * 86400 + std::int64_t(h) * 3600 + std::int64_t(mi) * 60 + sec;
+}
 
+std::string civil_date(std::int64_t days) {
+  days += 719468;
+  const std::int64_t era = (days >= 0 ? days : days - 146096) / 146097;
+  const unsigned doe = unsigned(days - era * 146097);
+  const unsigned yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+  const unsigned doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+  const unsigned mp = (5 * doy + 2) / 153;
+  const unsigned d = doy - (153 * mp + 2) / 5 + 1, m = mp < 10 ? mp + 3 : mp - 9;
+  const std::int64_t y = std::int64_t(yoe) + era * 400 + (m <= 2);
+  char buf[32];
+  std::snprintf(buf, sizeof buf, "%04lld-%02u-%02u", (long long)y, m, d);
+  return buf;
+}
+
+LineReader::LineReader(std::istream& in, std::size_t buffer_bytes, Sha256* sha)
+    : in_(in), buf_(std::max<std::size_t>(buffer_bytes, 1)), sha_(sha) {}
+
+bool LineReader::fill() {
+  in_.read(buf_.data(), std::streamsize(buf_.size()));
+  if (in_.bad()) throw std::runtime_error("read failed");
+  pos_ = 0;
+  end_ = std::size_t(in_.gcount());
+  if (sha_) sha_->update(buf_.data(), end_);
+  return end_ > 0;
+}
+
+bool LineReader::next(std::string_view& line) {
+  if (carry_out_) {
+    carry_.clear();
+    carry_out_ = false;
+  }
+  for (;;) {
+    if (pos_ < end_) {
+      const char* p = buf_.data() + pos_;
+      if (const auto* nl = static_cast<const char*>(std::memchr(p, '\n', end_ - pos_))) {
+        pos_ += std::size_t(nl - p) + 1;
+        if (carry_.empty()) {
+          line = std::string_view(p, std::size_t(nl - p));
+        } else {
+          carry_.append(p, nl);
+          line = carry_;
+          carry_out_ = true;
+        }
+        break;
+      }
+      carry_.append(p, end_ - pos_);
+      pos_ = end_;
+    }
+    if (!fill()) {
+      if (carry_.empty()) return false;
+      line = carry_;
+      carry_out_ = true;
+      break;
+    }
+  }
+  if (!line.empty() && line.back() == '\r') line.remove_suffix(1);
+  ++line_;
+  return true;
+}
+
+std::uint32_t Interner::id(std::string_view s) {
+  if (const auto it = ids_.find(s); it != ids_.end()) return it->second;
+  const auto id = std::uint32_t(keys_.size());
+  keys_.push_back(&ids_.emplace(std::string(s), id).first->first);
+  return id;
+}
+
+RawTable read_csv(std::istream& in, const CsvSchema& schema, std::size_t buffer_bytes) {
+  std::uint64_t newlines = 0;
+  {
+    std::vector<char> buf(std::max<std::size_t>(buffer_bytes, 1));
+    while (in.read(buf.data(), std::streamsize(buf.size())) || in.gcount() > 0)
+      newlines += std::uint64_t(std::count(buf.data(), buf.data() + in.gcount(), '\n'));
+    if (in.bad()) throw std::runtime_error("read failed");
+    in.clear();
+    if (!in.seekg(0)) throw std::runtime_error("read_csv: the stream is not seekable");
+  }
+
+  RawTable t;
+  // At most one data row per '\n': the header holds one unless it is the only line.
+  for (auto* v : {&t.src, &t.dst}) v->reserve(newlines);
+  for (auto* v : {&t.label, &t.recv_ccy, &t.pay_ccy, &t.format}) v->reserve(newlines);
+  t.ts.reserve(newlines);
+  t.amount_received.reserve(newlines);
+  t.amount_paid.reserve(newlines);
+
+  Sha256 sha;
+  LineReader r(in, buffer_bytes, &sha);
   std::string_view row;
-  if (!next_line(row) || row != kCsvHeader) throw CsvError(1, "unexpected header");
-
-  const std::size_t approx = text.size() / 90 + 16;
-  for (auto* v : {&t.from_bank, &t.from_account, &t.to_bank, &t.to_account, &t.recv_ccy,
-                  &t.pay_ccy, &t.format})
-    v->reserve(approx);
-  t.ts.reserve(approx);
-  t.amount_received.reserve(approx);
-  t.amount_paid.reserve(approx);
-  t.label.reserve(approx);
+  if (!r.next(row) || row != schema.header) throw CsvError(1, "unexpected header");
 
   std::array<std::string_view, kFields> f;
-  while (next_line(row)) {
-    if (row.empty() && pos >= text.size()) break;  // trailing newline at EOF
+  std::string key;
+  std::size_t blank = 0;  // the last empty line, an error unless no line follows
+  auto code = [&](Interner& dict, std::string_view v, std::size_t line) {
+    const std::uint32_t c = dict.id(v);
+    if (c > 255) throw CsvError(line, "a dictionary has more than 256 entries");
+    return std::uint8_t(c);
+  };
+  while (r.next(row)) {
+    const std::size_t line = r.line_number();
+    if (blank) throw CsvError(blank, "empty line");
+    if (row.empty()) {
+      blank = line;
+      continue;
+    }
     std::size_t nf = 0, start = 0;
     for (std::size_t i = 0; i <= row.size(); ++i) {
       if (i == row.size() || row[i] == ',') {
@@ -90,32 +174,75 @@ RawTable parse_csv(std::string_view text) {
     if (nf != kFields) throw CsvError(line, "expected 11 fields, got " + std::to_string(nf));
     for (std::size_t i = 0; i < kFields; ++i)
       if (f[i].empty()) throw CsvError(line, "empty field " + std::to_string(i + 1));
+    if (t.size() == newlines) throw std::runtime_error("read_csv: the stream changed between its two reads");
 
     try {
-      t.ts.push_back(parse_timestamp(f[0]));
+      t.ts.push_back(parse_timestamp(schema, f[0]));
     } catch (const std::invalid_argument& e) {
       throw CsvError(line, e.what());
     }
     auto num = [&](std::string_view s) {
       double v = 0;
       auto [p, ec] = std::from_chars(s.data(), s.data() + s.size(), v);
-      if (ec != std::errc() || p != s.data() + s.size())
-        throw CsvError(line, "bad amount: " + std::string(s));
+      if (ec != std::errc() || p != s.data() + s.size()) throw CsvError(line, "bad amount: " + std::string(s));
       return v;
     };
-    t.from_bank.push_back(f[1]);
-    t.from_account.push_back(f[2]);
-    t.to_bank.push_back(f[3]);
-    t.to_account.push_back(f[4]);
+    key.assign(f[1]).append(1, ',').append(f[2]);
+    t.src.push_back(t.nodes.id(key));
+    key.assign(f[3]).append(1, ',').append(f[4]);
+    t.dst.push_back(t.nodes.id(key));
     t.amount_received.push_back(num(f[5]));
-    t.recv_ccy.push_back(f[6]);
+    t.recv_ccy.push_back(code(t.currencies, f[6], line));
     t.amount_paid.push_back(num(f[7]));
-    t.pay_ccy.push_back(f[8]);
-    t.format.push_back(f[9]);
+    t.pay_ccy.push_back(code(t.currencies, f[8], line));
+    t.format.push_back(code(t.formats, f[9], line));
     if (f[10] != "0" && f[10] != "1") throw CsvError(line, "bad label: " + std::string(f[10]));
     t.label.push_back(std::uint8_t(f[10][0] - '0'));
   }
+  t.sha256 = sha.finish();
   return t;
+}
+
+void for_each_node_row(std::istream& in, std::string_view bank_column, std::string_view account_column,
+                       const std::function<void(std::string_view, std::string_view)>& f,
+                       std::size_t buffer_bytes) {
+  LineReader r(in, buffer_bytes);
+  std::vector<std::string> fields;
+  auto split = [&](std::string_view l) {
+    fields.assign(1, "");
+    for (std::size_t i = 0; i < l.size(); ++i) {
+      if (l[i] == ',') {
+        fields.emplace_back();
+      } else if (l[i] == '"' && fields.back().empty()) {
+        for (++i;; ++i) {
+          if (i == l.size()) throw CsvError(r.line_number(), "unterminated quote");
+          if (l[i] == '"') {
+            if (i + 1 < l.size() && l[i + 1] == '"') ++i;
+            else break;
+          }
+          fields.back() += l[i];
+        }
+        if (i + 1 < l.size() && l[i + 1] != ',') throw CsvError(r.line_number(), "text after a closing quote");
+      } else {
+        fields.back() += l[i];
+      }
+    }
+  };
+  std::string_view l;
+  if (!r.next(l)) throw CsvError(1, "no header");
+  split(l);
+  const auto col = [&](std::string_view name) {
+    const auto it = std::find(fields.begin(), fields.end(), name);
+    if (it == fields.end()) throw CsvError(1, "no column '" + std::string(name) + "'");
+    return std::size_t(it - fields.begin());
+  };
+  const std::size_t ncols = fields.size(), bi = col(bank_column), ai = col(account_column);
+  while (r.next(l)) {
+    split(l);
+    if (fields.size() != ncols)
+      throw CsvError(r.line_number(), "expected " + std::to_string(ncols) + " fields, got " + std::to_string(fields.size()));
+    f(fields[bi], fields[ai]);
+  }
 }
 
 }  // namespace blz

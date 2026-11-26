@@ -34,6 +34,7 @@
 #include "graph/stats.hpp"
 #include "io/blzg.hpp"
 #include "io/csv.hpp"
+#include "io/dataset.hpp"
 #include "ml/metrics.hpp"
 #if BLZ_WITH_XGBOOST
 #include "ml/xgb.hpp"
@@ -58,6 +59,12 @@ namespace {
 using Clock = std::chrono::steady_clock;
 double secs(Clock::time_point a) { return std::chrono::duration<double>(Clock::now() - a).count(); }
 
+double peak_rss_mb() {
+  rusage ru{};
+  getrusage(RUSAGE_SELF, &ru);
+  return double(ru.ru_maxrss) / 1024.0;
+}
+
 void ensure_parent(const std::string& path) {
   auto parent = std::filesystem::path(path).parent_path();
   if (!parent.empty()) std::filesystem::create_directories(parent);
@@ -71,31 +78,64 @@ std::string read_file(const std::string& path) {
   return ss.str();
 }
 
-int prepare(const std::string& csv, const std::string& out) {
+// SPEC v3 §6.1-§6.3: a dataset descriptor's CSV -> .blzg, through a read buffer of fixed size
+// (no whole-file map, whose pages would count in the peak RSS), checking the pinned invariants.
+// Memory: about 44 bytes per row (the file-order columns, the sort keys in ts's place, and one
+// column held twice while it is permuted) + 200 per node (the intern map and the node strings)
+// + the read buffer (D-68).
+int prepare(const std::string& dataset, const std::string& out) {
   auto t0 = Clock::now();
-  blz::MappedFile file(csv);
-  std::string_view text(file.data(), file.size());
-  blz::RawTable raw = blz::parse_csv(text);
-  std::fprintf(stderr, "parsed %zu rows in %.1f s\n", raw.size(), secs(t0));
-  blz::EdgeTable t = blz::build_edge_table(raw);
-  t.csv_sha256 = blz::sha256(file.data(), file.size());
-  std::fprintf(stderr, "built stream: m=%zu n=%zu (%.1f s)\n", t.m(), t.n(), secs(t0));
+  const blz::DatasetDescriptor d = blz::load_dataset(dataset);
+  std::ifstream in(d.transactions, std::ios::binary);
+  if (!in) throw std::runtime_error("cannot open " + d.transactions);
+  blz::RawTable raw = blz::read_csv(in, *d.schema, blz::kCsvBuffer);
+  in.close();
+  std::fprintf(stderr, "read %zu rows, %zu accounts (%s schema) in %.1f s\n", raw.size(), raw.nodes.size(),
+               std::string(d.schema->name).c_str(), secs(t0));
+  blz::EdgeTable t = blz::build_edge_table(std::move(raw));
+  const blz::Splits splits = blz::compute_splits(d.split, t.ts);
+  std::fprintf(stderr, "built stream: m=%zu n=%zu, epoch %s, ts in [0, %d] (%.1f s)\n", t.m(), t.n(),
+               blz::civil_date(t.epoch / 86400).c_str(), t.ts.empty() ? 0 : t.ts.back(), secs(t0));
 
-  auto bad = blz::check_hi_small_invariants(t);
-  for (auto& b : bad) std::fprintf(stderr, "invariant failed: %s\n", b.c_str());
+  blz::Invariants got = blz::count_invariants(t, splits, d.schema->concatenated_keys);
+  if (!d.node_tables.empty()) {
+    std::vector<std::pair<std::string, std::string>> rows;
+    for (const blz::NodeTable& nt : d.node_tables) {
+      std::ifstream f(nt.file, std::ios::binary);
+      if (!f) throw std::runtime_error("cannot open " + nt.file);
+      try {
+        blz::for_each_node_row(f, nt.bank_column, nt.account_column,
+                               [&](std::string_view b, std::string_view a) { rows.emplace_back(b, a); });
+      } catch (const blz::CsvError& e) {
+        throw std::runtime_error(nt.file + ": " + e.what());
+      }
+    }
+    const blz::NodeTableCounts nc = blz::resolve_node_tables(t, rows);
+    got["unresolved_accounts"] = nc.unresolved_accounts;
+    got["unmatched_node_rows"] = nc.unmatched_node_rows;
+    auto list = [](const std::vector<std::string>& v) {
+      std::string s;
+      for (const auto& x : v) s += (s.empty() ? "" : " ") + x;
+      return s;
+    };
+    std::fprintf(stderr, "node tables: %zu rows; %llu accounts resolve to no row%s%s; %llu rows match no account%s%s\n",
+                 rows.size(), (unsigned long long)nc.unresolved_accounts, nc.unresolved_examples.empty() ? "" : ", e.g. ",
+                 list(nc.unresolved_examples).c_str(), (unsigned long long)nc.unmatched_node_rows,
+                 nc.unmatched_examples.empty() ? "" : ", e.g. ", list(nc.unmatched_examples).c_str());
+  }
+  std::fprintf(stderr, "invariants %s\n", nlohmann::json(got).dump().c_str());
+  std::vector<std::string> bad = blz::check_invariants(got, d.invariants);
+  // SPEC v2 §3.5 (D-31).
+  if (const std::string err = blz::check_file_row(t.file_row, t.ts); !err.empty()) bad.push_back(err);
+  for (const auto& b : bad) std::fprintf(stderr, "invariant failed (%s): %s\n", dataset.c_str(), b.c_str());
   if (!bad.empty()) return 1;
-  const blz::StreamCounts c = blz::count_stream(t);
-  std::fprintf(stderr,
-               "SPEC §3.5 and v2 §3.3 invariants: pass (b_fv %llu: fit %llu positives, validation %llu, test %llu; "
-               "%llu concatenated node keys; file_row reproduces the stable sort)\n",
-               (unsigned long long)c.fit_val_boundary, (unsigned long long)c.fit_positives,
-               (unsigned long long)c.val_positives, (unsigned long long)c.test_positives,
-               (unsigned long long)c.concatenated_keys);
+  std::fprintf(stderr, "invariants of %s: pass (%zu pinned; file_row reproduces the stable sort)\n", dataset.c_str(),
+               d.invariants.size());
 
   ensure_parent(out);
-  blz::write_blzg(out, t);
-  std::fprintf(stderr, "wrote %s (%.1f s total), csv sha256 %s\n", out.c_str(), secs(t0),
-               blz::to_hex(t.csv_sha256).c_str());
+  blz::write_blzg(out, t, {d.id, d.schema, d.split, splits, d.sha256});
+  std::fprintf(stderr, "wrote %s (%.1f s total, peak RSS %.0f MB), csv sha256 %s\n", out.c_str(), secs(t0),
+               peak_rss_mb(), blz::to_hex(t.csv_sha256).c_str());
   return 0;
 }
 
@@ -232,12 +272,6 @@ std::uint64_t fnv1a_bytes(const void* data, std::size_t bytes, std::uint64_t h =
 }
 
 std::uint64_t fnv1a(std::span<const std::uint32_t> data) { return fnv1a_bytes(data.data(), data.size_bytes()); }
-
-double peak_rss_mb() {
-  rusage ru{};
-  getrusage(RUSAGE_SELF, &ru);
-  return double(ru.ru_maxrss) / 1024.0;
-}
 
 // The profile part of a manifest (SPEC v2 §3.2).
 nlohmann::json profile_json(const blz::Profile& prof) {
@@ -1869,7 +1903,7 @@ int gt_join(const std::string& graph, const std::string& csv, const std::string&
     throw std::runtime_error(csv + " is not the CSV " + graph + " was prepared from (SHA-256 differs)");
   const std::string pat_text = read_file(patterns);
   nlohmann::ordered_json j = blz::gt_join(std::string_view(csv_file.data(), csv_file.size()), pat_text,
-                                          {g.file_row, g.ts, g.label, g.splits()});
+                                          {g.file_row, g.ts, g.label, g.splits(), *g.dataset().schema, g.epoch()});
   nlohmann::ordered_json head = {
       {"inputs",
        {{"graph", graph},
@@ -1979,9 +2013,9 @@ int main(int argc, char** argv) {
   CLI::App app{"blz — BlazingAML runtime"};
   app.require_subcommand(1);
 
-  std::string csv, out, graph;
-  auto* prep = app.add_subcommand("prepare", "CSV -> .blzg, asserting the HI-Small invariants");
-  prep->add_option("--csv", csv)->required();
+  std::string dataset, out, graph;
+  auto* prep = app.add_subcommand("prepare", "a dataset descriptor's CSV -> .blzg, asserting its pinned invariants");
+  prep->add_option("--dataset", dataset, "configs/datasets/<id>.yaml")->required();
   prep->add_option("--out", out)->required();
 
   auto* exp = app.add_subcommand("export-edges", ".blzg -> edges.npy (int64[m,4]) for tools/gfp");
@@ -2166,7 +2200,7 @@ int main(int argc, char** argv) {
 
   CLI11_PARSE(app, argc, argv);
   try {
-    if (*prep) return prepare(csv, out);
+    if (*prep) return prepare(dataset, out);
     if (*exp) return export_edges(graph, out);
     if (*st) return stats(graph, out);
     if (*mn || *bn) {

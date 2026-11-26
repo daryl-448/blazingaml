@@ -3,8 +3,8 @@
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include <string>
 
+#include "fixtures.hpp"
 #include "graph/gt_join.hpp"
-#include "graph/prepare.hpp"
 
 using namespace blz;
 
@@ -53,9 +53,10 @@ const std::string kPatterns =
 
 TEST_CASE("gt-join: row statuses, rules, attempts, splits and unlisted positives") {
   const std::string text = csv();
-  const EdgeTable t = build_edge_table(parse_csv(text));
+  const EdgeTable t = prepare_text(text);
   REQUIRE(t.file_row == std::vector<std::uint32_t>{1, 3, 4, 5, 0, 2, 6, 7});
-  const auto j = gt_join(text, kPatterns, {t.file_row, t.ts, t.label, compute_splits(SplitRule::legacy_hi_small, t.ts)});
+  const Splits sp = compute_splits(SplitRule::legacy_hi_small, t.ts);
+  const auto j = gt_join(text, kPatterns, {t.file_row, t.ts, t.label, sp, kIbmSchema, t.epoch});
 
   // m = 8: train = [0, 6), floor(0.6 m) = 4 starts ts 600, so fit = [0, 4), val = [4, 6).
   CHECK(j["splits"].dump() == R"({"fit":[0,4],"val":[4,6],"test":[6,8]})");
@@ -104,8 +105,8 @@ TEST_CASE("gt-join: row statuses, rules, attempts, splits and unlisted positives
 
 TEST_CASE("gt-join: a CSV or Patterns.txt that does not fit is an error") {
   const std::string text = csv();
-  const EdgeTable t = build_edge_table(parse_csv(text));
-  const GtGraph g{t.file_row, t.ts, t.label, compute_splits(SplitRule::legacy_hi_small, t.ts)};
+  const EdgeTable t = prepare_text(text);
+  const GtGraph g{t.file_row, t.ts, t.label, compute_splits(SplitRule::legacy_hi_small, t.ts), kIbmSchema, t.epoch};
   CHECK_THROWS_WITH(gt_join(csv(7), kPatterns, g),
                     "gt-join: the CSV has 7 data rows, the graph m = 8 (not the CSV the graph was prepared from?)");
   CHECK_THROWS_WITH(gt_join(text + kRows[0] + "\n", kPatterns, g),

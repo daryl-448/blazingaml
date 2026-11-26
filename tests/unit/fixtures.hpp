@@ -1,6 +1,9 @@
 #pragma once
 #include <filesystem>
+#include <sstream>
 #include <string>
+
+#include "graph/prepare.hpp"
 
 // Rows deliberately out of timestamp order, with ties, a self-loop, leading-zero banks and
 // CRLF line endings on one row.
@@ -15,4 +18,17 @@ inline const std::string kFixtureCsv =
 inline std::string test_tmp(const std::string& name) {
   std::filesystem::create_directories(BLZ_TEST_TMPDIR);
   return std::string(BLZ_TEST_TMPDIR) + "/" + name;
+}
+
+// CSV text through read_csv.
+inline blz::RawTable read_text(const std::string& csv, const blz::CsvSchema& schema = blz::kIbmSchema,
+                               std::size_t buffer_bytes = blz::kCsvBuffer) {
+  std::istringstream in(csv);
+  return blz::read_csv(in, schema, buffer_bytes);
+}
+
+// CSV text through read_csv and build_edge_table, as `blz prepare` reads a file.
+inline blz::EdgeTable prepare_text(const std::string& csv, const blz::CsvSchema& schema = blz::kIbmSchema,
+                                   std::size_t buffer_bytes = blz::kCsvBuffer) {
+  return blz::build_edge_table(read_text(csv, schema, buffer_bytes));
 }
