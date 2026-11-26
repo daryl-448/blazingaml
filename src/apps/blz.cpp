@@ -42,6 +42,7 @@
 #include "oracle/oracle.hpp"
 #include "oracle/profile_oracle.hpp"
 #include "runtime/vstats.hpp"
+#include "runtime/chunk_driver.hpp"
 #include "runtime/clean_vstats.hpp"
 #include "runtime/coverage.hpp"
 #include "runtime/cpu_backend.hpp"
@@ -52,6 +53,7 @@
 #include "runtime/hybrid.hpp"
 #include "runtime/metamorphic.hpp"
 #include "runtime/profile.hpp"
+#include "runtime/block_sink.hpp"
 #include "runtime/triggers.hpp"
 
 namespace {
@@ -259,19 +261,20 @@ bool select_vstats(const blz::Profile& prof, const std::string& blocks_opt) {
   return ("," + blocks_opt + ",").find(",vstats,") != std::string::npos;
 }
 
+// A file's SHA-256, read through a 4 MiB buffer: mapping it would keep up to its size in RSS (a
+// 1.2 GB .blzg on HI-Medium).
 std::string file_sha256(const std::string& path) {
-  const blz::MappedFile f(path);
-  return blz::to_hex(blz::sha256(f.data(), f.size()));
+  std::ifstream in(path, std::ios::binary);
+  if (!in) throw std::runtime_error("cannot read " + path);
+  std::vector<char> buf(blz::kCsvBuffer);
+  blz::Sha256 sha;
+  while (in) {
+    in.read(buf.data(), std::streamsize(buf.size()));
+    sha.update(buf.data(), std::size_t(in.gcount()));
+  }
+  if (in.bad()) throw std::runtime_error("read failed: " + path);
+  return blz::to_hex(sha.finish());
 }
-
-// FNV-1a over bytes; `h` continues an earlier call's hash.
-std::uint64_t fnv1a_bytes(const void* data, std::size_t bytes, std::uint64_t h = 1469598103934665603ULL) {
-  const auto* b = static_cast<const unsigned char*>(data);
-  for (std::size_t i = 0; i < bytes; ++i) h = (h ^ b[i]) * 1099511628211ULL;
-  return h;
-}
-
-std::uint64_t fnv1a(std::span<const std::uint32_t> data) { return fnv1a_bytes(data.data(), data.size_bytes()); }
 
 // The profile part of a manifest (SPEC v2 §3.2).
 nlohmann::json profile_json(const blz::Profile& prof) {
@@ -333,75 +336,83 @@ std::vector<std::uint32_t> parse_thresholds(const std::string& s) {
 }
 std::string threshold_name(std::uint32_t h) { return h == blz::kAllLight ? "all" : std::to_string(h); }
 
-// SPEC v3 R8 -> <out>/vstats.npy (float64[rows, kVstatsCols], F7's columns), written in chunks of
-// CleanVstats::kChunkRows rows, so the rows never sit in memory whole. rows_of(part, buf) computes
-// the rows of the selection `part`. The manifest entry's fnv1a is over the data bytes.
-template <class RowsOf>
-nlohmann::json write_vstats(const std::string& out, const blz::TriggerSel& sel, RowsOf rows_of) {
-  const std::string path = out + "/vstats.npy", tmp = path + ".tmp";
-  std::ofstream f(tmp, std::ios::binary);
-  if (!f) throw std::runtime_error("cannot write " + tmp);
-  const std::uint64_t rows = sel.rows();
-  const std::string header = blz::npy_header("<f8", rows, blz::kVstatsCols);
-  f.write(header.data(), std::streamsize(header.size()));
-  std::uint64_t h = fnv1a_bytes(nullptr, 0);
-  std::vector<double> buf;
-  double mine_s = 0, write_s = 0;
-  for (std::uint64_t a = 0; a < rows; a += blz::CleanVstats::kChunkRows) {
-    const std::uint64_t b = std::min(rows, a + blz::CleanVstats::kChunkRows);
-    blz::TriggerSel part;
-    if (sel.sampled) {
-      part.sampled = true;
-      part.eids.assign(sel.eids.begin() + std::ptrdiff_t(a), sel.eids.begin() + std::ptrdiff_t(b));
-      part.first = part.eids.front();
-      part.last = std::uint64_t(part.eids.back()) + 1;
-    } else {
-      part.first = sel.first + a;
-      part.last = sel.first + b;
+// A block's manifest entry (SPEC v2 §3.2) from its run. `m`: the graph's edges, for a sample's
+// extrapolated time.
+nlohmann::json block_json(const blz::BlockRun& r, const blz::Profile& prof, const blz::MineOptions& o,
+                          const blz::TriggerSel& sel, std::uint64_t m) {
+  const bool cpu = o.backend == blz::Backend::cpu, hybrid = o.backend == blz::Backend::hybrid;
+  const bool gpu = o.backend == blz::Backend::cuda || hybrid;
+  nlohmann::json j = nlohmann::json::object();
+  if (r.block) {
+    const blz::Block b = r.block->block;
+    // A sweep (SPEC v2 §7.1) walks every list entry whatever the sample, so its time is not scaled.
+    if (sel.sampled && sel.rows() > 0)
+      j["extrapolated_mine_seconds"] =
+          r.cpu.sweep_seconds + (r.mine_seconds - r.cpu.sweep_seconds) * double(m) / double(sel.rows());
+    if (cpu) {
+      j["schedule_seconds"] = r.cpu.schedule_seconds;
+      j["loop_seconds"] = r.cpu.loop_seconds;
+      j["cpu_plans"] = cpu_plans_json(*r.block);
     }
-    buf.resize((b - a) * blz::kVstatsCols);
-    auto t0 = Clock::now();
-    rows_of(part, buf.data());
-    mine_s += secs(t0);
-    t0 = Clock::now();
-    f.write(reinterpret_cast<const char*>(buf.data()), std::streamsize(buf.size() * sizeof(double)));
-    h = fnv1a_bytes(buf.data(), buf.size() * sizeof(double), h);
-    write_s += secs(t0);
+    if (hybrid) {
+      const blz::HybridTiming& h = r.hybrid;
+      j["hybrid"] = {{"split_seconds", h.split_seconds},         {"cpu_seconds", h.cpu_seconds},
+                     {"gpu_seconds", h.gpu_seconds},             {"overlap_seconds", h.overlap_seconds},
+                     {"merge_seconds", h.merge_seconds},         {"total_seconds", h.total_seconds},
+                     {"cpu_triggers", h.cpu_triggers},           {"gpu_triggers", h.gpu_triggers},
+                     {"gpu_split_seconds", h.gpu.split_seconds}, {"cpu_plans", cpu_plans_json(*r.block)}};
+    }
+    if (gpu) {
+      const blz::CudaBlockTiming& c = hybrid ? r.hybrid.gpu : r.cuda;
+      j["cuda"] = {{"kernel_seconds", c.kernel_seconds}, {"bucket_seconds", c.bucket_seconds},
+                   {"light_seconds", c.light_seconds},   {"heavy_seconds", c.heavy_seconds},
+                   {"d2h_seconds", c.d2h_seconds},       {"light_triggers", c.light},
+                   {"heavy_triggers", c.heavy}};
+      if (o.pack)
+        j["cuda"]["pack"] = {{"pack_seconds", c.pack_seconds}, {"widen_seconds", c.widen_seconds},
+                             {"width", c.d2h_width},           {"bytes", c.d2h_bytes}};
+      // The kernel times and trigger counts are the fusion's, shared by its blocks.
+      if (r.fusion) j["cuda"]["fused"] = r.fusion->name;
+    }
+    j.update(block_params_json(r.params, b, prof.family));
+    if (b == blz::Block::lcyc) j["work_limit"] = r.params.work_limit;  // bindings per trigger; no row reached it
+    j["file"] = r.name + ".npy";
+    j["columns"] = blz::column_names(b, r.params.bins);
+    nlohmann::json pats = nlohmann::json::array();
+    for (const blz::PatternInfo* pi : r.block->patterns) pats.push_back(pi->name);
+    j["patterns"] = pats;
+    j["saturated"] = r.out.saturated;
+    j["instances"] = r.out.instances;
+  } else {
+    j = {{"file", "vstats.npy"},
+         {"dtype", "float64"},
+         {"columns", blz::clean_vstats_column_names()},
+         {"rule", "SPEC v3 R8: per side (u_out, u_in, v_out, v_in) the node's loop-free edges with t - window < ts' "
+                  "<= t; fan, deg, deg / fan, then the age t - ts' and the amount received, each mean, sum, "
+                  "population var, skew and kurtosis, accumulated in ascending order"},
+         {"window", prof.vstats->window},
+         {"lower", "open"},
+         {"device", o.backend == blz::Backend::oracle ? "oracle" : gpu ? "cuda" : "cpu"}};
+    if (o.backend != blz::Backend::oracle) j["sides"] = r.vstats_sides;
   }
-  f.close();
-  if (!f) throw std::runtime_error("write failed: " + tmp);
-  std::filesystem::rename(tmp, path);
-  return {{"file", "vstats.npy"},
-          {"dtype", "float64"},
-          {"columns", blz::clean_vstats_column_names()},
-          {"rule", "SPEC v3 R8: per side (u_out, u_in, v_out, v_in) the node's loop-free edges with t - window < ts' "
-                   "<= t; fan, deg, deg / fan, then the age t - ts' and the amount received, each mean, sum, "
-                   "population var, skew and kurtosis, accumulated in ascending order"},
-          {"output_fnv1a", h},
-          {"mine_seconds", mine_s},
-          {"write_seconds", write_s}};
+  j["mine_seconds"] = r.mine_seconds;
+  j["write_seconds"] = r.sink_seconds;  // the sink: hash, tally and the file
+  j["output_fnv1a"] = r.out.fnv1a;
+  j["chunks"] = r.out.chunks;
+  j["whole"] = r.whole;
+  return j;
 }
 
-int mine(const std::string& graph, const std::string& profile_path, const std::string& backend, int threads,
-         const std::string& schedule_opt, std::uint32_t heavy, std::uint32_t cpu_heavy, bool reach_prune,
-         const std::string& blocks_opt, const std::string& triggers, std::uint64_t edges, std::uint64_t work_limit,
-         bool fuse, bool pack, const std::string& quirks_opt, const std::string& out) {
-  const blz::Backend be = blz::parse_backend(backend);
-  if ((fuse || pack) && be != blz::Backend::cuda) throw std::runtime_error("--fuse and --pack are for the cuda backend");
-  // hybrid (SPEC v2 §8 S6): the cuda backend's device and rows, plus the cpu backend's index.
-  const bool hybrid = be == blz::Backend::hybrid;
-  const bool cpu = be == blz::Backend::cpu, gpu = be == blz::Backend::cuda || hybrid;
-  if (gpu && !blz::cuda_built()) blz::cuda_device();  // throws: no CUDA backend in this build
-  if (reach_prune && !(cpu || hybrid)) throw std::runtime_error("--reach-prune is for the cpu and hybrid backends");
-  const blz::Schedule schedule = blz::parse_schedule(schedule_opt);
+int mine(const std::string& graph, const std::string& profile_path, const blz::MineOptions& o,
+         const std::string& blocks_opt, const std::string& triggers, std::uint64_t edges, const std::string& out) {
   const blz::Profile prof = blz::load_profile(profile_path);  // E403
-  blz::check_profile_backend(prof, be);                       // E404 (v1 configs: E402, K_MAX)
   const std::vector<const blz::ProfileBlock*> blocks = select_blocks(prof, blocks_opt);
+  const bool want_vstats = select_vstats(prof, blocks_opt);
+  const std::string backend = blz::backend_name(o.backend);
+  const bool cpu = o.backend == blz::Backend::cpu, hybrid = o.backend == blz::Backend::hybrid;
+  const bool gpu = o.backend == blz::Backend::cuda || hybrid;
   // E16 (SPEC v3 §3.6): GFP / v2 behaviours switched back on in the clean oracle.
-  const blz::Quirks quirks = blz::parse_quirks(quirks_opt);
-  const std::vector<std::string> quirk_ids = blz::quirk_ids(quirks);
-  if (!quirk_ids.empty() && (be != blz::Backend::oracle || prof.family != blz::Family::clean))
-    throw std::runtime_error("--quirks is for the oracle backend and a clean profile (SPEC v3 §3.6)");
+  const std::vector<std::string> quirk_ids = blz::quirk_ids(o.quirks);
 
   auto t0 = Clock::now();
   blz::BlzgView g(graph);
@@ -411,30 +422,17 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
   if (edges && !(triggers == "all" || triggers.rfind("range:", 0) == 0 || triggers.rfind("sample:", 0) == 0))
     throw std::runtime_error("--edges: --triggers must be all, range:a:b or sample:<pct>:<seed>");
   const std::uint64_t m = edges ? edges : g.m();
-  const auto src = g.src.first(m), dst = g.dst.first(m);
-  const auto ts = g.ts.first(m);
   const blz::TriggerSel sel = blz::select_triggers(triggers, m, g.splits());
-  if (gpu && sel.sampled)
-    throw std::runtime_error("--triggers sample: runs on the oracle and cpu backends (the preflight of SPEC v2 §2.5 "
-                             "uses cpu); the CUDA kernels take an eid range");
-  if (threads > 0) omp_set_num_threads(threads);
-  const auto amount = g.amount_received.first(m);  // vstats only
-  const bool want_vstats = select_vstats(prof, blocks_opt);
-  std::optional<blz::ProfileOracle> oracle;  // a clean profile's is the clean oracle, on its own lists
-  std::optional<blz::GraphIndex> index;
-  if (cpu || gpu) index.emplace(src, dst, ts, g.n(), prof.self_loops());  // hybrid: gpu
-  else oracle.emplace(blz::EdgeStream{src, dst, ts, g.n()}, prof, quirks, amount);
-  const double build_s = secs(t0);
+  const double load_s = secs(t0);
+  const blz::EdgeStream stream{g.src.first(m), g.dst.first(m), g.ts.first(m), g.n()};
+  blz::ChunkDriver driver(stream, g.amount_received.first(m), prof, o);  // the index (oracle: its lists), the upload
+  const double build_s = load_s + driver.build_seconds();
   std::fprintf(stderr, "%s index built in %.1f s (m=%llu, n=%llu); profile %s (%s); triggers %s: %llu rows\n",
                backend.c_str(), build_s, (unsigned long long)m, (unsigned long long)g.n(), prof.name.c_str(),
                prof.id().c_str(), sel.spec.c_str(), (unsigned long long)sel.rows());
-  std::optional<blz::DeviceGraph> dgraph;
-  std::optional<blz::CudaMiner> miner;
-  if (gpu) {
-    dgraph.emplace(index->view());
-    miner.emplace(hybrid);  // hybrid: the GPU's host thread sleeps while the CPU team works
+  const blz::DeviceGraph* dgraph = driver.device();
+  if (dgraph)
     std::fprintf(stderr, "graph uploaded in %.3f s (%.0f MB)\n", dgraph->upload_seconds(), double(dgraph->bytes()) / 1e6);
-  }
 
   std::filesystem::create_directories(out);
   const std::string meta_path = out + "/features.json";
@@ -461,17 +459,18 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
   // blzc --disable (SPEC v2 §7.2) changes only the generated CPU code.
   nlohmann::json jbe = {{"name", backend}, {"threads", omp_get_max_threads()},
                         {"disabled_optimizations", cpu || hybrid ? disabled_json() : nlohmann::json::array()}};
-  if (cpu || hybrid) jbe["schedule"] = blz::schedule_name(schedule);
-  if (cpu || hybrid) jbe["reach_prune"] = reach_prune;
-  if (gpu) jbe["heavy_threshold"] = threshold_name(heavy);
-  if (be == blz::Backend::cuda) {  // SPEC v2 §8 S7: the same rows either way
-    jbe["fuse"] = fuse;
-    jbe["pack"] = pack;
+  if (cpu || hybrid) jbe["schedule"] = blz::schedule_name(o.schedule);
+  if (cpu || hybrid) jbe["reach_prune"] = o.reach_prune;
+  if (gpu) jbe["heavy_threshold"] = threshold_name(o.heavy_threshold);
+  if (o.backend == blz::Backend::cuda) {  // SPEC v2 §8 S7: the same rows either way
+    jbe["fuse"] = o.fuse;
+    jbe["pack"] = o.pack;
   }
-  if (hybrid) jbe["cpu_threshold"] = threshold_name(cpu_heavy);
-  if (be == blz::Backend::oracle && prof.family == blz::Family::clean) jbe["quirks"] = quirk_ids;
+  if (hybrid) jbe["cpu_threshold"] = threshold_name(o.cpu_threshold);
+  if (o.backend == blz::Backend::oracle && prof.family == blz::Family::clean) jbe["quirks"] = quirk_ids;
   meta["backend"] = jbe;
   meta["triggers"] = sel.json();
+  meta["chunk_rows"] = o.chunk_rows;  // SPEC v3 H7: rows reach the files in chunks of this many triggers
   meta["graph"] = graph;
   meta["edges"] = m;  // the graph is eids [0, edges) (--edges; m otherwise)
   meta["blzg_sha256"] = blzg_sha;
@@ -479,173 +478,32 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
   meta["config"] = profile_path;
   meta["git"] = git_info();
   meta["threads"] = omp_get_max_threads();
-  if (cpu || hybrid) meta["schedule"] = blz::schedule_name(schedule);
+  if (cpu || hybrid) meta["schedule"] = blz::schedule_name(o.schedule);
   if (gpu)
     meta["cuda"] = {{"env", cuda_json()},
-                    {"heavy_threshold", threshold_name(heavy)},
+                    {"heavy_threshold", threshold_name(o.heavy_threshold)},
                     {"graph_upload_seconds", dgraph->upload_seconds()},
                     {"device_graph_bytes", dgraph->bytes()}};
   meta["index_build_seconds"] = build_s;
   if (!meta.contains("blocks")) meta["blocks"] = nlohmann::json::object();
   if (sel.sampled) meta["triggers"]["file"] = "triggers.npy";
-  // The sample's eids, written with the first block (SPEC v3 R11: after lcyc, so a run that aborts
-  // leaves `out` as it was).
+
+  std::uint64_t total_saturated = 0;
   bool triggers_written = !sel.sampled;
-  const auto write_triggers = [&] {
+  blz::NpySink sink(out);
+  driver.run(blocks, want_vstats, sel, sink, [&](const blz::BlockRun& r) {
+    // The sample's eids, with the first finished block (SPEC v3 R11: after lcyc, so a run that
+    // aborts leaves `out` as it was).
     if (!triggers_written) blz::write_npy_u32(out + "/triggers.npy", sel.eids, sel.eids.size(), 1);
     triggers_written = true;
-  };
-
-  const std::uint64_t rows = sel.rows();
-  std::uint64_t total_saturated = 0;
-  // A block's file and manifest entry, once its rows are in `data`.
-  const auto finish = [&](const blz::ProfileBlock& pb, const blz::BlockParams& p, std::span<const std::uint32_t> data,
-                          double mine_s, std::uint64_t sat, nlohmann::json j) {
-    write_triggers();
-    const blz::Block b = pb.block;
-    const std::string file = std::string(blz::block_name(b)) + ".npy";
-    blz::write_npy_u32(out + "/" + file, data, rows, blz::block_cols(p));
-    j.update(block_params_json(p, b, prof.family));
-    if (b == blz::Block::lcyc) j["work_limit"] = p.work_limit;  // bindings per trigger; no row reached it
-    j["file"] = file;
-    j["columns"] = blz::column_names(b, p.bins);
-    j["mine_seconds"] = mine_s;
-    nlohmann::json pats = nlohmann::json::array();
-    for (const blz::PatternInfo* pi : pb.patterns) pats.push_back(pi->name);
-    j["patterns"] = pats;
-    j["output_fnv1a"] = fnv1a(data);
-    j["saturated"] = sat;
-    meta["blocks"][std::string(blz::block_name(b))] = j;
+    meta["blocks"][r.name] = block_json(r, prof, o, sel, m);
     meta["peak_rss_mb"] = peak_rss_mb();
-    total_saturated += sat;
-    std::fprintf(stderr, "%-8s %8.1f s  saturated=%llu  fnv1a=%llu\n", std::string(blz::block_name(b)).c_str(), mine_s,
-                 (unsigned long long)sat, (unsigned long long)j["output_fnv1a"].get<std::uint64_t>());
+    total_saturated += r.out.saturated;
+    std::fprintf(stderr, "%-8s %8.1f s  saturated=%llu  fnv1a=%llu\n", r.name.c_str(), r.mine_seconds,
+                 (unsigned long long)r.out.saturated, (unsigned long long)r.out.fnv1a);
     std::ofstream(meta_path) << meta.dump(1) << '\n';
-  };
-  const auto cuda_json_of = [&](const blz::CudaBlockTiming& ctm, const blz::CudaBlockTiming& d2h) {
-    nlohmann::json c = {{"kernel_seconds", ctm.kernel_seconds}, {"bucket_seconds", ctm.bucket_seconds},
-                        {"light_seconds", ctm.light_seconds},   {"heavy_seconds", ctm.heavy_seconds},
-                        {"d2h_seconds", d2h.d2h_seconds},       {"light_triggers", ctm.light},
-                        {"heavy_triggers", ctm.heavy}};
-    if (pack)
-      c["pack"] = {{"pack_seconds", d2h.pack_seconds}, {"widen_seconds", d2h.widen_seconds},
-                   {"width", d2h.d2h_width},           {"bytes", d2h.d2h_bytes}};
-    return c;
-  };
-  // The CUDA backend mines a fusion's blocks together (SPEC v2 §8 S7); the others one by one.
-  std::vector<blz::CudaUnit> units = blz::cuda_units(blocks, fuse && be == blz::Backend::cuda);
-  // SPEC v3 R11: a clean run that reaches the work limit aborts with an error and no rows. lcyc is
-  // the one block that counts work, so it runs first: an abort comes before any block is written.
-  if (prof.family == blz::Family::clean)
-    std::stable_partition(units.begin(), units.end(),
-                          [](const blz::CudaUnit& u) { return u.blocks.front()->block == blz::Block::lcyc; });
-  for (const blz::CudaUnit& unit : units) {
-    if (unit.fusion) {
-      const std::size_t nslots = unit.blocks.size();
-      std::vector<blz::BlockParams> params;
-      std::vector<const blz::BlockParams*> param_ptrs;
-      std::vector<std::unique_ptr<blz::PinnedBuffer>> bufs;
-      std::vector<std::uint32_t*> outs;
-      params.reserve(nslots);
-      for (const blz::ProfileBlock* pb : unit.blocks) {
-        params.push_back(pb->params);
-        params.back().work_limit = work_limit;
-        bufs.push_back(std::make_unique<blz::PinnedBuffer>(std::max<std::uint64_t>(rows * blz::block_cols(pb->params), 1)));
-        outs.push_back(bufs.back()->data());
-      }
-      for (const blz::BlockParams& bp : params) param_ptrs.push_back(&bp);
-      auto t1 = Clock::now();
-      const blz::CudaMiner::FusedTiming ftm =
-          miner->mine_fused(*dgraph, *unit.fusion, param_ptrs, prof.visibility, sel.first, sel.last, heavy, outs, pack);
-      const double mine_s = secs(t1);
-      for (std::size_t sl = 0; sl < nslots; ++sl) {
-        nlohmann::json j;
-        j["cuda"] = cuda_json_of(ftm.group, ftm.slots[sl]);
-        // The kernel times and trigger counts are the fusion's, shared by its blocks.
-        j["cuda"]["fused"] = unit.fusion->name;
-        finish(*unit.blocks[sl], params[sl], std::span<const std::uint32_t>(outs[sl], rows * blz::block_cols(params[sl])),
-               mine_s, ftm.slots[sl].saturated, std::move(j));
-      }
-      continue;
-    }
-    const blz::ProfileBlock* pb = unit.blocks.front();
-    const blz::Block b = pb->block;
-    blz::BlockParams p = pb->params;
-    p.work_limit = work_limit;  // a run over it stops with an error (SPEC v2 §8 S3)
-    p.reach_prune = reach_prune;  // SPEC v2 §8 S6: the same rows, faster where a pattern is planned for it
-    const std::uint64_t cells = rows * blz::block_cols(p);
-    std::vector<std::uint32_t> feats;
-    std::optional<blz::PinnedBuffer> pinned;  // cuda: the rows, copied straight from the device
-    if (gpu) pinned.emplace(std::max<std::uint64_t>(cells, 1));
-    else feats.assign(cells, 0);
-    auto t1 = Clock::now();
-    std::uint64_t sat = 0;
-    blz::CpuBlockTiming tm;
-    blz::CudaBlockTiming ctm;
-    blz::HybridTiming htm;
-    if (cpu) {
-      tm = blz::mine_cpu(index->view(), pb->patterns, p, prof.visibility, sel, schedule, feats.data());
-      sat = tm.saturated;
-    } else if (hybrid) {
-      htm = blz::mine_hybrid(index->view(), *dgraph, *miner, pb->patterns, p, prof.visibility, sel.first, sel.last,
-                             cpu_heavy, heavy, schedule, pinned->data());
-      sat = htm.saturated;
-    } else if (gpu) {
-      ctm = miner->mine(*dgraph, pb->patterns, p, prof.visibility, sel.first, sel.last, heavy, pinned->data(), pack);
-      sat = ctm.saturated;
-    } else if (sel.sampled) {
-      sat = oracle->mine(b, p, sel.eids, feats.data());
-    } else {
-      sat = oracle->mine(b, p, sel.first, sel.last, feats.data());
-    }
-    const double mine_s = secs(t1);
-    const std::span<const std::uint32_t> data =
-        gpu ? std::span<const std::uint32_t>(pinned->data(), cells) : std::span<const std::uint32_t>(feats);
-    nlohmann::json j = nlohmann::json::object();
-    // A sweep (SPEC v2 §7.1) walks every list entry whatever the sample, so its time is not scaled.
-    if (sel.sampled && rows > 0)
-      j["extrapolated_mine_seconds"] = tm.sweep_seconds + (mine_s - tm.sweep_seconds) * double(m) / double(rows);
-    if (cpu) {
-      j["schedule_seconds"] = tm.schedule_seconds;
-      j["loop_seconds"] = tm.loop_seconds;
-      j["cpu_plans"] = cpu_plans_json(*pb);
-    }
-    if (hybrid) {
-      ctm = htm.gpu;
-      j["hybrid"] = {{"split_seconds", htm.split_seconds},     {"cpu_seconds", htm.cpu_seconds},
-                     {"gpu_seconds", htm.gpu_seconds},         {"overlap_seconds", htm.overlap_seconds},
-                     {"merge_seconds", htm.merge_seconds},     {"total_seconds", htm.total_seconds},
-                     {"cpu_triggers", htm.cpu_triggers},       {"gpu_triggers", htm.gpu_triggers},
-                     {"gpu_split_seconds", htm.gpu.split_seconds}, {"cpu_plans", cpu_plans_json(*pb)}};
-    }
-    if (gpu) j["cuda"] = cuda_json_of(ctm, ctm);
-    finish(*pb, p, data, mine_s, sat, std::move(j));
-  }
-  if (want_vstats) {
-    // SPEC v3 R8. The cuda backend and the hybrid compute it on the GPU.
-    write_triggers();
-    const std::int32_t window = prof.vstats->window;
-    auto t1 = Clock::now();
-    std::optional<blz::CleanVstats> vs;
-    if (!oracle) vs.emplace(index->view(), amount, window, gpu ? &*dgraph : nullptr);
-    const double order_s = secs(t1);
-    nlohmann::json j = write_vstats(out, sel, [&](const blz::TriggerSel& part, double* buf) {
-      if (vs) vs->rows(part, buf);
-      else oracle->vstats(window, part, buf);
-    });
-    j["mine_seconds"] = j["mine_seconds"].get<double>() + order_s;
-    j["window"] = window;
-    j["lower"] = "open";
-    j["device"] = oracle ? "oracle" : gpu ? "cuda" : "cpu";
-    if (vs) j["sides"] = vs->sides();
-    meta["blocks"]["vstats"] = j;
-    meta["peak_rss_mb"] = peak_rss_mb();
-    std::fprintf(stderr, "%-8s %8.1f s  fnv1a=%llu\n", "vstats", j["mine_seconds"].get<double>(),
-                 (unsigned long long)j["output_fnv1a"].get<std::uint64_t>());
-    std::ofstream(meta_path) << meta.dump(1) << '\n';
-  }
-  if (total_saturated > 0) std::fprintf(stderr, "warning: %llu saturated counts\n",
-                                        (unsigned long long)total_saturated);
+  });
+  if (total_saturated > 0) std::fprintf(stderr, "warning: %llu saturated counts\n", (unsigned long long)total_saturated);
   return 0;
 }
 
@@ -1144,7 +1002,7 @@ int bench(const std::string& graph, const std::string& config, const std::string
               blz::mine_cpu(index.view(), pb->patterns, p, prof.visibility, all, sched, feats.data());
           if (ref.empty()) {
             ref = feats;
-            jb["output_fnv1a"] = fnv1a(ref);
+            jb["output_fnv1a"] = blz::fnv1a(ref);
             jb["saturated"] = tm.saturated;
           } else if (feats != ref) {
             throw std::runtime_error("bench: " + bname + " output differs at " + std::to_string(nt) +
@@ -1277,7 +1135,7 @@ int bench_cuda(const std::string& graph, const std::string& config, int reps, co
           const std::span<const std::uint32_t> got(outs[sl], m * blz::block_cols(*params[sl]));
           if (ref[sl].empty()) {
             ref[sl].assign(got.begin(), got.end());
-            jb["outputs"][bname] = {{"output_fnv1a", fnv1a(ref[sl])}, {"saturated", slot_tm[sl].saturated}};
+            jb["outputs"][bname] = {{"output_fnv1a", blz::fnv1a(ref[sl])}, {"saturated", slot_tm[sl].saturated}};
           } else if (!std::equal(got.begin(), got.end(), ref[sl].begin())) {
             throw std::runtime_error("bench: " + bname + " output differs at heavy threshold " + threshold_name(h) +
                                      " (SPEC §8)");
@@ -1416,7 +1274,7 @@ int bench_hybrid(const std::string& graph, const std::string& config, int reps, 
       const std::span<const std::uint32_t> got(buf.data(), cells);
       if (ref.empty()) {
         ref.assign(got.begin(), got.end());
-        jb["output_fnv1a"] = fnv1a(ref);
+        jb["output_fnv1a"] = blz::fnv1a(ref);
       } else if (!std::equal(got.begin(), got.end(), ref.begin())) {
         throw std::runtime_error("bench: " + bname + " output differs in " + what + " (SPEC §8)");
       }
@@ -2032,28 +1890,55 @@ int main(int argc, char** argv) {
   int threads = 0;
   std::uint64_t edges = 0;  // mine --edges (0: every edge)
   std::uint32_t heavy = blz::kDefaultHeavyThreshold;
+  std::string cpu_heavy_opt = std::to_string(blz::kDefaultCpuThreshold);
+  bool reach_prune = false, fuse = false, pack = false;
+  std::uint64_t work_limit = blz::kDefaultWorkLimit, chunk_rows = blz::kDefaultChunkRows;
+  // The flags of mine and measure that choose the backend and its options (blz::MineOptions).
+  const auto add_backend_flags = [&](CLI::App* sub) {
+    sub->add_option("--backend", backend)->check(CLI::IsMember({"oracle", "cpu", "cuda", "hybrid"}));
+    sub->add_option("--threads", threads);
+    sub->add_option("--schedule", schedule, "cpu backend: dynamic | sorted")->check(CLI::IsMember({"dynamic", "sorted"}));
+    sub->add_option("--heavy-threshold", heavy, "cuda backend: work estimate from which a trigger is heavy");
+    sub->add_option("--cpu-threshold", cpu_heavy_opt,
+                    "hybrid backend: work estimate from which a trigger runs on the CPU ('all': none; SPEC v2 §8 S6)");
+    sub->add_flag("--reach-prune", reach_prune,
+                  "cpu and hybrid backends: reachability pruning (SPEC v2 §8 S6), same rows");
+    sub->add_option("--work-limit", work_limit,
+                    "lcyc: bindings per trigger; past it the run stops with an error (SPEC v2 §8 S3)");
+    sub->add_flag("--fuse", fuse,
+                  "cuda backend: mine each compiled fusion's blocks in one kernel (SPEC v2 §8 S7), same rows");
+    sub->add_flag("--pack", pack,
+                  "cuda backend: copy the rows as uint8 or uint16 where they fit (SPEC v2 §8 S7), same rows");
+    sub->add_option("--chunk-rows", chunk_rows, "triggers per chunk: rows reach the sink in chunks (SPEC v3 H7, §5.1)");
+  };
+  const auto mine_options = [&](CLI::App* sub, const std::string& quirks) {
+    blz::MineOptions o;
+    o.backend = blz::parse_backend(backend);
+    // The hybrid's CPU side runs the sorted schedule unless --schedule says otherwise (SPEC v2 §8 S6).
+    o.schedule = blz::parse_schedule(o.backend == blz::Backend::hybrid && !*sub->get_option("--schedule") ? "sorted"
+                                                                                                         : schedule);
+    o.heavy_threshold = heavy;
+    const std::vector<std::uint32_t> cpu_h = parse_thresholds(cpu_heavy_opt);
+    if (cpu_h.size() != 1) throw std::runtime_error("--cpu-threshold takes one value");
+    o.cpu_threshold = cpu_h[0];
+    o.reach_prune = reach_prune;
+    o.fuse = fuse;
+    o.pack = pack;
+    o.work_limit = work_limit;
+    o.quirks = blz::parse_quirks(quirks);
+    o.chunk_rows = chunk_rows;
+    if (threads > 0) omp_set_num_threads(threads);
+    return o;
+  };
   auto* mn = app.add_subcommand("mine", "Mine feature blocks -> <out>/<block>.npy + features.json (the manifest)");
   mn->add_option("--graph", graph)->required();
   auto* mn_prof = mn->add_option("--profile", profile, "semantic profile (configs/profiles/*.yaml, SPEC v2 §3.1)");
   auto* mn_cfg = mn->add_option("--config", config, "a v1 feature config (or a profile)");
   mn_prof->excludes(mn_cfg);
-  mn->add_option("--backend", backend)->check(CLI::IsMember({"oracle", "cpu", "cuda", "hybrid"}));
-  mn->add_option("--threads", threads);
-  mn->add_option("--schedule", schedule, "cpu backend: dynamic | sorted")->check(CLI::IsMember({"dynamic", "sorted"}));
-  mn->add_option("--heavy-threshold", heavy, "cuda backend: work estimate from which a trigger is heavy");
-  std::string cpu_heavy_opt = std::to_string(blz::kDefaultCpuThreshold);
-  bool reach_prune = false;
-  mn->add_option("--cpu-threshold", cpu_heavy_opt,
-                 "hybrid backend: work estimate from which a trigger runs on the CPU ('all': none; SPEC v2 §8 S6)");
-  mn->add_flag("--reach-prune", reach_prune, "cpu and hybrid backends: reachability pruning (SPEC v2 §8 S6), same rows");
+  add_backend_flags(mn);
   mn->add_option("--blocks", blocks, "comma-separated, vstats included; default: every block of the profile");
   mn->add_option("--triggers", triggers, "all | train | test | fit | val | range:a:b | sample:<pct>:<seed>");
   mn->add_option("--edges", edges, "mine on the stream prefix [0, k) only: later edges do not exist (SPEC v2 §4.4 R5)");
-  std::uint64_t work_limit = blz::kDefaultWorkLimit;
-  mn->add_option("--work-limit", work_limit, "lcyc: bindings per trigger; past it the run stops with an error (SPEC v2 §8 S3)");
-  bool fuse = false, pack = false;
-  mn->add_flag("--fuse", fuse, "cuda backend: mine each compiled fusion's blocks in one kernel (SPEC v2 §8 S7), same rows");
-  mn->add_flag("--pack", pack, "cuda backend: copy the rows as uint8 or uint16 where they fit (SPEC v2 §8 S7), same rows");
   std::string quirks;
   mn->add_option("--quirks", quirks,
                  "oracle backend, clean profile: GFP / v2 behaviours to switch back on for E16, e.g. Q1,Q3 or all "
@@ -2213,14 +2098,7 @@ int main(int argc, char** argv) {
       if (profile.empty() == config.empty()) throw std::runtime_error("give one of --profile and --config");
       if (profile.empty()) profile = config;
     }
-    if (*mn) {
-      // The hybrid's CPU side runs the sorted schedule unless --schedule says otherwise (SPEC v2 §8 S6).
-      if (backend == "hybrid" && !*mn->get_option("--schedule")) schedule = "sorted";
-      const std::vector<std::uint32_t> cpu_h = parse_thresholds(cpu_heavy_opt);
-      if (cpu_h.size() != 1) throw std::runtime_error("mine --cpu-threshold takes one value");
-      return mine(graph, profile, backend, threads, schedule, heavy, cpu_h[0], reach_prune, blocks, triggers, edges,
-                  work_limit, fuse, pack, quirks, out);
-    }
+    if (*mn) return mine(graph, profile, mine_options(mn, quirks), blocks, triggers, edges, out);
     if (*bn) {
       if (bench_name.empty()) bench_name = backend;
       if ((fuse || pack) && backend != "cuda") throw std::runtime_error("--fuse and --pack are for --backend cuda");

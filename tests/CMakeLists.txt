@@ -29,6 +29,8 @@ add_executable(blz_unit_tests
   unit/test_codegen.cpp
   unit/test_profile.cpp
   unit/test_triggers.cpp
+  unit/test_block_sink.cpp
+  unit/test_chunk_driver.cpp
   unit/test_metamorphic.cpp
   unit/test_gt_join.cpp
   unit/test_coverage.cpp

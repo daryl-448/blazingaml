@@ -38,6 +38,24 @@ nlohmann::json TriggerSel::json() const {
   return j;
 }
 
+TriggerSel slice(const TriggerSel& sel, std::uint64_t a, std::uint64_t b) {
+  if (a >= b || b > sel.rows()) throw std::invalid_argument("slice: rows [a, b) must be a non-empty part of the selection");
+  TriggerSel part;
+  part.spec = sel.spec;
+  part.sampled = sel.sampled;
+  part.percent = sel.percent;
+  part.seed = sel.seed;
+  if (sel.sampled) {
+    part.eids.assign(sel.eids.begin() + std::ptrdiff_t(a), sel.eids.begin() + std::ptrdiff_t(b));
+    part.first = part.eids.front();
+    part.last = std::uint64_t(part.eids.back()) + 1;
+  } else {
+    part.first = sel.first + a;
+    part.last = sel.first + b;
+  }
+  return part;
+}
+
 TriggerSel select_triggers(const std::string& spec, std::uint64_t m, const Splits& splits) {
   TriggerSel s;
   s.spec = spec;

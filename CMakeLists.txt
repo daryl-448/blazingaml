@@ -152,6 +152,8 @@ add_library(blz_core
   src/runtime/features.cpp
   src/runtime/profile.cpp
   src/runtime/triggers.cpp
+  src/runtime/block_sink.cpp
+  src/runtime/chunk_driver.cpp
   src/runtime/registration.cpp
   src/runtime/cpu_backend.cpp
   src/runtime/hybrid.cpp

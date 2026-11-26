@@ -35,6 +35,10 @@ struct TriggerSel {
 // Throws std::runtime_error on a malformed spec, or a range or named split past m.
 TriggerSel select_triggers(const std::string& spec, std::uint64_t m, const Splits& splits);
 
+// Rows [a, b) of `sel` (a < b <= sel.rows()) as a selection: a range's sub-range, or the sample's
+// eids a..b (in the range they lie in). A chunk of a run (SPEC v3 H7).
+TriggerSel slice(const TriggerSel& sel, std::uint64_t a, std::uint64_t b);
+
 // Whether eid `e` is in sample (percent, seed).
 bool sample_selected(double percent, std::uint64_t seed, std::uint64_t e);
 
