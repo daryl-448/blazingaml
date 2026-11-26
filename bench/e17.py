@@ -201,7 +201,8 @@ def run(mode, names):
     pf = PF.load(PREFLIGHT, None) or sys.exit(f"{rel(PREFLIGHT)} is missing: run bench/p15_preflight.py report first")
     for cell in names or mode.cells:
         cells = PF.load(mode.cells_json, {})
-        if cells.get(cell, {}).get("rc") == 0 or "capacity" in cells.get(cell, {}):
+        c = cells.get(cell, {})
+        if (c.get("rc") == 0 and c.get("idle")) or "capacity" in c:  # a non-idle record is measured again
             print(f"{cell}: recorded", flush=True)
             continue
         cells[cell] = run_cell(mode, cell, pf)
@@ -241,6 +242,8 @@ def cell_result(mode, cell, rec, measure, pf):
     if "capacity" in rec:
         return {**out, "capacity": rec["capacity"]}
     res = PF.get(measure, cell.split("/"))
+    if res.get("errors") or "seconds" not in res:  # M is over error-free reps only: report() fails the cell
+        return {**out, "rc": rec["rc"], "errors": res.get("errors"), "log": rec.get("log")}
     f = pf["facts"][ds]
     s = res["seconds"]
     blocks = res["runs"][0]["blocks"]

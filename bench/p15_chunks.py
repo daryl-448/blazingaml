@@ -32,7 +32,10 @@ def mine(blz, graph, profile, args, chunk, out):
     cmd = [blz, "mine", "--graph", graph, "--profile", f"configs/profiles/{profile}.yaml", *args, "--out", out]
     if chunk is not None:
         cmd += ["--chunk-rows", str(chunk)]
-    shutil.rmtree(os.path.join(ROOT, out), ignore_errors=True)  # a fresh manifest: no block inherits an old hash
+    try:  # a fresh manifest: no block inherits an old hash; any failure but a missing directory aborts
+        shutil.rmtree(os.path.join(ROOT, out))
+    except FileNotFoundError:
+        pass
     t0 = time.time()
     r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
     if r.returncode != 0:
@@ -103,10 +106,12 @@ def main():
                           "features/p15_chunks/clean_default_oracle_1000003")
         run = "clean_default oracle chunk=1000003"
         runs[run] = {"seconds": secs, "output_fnv1a": {b: v["output_fnv1a"] for b, v in meta["blocks"].items()}}
-        if set(meta["blocks"]) != set(p13["clean_default"]["oracle"]["output_fnv1a"]):
+        want = p13["clean_default"]["oracle"]["output_fnv1a"]
+        if set(meta["blocks"]) != set(want):
             check(run, "(blocks)", 0, 1, "p13_a30 clean_default's blocks")
         for b, v in meta["blocks"].items():
-            check(run, b, v["output_fnv1a"], p13["clean_default"]["oracle"]["output_fnv1a"][b], "p13_a30 clean_default")
+            if b in want:
+                check(run, b, v["output_fnv1a"], want[b], "p13_a30 clean_default")
     git = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
     doc = {"git": git, "graph": a.graph, "checks": len(rows), "fails": fails, "runs": runs, "rows": rows}
     with open(os.path.join(ROOT, a.out), "w") as f:

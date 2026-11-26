@@ -139,9 +139,11 @@ struct FuzzDiff {
   // reference's nonzero rows, summed over windows, where it completed.
   FuzzHits hits;
   std::array<std::uint64_t, kAllBlocks.size()> nonzero_rows{};
-  // vstats: the cases compared, the rows that differ in any bit, the reference's rows with a
-  // nonzero column, and the distinct sides the backend computed (path hit), summed over windows.
+  // vstats: the cases compared and completed, the rows that differ in any bit, the reference's rows
+  // with a nonzero column, and the distinct sides the backend computed (path hit), summed over
+  // windows; and the cases where a chunked run stopped at the work limit before vstats (R11).
   std::uint64_t vstats_graphs = 0, vstats_mismatched_rows = 0, vstats_nonzero_rows = 0, vstats_sides = 0;
+  std::uint64_t vstats_limited_graphs = 0;
   // Path hits of the optimised paths: the compared rows that each one computed (SPEC v3 §4.1 T2).
   std::uint64_t sweep_rows = 0;  // the CPU sweep drivers (SPEC v2 §7.1)
   std::uint64_t reach_rows = 0;  // reachability pruning (SPEC v2 §8 S6), on the CPU or the hybrid's CPU side

@@ -224,6 +224,7 @@ struct CaseResult {
   std::optional<Mismatch> first;
   std::array<bool, kAllBlocks.size()> limited{};
   bool vstats_compared = false;  // the case's vstats rows were compared (counted once per case)
+  bool vstats_limited = false;   // a chunked run of the case stopped at the work limit before vstats
 
   explicit CaseResult(const DiffCase& c) {
     const std::uint64_t m = c.g.src.size();
@@ -317,7 +318,8 @@ struct CaseResult {
       d.limited_graphs[i] += limited[i];
       any_limited = any_limited || limited[i];
     }
-    d.vstats_graphs += vstats_compared;
+    d.vstats_graphs += vstats_compared && !vstats_limited;
+    d.vstats_limited_graphs += vstats_limited;
     if (bad()) d.bad_seeds.push_back(id);
     if (any_limited) d.limited_seeds.push_back(id);
   }
@@ -338,6 +340,7 @@ void add(FuzzDiff& a, const FuzzDiff& b) {
   }
   a.hits += b.hits;
   a.vstats_graphs += b.vstats_graphs;
+  a.vstats_limited_graphs += b.vstats_limited_graphs;
   a.vstats_mismatched_rows += b.vstats_mismatched_rows;
   a.vstats_nonzero_rows += b.vstats_nonzero_rows;
   a.vstats_sides += b.vstats_sides;
@@ -748,6 +751,7 @@ void chunked_run(CaseResult& r, ChunkDriver& d, const Profile& pw, const Want& x
     // A legacy profile keeps D-39's stop, after the blocks mined before lcyc, so it may keep their
     // rows; a clean one may not.
     for (const ProfileBlock& pb : pw.blocks) r.limited[int(pb.block)] = true;
+    r.vstats_limited = r.vstats_limited || pw.vstats.has_value();
     if (pw.family == Family::clean && got_stop != UINT64_MAX && (!sink.mem.u32.empty() || !sink.mem.f64.empty())) {
       const Block lcyc = Block::lcyc;
       r.note(&lcyc, path, w, got_stop,

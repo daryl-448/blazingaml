@@ -1614,10 +1614,12 @@ int fuzz_diff(const std::string& seeds, const std::string& bound_opt, std::uint6
     limited[bn] = d.limited_graphs[int(pb.block)];
     bad += d.mismatched_rows[int(pb.block)];
   }
-  if (prof.vstats) {  // SPEC v3 R8: never limited; compared on vstats_graphs graphs (none for --reference cpu on cpu)
+  // SPEC v3 R8: vstats is never limited itself; compared on vstats_graphs graphs (none for --reference
+  // cpu on cpu). A chunked run that stops at the work limit delivers no vstats (R11).
+  if (prof.vstats) {
     per_block["vstats"] = d.vstats_mismatched_rows;
     completed["vstats"] = d.vstats_graphs;
-    limited["vstats"] = 0;
+    limited["vstats"] = d.vstats_limited_graphs;
     bad += d.vstats_mismatched_rows;
   }
   std::vector<std::uint64_t> first_bad(d.bad_seeds.begin(),
@@ -1977,9 +1979,10 @@ void fault_in(std::span<const T> v) {
 // dropped). A run is timed from the start of index construction (and the graph upload for cuda and
 // hybrid) to the last chunk hashed; the .blzg is mapped and the columns the run reads are faulted in
 // before the first clock starts. Each run prints its errors, triggers, instances, saturated emits
-// and per block its time and row hash; a run whose hashes differ from the first completed run's, or
-// that throws, is an error. The result (median, min and max of the runs, per block too, the
-// environment, /proc/loadavg around each run) is merged into `out` at `name`. Exit 2 on any error.
+// and per block its time and row hash; a run that misses a block or a row, whose hashes differ from
+// the first complete run's, or that throws, is an error. The result (median, min and max of the
+// error-free runs, per block too, the environment, /proc/loadavg around each run) is merged into
+// `out` at `name`. Exit 2 on any error.
 int measure(const std::string& graph, const std::string& profile_path, const blz::MineOptions& o, int reps,
             const std::string& triggers, const std::string& out, const std::string& name) {
   if (reps < 1) throw std::runtime_error("--reps must be >= 1");
@@ -2054,11 +2057,6 @@ int measure(const std::string& graph, const std::string& profile_path, const blz
                       {"instances", r.out.instances}, {"saturated", r.out.saturated}, {"whole", r.whole}};
         if (r.fusion) jb[r.name]["fused"] = r.fusion->name;  // `mine_seconds` is the fusion's
         if (r.out.rows != sel.rows()) ++rep_errors;
-        if (!ref.empty() && (!ref.contains(r.name) || ref.at(r.name) != r.out.fnv1a)) {
-          ++rep_errors;
-          jb[r.name]["hash_differs"] = true;
-        }
-        block_seconds[r.name].push_back(bs);
         char buf[160];
         std::snprintf(buf, sizeof buf, "\n  %-14s %8.3f s  fnv1a=%llu", r.name.c_str(), bs,
                       (unsigned long long)r.out.fnv1a);
@@ -2070,12 +2068,21 @@ int measure(const std::string& graph, const std::string& profile_path, const blz
         ++rep_errors;
         jr["block_set_differs"] = true;
       }
-      if (ref.empty())
+      // Only a complete rep (every block, every row) becomes the reference or counts toward M.
+      if (ref.empty() && rep_errors == 0)
         for (const blz::BlockRun& r : br) {
           ref[r.name] = r.out.fnv1a;
           order.push_back(r.name);
         }
-      seconds.push_back(s);
+      for (const blz::BlockRun& r : br)
+        if (!ref.empty() && (!ref.contains(r.name) || ref.at(r.name) != r.out.fnv1a)) {
+          ++rep_errors;
+          jb[r.name]["hash_differs"] = true;
+        }
+      if (rep_errors == 0) {
+        seconds.push_back(s);
+        for (const blz::BlockRun& r : br) block_seconds[r.name].push_back(r.mine_seconds + r.sink_seconds);
+      }
       jr.update({{"seconds", s},
                  {"index_build_seconds", driver.build_seconds()},
                  {"upload_seconds", driver.device() ? driver.device()->upload_seconds() : 0.0},
