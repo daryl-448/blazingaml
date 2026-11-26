@@ -1,7 +1,7 @@
 {
  "experiment": "HI-Medium preflight",
  "spec": "SPEC v3 \u00a76.2, \u00a72.5",
- "git": "845c151-dirty",
+ "git": "7160042",
  "chunk_rows": 1048576,
  "facts": {
   "hi_small": {
@@ -42,11 +42,11 @@
   }
  },
  "memory_now": {
-  "host_available_mib": 7604,
+  "host_available_mib": 8470,
   "gpu": {
    "total": 4096,
-   "used": 1007,
-   "free": 2723
+   "used": 776,
+   "free": 2953
   }
  },
  "prepare_peak_mib": {
@@ -711,7 +711,22 @@
     9,
     -4
    ],
-   "seconds_per_fit_cell_ns": 156.7
+   "seconds_per_fit_cell_ns": 156.7,
+   "fitted": {
+    "rss_before_mib": 374.0,
+    "fixed_mib": 308.0593198364257,
+    "mib_per_million_cells": 2.314589278910005,
+    "seconds_per_fit_cell": 1.5670041112937187e-07,
+    "at": {
+     "m": 5078345,
+     "n": 515088,
+     "self_loops": 591212,
+     "L": 4487133,
+     "P": 647939,
+     "b_fv": 3047216,
+     "b_test": 4062676
+    }
+   }
   },
   "hi_medium_estimate": {
    "clean_default": {
@@ -741,8 +756,8 @@
   "cuda/clean_wc_hi_medium": "fits: host 2179 MiB, device 1902 MiB",
   "hybrid/clean_default": "fits: host 2402 MiB, device 2284 MiB",
   "hybrid/clean_wc_hi_medium": "fits: host 2340 MiB, device 1914 MiB",
-  "training/clean_default": "estimate 3460 MiB, 120 s (inferred): over \u00a72.5's 3 GiB but under the 7604 MiB free now, so it fits local while that much is free; the user chooses at P17 (\u00a76.2)",
-  "training/clean_all": "estimate 4700 MiB, 183 s (inferred): over \u00a72.5's 3 GiB but under the 7604 MiB free now, so it fits local while that much is free; the user chooses at P17 (\u00a76.2)",
+  "training/clean_default": "estimate 3460 MiB, 120 s (inferred): over \u00a72.5's 3 GiB but under the 8470 MiB free now, so it fits local while that much is free; the user chooses at P17 (\u00a76.2)",
+  "training/clean_all": "estimate 4700 MiB, 183 s (inferred): over \u00a72.5's 3 GiB but under the 8470 MiB free now, so it fits local while that much is free; the user chooses at P17 (\u00a76.2)",
   "summary": "cpu/clean_default fits; cpu/clean_wc_hi_medium fits; oracle/clean_default fits; oracle/clean_wc_hi_medium fits; cuda/clean_default fits; cuda/clean_wc_hi_medium fits; hybrid/clean_default fits; hybrid/clean_wc_hi_medium fits; training/clean_default estimate 3460 MiB, 120 s (inferred); training/clean_all estimate 4700 MiB, 183 s (inferred)"
  }
 }
