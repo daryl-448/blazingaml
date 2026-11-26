@@ -1,0 +1,4940 @@
+{
+ "git": "0c14c04",
+ "graph": "data/hi_small.blzg",
+ "checks": 573,
+ "fails": 0,
+ "runs": {
+  "clean_default cpu chunk=default (1048576)": {
+   "seconds": 2.6599345207214355,
+   "chunk_rows": 1048576,
+   "chunks": {
+    "deg_in": 5,
+    "deg_out": 5,
+    "fan_in": 5,
+    "fan_out": 5,
+    "sg": 5,
+    "sg_ord": 5,
+    "tcyc": 5
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_out": 11183728284829485247,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tcyc": 11166385018636528593
+   }
+  },
+  "clean_default cpu chunk=whole (5078345)": {
+   "seconds": 2.623467206954956,
+   "chunk_rows": 5078345,
+   "chunks": {
+    "deg_in": 1,
+    "deg_out": 1,
+    "fan_in": 1,
+    "fan_out": 1,
+    "sg": 1,
+    "sg_ord": 1,
+    "tcyc": 1
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_out": 11183728284829485247,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tcyc": 11166385018636528593
+   }
+  },
+  "clean_default cpu chunk=1000003 (1000003)": {
+   "seconds": 2.6942152976989746,
+   "chunk_rows": 1000003,
+   "chunks": {
+    "deg_in": 6,
+    "deg_out": 6,
+    "fan_in": 6,
+    "fan_out": 6,
+    "sg": 6,
+    "sg_ord": 6,
+    "tcyc": 6
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_out": 11183728284829485247,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tcyc": 11166385018636528593
+   }
+  },
+  "clean_default cpu chunk=65537 (65537)": {
+   "seconds": 3.0381829738616943,
+   "chunk_rows": 65537,
+   "chunks": {
+    "deg_in": 78,
+    "deg_out": 78,
+    "fan_in": 78,
+    "fan_out": 78,
+    "sg": 78,
+    "sg_ord": 78,
+    "tcyc": 78
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_out": 11183728284829485247,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tcyc": 11166385018636528593
+   }
+  },
+  "clean_default cuda chunk=default (1048576)": {
+   "seconds": 2.5122499465942383,
+   "chunk_rows": 1048576,
+   "chunks": {
+    "deg_in": 5,
+    "deg_out": 5,
+    "fan_in": 5,
+    "fan_out": 5,
+    "sg": 5,
+    "sg_ord": 5,
+    "tcyc": 5
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_out": 11183728284829485247,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tcyc": 11166385018636528593
+   }
+  },
+  "clean_default cuda chunk=whole (5078345)": {
+   "seconds": 2.5489814281463623,
+   "chunk_rows": 5078345,
+   "chunks": {
+    "deg_in": 1,
+    "deg_out": 1,
+    "fan_in": 1,
+    "fan_out": 1,
+    "sg": 1,
+    "sg_ord": 1,
+    "tcyc": 1
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_out": 11183728284829485247,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tcyc": 11166385018636528593
+   }
+  },
+  "clean_default cuda chunk=1000003 (1000003)": {
+   "seconds": 2.5728702545166016,
+   "chunk_rows": 1000003,
+   "chunks": {
+    "deg_in": 6,
+    "deg_out": 6,
+    "fan_in": 6,
+    "fan_out": 6,
+    "sg": 6,
+    "sg_ord": 6,
+    "tcyc": 6
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_out": 11183728284829485247,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tcyc": 11166385018636528593
+   }
+  },
+  "clean_default cuda chunk=65537 (65537)": {
+   "seconds": 2.6436634063720703,
+   "chunk_rows": 65537,
+   "chunks": {
+    "deg_in": 78,
+    "deg_out": 78,
+    "fan_in": 78,
+    "fan_out": 78,
+    "sg": 78,
+    "sg_ord": 78,
+    "tcyc": 78
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_out": 11183728284829485247,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tcyc": 11166385018636528593
+   }
+  },
+  "clean_default cuda_fuse_pack chunk=default (1048576)": {
+   "seconds": 2.453615665435791,
+   "chunk_rows": 1048576,
+   "chunks": {
+    "deg_in": 5,
+    "deg_out": 5,
+    "fan_in": 5,
+    "fan_out": 5,
+    "sg": 5,
+    "sg_ord": 5,
+    "tcyc": 5
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_out": 11183728284829485247,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tcyc": 11166385018636528593
+   }
+  },
+  "clean_default cuda_fuse_pack chunk=whole (5078345)": {
+   "seconds": 2.526498556137085,
+   "chunk_rows": 5078345,
+   "chunks": {
+    "deg_in": 1,
+    "deg_out": 1,
+    "fan_in": 1,
+    "fan_out": 1,
+    "sg": 1,
+    "sg_ord": 1,
+    "tcyc": 1
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_out": 11183728284829485247,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tcyc": 11166385018636528593
+   }
+  },
+  "clean_default cuda_fuse_pack chunk=1000003 (1000003)": {
+   "seconds": 2.4827396869659424,
+   "chunk_rows": 1000003,
+   "chunks": {
+    "deg_in": 6,
+    "deg_out": 6,
+    "fan_in": 6,
+    "fan_out": 6,
+    "sg": 6,
+    "sg_ord": 6,
+    "tcyc": 6
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_out": 11183728284829485247,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tcyc": 11166385018636528593
+   }
+  },
+  "clean_default cuda_fuse_pack chunk=65537 (65537)": {
+   "seconds": 2.636296272277832,
+   "chunk_rows": 65537,
+   "chunks": {
+    "deg_in": 78,
+    "deg_out": 78,
+    "fan_in": 78,
+    "fan_out": 78,
+    "sg": 78,
+    "sg_ord": 78,
+    "tcyc": 78
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_out": 11183728284829485247,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tcyc": 11166385018636528593
+   }
+  },
+  "clean_default hybrid chunk=default (1048576)": {
+   "seconds": 2.7574548721313477,
+   "chunk_rows": 1048576,
+   "chunks": {
+    "deg_in": 5,
+    "deg_out": 5,
+    "fan_in": 5,
+    "fan_out": 5,
+    "sg": 5,
+    "sg_ord": 5,
+    "tcyc": 5
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_out": 11183728284829485247,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tcyc": 11166385018636528593
+   }
+  },
+  "clean_default hybrid chunk=whole (5078345)": {
+   "seconds": 2.677098512649536,
+   "chunk_rows": 5078345,
+   "chunks": {
+    "deg_in": 1,
+    "deg_out": 1,
+    "fan_in": 1,
+    "fan_out": 1,
+    "sg": 1,
+    "sg_ord": 1,
+    "tcyc": 1
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_out": 11183728284829485247,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tcyc": 11166385018636528593
+   }
+  },
+  "clean_default hybrid chunk=1000003 (1000003)": {
+   "seconds": 2.6664931774139404,
+   "chunk_rows": 1000003,
+   "chunks": {
+    "deg_in": 6,
+    "deg_out": 6,
+    "fan_in": 6,
+    "fan_out": 6,
+    "sg": 6,
+    "sg_ord": 6,
+    "tcyc": 6
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_out": 11183728284829485247,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tcyc": 11166385018636528593
+   }
+  },
+  "clean_default hybrid chunk=65537 (65537)": {
+   "seconds": 3.329956293106079,
+   "chunk_rows": 65537,
+   "chunks": {
+    "deg_in": 78,
+    "deg_out": 78,
+    "fan_in": 78,
+    "fan_out": 78,
+    "sg": 78,
+    "sg_ord": 78,
+    "tcyc": 78
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_out": 11183728284829485247,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tcyc": 11166385018636528593
+   }
+  },
+  "clean_all cpu chunk=default (1048576)": {
+   "seconds": 15.89720368385315,
+   "chunk_rows": 1048576,
+   "chunks": {
+    "deg_in": 5,
+    "deg_out": 5,
+    "fan_in": 5,
+    "fan_oneway_out": 5,
+    "fan_out": 5,
+    "fan_total": 5,
+    "gs": 5,
+    "lcyc": 5,
+    "sg": 5,
+    "sg_ord": 5,
+    "tchain": 5,
+    "tcyc": 5,
+    "vstats": 5
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_oneway_out": 8977465227021487154,
+    "fan_out": 11183728284829485247,
+    "fan_total": 15742489989069488211,
+    "gs": 3913858072095818927,
+    "lcyc": 7087469534045282803,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tchain": 15515437621869336968,
+    "tcyc": 11166385018636528593,
+    "vstats": 17116854999687057760
+   }
+  },
+  "clean_all cpu chunk=whole (5078345)": {
+   "seconds": 16.434328317642212,
+   "chunk_rows": 5078345,
+   "chunks": {
+    "deg_in": 1,
+    "deg_out": 1,
+    "fan_in": 1,
+    "fan_oneway_out": 1,
+    "fan_out": 1,
+    "fan_total": 1,
+    "gs": 1,
+    "lcyc": 1,
+    "sg": 1,
+    "sg_ord": 1,
+    "tchain": 1,
+    "tcyc": 1,
+    "vstats": 1
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_oneway_out": 8977465227021487154,
+    "fan_out": 11183728284829485247,
+    "fan_total": 15742489989069488211,
+    "gs": 3913858072095818927,
+    "lcyc": 7087469534045282803,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tchain": 15515437621869336968,
+    "tcyc": 11166385018636528593,
+    "vstats": 17116854999687057760
+   }
+  },
+  "clean_all cpu chunk=1000003 (1000003)": {
+   "seconds": 16.02984309196472,
+   "chunk_rows": 1000003,
+   "chunks": {
+    "deg_in": 6,
+    "deg_out": 6,
+    "fan_in": 6,
+    "fan_oneway_out": 6,
+    "fan_out": 6,
+    "fan_total": 6,
+    "gs": 6,
+    "lcyc": 6,
+    "sg": 6,
+    "sg_ord": 6,
+    "tchain": 6,
+    "tcyc": 6,
+    "vstats": 6
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_oneway_out": 8977465227021487154,
+    "fan_out": 11183728284829485247,
+    "fan_total": 15742489989069488211,
+    "gs": 3913858072095818927,
+    "lcyc": 7087469534045282803,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tchain": 15515437621869336968,
+    "tcyc": 11166385018636528593,
+    "vstats": 17116854999687057760
+   }
+  },
+  "clean_all cpu chunk=65537 (65537)": {
+   "seconds": 17.838488578796387,
+   "chunk_rows": 65537,
+   "chunks": {
+    "deg_in": 78,
+    "deg_out": 78,
+    "fan_in": 78,
+    "fan_oneway_out": 78,
+    "fan_out": 78,
+    "fan_total": 78,
+    "gs": 78,
+    "lcyc": 78,
+    "sg": 78,
+    "sg_ord": 78,
+    "tchain": 78,
+    "tcyc": 78,
+    "vstats": 78
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_oneway_out": 8977465227021487154,
+    "fan_out": 11183728284829485247,
+    "fan_total": 15742489989069488211,
+    "gs": 3913858072095818927,
+    "lcyc": 7087469534045282803,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tchain": 15515437621869336968,
+    "tcyc": 11166385018636528593,
+    "vstats": 17116854999687057760
+   }
+  },
+  "clean_all cuda chunk=default (1048576)": {
+   "seconds": 12.192993402481079,
+   "chunk_rows": 1048576,
+   "chunks": {
+    "deg_in": 5,
+    "deg_out": 5,
+    "fan_in": 5,
+    "fan_oneway_out": 5,
+    "fan_out": 5,
+    "fan_total": 5,
+    "gs": 5,
+    "lcyc": 5,
+    "sg": 5,
+    "sg_ord": 5,
+    "tchain": 5,
+    "tcyc": 5,
+    "vstats": 5
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_oneway_out": 8977465227021487154,
+    "fan_out": 11183728284829485247,
+    "fan_total": 15742489989069488211,
+    "gs": 3913858072095818927,
+    "lcyc": 7087469534045282803,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tchain": 15515437621869336968,
+    "tcyc": 11166385018636528593,
+    "vstats": 17116854999687057760
+   }
+  },
+  "clean_all cuda chunk=whole (5078345)": {
+   "seconds": 12.459393978118896,
+   "chunk_rows": 5078345,
+   "chunks": {
+    "deg_in": 1,
+    "deg_out": 1,
+    "fan_in": 1,
+    "fan_oneway_out": 1,
+    "fan_out": 1,
+    "fan_total": 1,
+    "gs": 1,
+    "lcyc": 1,
+    "sg": 1,
+    "sg_ord": 1,
+    "tchain": 1,
+    "tcyc": 1,
+    "vstats": 1
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_oneway_out": 8977465227021487154,
+    "fan_out": 11183728284829485247,
+    "fan_total": 15742489989069488211,
+    "gs": 3913858072095818927,
+    "lcyc": 7087469534045282803,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tchain": 15515437621869336968,
+    "tcyc": 11166385018636528593,
+    "vstats": 17116854999687057760
+   }
+  },
+  "clean_all cuda chunk=1000003 (1000003)": {
+   "seconds": 12.414927005767822,
+   "chunk_rows": 1000003,
+   "chunks": {
+    "deg_in": 6,
+    "deg_out": 6,
+    "fan_in": 6,
+    "fan_oneway_out": 6,
+    "fan_out": 6,
+    "fan_total": 6,
+    "gs": 6,
+    "lcyc": 6,
+    "sg": 6,
+    "sg_ord": 6,
+    "tchain": 6,
+    "tcyc": 6,
+    "vstats": 6
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_oneway_out": 8977465227021487154,
+    "fan_out": 11183728284829485247,
+    "fan_total": 15742489989069488211,
+    "gs": 3913858072095818927,
+    "lcyc": 7087469534045282803,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tchain": 15515437621869336968,
+    "tcyc": 11166385018636528593,
+    "vstats": 17116854999687057760
+   }
+  },
+  "clean_all cuda chunk=65537 (65537)": {
+   "seconds": 18.167364597320557,
+   "chunk_rows": 65537,
+   "chunks": {
+    "deg_in": 78,
+    "deg_out": 78,
+    "fan_in": 78,
+    "fan_oneway_out": 78,
+    "fan_out": 78,
+    "fan_total": 78,
+    "gs": 78,
+    "lcyc": 78,
+    "sg": 78,
+    "sg_ord": 78,
+    "tchain": 78,
+    "tcyc": 78,
+    "vstats": 78
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_oneway_out": 8977465227021487154,
+    "fan_out": 11183728284829485247,
+    "fan_total": 15742489989069488211,
+    "gs": 3913858072095818927,
+    "lcyc": 7087469534045282803,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tchain": 15515437621869336968,
+    "tcyc": 11166385018636528593,
+    "vstats": 17116854999687057760
+   }
+  },
+  "clean_all cuda_fuse_pack chunk=default (1048576)": {
+   "seconds": 12.388531684875488,
+   "chunk_rows": 1048576,
+   "chunks": {
+    "deg_in": 5,
+    "deg_out": 5,
+    "fan_in": 5,
+    "fan_oneway_out": 5,
+    "fan_out": 5,
+    "fan_total": 5,
+    "gs": 5,
+    "lcyc": 5,
+    "sg": 5,
+    "sg_ord": 5,
+    "tchain": 5,
+    "tcyc": 5,
+    "vstats": 5
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_oneway_out": 8977465227021487154,
+    "fan_out": 11183728284829485247,
+    "fan_total": 15742489989069488211,
+    "gs": 3913858072095818927,
+    "lcyc": 7087469534045282803,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tchain": 15515437621869336968,
+    "tcyc": 11166385018636528593,
+    "vstats": 17116854999687057760
+   }
+  },
+  "clean_all cuda_fuse_pack chunk=whole (5078345)": {
+   "seconds": 12.7157461643219,
+   "chunk_rows": 5078345,
+   "chunks": {
+    "deg_in": 1,
+    "deg_out": 1,
+    "fan_in": 1,
+    "fan_oneway_out": 1,
+    "fan_out": 1,
+    "fan_total": 1,
+    "gs": 1,
+    "lcyc": 1,
+    "sg": 1,
+    "sg_ord": 1,
+    "tchain": 1,
+    "tcyc": 1,
+    "vstats": 1
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_oneway_out": 8977465227021487154,
+    "fan_out": 11183728284829485247,
+    "fan_total": 15742489989069488211,
+    "gs": 3913858072095818927,
+    "lcyc": 7087469534045282803,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tchain": 15515437621869336968,
+    "tcyc": 11166385018636528593,
+    "vstats": 17116854999687057760
+   }
+  },
+  "clean_all cuda_fuse_pack chunk=1000003 (1000003)": {
+   "seconds": 12.803098201751709,
+   "chunk_rows": 1000003,
+   "chunks": {
+    "deg_in": 6,
+    "deg_out": 6,
+    "fan_in": 6,
+    "fan_oneway_out": 6,
+    "fan_out": 6,
+    "fan_total": 6,
+    "gs": 6,
+    "lcyc": 6,
+    "sg": 6,
+    "sg_ord": 6,
+    "tchain": 6,
+    "tcyc": 6,
+    "vstats": 6
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_oneway_out": 8977465227021487154,
+    "fan_out": 11183728284829485247,
+    "fan_total": 15742489989069488211,
+    "gs": 3913858072095818927,
+    "lcyc": 7087469534045282803,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tchain": 15515437621869336968,
+    "tcyc": 11166385018636528593,
+    "vstats": 17116854999687057760
+   }
+  },
+  "clean_all cuda_fuse_pack chunk=65537 (65537)": {
+   "seconds": 17.70269274711609,
+   "chunk_rows": 65537,
+   "chunks": {
+    "deg_in": 78,
+    "deg_out": 78,
+    "fan_in": 78,
+    "fan_oneway_out": 78,
+    "fan_out": 78,
+    "fan_total": 78,
+    "gs": 78,
+    "lcyc": 78,
+    "sg": 78,
+    "sg_ord": 78,
+    "tchain": 78,
+    "tcyc": 78,
+    "vstats": 78
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_oneway_out": 8977465227021487154,
+    "fan_out": 11183728284829485247,
+    "fan_total": 15742489989069488211,
+    "gs": 3913858072095818927,
+    "lcyc": 7087469534045282803,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tchain": 15515437621869336968,
+    "tcyc": 11166385018636528593,
+    "vstats": 17116854999687057760
+   }
+  },
+  "clean_all hybrid chunk=default (1048576)": {
+   "seconds": 14.391220808029175,
+   "chunk_rows": 1048576,
+   "chunks": {
+    "deg_in": 5,
+    "deg_out": 5,
+    "fan_in": 5,
+    "fan_oneway_out": 5,
+    "fan_out": 5,
+    "fan_total": 5,
+    "gs": 5,
+    "lcyc": 5,
+    "sg": 5,
+    "sg_ord": 5,
+    "tchain": 5,
+    "tcyc": 5,
+    "vstats": 5
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_oneway_out": 8977465227021487154,
+    "fan_out": 11183728284829485247,
+    "fan_total": 15742489989069488211,
+    "gs": 3913858072095818927,
+    "lcyc": 7087469534045282803,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tchain": 15515437621869336968,
+    "tcyc": 11166385018636528593,
+    "vstats": 17116854999687057760
+   }
+  },
+  "clean_all hybrid chunk=whole (5078345)": {
+   "seconds": 14.867833375930786,
+   "chunk_rows": 5078345,
+   "chunks": {
+    "deg_in": 1,
+    "deg_out": 1,
+    "fan_in": 1,
+    "fan_oneway_out": 1,
+    "fan_out": 1,
+    "fan_total": 1,
+    "gs": 1,
+    "lcyc": 1,
+    "sg": 1,
+    "sg_ord": 1,
+    "tchain": 1,
+    "tcyc": 1,
+    "vstats": 1
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_oneway_out": 8977465227021487154,
+    "fan_out": 11183728284829485247,
+    "fan_total": 15742489989069488211,
+    "gs": 3913858072095818927,
+    "lcyc": 7087469534045282803,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tchain": 15515437621869336968,
+    "tcyc": 11166385018636528593,
+    "vstats": 17116854999687057760
+   }
+  },
+  "clean_all hybrid chunk=1000003 (1000003)": {
+   "seconds": 14.619584560394287,
+   "chunk_rows": 1000003,
+   "chunks": {
+    "deg_in": 6,
+    "deg_out": 6,
+    "fan_in": 6,
+    "fan_oneway_out": 6,
+    "fan_out": 6,
+    "fan_total": 6,
+    "gs": 6,
+    "lcyc": 6,
+    "sg": 6,
+    "sg_ord": 6,
+    "tchain": 6,
+    "tcyc": 6,
+    "vstats": 6
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_oneway_out": 8977465227021487154,
+    "fan_out": 11183728284829485247,
+    "fan_total": 15742489989069488211,
+    "gs": 3913858072095818927,
+    "lcyc": 7087469534045282803,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tchain": 15515437621869336968,
+    "tcyc": 11166385018636528593,
+    "vstats": 17116854999687057760
+   }
+  },
+  "clean_all hybrid chunk=65537 (65537)": {
+   "seconds": 21.7035174369812,
+   "chunk_rows": 65537,
+   "chunks": {
+    "deg_in": 78,
+    "deg_out": 78,
+    "fan_in": 78,
+    "fan_oneway_out": 78,
+    "fan_out": 78,
+    "fan_total": 78,
+    "gs": 78,
+    "lcyc": 78,
+    "sg": 78,
+    "sg_ord": 78,
+    "tchain": 78,
+    "tcyc": 78,
+    "vstats": 78
+   },
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_oneway_out": 8977465227021487154,
+    "fan_out": 11183728284829485247,
+    "fan_total": 15742489989069488211,
+    "gs": 3913858072095818927,
+    "lcyc": 7087469534045282803,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tchain": 15515437621869336968,
+    "tcyc": 11166385018636528593,
+    "vstats": 17116854999687057760
+   }
+  },
+  "v1_parity cpu chunk=65537": {
+   "seconds": 5.220471620559692,
+   "output_fnv1a": {
+    "deg_in": 6366489652548864147,
+    "deg_out": 10227089942834718195,
+    "fan_in": 231040277472725923,
+    "fan_out": 6330076044337963426,
+    "sg": 2140027548842065401,
+    "tcyc": 3161311333401399936
+   }
+  },
+  "clean_default oracle chunk=1000003": {
+   "seconds": 106.09313249588013,
+   "output_fnv1a": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_out": 11183728284829485247,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tcyc": 11166385018636528593
+   }
+  }
+ },
+ "rows": [
+  {
+   "run": "clean_default cpu chunk=default (1048576)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=default (1048576)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=default (1048576)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=default (1048576)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=default (1048576)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=default (1048576)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=default (1048576)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=default (1048576)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=default (1048576)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=default (1048576)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=default (1048576)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=default (1048576)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=default (1048576)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=default (1048576)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=whole (5078345)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=whole (5078345)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=whole (5078345)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=whole (5078345)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=whole (5078345)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=whole (5078345)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=whole (5078345)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=1000003 (1000003)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=1000003 (1000003)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=1000003 (1000003)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=1000003 (1000003)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=1000003 (1000003)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=1000003 (1000003)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=1000003 (1000003)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=1000003 (1000003)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=1000003 (1000003)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=1000003 (1000003)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=1000003 (1000003)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=1000003 (1000003)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=1000003 (1000003)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=1000003 (1000003)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=65537 (65537)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=65537 (65537)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=65537 (65537)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=65537 (65537)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=65537 (65537)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=65537 (65537)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=65537 (65537)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=65537 (65537)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=65537 (65537)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=65537 (65537)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=65537 (65537)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=65537 (65537)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=65537 (65537)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cpu chunk=65537 (65537)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=default (1048576)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=default (1048576)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=default (1048576)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=default (1048576)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=default (1048576)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=default (1048576)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=default (1048576)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=default (1048576)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=default (1048576)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=default (1048576)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=default (1048576)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=default (1048576)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=default (1048576)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=default (1048576)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=whole (5078345)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=whole (5078345)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=whole (5078345)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=whole (5078345)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=whole (5078345)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=whole (5078345)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=whole (5078345)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=1000003 (1000003)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=1000003 (1000003)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=1000003 (1000003)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=1000003 (1000003)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=1000003 (1000003)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=1000003 (1000003)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=1000003 (1000003)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=1000003 (1000003)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=1000003 (1000003)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=1000003 (1000003)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=1000003 (1000003)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=1000003 (1000003)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=1000003 (1000003)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=1000003 (1000003)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=65537 (65537)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=65537 (65537)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=65537 (65537)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=65537 (65537)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=65537 (65537)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=65537 (65537)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=65537 (65537)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=65537 (65537)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=65537 (65537)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=65537 (65537)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=65537 (65537)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=65537 (65537)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=65537 (65537)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda chunk=65537 (65537)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=default (1048576)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=default (1048576)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=default (1048576)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=default (1048576)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=default (1048576)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=default (1048576)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=default (1048576)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=default (1048576)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=default (1048576)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=default (1048576)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=default (1048576)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=default (1048576)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=default (1048576)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=default (1048576)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=whole (5078345)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=whole (5078345)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=whole (5078345)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=whole (5078345)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=whole (5078345)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=whole (5078345)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=whole (5078345)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=65537 (65537)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=65537 (65537)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=65537 (65537)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=65537 (65537)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=65537 (65537)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=65537 (65537)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=65537 (65537)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=65537 (65537)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=65537 (65537)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=65537 (65537)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=65537 (65537)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=65537 (65537)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=65537 (65537)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default cuda_fuse_pack chunk=65537 (65537)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=default (1048576)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=default (1048576)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=default (1048576)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=default (1048576)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=default (1048576)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=default (1048576)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=default (1048576)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=default (1048576)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=default (1048576)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=default (1048576)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=default (1048576)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=default (1048576)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=default (1048576)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=default (1048576)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=whole (5078345)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=whole (5078345)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=whole (5078345)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=whole (5078345)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=whole (5078345)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=whole (5078345)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=whole (5078345)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=1000003 (1000003)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=1000003 (1000003)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=1000003 (1000003)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=1000003 (1000003)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=1000003 (1000003)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=1000003 (1000003)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=1000003 (1000003)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=1000003 (1000003)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=1000003 (1000003)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=1000003 (1000003)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=1000003 (1000003)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=1000003 (1000003)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=1000003 (1000003)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=1000003 (1000003)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=65537 (65537)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=65537 (65537)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=65537 (65537)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=65537 (65537)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=65537 (65537)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=65537 (65537)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=65537 (65537)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=65537 (65537)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=65537 (65537)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=65537 (65537)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=65537 (65537)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=65537 (65537)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=65537 (65537)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_default hybrid chunk=65537 (65537)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=default (1048576)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=whole (5078345)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=whole (5078345)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=whole (5078345)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=whole (5078345)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=whole (5078345)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=whole (5078345)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=whole (5078345)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=whole (5078345)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=whole (5078345)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=whole (5078345)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=whole (5078345)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=whole (5078345)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=whole (5078345)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=1000003 (1000003)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cpu chunk=65537 (65537)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=default (1048576)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=whole (5078345)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=whole (5078345)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=whole (5078345)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=whole (5078345)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=whole (5078345)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=whole (5078345)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=whole (5078345)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=whole (5078345)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=whole (5078345)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=whole (5078345)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=whole (5078345)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=whole (5078345)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=whole (5078345)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=1000003 (1000003)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda chunk=65537 (65537)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=default (1048576)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=whole (5078345)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=whole (5078345)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=whole (5078345)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=whole (5078345)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=whole (5078345)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=whole (5078345)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=whole (5078345)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=whole (5078345)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=whole (5078345)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=whole (5078345)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=whole (5078345)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=whole (5078345)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=whole (5078345)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=1000003 (1000003)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all cuda_fuse_pack chunk=65537 (65537)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=default (1048576)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=whole (5078345)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=whole (5078345)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=whole (5078345)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=whole (5078345)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=whole (5078345)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=whole (5078345)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=whole (5078345)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=whole (5078345)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=whole (5078345)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=whole (5078345)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=whole (5078345)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=whole (5078345)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=whole (5078345)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=1000003 (1000003)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "fan_oneway_out",
+   "fnv1a": 8977465227021487154,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "fan_total",
+   "fnv1a": 15742489989069488211,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "gs",
+   "fnv1a": 3913858072095818927,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "lcyc",
+   "fnv1a": 7087469534045282803,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "tchain",
+   "fnv1a": 15515437621869336968,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "whole",
+   "pass": true
+  },
+  {
+   "run": "clean_all hybrid chunk=65537 (65537)",
+   "block": "vstats",
+   "fnv1a": 17116854999687057760,
+   "against": "p13_a30 clean_all",
+   "pass": true
+  },
+  {
+   "run": "v1_parity cpu chunk=65537",
+   "block": "fan_in",
+   "fnv1a": 231040277472725923,
+   "against": "AC-V3-0 v1_parity",
+   "pass": true
+  },
+  {
+   "run": "v1_parity cpu chunk=65537",
+   "block": "fan_out",
+   "fnv1a": 6330076044337963426,
+   "against": "AC-V3-0 v1_parity",
+   "pass": true
+  },
+  {
+   "run": "v1_parity cpu chunk=65537",
+   "block": "deg_in",
+   "fnv1a": 6366489652548864147,
+   "against": "AC-V3-0 v1_parity",
+   "pass": true
+  },
+  {
+   "run": "v1_parity cpu chunk=65537",
+   "block": "deg_out",
+   "fnv1a": 10227089942834718195,
+   "against": "AC-V3-0 v1_parity",
+   "pass": true
+  },
+  {
+   "run": "v1_parity cpu chunk=65537",
+   "block": "sg",
+   "fnv1a": 2140027548842065401,
+   "against": "AC-V3-0 v1_parity",
+   "pass": true
+  },
+  {
+   "run": "v1_parity cpu chunk=65537",
+   "block": "tcyc",
+   "fnv1a": 3161311333401399936,
+   "against": "AC-V3-0 v1_parity",
+   "pass": true
+  },
+  {
+   "run": "clean_default oracle chunk=1000003",
+   "block": "deg_in",
+   "fnv1a": 18211911083083195014,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default oracle chunk=1000003",
+   "block": "deg_out",
+   "fnv1a": 9524113901528553380,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default oracle chunk=1000003",
+   "block": "fan_in",
+   "fnv1a": 989329027223035354,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default oracle chunk=1000003",
+   "block": "fan_out",
+   "fnv1a": 11183728284829485247,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default oracle chunk=1000003",
+   "block": "sg",
+   "fnv1a": 884033388477590431,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default oracle chunk=1000003",
+   "block": "sg_ord",
+   "fnv1a": 3889885039108109068,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  },
+  {
+   "run": "clean_default oracle chunk=1000003",
+   "block": "tcyc",
+   "fnv1a": 11166385018636528593,
+   "against": "p13_a30 clean_default",
+   "pass": true
+  }
+ ]
+}
