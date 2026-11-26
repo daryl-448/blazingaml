@@ -1867,6 +1867,155 @@ int coverage(const std::string& graph, const std::string& gt_path, const std::st
   return 0;
 }
 
+// /proc/loadavg: the 1, 5 and 15 minute load averages and the running / total tasks.
+nlohmann::json loadavg() {
+  std::ifstream in("/proc/loadavg");
+  double l1 = 0, l5 = 0, l15 = 0;
+  std::string tasks;
+  in >> l1 >> l5 >> l15 >> tasks;
+  return {{"1m", l1}, {"5m", l5}, {"15m", l15}, {"tasks", tasks}};
+}
+
+// Reads one byte of every page of `v`, so a timed run finds the column in memory.
+template <class T>
+void fault_in(std::span<const T> v) {
+  const auto* b = reinterpret_cast<const volatile unsigned char*>(v.data());
+  for (std::size_t i = 0; i < v.size_bytes(); i += 4096) (void)b[i];  // a volatile read is never elided
+}
+
+// SPEC v3 §5.1, the metric M: `reps` runs of every block of the profile, its vstats included, for
+// `triggers`, through the chunk driver into the bounded host sink (HashSink: hashed, counted,
+// dropped). A run is timed from the start of index construction (and the graph upload for cuda and
+// hybrid) to the last chunk hashed; the .blzg is mapped and the columns the run reads are faulted in
+// before the first clock starts. Each run prints its errors, triggers, instances, saturated emits
+// and per block its time and row hash; a run whose hashes differ from the first completed run's, or
+// that throws, is an error. The result (median, min and max of the runs, per block too, the
+// environment, /proc/loadavg around each run) is merged into `out` at `name`. Exit 2 on any error.
+int measure(const std::string& graph, const std::string& profile_path, const blz::MineOptions& o, int reps,
+            const std::string& triggers, const std::string& out, const std::string& name) {
+  if (reps < 1) throw std::runtime_error("--reps must be >= 1");
+  const blz::Profile prof = blz::load_profile(profile_path);
+  std::vector<const blz::ProfileBlock*> blocks;
+  for (const blz::ProfileBlock& pb : prof.blocks) blocks.push_back(&pb);
+  const bool vstats = prof.vstats.has_value();
+  const bool gpu = o.backend == blz::Backend::cuda || o.backend == blz::Backend::hybrid;
+  if (gpu && !blz::cuda_built()) blz::cuda_device();  // throws: no CUDA backend in this build
+
+  blz::BlzgView g(graph);
+  const blz::TriggerSel sel = blz::select_triggers(triggers, g.m(), g.splits());
+  const blz::EdgeStream stream{g.src, g.dst, g.ts, g.n()};
+  fault_in(g.src);
+  fault_in(g.dst);
+  fault_in(g.ts);
+  if (vstats) fault_in(g.amount_received);
+  nlohmann::json env = environment(profile_path);
+  if (gpu) env["cuda"] = cuda_json();  // also creates the CUDA context before the first clock
+  nlohmann::json res = {{"env", env},
+                        {"graph", graph},
+                        {"blzg_sha256", file_sha256(graph)},
+                        {"profile", profile_ref(prof)},
+                        {"backend",
+                         {{"name", blz::backend_name(o.backend)},
+                          {"threads", omp_get_max_threads()},
+                          {"schedule", blz::schedule_name(o.schedule)},
+                          {"heavy_threshold", threshold_name(o.heavy_threshold)},
+                          {"cpu_threshold", threshold_name(o.cpu_threshold)},
+                          {"reach_prune", o.reach_prune},
+                          {"fuse", o.fuse},
+                          {"pack", o.pack},
+                          {"work_limit", o.work_limit},
+                          {"disabled_optimizations", disabled_json()}}},
+                        {"chunk_rows", o.chunk_rows},
+                        {"triggers", sel.json()},
+                        {"reps", reps},
+                        {"sink", "hash (SPEC v3 §5.1): fnv1a per block, rows dropped"}};
+  std::fprintf(stderr, "measure %s on %s, %s, %d threads, chunks of %llu rows, %llu triggers, %d reps\n",
+               prof.name.c_str(), graph.c_str(), blz::backend_name(o.backend), omp_get_max_threads(),
+               (unsigned long long)o.chunk_rows, (unsigned long long)sel.rows(), reps);
+
+  nlohmann::json runs = nlohmann::json::array();
+  std::map<std::string, std::uint64_t> ref;  // the first completed run's hashes
+  std::vector<double> seconds;
+  std::map<std::string, std::vector<double>> block_seconds;
+  std::vector<std::string> order;  // blocks in mining order
+  std::uint64_t errors = 0;
+  for (int rep = 0; rep < reps; ++rep) {
+    nlohmann::json jr = {{"loadavg_before", loadavg()}};
+    std::uint64_t rep_errors = 0;
+    try {
+      const auto t0 = Clock::now();
+      blz::ChunkDriver driver(stream, g.amount_received, prof, o);
+      blz::HashSink sink;
+      const std::vector<blz::BlockRun> br = driver.run(blocks, vstats, sel, sink);
+      const double s = secs(t0);
+      std::uint64_t instances = 0, saturated = 0;
+      nlohmann::json jb = nlohmann::json::object();
+      std::string line;
+      for (const blz::BlockRun& r : br) {
+        instances += r.out.instances;
+        saturated += r.out.saturated;
+        const double bs = r.mine_seconds + r.sink_seconds;
+        jb[r.name] = {{"seconds", bs},       {"mine_seconds", r.mine_seconds}, {"sink_seconds", r.sink_seconds},
+                      {"output_fnv1a", r.out.fnv1a}, {"rows", r.out.rows}, {"chunks", r.out.chunks},
+                      {"instances", r.out.instances}, {"saturated", r.out.saturated}, {"whole", r.whole}};
+        if (r.fusion) jb[r.name]["fused"] = r.fusion->name;  // `mine_seconds` is the fusion's
+        if (r.out.rows != sel.rows()) ++rep_errors;
+        if (!ref.empty() && (!ref.contains(r.name) || ref.at(r.name) != r.out.fnv1a)) {
+          ++rep_errors;
+          jb[r.name]["hash_differs"] = true;
+        }
+        block_seconds[r.name].push_back(bs);
+        char buf[160];
+        std::snprintf(buf, sizeof buf, "\n  %-14s %8.3f s  fnv1a=%llu", r.name.c_str(), bs,
+                      (unsigned long long)r.out.fnv1a);
+        line += buf;
+      }
+      if (ref.empty())
+        for (const blz::BlockRun& r : br) {
+          ref[r.name] = r.out.fnv1a;
+          order.push_back(r.name);
+        }
+      seconds.push_back(s);
+      jr.update({{"seconds", s},
+                 {"index_build_seconds", driver.build_seconds()},
+                 {"upload_seconds", driver.device() ? driver.device()->upload_seconds() : 0.0},
+                 {"triggers", sel.rows()},
+                 {"instances", instances},
+                 {"saturated", saturated},
+                 {"blocks", jb}});
+      std::fprintf(stderr, "rep %d: %.3f s (index %.3f s)  errors=%llu  triggers=%llu  instances=%llu  saturated=%llu%s\n",
+                   rep + 1, s, driver.build_seconds(), (unsigned long long)rep_errors,
+                   (unsigned long long)sel.rows(), (unsigned long long)instances, (unsigned long long)saturated,
+                   line.c_str());
+    } catch (const std::exception& e) {
+      ++rep_errors;
+      jr["error"] = e.what();
+      std::fprintf(stderr, "rep %d: error: %s\n", rep + 1, e.what());
+    }
+    jr["errors"] = rep_errors;
+    jr["loadavg_after"] = loadavg();
+    jr["peak_rss_mb"] = peak_rss_mb();
+    errors += rep_errors;
+    runs.push_back(jr);
+  }
+  res["runs"] = runs;
+  res["errors"] = errors;
+  res["peak_rss_mb"] = peak_rss_mb();
+  if (!seconds.empty()) {
+    res["seconds"] = summary(seconds);
+    nlohmann::json jb = nlohmann::json::object();
+    for (const std::string& b : order) jb[b] = summary(block_seconds[b]);
+    res["block_seconds"] = jb;
+    res["output_fnv1a"] = ref;
+    std::fprintf(stderr, "M = %.3f s (median of %zu; min %.3f, max %.3f), errors %llu\n",
+                 res["seconds"]["median"].get<double>(), seconds.size(), res["seconds"]["min"].get<double>(),
+                 res["seconds"]["max"].get<double>(), (unsigned long long)errors);
+  }
+  merge_report(out, name, res);
+  std::fprintf(stderr, "wrote %s (/%s)\n", out.c_str(), name.c_str());
+  return errors ? 2 : 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -1944,6 +2093,20 @@ int main(int argc, char** argv) {
                  "oracle backend, clean profile: GFP / v2 behaviours to switch back on for E16, e.g. Q1,Q3 or all "
                  "(SPEC v3 §3.1, §3.6)");
   mn->add_option("--out", out)->required();
+
+  std::string ms_out, ms_name;
+  int ms_reps = 5;
+  auto* ms = app.add_subcommand("measure", "SPEC v3 §5.1: the metric M, every block of a profile into the bounded "
+                                           "host sink, timed per run from index construction to the last chunk "
+                                           "hashed");
+  ms->add_option("--graph", graph)->required();
+  ms->add_option("--profile", profile, "semantic profile (configs/profiles/*.yaml)")->required();
+  add_backend_flags(ms);
+  ms->get_option("--backend")->required();
+  ms->add_option("--triggers", triggers, "all | train | test | fit | val | range:a:b");
+  ms->add_option("--reps", ms_reps, "timed runs (SPEC v3 §5.1: the median of 5)");
+  ms->add_option("--out", ms_out, "merge the result into this JSON file")->required();
+  ms->add_option("--name", ms_name, "key (JSON pointer path) in --out")->required();
 
   std::string a_npy, b_npy, report, name;
   std::int64_t tw = 0;
@@ -2099,6 +2262,7 @@ int main(int argc, char** argv) {
       if (profile.empty()) profile = config;
     }
     if (*mn) return mine(graph, profile, mine_options(mn, quirks), blocks, triggers, edges, out);
+    if (*ms) return measure(graph, profile, mine_options(ms, ""), ms_reps, triggers, ms_out, ms_name);
     if (*bn) {
       if (bench_name.empty()) bench_name = backend;
       if ((fuse || pack) && backend != "cuda") throw std::runtime_error("--fuse and --pack are for --backend cuda");
