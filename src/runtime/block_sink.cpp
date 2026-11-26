@@ -171,11 +171,11 @@ class MemoryStream final : public BlockStream {
     if (spec().cell == Cell::u32) {
       std::vector<std::uint32_t>& v = sink_.u32[spec().name];
       v.resize(bytes_.size() / sizeof(std::uint32_t));
-      std::memcpy(v.data(), bytes_.data(), bytes_.size());
+      if (!bytes_.empty()) std::memcpy(v.data(), bytes_.data(), bytes_.size());  // an empty block has no data pointer
     } else {
       std::vector<double>& v = sink_.f64[spec().name];
       v.resize(bytes_.size() / sizeof(double));
-      std::memcpy(v.data(), bytes_.data(), bytes_.size());
+      if (!bytes_.empty()) std::memcpy(v.data(), bytes_.data(), bytes_.size());  // an empty block has no data pointer
     }
   }
 

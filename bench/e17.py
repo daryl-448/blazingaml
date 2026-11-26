@@ -115,8 +115,13 @@ def budgets(pf, ds, prof, be):
         seen = m.get("host_whole_peak_inferred_mib", m.get("host_mib", {}).get("peak"))
         if seen:
             host_gate = max(host_gate, seen)
-        if dev_gate is not None and m.get("device_mib"):
-            dev_gate = max(dev_gate, m["device_mib"]["peak"])
+        # Device: the largest HI-Medium peak of this backend over both profiles. A range run of
+        # clean_wc does not show the scratch a whole-selection sweep allocates, and clean_default's
+        # whole run has the same sweep blocks.
+        peaks = [r["measured"]["device_mib"]["peak"] for r in pf["hi_medium"]
+                 if r["backend"] == be and r.get("measured", {}).get("device_mib")]
+        if dev_gate is not None and peaks:
+            dev_gate = max(dev_gate, *peaks)
     out["gate_mib"] = {"host": host_gate, "device": dev_gate}
     return out
 
@@ -149,12 +154,16 @@ def run_cell(mode, cell, pf):
            "free_m_before": sh("free -m")}
     print(rec["ps_before"] + rec["free_m_before"], end="", flush=True)
     rec["budget"] = budgets(pf, ds, prof, be)
-    why, rec["memory_at_start"] = gate(rec["budget"], be)
+    rec.update(wait_idle())
+    if not rec["idle"]:  # §2.5: timing runs wait for an idle window; this cell stays to be run
+        rec["rc"] = None
+        print(f"{cell}: no idle window in {rec['waited_seconds']} s, not measured", flush=True)
+        return rec
+    why, rec["memory_at_start"] = gate(rec["budget"], be)  # just before the launch
     if why:
         rec.update({"rc": None, "capacity": why})
         print(f"{cell}: capacity limit, {why}", flush=True)
         return rec
-    rec.update(wait_idle())
     cmd = [BLZ, "measure", "--graph", f"data/{ds}.blzg", "--profile", f"configs/profiles/{prof}.yaml", "--backend", be,
            "--reps", str(mode.reps), "--triggers", mode.triggers, "--out", rel(mode.measure_json), "--name", cell]
     if be in ("cpu", "hybrid"):
@@ -257,6 +266,8 @@ def cell_result(mode, cell, rec, measure, pf):
 
 def report(mode):
     cells, measure = PF.load(mode.cells_json, {}), PF.load(mode.measure_json, {})
+    # A cell that found no idle window was not measured (rc None, no capacity limit): still missing.
+    cells = {c: r for c, r in cells.items() if r.get("rc") is not None or "capacity" in r}
     pf = PF.load(PREFLIGHT, None)
     model = pf["training"]["model"]["fitted"]
     doc = {"experiment": "E17", "spec": "SPEC v3 §8, AC-V3-5, §5.1, §6.2", "smoke": mode.smoke, "machine": "local",
@@ -367,6 +378,8 @@ def freeze(mode):
         if "capacity" in r:
             excluded[cell] = {"role": role, "capacity": r["capacity"]}
             continue
+        if not r.get("idle", {}).get("idle"):
+            sys.exit(f"{cell}: measured without an idle window (SPEC v3 §2.5); rerun it before freezing")
         wl[cell] = {"role": role, "m_seconds": r["m_seconds"], "triggers": r["triggers"], "errors": r["errors"],
                     "block_hash": r["block_hash"], "peak_rss_mib": r["peak_rss_mib"], "backend_options": r["backend_options"],
                     "foreign_load": r["foreign_load"], "idle": r["idle"]}

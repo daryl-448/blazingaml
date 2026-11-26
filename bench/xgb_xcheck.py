@@ -21,6 +21,8 @@ from blzg import Blzg  # noqa: E402
 graph, feats = sys.argv[1], sys.argv[2]
 blocks = [b for b in sys.argv[3].split(",") if b]
 g = Blzg(graph)
+if g.dataset()["id"] != "hi_small":  # SPEC v3 §6.4: a new dataset's test split is scored once, after its freeze
+    sys.exit(f"{graph}: dataset {g.dataset()['id']}; this DG-2 check scores the test split of HI-Small only")
 src, dst, label = g.src, g.dst, g.label
 
 cols = [src.astype(np.float32), dst.astype(np.float32)]

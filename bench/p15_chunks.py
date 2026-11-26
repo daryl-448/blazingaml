@@ -16,6 +16,7 @@ run (features.json is kept). --quick runs clean_default on cpu only.
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -31,11 +32,15 @@ def mine(blz, graph, profile, args, chunk, out):
     cmd = [blz, "mine", "--graph", graph, "--profile", f"configs/profiles/{profile}.yaml", *args, "--out", out]
     if chunk is not None:
         cmd += ["--chunk-rows", str(chunk)]
+    shutil.rmtree(os.path.join(ROOT, out), ignore_errors=True)  # a fresh manifest: no block inherits an old hash
     t0 = time.time()
     r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
     if r.returncode != 0:
         sys.exit(f"{' '.join(cmd)} failed:\n{r.stderr}")
     meta = json.load(open(os.path.join(ROOT, out, "features.json")))
+    missing = [b for b, v in meta["blocks"].items() if not os.path.exists(os.path.join(ROOT, out, v["file"]))]
+    if missing:
+        sys.exit(f"{' '.join(cmd)}: no file for blocks {missing}")
     for f in os.listdir(os.path.join(ROOT, out)):
         if f.endswith(".npy"):
             os.remove(os.path.join(ROOT, out, f))

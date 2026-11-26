@@ -103,7 +103,9 @@ def plan(budget, smoke):
 
 def measure(work, ds, prof, sel, be):
     name = f"{ds}/{prof}/{sel.replace(':', '_')}/{be}"
-    out = os.path.join(work, "measure.json")
+    out = os.path.join(work, name.replace("/", "__") + ".json")  # fresh per run: no stale result is read
+    if os.path.exists(out):
+        os.remove(out)
     cmd = [BLZ, "measure", "--graph", f"data/{ds}.blzg", "--profile", f"configs/profiles/{prof}.yaml", "--backend", be,
            "--reps", "1", "--triggers", sel, "--out", os.path.relpath(out, ROOT), "--name", name]
     log = os.path.join(work, name.replace("/", "__") + ".log")
@@ -185,10 +187,14 @@ def report(state, work, smoke):
         rows = []
         for sel in sels:
             got = {be: runs.get(f"{ds}/{prof}/{sel}/{be}") for be in BACKENDS[ds]}
-            got = {be: r for be, r in got.items() if r is not None and not (be == "oracle" and sel not in it["selections"])}
-            bad = [be for be, r in got.items() if r.get("rc") != 0]
+            want = [be for be in BACKENDS[ds] if not (be == "oracle" and sel not in it["selections"])]
+            got = {be: r for be, r in got.items() if r is not None and be in want}
+            bad = [be for be in want if be not in got or got[be].get("rc") != 0 or got[be].get("errors")
+                   or not got[be].get("hashes")]
             blocks = sorted({b for r in got.values() for b in r.get("hashes", {})})
             unequal = [b for b in blocks if len({r.get("hashes", {}).get(b) for r in got.values()}) != 1]
+            if len({r.get("rows") for r in got.values()}) != 1:
+                unequal.append("triggers")
             row = {"selection": sel, "backends": sorted(got), "triggers": next((r["rows"] for r in got.values() if r.get("rows")), None),
                    "equal": not bad and not unequal and len(got) >= 2, "unequal_blocks": unequal, "failed": bad,
                    "skipped": [be for be, r in got.items() if "skipped" in r],

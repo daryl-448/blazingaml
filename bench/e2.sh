@@ -11,6 +11,6 @@ OUT=results/e2_table2.json
 "$BLZ" mine --graph "$GRAPH" --config configs/features_default.yaml --out "$FEATS"
 rm -f "$OUT"
 for s in xgb_only fan fan_deg fan_deg_cyc all; do
-  "$BLZ" train --graph "$GRAPH" --features "$FEATS" --set "$s" --out "$OUT"
+  "$BLZ" train --graph "$GRAPH" --features "$FEATS" --set "$s" --score-test --out "$OUT"
 done
 python3 bench/e2_table2.py "$OUT" > results/e2_table2.md

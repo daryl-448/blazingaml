@@ -1,0 +1,492 @@
+{
+ "li_small": {
+  "backend": {
+   "cpu_threshold": "32",
+   "disabled_optimizations": [],
+   "fuse": false,
+   "heavy_threshold": "32",
+   "name": "cpu",
+   "pack": false,
+   "reach_prune": false,
+   "schedule": "dynamic",
+   "threads": 12,
+   "work_limit": 100000000
+  },
+  "block_seconds": {
+   "deg_in": {
+    "max": 0.095961606,
+    "median": 0.095961606,
+    "min": 0.095961606,
+    "seconds": [
+     0.095961606
+    ]
+   },
+   "deg_out": {
+    "max": 0.096378657,
+    "median": 0.096378657,
+    "min": 0.096378657,
+    "seconds": [
+     0.096378657
+    ]
+   },
+   "fan_in": {
+    "max": 0.108409558,
+    "median": 0.108409558,
+    "min": 0.108409558,
+    "seconds": [
+     0.108409558
+    ]
+   },
+   "fan_out": {
+    "max": 0.104733674,
+    "median": 0.104733674,
+    "min": 0.104733674,
+    "seconds": [
+     0.104733674
+    ]
+   },
+   "sg": {
+    "max": 0.6349029690000001,
+    "median": 0.6349029690000001,
+    "min": 0.6349029690000001,
+    "seconds": [
+     0.6349029690000001
+    ]
+   },
+   "sg_ord": {
+    "max": 0.284823771,
+    "median": 0.284823771,
+    "min": 0.284823771,
+    "seconds": [
+     0.284823771
+    ]
+   },
+   "tcyc": {
+    "max": 0.723429486,
+    "median": 0.723429486,
+    "min": 0.723429486,
+    "seconds": [
+     0.723429486
+    ]
+   }
+  },
+  "blzg_sha256": "58ec4d786dd0c524e8f15c1419339b1a5930ace37b965fc03d5d3b1d6fc88a2a",
+  "chunk_rows": 1048576,
+  "env": {
+   "build": {
+    "cxx_flags": "-O3 -DNDEBUG -march=native",
+    "native": true,
+    "type": "Release"
+   },
+   "compiler": "16.2.1 20260810",
+   "config": "configs/profiles/clean_default.yaml",
+   "config_sha256": "c813669a6da8f4edd02e964b90a7837a0023b29e3bea624a15d78d49b21f859f",
+   "git": {
+    "dirty": false,
+    "sha": "5ef39609a348e7aa9335c2be8180f2a8b6b45d7a"
+   },
+   "lscpu": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           43 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  12\nOn-line CPU(s) list:                     0-11\nVendor ID:                               AuthenticAMD\nModel name:                              AMD Ryzen 5 3600 6-Core Processor\nCPU family:                              23\nModel:                                   113\nThread(s) per core:                      2\nCore(s) per socket:                      6\nSocket(s):                               1\nStepping:                                0\nMicrocode version:                       0x8701034\nFrequency boost:                         enabled\nCPU(s) scaling MHz:                      78%\nCPU max MHz:                             4208.2031\nCPU min MHz:                             2200.0000\nBogoMIPS:                                7186.64\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es\nVirtualization:                          AMD-V\nL1d cache:                               192 KiB (6 instances)\nL1i cache:                               192 KiB (6 instances)\nL2 cache:                                3 MiB (6 instances)\nL3 cache:                                32 MiB (2 instances)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-11\nVulnerability Gather data sampling:      Not affected\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Old microcode:             Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Mitigation; untrained return thunk; SMT enabled with STIBP protection\nVulnerability Spec rstack overflow:      Mitigation; Safe RET\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Mitigation; IBPB before exit to userspace\n",
+   "memory": {
+    "MemAvailable_mb": 11180,
+    "MemFree_mb": 4163,
+    "MemTotal_mb": 15910
+   },
+   "omp": {
+    "OMP_PLACES": null,
+    "OMP_PROC_BIND": null,
+    "max_threads": 12
+   }
+  },
+  "errors": 0,
+  "graph": "data/li_small.blzg",
+  "output_fnv1a": {
+   "deg_in": 7038216195016693426,
+   "deg_out": 10687253125510954116,
+   "fan_in": 1179111672364811108,
+   "fan_out": 13837408251308339785,
+   "sg": 802184059030079299,
+   "sg_ord": 8516082228136487778,
+   "tcyc": 7657148755039894003
+  },
+  "peak_rss_mb": 560.43359375,
+  "profile": {
+   "file": "configs/profiles/clean_default.yaml",
+   "id": "abbd3459e1336a69",
+   "name": "clean_default"
+  },
+  "reps": 1,
+  "runs": [
+   {
+    "blocks": {
+     "deg_in": {
+      "chunks": 7,
+      "instances": 22840302,
+      "mine_seconds": 0.083084129,
+      "output_fnv1a": 7038216195016693426,
+      "rows": 6924049,
+      "saturated": 0,
+      "seconds": 0.095961606,
+      "sink_seconds": 0.012877477,
+      "whole": true
+     },
+     "deg_out": {
+      "chunks": 7,
+      "instances": 7710918336,
+      "mine_seconds": 0.079934023,
+      "output_fnv1a": 10687253125510954116,
+      "rows": 6924049,
+      "saturated": 0,
+      "seconds": 0.096378657,
+      "sink_seconds": 0.016444634,
+      "whole": true
+     },
+     "fan_in": {
+      "chunks": 7,
+      "instances": 11005034,
+      "mine_seconds": 0.095608355,
+      "output_fnv1a": 1179111672364811108,
+      "rows": 6924049,
+      "saturated": 0,
+      "seconds": 0.108409558,
+      "sink_seconds": 0.012801203,
+      "whole": true
+     },
+     "fan_out": {
+      "chunks": 7,
+      "instances": 3335300599,
+      "mine_seconds": 0.08845218,
+      "output_fnv1a": 13837408251308339785,
+      "rows": 6924049,
+      "saturated": 0,
+      "seconds": 0.104733674,
+      "sink_seconds": 0.016281493999999997,
+      "whole": true
+     },
+     "sg": {
+      "chunks": 7,
+      "instances": 884,
+      "mine_seconds": 0.6172335520000001,
+      "output_fnv1a": 802184059030079299,
+      "rows": 6924049,
+      "saturated": 0,
+      "seconds": 0.6349029690000001,
+      "sink_seconds": 0.017669417000000003,
+      "whole": false
+     },
+     "sg_ord": {
+      "chunks": 7,
+      "instances": 255,
+      "mine_seconds": 0.267354622,
+      "output_fnv1a": 8516082228136487778,
+      "rows": 6924049,
+      "saturated": 0,
+      "seconds": 0.284823771,
+      "sink_seconds": 0.017469149000000003,
+      "whole": false
+     },
+     "tcyc": {
+      "chunks": 7,
+      "instances": 1228,
+      "mine_seconds": 0.706800872,
+      "output_fnv1a": 7657148755039894003,
+      "rows": 6924049,
+      "saturated": 0,
+      "seconds": 0.723429486,
+      "sink_seconds": 0.016628614,
+      "whole": false
+     }
+    },
+    "errors": 0,
+    "index_build_seconds": 0.473242131,
+    "index_bytes": 319126792,
+    "instances": 11080066638,
+    "loadavg_after": {
+     "15m": 4.62,
+     "1m": 1.86,
+     "5m": 3.48,
+     "tasks": "2/1102"
+    },
+    "loadavg_before": {
+     "15m": 4.62,
+     "1m": 1.86,
+     "5m": 3.48,
+     "tasks": "2/1084"
+    },
+    "peak_rss_mb": 560.43359375,
+    "row_buffer_bytes": 41943040,
+    "rss": {
+     "RssAnon_mb": 408.42578125,
+     "RssFile_mb": 126.84375,
+     "RssShmem_mb": 0.0,
+     "VmHWM_mb": 560.43359375,
+     "VmRSS_mb": 535.26953125
+    },
+    "saturated": 0,
+    "seconds": 2.563372106,
+    "triggers": 6924049,
+    "upload_seconds": 0.0
+   }
+  ],
+  "seconds": {
+   "max": 2.563372106,
+   "median": 2.563372106,
+   "min": 2.563372106,
+   "seconds": [
+    2.563372106
+   ]
+  },
+  "sink": "hash (SPEC v3 §5.1): fnv1a per block, rows dropped",
+  "triggers": {
+   "first": 0,
+   "last": 6924049,
+   "rows": 6924049,
+   "sampled": false,
+   "spec": "all"
+  }
+ },
+ "transxion": {
+  "backend": {
+   "cpu_threshold": "32",
+   "disabled_optimizations": [],
+   "fuse": false,
+   "heavy_threshold": "32",
+   "name": "cpu",
+   "pack": false,
+   "reach_prune": false,
+   "schedule": "dynamic",
+   "threads": 12,
+   "work_limit": 100000000
+  },
+  "block_seconds": {
+   "deg_in": {
+    "max": 0.030282260999999998,
+    "median": 0.030282260999999998,
+    "min": 0.030282260999999998,
+    "seconds": [
+     0.030282260999999998
+    ]
+   },
+   "deg_out": {
+    "max": 0.034641239,
+    "median": 0.034641239,
+    "min": 0.034641239,
+    "seconds": [
+     0.034641239
+    ]
+   },
+   "fan_in": {
+    "max": 0.031816832,
+    "median": 0.031816832,
+    "min": 0.031816832,
+    "seconds": [
+     0.031816832
+    ]
+   },
+   "fan_out": {
+    "max": 0.035960883000000006,
+    "median": 0.035960883000000006,
+    "min": 0.035960883000000006,
+    "seconds": [
+     0.035960883000000006
+    ]
+   },
+   "sg": {
+    "max": 0.06321262500000001,
+    "median": 0.06321262500000001,
+    "min": 0.06321262500000001,
+    "seconds": [
+     0.06321262500000001
+    ]
+   },
+   "sg_ord": {
+    "max": 0.037903595,
+    "median": 0.037903595,
+    "min": 0.037903595,
+    "seconds": [
+     0.037903595
+    ]
+   },
+   "tcyc": {
+    "max": 0.032110669,
+    "median": 0.032110669,
+    "min": 0.032110669,
+    "seconds": [
+     0.032110669
+    ]
+   }
+  },
+  "blzg_sha256": "ff6846f8910035bf45fcddf8bcb972e62dda72013d6779eb8694aff0b8dd70f9",
+  "chunk_rows": 1048576,
+  "env": {
+   "build": {
+    "cxx_flags": "-O3 -DNDEBUG -march=native",
+    "native": true,
+    "type": "Release"
+   },
+   "compiler": "16.2.1 20260810",
+   "config": "configs/profiles/clean_default.yaml",
+   "config_sha256": "c813669a6da8f4edd02e964b90a7837a0023b29e3bea624a15d78d49b21f859f",
+   "git": {
+    "dirty": false,
+    "sha": "5ef39609a348e7aa9335c2be8180f2a8b6b45d7a"
+   },
+   "lscpu": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           43 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  12\nOn-line CPU(s) list:                     0-11\nVendor ID:                               AuthenticAMD\nModel name:                              AMD Ryzen 5 3600 6-Core Processor\nCPU family:                              23\nModel:                                   113\nThread(s) per core:                      2\nCore(s) per socket:                      6\nSocket(s):                               1\nStepping:                                0\nMicrocode version:                       0x8701034\nFrequency boost:                         enabled\nCPU(s) scaling MHz:                      72%\nCPU max MHz:                             4208.2031\nCPU min MHz:                             2200.0000\nBogoMIPS:                                7186.64\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es\nVirtualization:                          AMD-V\nL1d cache:                               192 KiB (6 instances)\nL1i cache:                               192 KiB (6 instances)\nL2 cache:                                3 MiB (6 instances)\nL3 cache:                                32 MiB (2 instances)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-11\nVulnerability Gather data sampling:      Not affected\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Old microcode:             Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Mitigation; untrained return thunk; SMT enabled with STIBP protection\nVulnerability Spec rstack overflow:      Mitigation; Safe RET\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Mitigation; IBPB before exit to userspace\n",
+   "memory": {
+    "MemAvailable_mb": 11141,
+    "MemFree_mb": 4046,
+    "MemTotal_mb": 15910
+   },
+   "omp": {
+    "OMP_PLACES": null,
+    "OMP_PROC_BIND": null,
+    "max_threads": 12
+   }
+  },
+  "errors": 0,
+  "graph": "data/transxion.blzg",
+  "output_fnv1a": {
+   "deg_in": 10102725453337140426,
+   "deg_out": 8833635815048626451,
+   "fan_in": 2639058907523897163,
+   "fan_out": 322991519697705657,
+   "sg": 5413892777057952610,
+   "sg_ord": 10928933095190659523,
+   "tcyc": 5131934618287786226
+  },
+  "peak_rss_mb": 289.55078125,
+  "profile": {
+   "file": "configs/profiles/clean_default.yaml",
+   "id": "abbd3459e1336a69",
+   "name": "clean_default"
+  },
+  "reps": 1,
+  "runs": [
+   {
+    "blocks": {
+     "deg_in": {
+      "chunks": 3,
+      "instances": 48659685,
+      "mine_seconds": 0.025134286,
+      "output_fnv1a": 10102725453337140426,
+      "rows": 3029170,
+      "saturated": 0,
+      "seconds": 0.030282260999999998,
+      "sink_seconds": 0.005147975,
+      "whole": true
+     },
+     "deg_out": {
+      "chunks": 3,
+      "instances": 6176544,
+      "mine_seconds": 0.030335993,
+      "output_fnv1a": 8833635815048626451,
+      "rows": 3029170,
+      "saturated": 0,
+      "seconds": 0.034641239,
+      "sink_seconds": 0.0043052459999999996,
+      "whole": true
+     },
+     "fan_in": {
+      "chunks": 3,
+      "instances": 47587736,
+      "mine_seconds": 0.02738235,
+      "output_fnv1a": 2639058907523897163,
+      "rows": 3029170,
+      "saturated": 0,
+      "seconds": 0.031816832,
+      "sink_seconds": 0.004434482,
+      "whole": true
+     },
+     "fan_out": {
+      "chunks": 3,
+      "instances": 6014818,
+      "mine_seconds": 0.031603006,
+      "output_fnv1a": 322991519697705657,
+      "rows": 3029170,
+      "saturated": 0,
+      "seconds": 0.035960883000000006,
+      "sink_seconds": 0.0043578770000000005,
+      "whole": true
+     },
+     "sg": {
+      "chunks": 3,
+      "instances": 339,
+      "mine_seconds": 0.055552105000000004,
+      "output_fnv1a": 5413892777057952610,
+      "rows": 3029170,
+      "saturated": 0,
+      "seconds": 0.06321262500000001,
+      "sink_seconds": 0.0076605200000000005,
+      "whole": false
+     },
+     "sg_ord": {
+      "chunks": 3,
+      "instances": 88,
+      "mine_seconds": 0.030149809,
+      "output_fnv1a": 10928933095190659523,
+      "rows": 3029170,
+      "saturated": 0,
+      "seconds": 0.037903595,
+      "sink_seconds": 0.0077537859999999995,
+      "whole": false
+     },
+     "tcyc": {
+      "chunks": 3,
+      "instances": 3231,
+      "mine_seconds": 0.025204509,
+      "output_fnv1a": 5131934618287786226,
+      "rows": 3029170,
+      "saturated": 0,
+      "seconds": 0.032110669,
+      "sink_seconds": 0.00690616,
+      "whole": false
+     }
+    },
+    "errors": 0,
+    "index_build_seconds": 0.173019063,
+    "index_bytes": 175135880,
+    "instances": 108442441,
+    "loadavg_after": {
+     "15m": 4.66,
+     "1m": 2.67,
+     "5m": 3.62,
+     "tasks": "1/1102"
+    },
+    "loadavg_before": {
+     "15m": 4.62,
+     "1m": 1.86,
+     "5m": 3.48,
+     "tasks": "2/1091"
+    },
+    "peak_rss_mb": 289.55078125,
+    "row_buffer_bytes": 41943040,
+    "rss": {
+     "RssAnon_mb": 222.19140625,
+     "RssFile_mb": 57.046875,
+     "RssShmem_mb": 0.0,
+     "VmHWM_mb": 289.55078125,
+     "VmRSS_mb": 279.23828125
+    },
+    "saturated": 0,
+    "seconds": 0.460994773,
+    "triggers": 3029170,
+    "upload_seconds": 0.0
+   }
+  ],
+  "seconds": {
+   "max": 0.460994773,
+   "median": 0.460994773,
+   "min": 0.460994773,
+   "seconds": [
+    0.460994773
+   ]
+  },
+  "sink": "hash (SPEC v3 §5.1): fnv1a per block, rows dropped",
+  "triggers": {
+   "first": 0,
+   "last": 3029170,
+   "rows": 3029170,
+   "sampled": false,
+   "spec": "all"
+  }
+ }
+}

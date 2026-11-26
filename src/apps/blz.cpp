@@ -14,6 +14,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <sstream>
 #include <tuple>
 #include <vector>
@@ -1415,7 +1416,12 @@ void merge_report(const std::string& report, const std::string& name, const nloh
   if (std::filesystem::exists(report)) doc = nlohmann::json::parse(std::ifstream(report));
   doc[nlohmann::json::json_pointer("/" + name)] = res;
   ensure_parent(report);
-  std::ofstream(report) << doc.dump(1) << '\n';
+  const std::string tmp = report + ".tmp";
+  std::ofstream f(tmp);
+  f << doc.dump(1) << '\n';
+  f.close();
+  if (!f) throw std::runtime_error("cannot write " + tmp);
+  std::filesystem::rename(tmp, report);
 }
 
 // Path hit (SPEC v3 §4.4 item 6): what a fuzz run's graphs exercised, as JSON, and one line on stdout.
@@ -2021,6 +2027,11 @@ int measure(const std::string& graph, const std::string& profile_path, const blz
   std::vector<double> seconds;
   std::map<std::string, std::vector<double>> block_seconds;
   std::vector<std::string> order;  // blocks in mining order
+  // Every rep must deliver exactly the profile's blocks (and vstats): a skipped block is an error,
+  // never a faster M.
+  std::set<std::string> expected;
+  for (const blz::ProfileBlock* pb : blocks) expected.insert(std::string(blz::block_name(pb->block)));
+  if (vstats) expected.insert("vstats");
   std::uint64_t errors = 0;
   for (int rep = 0; rep < reps; ++rep) {
     nlohmann::json jr = {{"loadavg_before", loadavg()}};
@@ -2052,6 +2063,12 @@ int measure(const std::string& graph, const std::string& profile_path, const blz
         std::snprintf(buf, sizeof buf, "\n  %-14s %8.3f s  fnv1a=%llu", r.name.c_str(), bs,
                       (unsigned long long)r.out.fnv1a);
         line += buf;
+      }
+      std::set<std::string> got;
+      for (const blz::BlockRun& r : br) got.insert(r.name);
+      if (got != expected || br.size() != expected.size()) {
+        ++rep_errors;
+        jr["block_set_differs"] = true;
       }
       if (ref.empty())
         for (const blz::BlockRun& r : br) {
@@ -2403,6 +2420,7 @@ int main(int argc, char** argv) {
     }
     if (*fz) return fuzz(seeds, bins, k_max, fz_vstats, fz_lcyc, work_limit, setting, out);
     if (*vsc) return vstats(graph, vs_window, backend == "oracle" ? "cpu" : backend, threads, triggers, out);
+    if (*tr && !score_test) throw std::runtime_error("--score-test=false: this command scores the test split (SPEC v3 §6.4)");
     if (*tr) return train(graph, features, set, xgb, out, name.empty() ? set : name, threads);
   } catch (const std::exception& e) {
     std::fprintf(stderr, "error: %s\n", e.what());

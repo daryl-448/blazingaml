@@ -52,8 +52,8 @@ WC = {"hi_small": "clean_wc_hi_small", "li_small": "clean_wc_li_small", "transxi
 RECORDED = {
     "hi_small/cpu/clean_default": ("results/p15_chunk_cost_local.json", ["cpu", "1048576", "round0"], "D-81"),
     "hi_small/cuda/clean_default": ("results/p15_chunk_cost_local.json", ["cuda", "1048576", "round0"], "D-81"),
-    "li_small/cpu/clean_default": ("features/p15_smoke_measure.json", ["li_small"], "U3a smoke"),
-    "transxion/cpu/clean_default": ("features/p15_smoke_measure.json", ["transxion"], "U3a smoke"),
+    "li_small/cpu/clean_default": ("results/p15_measure_smoke_local.json", ["li_small"], "U3a smoke"),
+    "transxion/cpu/clean_default": ("results/p15_measure_smoke_local.json", ["transxion"], "U3a smoke"),
     "hi_medium/cpu/clean_default": ("results/p15_measure_hi_medium_local.json", ["hi_medium", "clean_default", "cpu"],
                                     "D-82"),
 }

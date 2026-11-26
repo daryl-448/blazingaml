@@ -223,6 +223,7 @@ struct CaseResult {
   FuzzDiff d;
   std::optional<Mismatch> first;
   std::array<bool, kAllBlocks.size()> limited{};
+  bool vstats_compared = false;  // the case's vstats rows were compared (counted once per case)
 
   explicit CaseResult(const DiffCase& c) {
     const std::uint64_t m = c.g.src.size();
@@ -289,7 +290,7 @@ struct CaseResult {
   void vstats(const std::string& path, std::int32_t w, const std::vector<double>& got, const std::vector<double>& want,
               const TriggerSel* sel = nullptr) {
     const std::uint64_t m = want.size() / kVstatsCols;
-    ++d.vstats_graphs;
+    vstats_compared = true;
     d.row_checks += m;
     for (std::uint64_t r = 0; r < m; ++r) {
       const double* g = got.data() + r * kVstatsCols;
@@ -316,6 +317,7 @@ struct CaseResult {
       d.limited_graphs[i] += limited[i];
       any_limited = any_limited || limited[i];
     }
+    d.vstats_graphs += vstats_compared;
     if (bad()) d.bad_seeds.push_back(id);
     if (any_limited) d.limited_seeds.push_back(id);
   }
@@ -742,7 +744,12 @@ void chunked_run(CaseResult& r, ChunkDriver& d, const Profile& pw, const Want& x
     // R11: over every trigger the run stops where the reference does, before any stream finished. A
     // sub-selection of a case the reference stopped may or may not reach the limit: inconclusive.
     if (all || want_stop == UINT64_MAX) r.stops(Block::lcyc, path, w, got_stop, want_stop);
-    if (got_stop != UINT64_MAX && (!sink.mem.u32.empty() || !sink.mem.f64.empty())) {
+    // A clean run that stops compares no rows of any block: the case is not completed for them (R11).
+    // A legacy profile keeps D-39's stop, after the blocks mined before lcyc, so it may keep their rows.
+    const bool clean = pw.family == Family::clean;
+    if (clean)
+      for (const ProfileBlock& pb : pw.blocks) r.limited[int(pb.block)] = true;
+    if (clean && got_stop != UINT64_MAX && (!sink.mem.u32.empty() || !sink.mem.f64.empty())) {
       const Block lcyc = Block::lcyc;
       r.note(&lcyc, path, w, got_stop,
              "an aborted run kept the rows of " + (sink.mem.u32.empty() ? "vstats" : sink.mem.u32.begin()->first));
