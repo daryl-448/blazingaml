@@ -1885,7 +1885,8 @@ int coverage(const std::string& graph, const std::string& gt_path, const std::st
   blz::check_profile_backend(prof, blz::Backend::oracle);     // E404: eligibility runs the oracle
 
   const nlohmann::json fm = nlohmann::json::parse(std::ifstream(features + "/features.json"));
-  if (fm.at("blzg_sha256") != blzg_sha) throw std::runtime_error(features + " was mined from another .blzg");
+  // The CSV identifies the stream: a .blzg of another version over it has the same columns (SPEC v3 D-70).
+  if (fm.at("run").at("csv_sha256") != csv_sha) throw std::runtime_error(features + " was mined from another CSV");
   if (fm.at("profile").at("id") != prof.id())
     throw std::runtime_error(features + ": profile " + fm.at("profile").at("id").get<std::string>() + ", not " +
                              prof.id() + " (" + profile_path + ")");

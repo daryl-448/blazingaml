@@ -72,6 +72,13 @@ IDS = {"v1": ["src_id", "dst_id"], "I1": ["from_id", "to_id"], "I2": ["from_id",
        "I3": ["src_id", "dst_id", "eid"]}
 
 
+def csv_sha256_of(meta):
+    """The CSV a feature folder was mined from: blz mine's run key, or the manifest of blz vstats and
+    tools/gfp. A .blzg of any version over that CSV has the same columns (SPEC v3 D-70), so the CSV's
+    hash, not the .blzg file's, says whether a folder belongs to a graph (D-89)."""
+    return meta["run"]["csv_sha256"] if "run" in meta else meta["csv_sha256"]
+
+
 def now_utc():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
@@ -231,6 +238,7 @@ class Data:
     def __init__(self, smoke):
         self.g = g = Blzg(str(ROOT / GRAPH))
         self.blzg_sha256 = file_sha256(ROOT / GRAPH)
+        self.csv_sha256 = g.csv_sha256
         sp = g.splits()
         if sp["fit"] != (0, 3_047_216) or sp["val"] != (3_047_216, 4_062_676):  # SPEC v2 §3.3
             raise SystemExit(f"unexpected splits {sp}")
@@ -294,8 +302,8 @@ class Features:
                 raise SystemExit(f"{d}: not a mining of every row of its graph ({t}, edges {edges})")
             self.source, self.first, self.last = "profile", 0, edges
             self.profile_id, self.gfp_recipe = m["profile"]["id"], None
-        if m["blzg_sha256"] != data.blzg_sha256 and m.get("smoke_stand_in") is None:
-            raise SystemExit(f"{d}: mined from another .blzg")
+        if m.get("smoke_stand_in") is None and csv_sha256_of(m) != data.csv_sha256:
+            raise SystemExit(f"{d}: mined from another CSV")
         self.blocks, self._cache = {}, {}
         for name, b in m["blocks"].items():
             arr = np.load(self.dir / b["file"], mmap_mode="r")  # header only; rows are read with pread

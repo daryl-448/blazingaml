@@ -170,7 +170,7 @@ class Blocks:
         for d in dirs:
             m = json.loads((d / "features.json").read_text())
             t = m["triggers"]
-            if m["blzg_sha256"] != data.blzg_sha256 or t["first"] != 0 or t["last"] != data.g.m or t.get("sampled"):
+            if Lad.csv_sha256_of(m) != data.csv_sha256 or t["first"] != 0 or t["last"] != data.g.m or t.get("sampled"):
                 raise SystemExit(f"{d}: not every row of {Lad.GRAPH}")
             for b, v in m["blocks"].items():
                 self.arr[b] = np.load(d / v["file"], mmap_mode="r")
