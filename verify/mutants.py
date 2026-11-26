@@ -71,11 +71,16 @@ def fd(bound, *extra):
 
 
 LIMIT1 = ("--batch-edges", "1", "--work-limit", "1")
+# Through the chunk driver (SPEC v3 H7, D-83): chunks of 1, 2 and 3 triggers; on the GPU as codegen.sh
+# --smoke runs it: H = C = 2, small unions, clean_all (every clean block, vstats and fusion).
+CHUNKS = ("--chunk-rows", "1,2,3")
+CHUNKS_GPU = (*CHUNKS, "--heavy", "2", "--batch-edges", "256", "--profile", os.path.join(SRC, PROFILES[0]))
 LADDERS = {  # cheapest first; the smoke rungs take about a second each, L3 a few
     "cpu": [
         Check("t4-smoke", "T4", ("index-contracts", "--bound", BOUND["SMOKE"])),
         Check("l2-smoke-cpu", "L2", fd(BOUND["SMOKE"]), True),
         Check("l2-smoke-cpu-limit1", "L2", fd(BOUND["SMOKE"], *LIMIT1), True),
+        Check("l2-smoke-cpu-chunks", "L2", fd(BOUND["SMOKE"], *CHUNKS), True),
         Check("l3", "L3"),
         Check("l2-a-cpu", "L2", fd(BOUND["A"]), True),
         Check("l2-a-cpu-limit1", "L2", fd(BOUND["A"], *LIMIT1), True),
@@ -86,6 +91,11 @@ LADDERS = {  # cheapest first; the smoke rungs take about a second each, L3 a fe
         Check("l2-smoke-cuda", "L2", fd(BOUND["SMOKE"], "--backend", "cuda"), True),
         Check("l2-smoke-cuda-fuse-pack", "L2", fd(BOUND["SMOKE"], "--backend", "cuda", "--fuse", "--pack"), True),
         Check("l2-smoke-hybrid", "L2", fd(BOUND["SMOKE"], "--backend", "hybrid"), True),
+        Check("l2-chunks-cuda", "L2", fd(BOUND["CHUNKS_GPU_SMOKE"], "--backend", "cuda", *CHUNKS_GPU)),
+        Check("l2-chunks-cuda-fuse-pack", "L2",
+              fd(BOUND["CHUNKS_GPU_SMOKE"], "--backend", "cuda", "--fuse", "--pack", *CHUNKS_GPU)),
+        Check("l2-chunks-hybrid", "L2",
+              fd(BOUND["CHUNKS_GPU_SMOKE"], "--backend", "hybrid", "--cpu-threshold", "2", *CHUNKS_GPU)),
         Check("l3", "L3"),
         Check("l2-a-cuda", "L2", fd(BOUND["A"], "--backend", "cuda"), True),
         Check("l2-a-cuda-fuse-pack", "L2", fd(BOUND["A"], "--backend", "cuda", "--fuse", "--pack"), True),
@@ -109,6 +119,7 @@ class Mutant:
 
 
 CPU_A = ("l2-a-cpu", "l2-a-cpu-limit1", "l2-b-cpu")
+DRIVER = "src/runtime/chunk_driver.cpp"
 MUTANTS = [
     Mutant("pair_latest_lo", "include/blz/primitives.hpp",
            "if (b == a || std::int64_t(run_ts[b - 1]) < lo_ts) return kNoTs;",
@@ -170,6 +181,44 @@ MUTANTS = [
            "std::int64_t(ld_[x]) == h + 1; }",
            "cpu", "t4-smoke", "keep holds only at the threshold ld - 1, not below it (drops 0->1@0, 1->0@2)",
            "sol-loop P14 S2"),
+    # The chunk driver and its sinks (SPEC v3 H7, §4.4 V-mut). The direct paths of the rungs before
+    # the chunked ones do not run them.
+    Mutant("chunk_end_past_sel", DRIVER,
+           "const std::uint64_t b = a + std::min(part_rows, rows - a);",
+           "const std::uint64_t b = a + part_rows;",
+           "cpu", "l2-smoke-cpu-chunks", "run_block's last chunk ends a whole chunk on, past the selection's end",
+           "P15 U3b"),
+    Mutant("chunk_last_dropped", DRIVER,
+           "for (std::uint64_t a = 0; a < rows; a += part_rows) {",
+           "for (std::uint64_t a = 0; a + part_rows <= rows; a += part_rows) {",
+           "cpu", "l2-smoke-cpu-chunks", "run_block drops the last partial chunk", "P15 U3b"),
+    Mutant("whole_offset_rows", DRIVER,
+           "buf + (c - a) * cols,",
+           "buf + (c - a),",
+           "cpu", "l2-smoke-cpu-chunks",
+           "a sweep block's whole buffer is put in chunks at an offset in rows, not cells (D-79)", "P15 U3b"),
+    Mutant("hash_restarts", "src/runtime/block_sink.cpp",
+           "tally_.fnv1a = fnv1a_cells(cells, tally_.fnv1a, tally_.instances);",
+           "tally_.fnv1a = fnv1a_cells(cells, kFnv1aBasis, tally_.instances);",
+           "cpu", "l2-smoke-cpu-chunks", "a stream's FNV-1a restarts at each chunk", "P15 U3b"),
+    Mutant("row_buffer_unzeroed", DRIVER,
+           "host_.assign(cells, 0);",
+           "host_.resize(cells);",
+           "cpu", "l2-smoke-cpu-chunks", "the CPU's reused row buffer keeps the last chunk's counts", "P15 U3b"),
+    Mutant("sample_slice_start", "src/runtime/triggers.cpp",
+           "part.eids.assign(sel.eids.begin() + std::ptrdiff_t(a), sel.eids.begin() + std::ptrdiff_t(b));",
+           "part.eids.assign(sel.eids.begin(), sel.eids.begin() + std::ptrdiff_t(b - a));",
+           "cpu", "l2-smoke-cpu-chunks", "each chunk of a sampled selection takes the sample's first eids",
+           "P15 U3b"),
+    Mutant("vstats_slice_start", DRIVER,
+           "const TriggerSel part = slice(sel, a, b);",
+           "const TriggerSel part = slice(sel, 0, b - a);",
+           "cpu", "l2-smoke-cpu-chunks", "each vstats chunk is the selection's first rows", "P15 U3b"),
+    Mutant("fused_slot_swapped", DRIVER,
+           "streams[sl]->put(",
+           "streams[nslots - 1 - sl]->put(",
+           "cuda", "l2-chunks-cuda-fuse-pack", "a fused unit puts each slot's rows into the other slot's stream",
+           "P15 U3b"),
 ]
 
 
@@ -298,8 +347,8 @@ def blz_counterexample(report):
         r = {}
     if "counterexample" in r:  # fuzz-diff
         cx = r["counterexample"]
-        detail = {k: cx[k] for k in ("block", "window", "path", "trigger_eid", "got", "want", "got_stop", "want_stop")
-                  if k in cx}
+        detail = {k: cx[k] for k in ("block", "window", "path", "trigger_eid", "got", "want", "got_stop", "want_stop",
+                                     "note") if k in cx}
         return {"edges": len(cx["edges"]), "graph": cx["edges"], **detail}
     if "first_violation" in r:  # index-contracts
         v = r["first_violation"]
