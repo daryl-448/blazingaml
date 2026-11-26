@@ -104,7 +104,7 @@ def blz_train(set_name):
     with tempfile.TemporaryDirectory() as d:
         out = os.path.join(d, "t.json")
         subprocess.run([Lad.BLZ, "train", "--graph", Lad.GRAPH, "--features", Lad.V1_FEATURES, "--set", set_name,
-                        "--threads", "12", "--out", out], cwd=ROOT, check=True, capture_output=True)
+                        "--threads", "12", "--score-test", "--out", out], cwd=ROOT, check=True, capture_output=True)
         r = json.loads(Path(out).read_text())[set_name]
     m = r["metrics"]
     return {"set": set_name, "metrics": {"f1_x100": m["f1_x100"], "precision": m["precision"], "recall": m["recall"],

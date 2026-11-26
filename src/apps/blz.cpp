@@ -2107,6 +2107,10 @@ int main(int argc, char** argv) {
   tr->add_option("--threads", threads);
   tr->add_option("--out", out, "merge the result into this JSON file")->required();
   tr->add_option("--name", name, "key (JSON pointer path) in --out; default: the set");
+  // SPEC v3 §6.4: a new dataset's test split is scored once, after its freeze, so no run scores
+  // one by accident.
+  bool score_test = false;
+  tr->add_flag("--score-test", score_test, "required: this run scores the test split (SPEC v3 §6.4)")->required();
 
   std::string threads_list = "1,2,4,6,8,12", schedules = "dynamic", bench_name, heavy_list;
   int reps = 5;
