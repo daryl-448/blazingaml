@@ -241,9 +241,14 @@ def cell_result(mode, cell, rec, measure, pf):
     out = {"dataset": ds, "profile": prof, "backend": be, "budget": rec["budget"]}
     if "capacity" in rec:
         return {**out, "capacity": rec["capacity"]}
-    res = PF.get(measure, cell.split("/"))
-    if res.get("errors") or "seconds" not in res:  # M is over error-free reps only: report() fails the cell
-        return {**out, "failed": True, "rc": rec["rc"], "errors": res.get("errors"), "log": rec.get("log")}
+    res = measure
+    for k in cell.split("/"):
+        res = res.get(k, {}) if isinstance(res, dict) else {}
+    # M is over error-free reps only, and a run that died (rc not 0 or 2) may have left no record or an
+    # older run's: report() fails the cell either way.
+    if rec["rc"] != 0 or res.get("errors") or "seconds" not in res:
+        return {**out, "failed": True, "rc": rec["rc"], "errors": res.get("errors") if rec["rc"] in (0, 2) else None,
+                "log": rec.get("log")}
     f = pf["facts"][ds]
     s = res["seconds"]
     blocks = res["runs"][0]["blocks"]
