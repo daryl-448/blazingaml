@@ -53,9 +53,10 @@ struct BlockRun {
   bool whole = false;
   const FusionInfo* fusion = nullptr;  // cuda --fuse: the unit it ran in
   // Summed over the chunks, for the backend that ran: cpu; cuda (a fused unit: the group's kernels and
-  // trigger counts with this block's D2H and saturation; d2h_width the widest); hybrid.
+  // trigger counts with this block's D2H and saturation; d2h_width the widest of its chunks, from 0);
+  // hybrid.
   CpuBlockTiming cpu;
-  CudaBlockTiming cuda;
+  CudaBlockTiming cuda{.d2h_width = 0};
   HybridTiming hybrid;
   std::uint64_t vstats_sides = 0;  // the distinct sides CleanVstats computed (path hit)
 };
