@@ -133,14 +133,14 @@ BlockRun ChunkDriver::run_block(const ProfileBlock& pb, const TriggerSel& sel, B
             std::any_of(pb.patterns.begin(), pb.patterns.end(), [](const PatternInfo* pi) { return pi->cpu_sweep; });
   const std::uint64_t part_rows = r.whole ? std::max<std::uint64_t>(rows, 1) : o_.chunk_rows;
   for (std::uint64_t a = 0; a < rows; a += part_rows) {
-    const std::uint64_t b = std::min(rows, a + part_rows);
+    const std::uint64_t b = a + std::min(part_rows, rows - a);
     std::uint32_t* buf = rows_buffer(0, (b - a) * cols);
     auto t0 = Clock::now();
     std::uint64_t sat = mine_part(pb, r, slice(sel, a, b), buf);
     r.mine_seconds += since(t0);
     t0 = Clock::now();
     for (std::uint64_t c = a; c < b; c += o_.chunk_rows) {
-      const std::uint64_t e = std::min(b, c + o_.chunk_rows);
+      const std::uint64_t e = c + std::min(o_.chunk_rows, b - c);
       stream->put(std::span<const std::uint32_t>(buf + (c - a) * cols, (e - c) * cols), sat);
       sat = 0;  // a whole part's lost emits go with its first chunk
     }
@@ -170,7 +170,7 @@ std::vector<BlockRun> ChunkDriver::run_fused(const CudaUnit& unit, const Trigger
   }
   std::vector<std::uint32_t*> outs(nslots);
   for (std::uint64_t a = 0; a < rows; a += o_.chunk_rows) {
-    const std::uint64_t b = std::min(rows, a + o_.chunk_rows);
+    const std::uint64_t b = a + std::min(o_.chunk_rows, rows - a);
     for (std::size_t sl = 0; sl < nslots; ++sl) outs[sl] = rows_buffer(sl, (b - a) * block_cols(runs[sl].params));
     const auto t0 = Clock::now();
     const CudaMiner::FusedTiming ftm = miner_->mine_fused(*dev_, *unit.fusion, params, prof_.visibility, sel.first + a,
@@ -213,7 +213,7 @@ BlockRun ChunkDriver::run_vstats(const TriggerSel& sel, BlockSink& sink) {
   r.mine_seconds += since(t0);
   std::vector<double> buf;
   for (std::uint64_t a = 0; a < rows; a += o_.chunk_rows) {
-    const std::uint64_t b = std::min(rows, a + o_.chunk_rows);
+    const std::uint64_t b = a + std::min(o_.chunk_rows, rows - a);
     const TriggerSel part = slice(sel, a, b);
     buf.resize((b - a) * kVstatsCols);
     t0 = Clock::now();

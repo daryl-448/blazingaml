@@ -109,13 +109,14 @@ TEST_CASE("chunk driver: any chunk size gives one chunk's rows, on every backend
             }
             if (be == Backend::oracle && sel.spec == "all") oracle_all = one;
             if (sel.spec == "all") CHECK(same(one, *oracle_all));  // the backends agree
-            for (const std::uint64_t chunk : {std::uint64_t(1), std::uint64_t(2), std::uint64_t(3), sel.rows() + 5}) {
+            for (const std::uint64_t chunk :
+                 {std::uint64_t(1), std::uint64_t(2), std::uint64_t(3), sel.rows() + 5, ~std::uint64_t(0)}) {
               INFO("chunk " << chunk);
               o.chunk_rows = chunk;
               const Mined got = mine(fg, amount, prof, o, sel);
               CHECK(same(got, one));
               for (const BlockRun& r : got.runs) {
-                CHECK(r.out.chunks == (sel.rows() + chunk - 1) / chunk);
+                CHECK(r.out.chunks == (sel.rows() == 0 ? 0 : (sel.rows() - 1) / chunk + 1));
                 nonzero += r.out.instances > 0;
               }
             }
