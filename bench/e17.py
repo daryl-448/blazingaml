@@ -243,7 +243,7 @@ def cell_result(mode, cell, rec, measure, pf):
         return {**out, "capacity": rec["capacity"]}
     res = PF.get(measure, cell.split("/"))
     if res.get("errors") or "seconds" not in res:  # M is over error-free reps only: report() fails the cell
-        return {**out, "rc": rec["rc"], "errors": res.get("errors"), "log": rec.get("log")}
+        return {**out, "failed": True, "rc": rec["rc"], "errors": res.get("errors"), "log": rec.get("log")}
     f = pf["facts"][ds]
     s = res["seconds"]
     blocks = res["runs"][0]["blocks"]
@@ -294,7 +294,7 @@ def report(mode):
     PF.save(mode.out, doc)
     mode.out.with_suffix(".md").write_text(markdown(doc))
     print(f"-> {rel(mode.out)}, {rel(mode.out.with_suffix('.md'))}")
-    bad = [c for c, r in doc["cells"].items() if r.get("errors") or r.get("rc") not in (0, None)]
+    bad = [c for c, r in doc["cells"].items() if r.get("failed") or r.get("errors") or r.get("rc") not in (0, None)]
     bad += [k for k, v in doc["hashes_agree_across_backends"].items() if not v]
     bad += [ds for ds, d in doc["datasets"].items() if not d["invariants"]["prepared_under_descriptor"]
             or not all(v["equal"] for v in d["invariants"]["recounted"].values())]
@@ -333,6 +333,9 @@ def markdown(doc):
         head = f"| {NAMES[r['dataset']]} | {r['profile']} | {r['backend']} |"
         if "capacity" in r:
             L.append(f"{head} capacity limit: {r['capacity']} | | | | | | | | | |")
+            continue
+        if r.get("failed"):
+            L.append(f"{head} failed: rc {r['rc']}, errors {r['errors']}, see {r['log']} | | | | | | | | | |")
             continue
         m, h = r["m_seconds"], r["host_mib"]
         dev = device_cell(r, True)
