@@ -15,6 +15,8 @@
 #include "graph/fuzz_gen.hpp"
 #include "graph/index.hpp"
 #include "oracle/profile_oracle.hpp"
+#include "runtime/block_sink.hpp"
+#include "runtime/chunk_driver.hpp"
 #include "runtime/clean_vstats.hpp"
 #include "runtime/cuda_backend.hpp"
 #include "runtime/fusion.hpp"
@@ -187,6 +189,35 @@ std::uint64_t stop_eid(F&& f) {
   return UINT64_MAX;
 }
 
+// The reference's outcome at one window of a case: every block's rows and stop eid, vstats, and
+// with `sg_gather` (and the oracle) the oracle's sg gather role alone (sg_gather_of).
+struct Want {
+  std::array<std::vector<std::uint32_t>, kAllBlocks.size()> rows;
+  std::array<std::uint64_t, kAllBlocks.size()> stop;  // the reference's stop eid, or UINT64_MAX
+  std::vector<double> vstats;
+  std::vector<std::uint32_t> sg_gather;
+};
+
+Want reference_want(const Run& run, const ProfileOracle* oracle, const GraphIndex& index, const DiffCase& c,
+                    std::int32_t w, bool sg_gather) {
+  const Profile& prof = run.prof;
+  const std::uint64_t m = c.g.src.size();
+  Want x;
+  if (prof.vstats) x.vstats = reference_vstats(oracle, index, c.amount, w, m);
+  x.stop.fill(UINT64_MAX);
+  for (const ProfileBlock& pb : prof.blocks) {
+    const BlockParams p = run.params(pb.block, w);
+    x.rows[int(pb.block)].assign(m * block_cols(p), 0);
+    x.stop[int(pb.block)] =
+        stop_eid([&] { reference_rows(oracle, index, pb, p, prof, m, x.rows[int(pb.block)].data()); });
+    if (sg_gather && sg_gather_of(pb) && oracle) {
+      x.sg_gather.assign(m * block_cols(p), 0);
+      oracle->mine_sg_gather(p, 0, m, x.sg_gather.data());
+    }
+  }
+  return x;
+}
+
 // One case's tally (a FuzzDiff of that case alone) and its first mismatch.
 struct CaseResult {
   FuzzDiff d;
@@ -211,9 +242,9 @@ struct CaseResult {
            std::any_of(d.mismatched_rows.begin(), d.mismatched_rows.end(), [](std::uint64_t x) { return x != 0; });
   }
 
-  // A block's rows, `got` against `want`, row by row.
+  // A block's rows, `got` against `want`, row by row; row r is trigger r, or sel->eid(r).
   void rows(Block b, const std::string& path, std::int32_t w, std::span<const std::uint32_t> got,
-            std::span<const std::uint32_t> want, std::size_t cols) {
+            std::span<const std::uint32_t> want, std::size_t cols, const TriggerSel* sel = nullptr) {
     const std::uint64_t m = want.size() / cols;
     d.row_checks += m;
     d.compared_rows[int(b)] += m;
@@ -222,7 +253,19 @@ struct CaseResult {
       if (std::equal(g.begin(), g.end(), x.begin())) continue;
       ++d.mismatched_rows[int(b)];
       if (!first)
-        first = Mismatch{std::string(block_name(b)), path, w, e, {g.begin(), g.end()}, {x.begin(), x.end()}, {}, {}};
+        first = Mismatch{std::string(block_name(b)), path, w, sel ? sel->eid(e) : e, {g.begin(), g.end()},
+                         {x.begin(), x.end()}, {}, {}};
+    }
+  }
+
+  // A chunked run's mismatch that is not a row (a stream's tally, the driver's error): one
+  // mismatched row of block b, or of vstats when b is null.
+  void note(const Block* b, const std::string& path, std::int32_t w, std::uint64_t eid, std::string text) {
+    if (b) ++d.mismatched_rows[int(*b)];
+    else ++d.vstats_mismatched_rows;
+    if (!first) {
+      first = Mismatch{b ? std::string(block_name(*b)) : "vstats", path, w, eid, {}, {}, {}, {}};
+      first->note = std::move(text);
     }
   }
 
@@ -242,8 +285,9 @@ struct CaseResult {
     return true;
   }
 
-  // vstats rows, bit for bit, and the reference's nonzero rows.
-  void vstats(const std::string& path, std::int32_t w, const std::vector<double>& got, const std::vector<double>& want) {
+  // vstats rows, bit for bit, and the reference's nonzero rows; row r is trigger r, or sel->eid(r).
+  void vstats(const std::string& path, std::int32_t w, const std::vector<double>& got, const std::vector<double>& want,
+              const TriggerSel* sel = nullptr) {
     const std::uint64_t m = want.size() / kVstatsCols;
     ++d.vstats_graphs;
     d.row_checks += m;
@@ -254,7 +298,7 @@ struct CaseResult {
       if (std::memcmp(g, x, kVstatsCols * sizeof(double)) == 0) continue;
       ++d.vstats_mismatched_rows;
       if (!first) {
-        first = Mismatch{"vstats", path, w, r, {}, {}, {g, g + kVstatsCols}, {x, x + kVstatsCols}};
+        first = Mismatch{"vstats", path, w, sel ? sel->eid(r) : r, {}, {}, {g, g + kVstatsCols}, {x, x + kVstatsCols}};
       }
     }
   }
@@ -303,6 +347,17 @@ void add(FuzzDiff& a, const FuzzDiff& b) {
   a.heavy_triggers += b.heavy_triggers;
   a.hybrid_cpu_triggers += b.hybrid_cpu_triggers;
   a.hybrid_gpu_triggers += b.hybrid_gpu_triggers;
+  const auto chunks = [](FuzzDiff::ChunkHits& x, const FuzzDiff::ChunkHits& y) {
+    x.streams += y.streams;
+    x.puts += y.puts;
+    x.multi += y.multi;
+  };
+  for (std::size_t i = 0; i < kAllBlocks.size(); ++i) chunks(a.chunk_hits[i], b.chunk_hits[i]);
+  chunks(a.vstats_chunk_hits, b.vstats_chunk_hits);
+  a.whole_streams += b.whole_streams;
+  a.fused_streams += b.fused_streams;
+  a.range_runs += b.range_runs;
+  a.sampled_runs += b.sampled_runs;
   a.bad_seeds.insert(a.bad_seeds.end(), b.bad_seeds.begin(), b.bad_seeds.end());
   a.limited_seeds.insert(a.limited_seeds.end(), b.limited_seeds.begin(), b.limited_seeds.end());
 }
@@ -463,12 +518,6 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, const DiffSource& src, std::span<
   const std::span<const std::uint32_t> splits = hybrid ? cpu_thresholds : std::span<const std::uint32_t>(plain);
 
   // A case's host side, built in parallel: its index and the reference at each window.
-  struct Want {
-    std::array<std::vector<std::uint32_t>, kAllBlocks.size()> rows;
-    std::array<std::uint64_t, kAllBlocks.size()> stop;  // the reference's stop eid, or UINT64_MAX
-    std::vector<double> vstats;
-    std::vector<std::uint32_t> sg_gather;  // the oracle's gather role alone, when sg_gather_of
-  };
   struct Item {
     DiffCase c;
     std::unique_ptr<GraphIndex> index;
@@ -478,25 +527,11 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, const DiffSource& src, std::span<
     // The index points into the case's edge arrays, which keep their buffers when the item moves.
     Item it{std::move(case_), nullptr, {}};
     const DiffCase& c = it.c;
-    const std::uint64_t m = c.g.src.size();
     std::optional<ProfileOracle> oracle;
     if (ref == Reference::oracle) oracle.emplace(EdgeStream{c.g.src, c.g.dst, c.g.ts, c.g.n}, prof, Quirks{}, c.amount);
     it.index = std::make_unique<GraphIndex>(c.g.src, c.g.dst, c.g.ts, c.g.n, prof.self_loops());
-    for (const std::int32_t w : c.windows) {
-      Want& x = it.want.emplace_back();
-      if (prof.vstats) x.vstats = reference_vstats(oracle ? &*oracle : nullptr, *it.index, c.amount, w, m);
-      x.stop.fill(UINT64_MAX);
-      for (const ProfileBlock& pb : prof.blocks) {
-        const BlockParams p = run.params(pb.block, w);
-        x.rows[int(pb.block)].assign(m * block_cols(p), 0);
-        x.stop[int(pb.block)] = stop_eid(
-            [&] { reference_rows(oracle ? &*oracle : nullptr, *it.index, pb, p, prof, m, x.rows[int(pb.block)].data()); });
-        if (sg_gather_of(pb) && oracle && !hybrid) {
-          x.sg_gather.assign(m * block_cols(p), 0);
-          oracle->mine_sg_gather(p, 0, m, x.sg_gather.data());
-        }
-      }
-    }
+    for (const std::int32_t w : c.windows)
+      it.want.push_back(reference_want(run, oracle ? &*oracle : nullptr, *it.index, c, w, !hybrid));
     return it;
   };
   // The GPU's runs of one case, in case order on this thread.
@@ -609,6 +644,249 @@ FuzzDiff fuzz_diff_hybrid(const Profile& prof, const DiffSource& src, std::span<
   return drive(src, group_size(2), prepare, finish);
 }
 
+namespace {
+
+// The profile as fuzz_diff checks it at window w: every block at the run's parameters (its bins, or
+// --bins, and the run's work limit), and vstats at w.
+Profile at_window(const Run& run, std::int32_t w) {
+  Profile p = run.prof;
+  for (ProfileBlock& pb : p.blocks) pb.params = run.params(pb.block, w);
+  if (p.vstats) p.vstats->window = w;
+  return p;
+}
+
+// A chunked run's selections of a case of m triggers: every trigger; the range [m/4, m - m/5) when
+// it is neither empty nor every trigger; with `sample`, about 40 % of the triggers, drawn from `seed`.
+std::vector<TriggerSel> chunk_selections(std::uint64_t m, std::uint64_t seed, bool sample) {
+  const Splits none;
+  std::vector<TriggerSel> out = {select_triggers("all", m, none)};
+  const std::uint64_t a = m / 4, b = m - m / 5;
+  if (a < b && (a > 0 || b < m))
+    out.push_back(select_triggers("range:" + std::to_string(a) + ":" + std::to_string(b), m, none));
+  if (sample) out.push_back(select_triggers("sample:40:" + std::to_string(seed), m, none));
+  return out;
+}
+
+// The cells of `rows` (one row of `cols` cells per trigger) at sel's triggers, in row order.
+template <class T>
+std::vector<T> at_triggers(const std::vector<T>& rows, std::size_t cols, const TriggerSel& sel) {
+  std::vector<T> out;
+  out.reserve(sel.rows() * cols);
+  for (std::uint64_t r = 0; r < sel.rows(); ++r) {
+    const auto at = rows.begin() + std::ptrdiff_t(sel.eid(r) * cols);
+    out.insert(out.end(), at, at + std::ptrdiff_t(cols));
+  }
+  return out;
+}
+
+// A MemorySink that names the stream it opened last: the block a driver error belongs to.
+class LastOpened final : public BlockSink {
+ public:
+  std::unique_ptr<BlockStream> open(const StreamSpec& spec) override {
+    last = spec.name;
+    return mem.open(spec);
+  }
+  MemorySink mem;
+  std::string last;
+};
+
+// What a stream's tally should be for the reference's cells `want` of `rows` rows put in chunks of
+// k: the rows, ⌈rows / k⌉ puts, the cells' sum (uint32 only) and FNV-1a over their bytes. Empty
+// when it is.
+template <class T>
+std::string tally_diff(const StreamTally& t, const std::vector<T>& want, std::uint64_t rows, std::uint64_t k) {
+  std::uint64_t sum = 0;
+  if constexpr (std::is_same_v<T, std::uint32_t>)
+    for (const std::uint32_t v : want) sum += v;
+  const std::uint64_t puts = rows == 0 ? 0 : (rows - 1) / k + 1;
+  const std::uint64_t fnv = fnv1a_bytes(want.data(), want.size() * sizeof(T));
+  std::string out;
+  const auto diff = [&](const char* what, std::uint64_t got, std::uint64_t exp) {
+    if (got != exp) out += (out.empty() ? "" : ", ") + std::string(what) + " " + std::to_string(got) + ", want " +
+                           std::to_string(exp);
+  };
+  diff("rows", t.rows, rows);
+  diff("puts", t.chunks, puts);
+  diff("fnv1a", t.fnv1a, fnv);
+  if constexpr (std::is_same_v<T, std::uint32_t>) diff("instances", t.instances, sum);
+  return out.empty() ? out : "stream tally: " + out;
+}
+
+// One chunk-driver run over `sel` against the reference at window w (`x`; m triggers), as
+// fuzz_diff_chunks says.
+void chunked_run(CaseResult& r, ChunkDriver& d, const Profile& pw, const Want& x, std::uint64_t m, std::int32_t w,
+                 const TriggerSel& sel, std::uint64_t k, const std::string& path) {
+  std::vector<const ProfileBlock*> blocks;
+  for (const ProfileBlock& pb : pw.blocks) blocks.push_back(&pb);
+  const std::uint64_t first = sel.rows() ? sel.eid(0) : 0;
+  const auto block_of = [&](const std::string& name) -> const Block* {
+    for (const ProfileBlock& pb : pw.blocks)
+      if (block_name(pb.block) == name) return &pb.block;
+    return nullptr;  // vstats
+  };
+  LastOpened sink;
+  std::vector<BlockRun> runs;
+  std::uint64_t got_stop = UINT64_MAX;
+  try {
+    runs = d.run(blocks, pw.vstats.has_value(), sel, sink);
+  } catch (const WorkLimitExceeded& e) {
+    got_stop = e.eid;
+  } catch (const std::logic_error& e) {
+    const Block* b = sink.last.empty() ? &pw.blocks.front().block : block_of(sink.last);
+    r.note(b, path, w, first, std::string("the chunk driver threw: ") + e.what());
+    return;
+  }
+  const bool all = !sel.sampled && sel.first == 0 && sel.last == m;
+  const std::uint64_t want_stop = x.stop[int(Block::lcyc)];
+  if (got_stop != UINT64_MAX || want_stop != UINT64_MAX) {
+    // R11: over every trigger the run stops where the reference does, before any stream finished. A
+    // sub-selection of a case the reference stopped may or may not reach the limit: inconclusive.
+    if (all || want_stop == UINT64_MAX) r.stops(Block::lcyc, path, w, got_stop, want_stop);
+    if (got_stop != UINT64_MAX && (!sink.mem.u32.empty() || !sink.mem.f64.empty())) {
+      const Block lcyc = Block::lcyc;
+      r.note(&lcyc, path, w, got_stop,
+             "an aborted run kept the rows of " + (sink.mem.u32.empty() ? "vstats" : sink.mem.u32.begin()->first));
+    }
+    return;
+  }
+  if (runs.size() != blocks.size() + pw.vstats.has_value()) {
+    r.note(&pw.blocks.front().block, path, w, first,
+           std::to_string(runs.size()) + " streams for " + std::to_string(blocks.size()) + " blocks");
+    return;
+  }
+  const std::uint64_t n = sel.rows();
+  std::vector<const FusionInfo*> fusions;  // the fused units counted, for their kernels' triggers
+  for (const BlockRun& br : runs) {
+    FuzzDiff::ChunkHits& hit = br.block ? r.d.chunk_hits[int(br.block->block)] : r.d.vstats_chunk_hits;
+    ++hit.streams;
+    hit.puts += br.out.chunks;
+    hit.multi += br.out.chunks > 1;
+    if (!br.block) {  // vstats
+      const std::vector<double> want = at_triggers(x.vstats, kVstatsCols, sel);
+      const auto it = sink.mem.f64.find("vstats");
+      if (it == sink.mem.f64.end() || it->second.size() != want.size()) {
+        r.note(nullptr, path, w, first, "no vstats rows, or the wrong number of cells");
+        continue;
+      }
+      r.vstats(path, w, it->second, want, &sel);
+      r.d.vstats_sides += br.vstats_sides;
+      if (std::string t = tally_diff(br.out, want, n, k); !t.empty()) r.note(nullptr, path, w, first, std::move(t));
+      continue;
+    }
+    const ProfileBlock& pb = *br.block;
+    const Block b = pb.block;
+    const std::size_t cols = block_cols(br.params);
+    const std::vector<std::uint32_t> want = at_triggers(x.rows[int(b)], cols, sel);
+    const auto it = sink.mem.u32.find(br.name);
+    if (it == sink.mem.u32.end() || it->second.size() != want.size()) {
+      r.note(&b, path, w, first, "no rows, or the wrong number of cells");
+      continue;
+    }
+    r.rows(b, path, w, it->second, want, cols, &sel);
+    if (std::string t = tally_diff(br.out, want, n, k); !t.empty()) r.note(&b, path, w, first, std::move(t));
+    // The optimised paths the run took (SPEC v3 §4.4 item 6).
+    if (br.whole) {
+      ++r.d.whole_streams;
+      r.d.sweep_rows += n;
+    }
+    if (br.fusion) {
+      ++r.d.fused_streams;
+      r.d.fused_rows += n;
+    }
+    if (d.options().backend == Backend::cuda) {
+      if (!br.fusion || std::find(fusions.begin(), fusions.end(), br.fusion) == fusions.end()) {
+        r.d.light_triggers += br.cuda.light;
+        r.d.heavy_triggers += br.cuda.heavy;
+        if (br.fusion) fusions.push_back(br.fusion);
+      }
+      if (d.options().pack) r.d.packed_rows[br.cuda.d2h_width == 1 ? 0 : br.cuda.d2h_width == 2 ? 1 : 2] += n;
+    }
+    if (d.options().backend == Backend::hybrid) {
+      r.d.hybrid_cpu_triggers += br.hybrid.cpu_triggers;
+      r.d.hybrid_gpu_triggers += br.hybrid.gpu_triggers;
+      r.d.light_triggers += br.hybrid.gpu.light;
+      r.d.heavy_triggers += br.hybrid.gpu.heavy;
+      if (has(pb, &PatternInfo::cpu_reach)) r.d.reach_rows += br.hybrid.cpu_triggers;
+    }
+  }
+  if (sel.sampled) ++r.d.sampled_runs;
+  else if (!all) ++r.d.range_runs;
+}
+
+std::string chunk_path(const MineOptions& o, std::uint64_t k, const TriggerSel& sel) {
+  std::string p = backend_name(o.backend);
+  if (o.backend == Backend::cpu) p += std::string(" ") + schedule_name(o.schedule);
+  if (o.backend != Backend::cpu) p += " H=" + threshold_text(o.heavy_threshold);
+  if (o.backend == Backend::hybrid) p += " C=" + threshold_text(o.cpu_threshold);
+  p += " chunks of " + std::to_string(k);
+  if (o.fuse) p += " fused";
+  if (o.pack) p += " packed";
+  return p + ", " + sel.spec;
+}
+
+}  // namespace
+
+FuzzDiff fuzz_diff_chunks(const Profile& prof, const DiffSource& src, std::span<const std::uint32_t> bins,
+                          Backend backend, std::span<const std::uint64_t> chunk_rows,
+                          std::span<const std::uint32_t> thresholds, std::span<const std::uint32_t> cpu_thresholds,
+                          std::uint64_t work_limit, CudaOptions opts, Reference ref) {
+  const bool gpu = backend == Backend::cuda || backend == Backend::hybrid;
+  if (!gpu && backend != Backend::cpu) throw std::invalid_argument("fuzz-diff --chunk-rows: the backend is cpu, cuda or hybrid");
+  if (chunk_rows.empty() || std::find(chunk_rows.begin(), chunk_rows.end(), 0) != chunk_rows.end())
+    throw std::invalid_argument("fuzz-diff --chunk-rows: one or more chunk sizes, each > 0");
+  if (gpu && thresholds.empty()) throw std::invalid_argument("fuzz-diff --chunk-rows: no light/heavy threshold");
+  if (backend == Backend::hybrid && cpu_thresholds.empty())
+    throw std::invalid_argument("fuzz-diff --chunk-rows: no CPU threshold for the hybrid");
+  if ((opts.fuse || opts.pack) && backend != Backend::cuda)
+    throw std::invalid_argument("fuzz-diff: --fuse and --pack are for the cuda backend");
+  const Run run{prof, all_fuzz_bins(prof, bins), work_limit, ref};
+  const std::uint32_t none[] = {0};
+  const std::span<const std::uint32_t> hs = gpu ? thresholds : std::span<const std::uint32_t>(none);
+  const std::span<const std::uint32_t> cs = backend == Backend::hybrid ? cpu_thresholds : std::span<const std::uint32_t>(none);
+  // Every chunked run of one case: at each window, chunk size and threshold, over its selections.
+  const auto check = [&](const DiffCase& c, const std::vector<Want>& want) {
+    const std::uint64_t m = c.g.src.size();
+    CaseResult r(c);
+    const std::vector<TriggerSel> sels = chunk_selections(m, c.id, backend == Backend::cpu);
+    for (std::size_t wi = 0; wi < c.windows.size(); ++wi) {
+      const std::int32_t w = c.windows[wi];
+      const Profile pw = at_window(run, w);
+      for (const ProfileBlock& pb : prof.blocks)
+        r.reference(pb.block, want[wi].stop[int(pb.block)], want[wi].rows[int(pb.block)],
+                    block_cols(run.bins[int(pb.block)]));
+      for (const std::uint64_t k : chunk_rows)
+        for (const std::uint32_t h : hs)
+          for (const std::uint32_t hc : cs) {
+            MineOptions o;
+            o.backend = backend;
+            o.schedule = backend == Backend::hybrid ? Schedule::sorted : Schedule::dynamic;
+            o.heavy_threshold = h;
+            o.cpu_threshold = hc;
+            o.reach_prune = backend == Backend::hybrid;  // as fuzz_diff_hybrid's CPU side
+            o.fuse = opts.fuse;
+            o.pack = opts.pack;
+            o.work_limit = work_limit;
+            o.chunk_rows = k;
+            ChunkDriver d(EdgeStream{c.g.src, c.g.dst, c.g.ts, c.g.n}, c.amount, pw, o);
+            for (const TriggerSel& sel : sels) chunked_run(r, d, pw, want[wi], m, w, sel, k, chunk_path(o, k, sel));
+          }
+    }
+    r.close(c.id);
+    return r;
+  };
+  // A case's whole check, the cases in parallel, on every backend: each case's drivers own their
+  // device graph, miner and pinned buffers, so the GPU's calls from several host threads overlap.
+  const auto prepare = [&](const DiffCase& c) {
+    std::optional<ProfileOracle> oracle;
+    if (ref == Reference::oracle) oracle.emplace(EdgeStream{c.g.src, c.g.dst, c.g.ts, c.g.n}, prof, Quirks{}, c.amount);
+    const GraphIndex index(c.g.src, c.g.dst, c.g.ts, c.g.n, prof.self_loops());
+    std::vector<Want> want;
+    for (const std::int32_t w : c.windows) want.push_back(reference_want(run, oracle ? &*oracle : nullptr, index, c, w, false));
+    return check(c, want);
+  };
+  return drive(src, group_size(16), prepare, [](CaseResult& r) { return std::move(r); });
+}
+
 std::string edge_text(const EdgeList& g, std::uint64_t e) {
   return std::to_string(g.src[e]) + "->" + std::to_string(g.dst[e]) + "@" + std::to_string(g.ts[e]);
 }
@@ -632,6 +910,7 @@ std::string counterexample_text(const Counterexample& cx, const DiffSource& src)
   const auto stop = [](std::uint64_t x) { return x == UINT64_MAX ? std::string("completed") : std::to_string(x); };
   if (f.got_stop != UINT64_MAX || f.want_stop != UINT64_MAX)
     return out + "    work limit: got " + stop(f.got_stop) + ", want " + stop(f.want_stop) + " (stop eids)\n";
+  if (!f.note.empty()) return out + "    " + f.note + " (the selection's first trigger: eid " + std::to_string(f.eid) + ")\n";
   const std::string trigger = "    trigger eid " + std::to_string(f.eid) + (f.eid < m ? " (" + edge_text(g, f.eid) + ")" : "");
   if (f.block == "vstats") {
     const std::vector<std::string> names = clean_vstats_column_names();

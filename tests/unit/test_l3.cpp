@@ -669,6 +669,9 @@ Case position(Rng& r, int) {
   return c;
 }
 
+// Chunks: a random graph past L2's bound, or a star or layered graph with cells past 255.
+Case chunked(Rng& r, int size) { return r.chance(50) ? random_graph(r, size) : wide(r, size); }
+
 // ---- R10's model --------------------------------------------------------------------------------
 
 std::string row_text(std::span<const std::uint32_t> r) {
@@ -887,6 +890,56 @@ TEST_CASE("L3 packing at 4 bytes: 4^8 and more cycles of K_MAX edges at one trig
   CHECK(hits.at("a cell past 65,535") > 0);
 #if defined(BLZ_WITH_CUDA)
   CHECK(hits.packed[2] > 0);  // 4 bytes a cell
+#endif
+}
+
+// Through the chunk driver (SPEC v3 H7) in chunks of k triggers, k from 1 to one past the case's
+// triggers: the CPU on every profile against the oracle; in a CUDA build, against the CPU, cuda fused
+// and packed on clean_all (every fusion, and count cells past 255) and the hybrid on one profile. Past
+// L2: cells of 2 bytes (L2's all fit one), heavy triggers of a hub, and chunks as large as a graph's
+// every trigger.
+TEST_CASE("L3 chunks: graphs past the bound through the chunk driver at chunk sizes 1 to m + 1", "[l3]") {
+  Hits hits;
+  std::uint64_t multi = 0, whole = 0, fused = 0, at_m = 0;
+  check(16, [&] {
+    const Case c = *cases(chunked);
+    const std::uint64_t m = c.g.src.size(), k[] = {*rc::gen::inRange<std::uint64_t>(1, m + 2)};
+    at_m += k[0] >= m;
+    DiffCase dc;
+    dc.g = c.g;
+    dc.windows = c.windows;
+    dc.amount = c.amount;
+    const DiffSource src = DiffSource::given({dc});
+    hits.tag(c);
+    const auto pass = [&](const Profile& p, const FuzzDiff& d) {
+      hits.add(d);
+      for (const FuzzDiff::ChunkHits& h : d.chunk_hits) multi += h.multi;
+      whole += d.whole_streams, fused += d.fused_streams;
+      if (!d.bad_seeds.empty())
+        RC_FAIL("profile " + p.name + ", chunks of " + std::to_string(k[0]) + "\n" +
+                counterexample_text(*d.counterexample, src));
+    };
+    for (const Profile& p : profiles()) pass(p, fuzz_diff_chunks(p, src, c.bins, Backend::cpu, k, {}, {}, c.work_limit));
+#if defined(BLZ_WITH_CUDA)
+    const Profile &clean = profiles()[0], &p = profiles()[c.gpu % 3];
+    const std::uint32_t h[] = {c.heavy}, cpu[] = {c.cpu};
+    pass(clean, fuzz_diff_chunks(clean, src, c.bins, Backend::cuda, k, h, {}, c.work_limit, {true, true}, Reference::cpu));
+    pass(p, fuzz_diff_chunks(p, src, c.bins, Backend::hybrid, k, h, cpu, c.work_limit, {}, Reference::cpu));
+#endif
+  });
+  hits.print();
+  std::printf("  chunks: %llu streams of more than one, %llu sweep streams put in chunks, %llu fused streams, %llu "
+              "cases in one chunk\n",
+              (unsigned long long)multi, (unsigned long long)whole, (unsigned long long)fused,
+              (unsigned long long)at_m);
+  CHECK(multi > 0);
+  CHECK(whole > 0);
+  CHECK(at_m > 0);
+  CHECK(hits.at("a cell past 255") > 0);
+#if defined(BLZ_WITH_CUDA)
+  CHECK(fused > 0);
+  CHECK(hits.packed[1] > 0);  // 2 bytes a cell
+  CHECK(hits.heavy > 0);
 #endif
 }
 

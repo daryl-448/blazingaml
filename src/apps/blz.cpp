@@ -3,6 +3,7 @@
 // the cuda backend of mine, bench and fuzz-diff (P5); profiles, manifests, trigger samples,
 // metamorphic and gt-join (SPEC v2 P7); coverage (SPEC v2 P9).
 #include <algorithm>
+#include <charconv>
 #include <chrono>
 #include <cstdio>
 #include <cstring>
@@ -338,7 +339,7 @@ nlohmann::json cuda_json() {
 std::vector<std::uint32_t> parse_thresholds(const std::string& s) {
   std::vector<std::uint32_t> out;
   for (std::size_t p = 0; p <= s.size();) {
-    auto q = std::min(s.find(',', p), s.size());
+    const std::size_t q = std::min(s.find(',', p), s.size());
     const std::string v = s.substr(p, q - p);
     out.push_back(v == "all" ? blz::kAllLight : std::uint32_t(std::stoul(v)));
     p = q + 1;
@@ -346,6 +347,22 @@ std::vector<std::uint32_t> parse_thresholds(const std::string& s) {
   return out;
 }
 std::string threshold_name(std::uint32_t h) { return h == blz::kAllLight ? "all" : std::to_string(h); }
+
+// "1,2,3" -> chunk sizes (fuzz-diff --chunk-rows), each > 0.
+std::vector<std::uint64_t> parse_chunk_rows(const std::string& s) {
+  std::vector<std::uint64_t> out;
+  for (std::size_t p = 0; p <= s.size();) {
+    const std::size_t q = std::min(s.find(',', p), s.size());
+    const std::string v = s.substr(p, q - p);
+    std::uint64_t k = 0;
+    const auto [end, ec] = std::from_chars(v.data(), v.data() + v.size(), k);
+    if (v.empty() || ec != std::errc() || end != v.data() + v.size() || k == 0)
+      throw std::runtime_error("--chunk-rows: '" + v + "' is not a chunk size > 0");
+    out.push_back(k);
+    p = q + 1;
+  }
+  return out;
+}
 
 // A block's manifest entry (SPEC v2 §3.2) from its run. `m`: the graph's edges, for a sample's
 // extrapolated time.
@@ -956,7 +973,7 @@ nlohmann::json environment(const std::string& config) {
 std::vector<int> parse_int_list(const std::string& s) {
   std::vector<int> out;
   for (std::size_t p = 0; p <= s.size();) {
-    auto q = std::min(s.find(',', p), s.size());
+    const std::size_t q = std::min(s.find(',', p), s.size());
     out.push_back(std::stoi(s.substr(p, q - p)));
     if (out.back() <= 0) throw std::runtime_error("expected positive integers, got '" + s + "'");
     p = q + 1;
@@ -1465,6 +1482,41 @@ nlohmann::json optimised_paths(const blz::FuzzDiff& d, const std::string& backen
           {"hybrid_gpu_triggers", d.hybrid_gpu_triggers}};
 }
 
+// The chunk driver's path hit in a fuzz-diff --chunk-rows run (SPEC v3 H7, §4.4 item 6), as JSON, and
+// one line on stdout: per block and vstats, the streams compared, their puts, and the streams of more
+// than one put; the sweep streams mined once and put in chunks (D-79), the fused streams, and the
+// runs over a range and over a sample.
+nlohmann::json chunk_driver_hits(const blz::FuzzDiff& d, const blz::Profile& prof) {
+  nlohmann::json by = nlohmann::json::object();
+  std::uint64_t streams = 0, puts = 0, multi = 0, fewest = UINT64_MAX;
+  std::string fewest_name;
+  const auto one = [&](const std::string& name, const blz::FuzzDiff::ChunkHits& h) {
+    by[name] = {{"streams", h.streams}, {"puts", h.puts}, {"multi_put_streams", h.multi}};
+    streams += h.streams;
+    puts += h.puts;
+    multi += h.multi;
+    if (h.multi < fewest) fewest = h.multi, fewest_name = name;
+  };
+  for (const blz::ProfileBlock& pb : prof.blocks)
+    one(std::string(blz::block_name(pb.block)), d.chunk_hits[int(pb.block)]);
+  if (prof.vstats) one("vstats", d.vstats_chunk_hits);
+  std::printf("  chunk driver: %llu streams, %llu puts, %llu streams of more than one put (fewest in a block: %llu, "
+              "%s); %llu sweep streams mined once and put in chunks, %llu fused streams; %llu range runs, %llu sample "
+              "runs\n",
+              (unsigned long long)streams, (unsigned long long)puts, (unsigned long long)multi,
+              (unsigned long long)fewest, fewest_name.c_str(), (unsigned long long)d.whole_streams,
+              (unsigned long long)d.fused_streams, (unsigned long long)d.range_runs, (unsigned long long)d.sampled_runs);
+  return {{"by_block", by},
+          {"streams", streams},
+          {"puts", puts},
+          {"multi_put_streams", multi},
+          {"fewest_multi_put_streams_in_a_block", fewest},
+          {"whole_streams", d.whole_streams},
+          {"fused_streams", d.fused_streams},
+          {"range_runs", d.range_runs},
+          {"sampled_runs", d.sampled_runs}};
+}
+
 // A fuzz-diff counterexample (SPEC v3 §4.3) in the code's terms, on stdout (blz::counterexample_text)
 // and as JSON: the graph's edges in eid order as u->v@t, the block, window and path, and the
 // trigger's got and want rows.
@@ -1483,6 +1535,10 @@ nlohmann::json print_counterexample(const blz::Counterexample& cx, const blz::Di
     return j;
   }
   j["trigger_eid"] = f.eid;
+  if (!f.note.empty()) {  // fuzz-diff --chunk-rows: a stream's tally, or the driver's error
+    j["note"] = f.note;
+    return j;
+  }
   if (f.block == "vstats") {
     const std::vector<std::string> names = blz::clean_vstats_column_names();
     nlohmann::json cols = nlohmann::json::object();
@@ -1502,12 +1558,13 @@ nlohmann::json print_counterexample(const blz::Counterexample& cx, const blz::Di
 // or with --reference cpu vs the cpu backend's dynamic schedule (backend against backend).
 // Exit code 0 if equal, 2 if not. cuda runs every graph once per light/heavy threshold. With
 // --profile (SPEC v2 §10), the profile's blocks, patterns and k_max; without, every registered
-// legacy pattern (v1).
+// legacy pattern (v1). With --chunk-rows, the backend runs through the chunk driver at each chunk
+// size instead of its direct paths (blz::fuzz_diff_chunks, SPEC v3 H7).
 int fuzz_diff(const std::string& seeds, const std::string& bound_opt, std::uint64_t batch_edges,
               const std::string& bins_opt, const std::string& backend, const std::string& heavy_opt,
               const std::string& cpu_heavy_opt, const std::string& profile_path, std::uint64_t work_limit, bool fuse,
-              bool pack, const std::string& reference, const std::string& setting_opt, const std::string& report,
-              const std::string& name) {
+              bool pack, const std::string& reference, const std::string& setting_opt, const std::string& chunk_rows_opt,
+              const std::string& report, const std::string& name) {
   const bool exhaustive = !bound_opt.empty();
   const blz::FuzzSetting setting = blz::parse_fuzz_setting(setting_opt);
   const blz::DiffSource src = [&] {
@@ -1526,11 +1583,15 @@ int fuzz_diff(const std::string& seeds, const std::string& bound_opt, std::uint6
   const auto bins = fuzz_bins(bins_opt, !profile_path.empty());
   const std::vector<std::uint32_t> thresholds = parse_thresholds(heavy_opt);
   const std::vector<std::uint32_t> cpu_thresholds = hybrid ? parse_thresholds(cpu_heavy_opt) : std::vector<std::uint32_t>{};
+  const std::vector<std::uint64_t> chunk_rows =
+      chunk_rows_opt.empty() ? std::vector<std::uint64_t>{} : parse_chunk_rows(chunk_rows_opt);
   auto t0 = Clock::now();
   const blz::FuzzDiff d =
-      hybrid ? blz::fuzz_diff_hybrid(prof, src, bins, thresholds, cpu_thresholds, work_limit, {}, ref)
-      : gpu  ? blz::fuzz_diff_cuda(prof, src, bins, thresholds, work_limit, {fuse, pack}, ref)
-             : blz::fuzz_diff_cpu(prof, src, bins, work_limit, ref);
+      !chunk_rows.empty() ? blz::fuzz_diff_chunks(prof, src, bins, blz::parse_backend(backend), chunk_rows, thresholds,
+                                                  cpu_thresholds, work_limit, {fuse, pack}, ref)
+      : hybrid ? blz::fuzz_diff_hybrid(prof, src, bins, thresholds, cpu_thresholds, work_limit, {}, ref)
+      : gpu    ? blz::fuzz_diff_cuda(prof, src, bins, thresholds, work_limit, {fuse, pack}, ref)
+               : blz::fuzz_diff_cpu(prof, src, bins, work_limit, ref);
   const double seconds = secs(t0);
   // SPEC v3 R11: a block of a graph where the reference hit the work limit is inconclusive; a gate
   // counts the completed ones.
@@ -1607,6 +1668,12 @@ int fuzz_diff(const std::string& seeds, const std::string& bound_opt, std::uint6
   } else {
     res["schedules"] = ref == blz::Reference::oracle ? nlohmann::json{"dynamic", "sorted"} : nlohmann::json{"sorted"};
   }
+  if (!chunk_rows.empty()) {  // SPEC v3 H7: through the chunk driver, not the direct paths
+    res["chunk_rows"] = chunk_rows;
+    res["selections"] = backend == "cpu" ? nlohmann::json{"all", "range:m/4:m-m/5", "sample:40:<case>"}
+                                         : nlohmann::json{"all", "range:m/4:m-m/5"};
+    if (!gpu) res["schedules"] = {"dynamic"};
+  }
   const char* vs = ref == blz::Reference::oracle ? "oracle" : "cpu (dynamic)";
   if (exhaustive) {
     const blz::ExhaustiveBound& b = src.graphs()->bound();
@@ -1633,6 +1700,7 @@ int fuzz_diff(const std::string& seeds, const std::string& bound_opt, std::uint6
                   (unsigned long long)work_limit);
   res["path_hits"] = path_hits(d.hits, d.nonzero_rows, prof, d.vstats_nonzero_rows, d.vstats_sides, !exhaustive);
   res["path_hits"]["optimised_paths"] = optimised_paths(d, backend, fuse, pack);
+  if (!chunk_rows.empty()) res["path_hits"]["chunk_driver"] = chunk_driver_hits(d, prof);
   if (d.counterexample) res["counterexample"] = print_counterexample(*d.counterexample, src);
   if (bad) std::printf("  mismatching rows by block: %s\n", per_block.dump().c_str());
   merge_report(report, name, res);
@@ -2228,6 +2296,10 @@ int main(int argc, char** argv) {
                  "backend's dynamic schedule (backend against backend; --backend cpu then checks the sorted schedule)")
       ->check(CLI::IsMember({"oracle", "cpu"}));
   fd->add_option("--setting", setting, setting_help)->check(setting_check);
+  std::string fd_chunk_rows;
+  fd->add_option("--chunk-rows", fd_chunk_rows,
+                 "comma-separated chunk sizes: run the backend through the chunk driver at each, over every "
+                 "trigger, a range and (cpu) a sample, instead of its direct paths (SPEC v3 H7)");
   fd->add_option("--report", report, "merge the summary into this JSON file");
   fd->add_option("--name", name, "key (JSON pointer path) in --report")->needs("--report");
 
@@ -2307,7 +2379,7 @@ int main(int argc, char** argv) {
       if (!fd_bound.empty() && *fd->get_option("--setting"))
         throw std::runtime_error("--setting is for fuzz graphs (--seeds), not --bound");
       return fuzz_diff(seeds, fd_bound, batch_edges, fd_bins, fd_backend, fd_heavy, fd_cpu_heavy, profile, work_limit,
-                       fuse, pack, fd_reference, setting, report, name);
+                       fuse, pack, fd_reference, setting, fd_chunk_rows, report, name);
     }
     if (*ic) {
       if (!report.empty() && name.empty()) throw std::runtime_error("--report needs --name");

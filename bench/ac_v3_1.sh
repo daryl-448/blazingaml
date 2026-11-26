@@ -5,13 +5,16 @@
 # side completed, so each block needs completed_graphs_by_block >= 10,000. Dense lcyc reaches the
 # 1e6 work limit on about 4.7 % of graphs (14 of 300 in U2b's smoke), hence 11,000 dense seeds.
 # Writes $OUT.json (every run's summary) and $OUT/<run>.log; prints and returns the verdict.
-# Usage: bench/ac_v3_1.sh [fd|mt|all]   (env: BLZ, OUT, N_DENSE, N_SPARSE, WL)
+# CHUNKS=1,2,3 runs the fuzz-diff part through the chunk driver at those chunk sizes (fuzz-diff
+# --chunk-rows, SPEC v3 H7) instead of the backends' direct paths.
+# Usage: bench/ac_v3_1.sh [fd|mt|all]   (env: BLZ, OUT, N_DENSE, N_SPARSE, WL, CHUNKS)
 cd "$(dirname "$0")/.." || exit 1
 B=${BLZ:-build/rel-cuda/blz}
 P=configs/profiles/clean_all.yaml
 N_DENSE=${N_DENSE:-11000}
 N_SPARSE=${N_SPARSE:-10000}
 WL=${WL:-1000000}
+CHUNK_ARGS=(${CHUNKS:+--chunk-rows "$CHUNKS"})
 D=${OUT:-results/ac_v3_1}
 R=$D.json
 what=${1:-all}
@@ -27,8 +30,8 @@ run() {  # name, command...
 }
 if [[ $what == fd || $what == all ]]; then
   for be in cpu cuda hybrid; do
-    run fd_${be}_dense  "$B" fuzz-diff --backend $be --seeds 0:$N_DENSE --work-limit $WL
-    run fd_${be}_sparse "$B" fuzz-diff --backend $be --seeds 0:$N_SPARSE --setting sparse
+    run fd_${be}_dense  "$B" fuzz-diff --backend $be --seeds 0:$N_DENSE --work-limit $WL "${CHUNK_ARGS[@]}"
+    run fd_${be}_sparse "$B" fuzz-diff --backend $be --seeds 0:$N_SPARSE --setting sparse "${CHUNK_ARGS[@]}"
   done
 fi
 if [[ $what == mt || $what == all ]]; then

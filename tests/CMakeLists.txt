@@ -113,7 +113,11 @@ endif()
 # clean_all (every clean pattern and vstats) and the two legacy L2 profiles (every legacy pattern,
 # each visibility), also with each graph alone at a work limit of 1 binding (R11's stop eids); and
 # T4, the index primitives' contracts. CUDA builds also run cuda, cuda --fuse --pack and the
-# hybrid. The full suite is verify/codegen.sh (label verify, below).
+# hybrid. The full suite is verify/codegen.sh (label verify, below). The l2_smoke_chunks_* tests run
+# the backends through the chunk driver in chunks of 1, 2 and 3 triggers (fuzz-diff --chunk-rows, SPEC
+# v3 H7): cpu at the smoke bound on each profile; the GPU on clean_all at 3 edges, in 256-edge unions
+# so that 16 cases' drivers overlap, as a put costs it about 25 us, at H = C = 2, where both kernels
+# and both hybrid sides run (D-83).
 set(BLZ_L2_SMOKE m=4,n=4,t=3)
 set(BLZ_L2_PROFILES
   ${PROJECT_SOURCE_DIR}/configs/profiles/clean_all.yaml
@@ -124,7 +128,8 @@ foreach(prof IN LISTS BLZ_L2_PROFILES)
   add_test(NAME l2_smoke_cpu_${pn} COMMAND blz fuzz-diff --bound ${BLZ_L2_SMOKE} --profile ${prof})
   add_test(NAME l2_smoke_cpu_limit1_${pn}
     COMMAND blz fuzz-diff --bound ${BLZ_L2_SMOKE} --batch-edges 1 --work-limit 1 --profile ${prof})
-  set_tests_properties(l2_smoke_cpu_${pn} l2_smoke_cpu_limit1_${pn} PROPERTIES LABELS fast)
+  add_test(NAME l2_smoke_chunks_cpu_${pn} COMMAND blz fuzz-diff --bound ${BLZ_L2_SMOKE} --chunk-rows 1,2,3 --profile ${prof})
+  set_tests_properties(l2_smoke_cpu_${pn} l2_smoke_cpu_limit1_${pn} l2_smoke_chunks_cpu_${pn} PROPERTIES LABELS fast)
   if(BLZ_ENABLE_CUDA)
     add_test(NAME l2_smoke_cuda_${pn} COMMAND blz fuzz-diff --backend cuda --bound ${BLZ_L2_SMOKE} --profile ${prof})
     add_test(NAME l2_smoke_cuda_fuse_pack_${pn}
@@ -133,6 +138,14 @@ foreach(prof IN LISTS BLZ_L2_PROFILES)
     set_tests_properties(l2_smoke_cuda_${pn} l2_smoke_cuda_fuse_pack_${pn} l2_smoke_hybrid_${pn} PROPERTIES LABELS fast)
   endif()
 endforeach()
+if(BLZ_ENABLE_CUDA)
+  set(BLZ_L2_CHUNKS_GPU --bound m=3,n=4,t=3 --batch-edges 256 --heavy 2 --chunk-rows 1,2,3
+    --profile ${PROJECT_SOURCE_DIR}/configs/profiles/clean_all.yaml)
+  add_test(NAME l2_smoke_chunks_cuda COMMAND blz fuzz-diff --backend cuda ${BLZ_L2_CHUNKS_GPU})
+  add_test(NAME l2_smoke_chunks_cuda_fuse_pack COMMAND blz fuzz-diff --backend cuda --fuse --pack ${BLZ_L2_CHUNKS_GPU})
+  add_test(NAME l2_smoke_chunks_hybrid COMMAND blz fuzz-diff --backend hybrid --cpu-threshold 2 ${BLZ_L2_CHUNKS_GPU})
+  set_tests_properties(l2_smoke_chunks_cuda l2_smoke_chunks_cuda_fuse_pack l2_smoke_chunks_hybrid PROPERTIES LABELS fast)
+endif()
 add_test(NAME l2_smoke_index_contracts COMMAND blz index-contracts --bound ${BLZ_L2_SMOKE})
 set_tests_properties(l2_smoke_index_contracts PROPERTIES LABELS fast)
 # The full L2 suite for this build, when it is one of the presets' (build/rel, build/rel-cuda,
