@@ -1,0 +1,748 @@
+{
+ "experiment": "HI-Medium preflight",
+ "spec": "SPEC v3 \u00a76.2, \u00a72.5",
+ "git": "845c151-dirty",
+ "chunk_rows": 1048576,
+ "facts": {
+  "hi_small": {
+   "m": 5078345,
+   "n": 515088,
+   "self_loops": 591212,
+   "L": 4487133,
+   "P": 647939,
+   "b_fv": 3047216,
+   "b_test": 4062676
+  },
+  "li_small": {
+   "m": 6924049,
+   "n": 705907,
+   "self_loops": 804477,
+   "L": 6119572,
+   "P": 880800,
+   "b_fv": 4154859,
+   "b_test": 5539449
+  },
+  "transxion": {
+   "m": 3029170,
+   "n": 47526,
+   "self_loops": 39,
+   "L": 3029131,
+   "P": 1811072,
+   "b_fv": 1817503,
+   "b_test": 2423336
+  },
+  "hi_medium": {
+   "m": 31898238,
+   "n": 2077023,
+   "self_loops": 2561860,
+   "L": 29336378,
+   "P": 2998917,
+   "b_fv": 19139453,
+   "b_test": 25519347
+  }
+ },
+ "memory_now": {
+  "host_available_mib": 7604,
+  "gpu": {
+   "total": 4096,
+   "used": 1007,
+   "free": 2723
+  }
+ },
+ "prepare_peak_mib": {
+  "recorded": {
+   "hi_small": 303,
+   "li_small": 403,
+   "hi_medium": 1643,
+   "transxion": 145
+  },
+  "source": "D-68"
+ },
+ "index_bytes_check": {
+  "li_small": {
+   "formula": 319126792,
+   "measured": 319126792,
+   "source": "U3a smoke"
+  },
+  "transxion": {
+   "formula": 175135880,
+   "measured": 175135880,
+   "source": "U3a smoke"
+  },
+  "hi_medium": {
+   "formula": 1489361208,
+   "measured": 1489361208,
+   "source": "D-82"
+  }
+ },
+ "host_calibration": {
+  "runs": {
+   "hi_small/cpu/clean_default": {
+    "peak": 424,
+    "file_backed": 58,
+    "index": 223,
+    "row_buffers": 40,
+    "aux_and_rest": 103,
+    "source": "D-81"
+   },
+   "li_small/cpu/clean_default": {
+    "peak": 560,
+    "file_backed": 127,
+    "index": 304,
+    "row_buffers": 40,
+    "aux_and_rest": 89,
+    "source": "U3a smoke"
+   },
+   "transxion/cpu/clean_default": {
+    "peak": 290,
+    "file_backed": 57,
+    "index": 167,
+    "row_buffers": 40,
+    "aux_and_rest": 25,
+    "source": "U3a smoke"
+   },
+   "hi_small/oracle/clean_default/sample": {
+    "peak": 213,
+    "file_backed": 95,
+    "index": 0,
+    "row_buffers": 2,
+    "aux_and_rest": 116,
+    "source": "this preflight"
+   },
+   "li_small/oracle/clean_default/sample": {
+    "peak": 288,
+    "file_backed": 126,
+    "index": 0,
+    "row_buffers": 3,
+    "aux_and_rest": 159,
+    "source": "this preflight"
+   },
+   "transxion/oracle/clean_default/sample": {
+    "peak": 96,
+    "file_backed": 56,
+    "index": 0,
+    "row_buffers": 2,
+    "aux_and_rest": 38,
+    "source": "this preflight"
+   },
+   "hi_small/cuda/clean_default/gpu": {
+    "peak": 535,
+    "file_backed": 176,
+    "index": 223,
+    "row_buffers": 40,
+    "aux_and_rest": 96,
+    "source": "this preflight"
+   },
+   "hi_small/hybrid/clean_default/gpu": {
+    "peak": 560,
+    "file_backed": 177,
+    "index": 223,
+    "row_buffers": 40,
+    "aux_and_rest": 120,
+    "source": "this preflight"
+   }
+  },
+  "models": {
+   "cpu": {
+    "fixed_mib": 25.697653112602506,
+    "per_node_bytes": 115.648984186623,
+    "per_edge_bytes": 0.0,
+    "points": [
+     {
+      "n": 515088,
+      "m": 5078345,
+      "rest_mib": 103
+     },
+     {
+      "n": 705907,
+      "m": 6924049,
+      "rest_mib": 89
+     },
+     {
+      "n": 47526,
+      "m": 3029170,
+      "rest_mib": 25
+     }
+    ],
+    "residuals_mib": [
+     20,
+     -15,
+     -6
+    ],
+    "binary_mib": 22
+   },
+   "oracle": {
+    "fixed_mib": -51.96755997918794,
+    "per_node_bytes": 0.0,
+    "per_edge_bytes": 32.70984286919252,
+    "points": [
+     {
+      "n": 515088,
+      "m": 5078345,
+      "rest_mib": 116
+     },
+     {
+      "n": 705907,
+      "m": 6924049,
+      "rest_mib": 159
+     },
+     {
+      "n": 47526,
+      "m": 3029170,
+      "rest_mib": 38
+     }
+    ],
+    "residuals_mib": [
+     10,
+     -5,
+     -5
+    ],
+    "binary_mib": 37
+   },
+   "cuda": {
+    "fixed_mib": 39.19018939331124,
+    "per_node_bytes": 115.648984186623,
+    "per_edge_bytes": 0.0,
+    "residuals_mib": [
+     20,
+     -15,
+     -6
+    ],
+    "binary_mib": 118,
+    "cuda_host_extra_mib": 13,
+    "points": [
+     {
+      "n": 515088,
+      "m": 5078345,
+      "rest_mib": 96
+     }
+    ]
+   },
+   "hybrid": {
+    "fixed_mib": 63.19018939331124,
+    "per_node_bytes": 115.648984186623,
+    "per_edge_bytes": 0.0,
+    "residuals_mib": [
+     20,
+     -15,
+     -6
+    ],
+    "binary_mib": 119,
+    "cuda_host_extra_mib": 37,
+    "points": [
+     {
+      "n": 515088,
+      "m": 5078345,
+      "rest_mib": 120
+     }
+    ]
+   }
+  }
+ },
+ "device_calibration": {
+  "cuda": {
+   "peak": 398,
+   "context": 64,
+   "graph": 281,
+   "graph_formula": 281,
+   "scratch_and_output": 53
+  },
+  "hybrid": {
+   "peak": 442,
+   "context": 64,
+   "graph": 281,
+   "graph_formula": 281,
+   "scratch_and_output": 97
+  }
+ },
+ "hi_medium": [
+  {
+   "backend": "cpu",
+   "profile": "clean_default",
+   "host_estimate_mib": {
+    "file_backed": 387,
+    "index": 1420,
+    "row_buffers": 122,
+    "aux_and_rest": 255,
+    "peak": 2184
+   },
+   "measured": {
+    "step": "hi_medium/cpu/clean_default",
+    "source": "D-82",
+    "triggers": "all",
+    "trigger_rows": 31898238,
+    "host_mib": {
+     "peak": 2302,
+     "file_backed": 526,
+     "index": 1420,
+     "row_buffers": 122,
+     "aux_and_rest": 234
+    },
+    "errors": 0,
+    "seconds": 32.83
+   }
+  },
+  {
+   "backend": "cpu",
+   "profile": "clean_wc_hi_medium",
+   "host_estimate_mib": {
+    "file_backed": 387,
+    "index": 1420,
+    "row_buffers": 122,
+    "aux_and_rest": 255,
+    "peak": 2184
+   },
+   "measured": {
+    "step": "hi_medium/cpu/clean_wc_hi_medium/sample",
+    "source": "this preflight",
+    "triggers": "sample:1:1",
+    "trigger_rows": 319541,
+    "host_mib": {
+     "peak": 2066,
+     "file_backed": 528,
+     "index": 1420,
+     "row_buffers": 12,
+     "aux_and_rest": 106
+    },
+    "errors": 0,
+    "seconds": 6.56,
+    "whole_seconds_inferred": 138.5,
+    "build_seconds": 3.83,
+    "host_whole_peak_inferred_mib": 2176
+   }
+  },
+  {
+   "backend": "oracle",
+   "profile": "clean_default",
+   "host_estimate_mib": {
+    "file_backed": 402,
+    "index": 0,
+    "row_buffers": 40,
+    "aux_and_rest": 943,
+    "peak": 1385
+   },
+   "measured": {
+    "step": "hi_medium/oracle/clean_default/sample",
+    "source": "this preflight",
+    "triggers": "sample:0.2:1",
+    "trigger_rows": 64047,
+    "host_mib": {
+     "peak": 1147,
+     "file_backed": 528,
+     "index": 0,
+     "row_buffers": 2,
+     "aux_and_rest": 617
+    },
+    "errors": 0,
+    "seconds": 10.03,
+    "whole_seconds_inferred": 3564.1,
+    "build_seconds": 2.88,
+    "host_whole_peak_inferred_mib": 1185
+   }
+  },
+  {
+   "backend": "oracle",
+   "profile": "clean_wc_hi_medium",
+   "host_estimate_mib": {
+    "file_backed": 402,
+    "index": 0,
+    "row_buffers": 40,
+    "aux_and_rest": 943,
+    "peak": 1385
+   },
+   "measured": {
+    "step": "hi_medium/oracle/clean_wc_hi_medium/sample",
+    "source": "this preflight",
+    "triggers": "sample:0.2:1",
+    "trigger_rows": 64047,
+    "host_mib": {
+     "peak": 1244,
+     "file_backed": 528,
+     "index": 0,
+     "row_buffers": 2,
+     "aux_and_rest": 714
+    },
+    "errors": 0,
+    "seconds": 109.47,
+    "whole_seconds_inferred": 53075.4,
+    "build_seconds": 2.91,
+    "host_whole_peak_inferred_mib": 1282
+   }
+  },
+  {
+   "backend": "cuda",
+   "profile": "clean_default",
+   "host_estimate_mib": {
+    "file_backed": 483,
+    "index": 1420,
+    "row_buffers": 40,
+    "aux_and_rest": 268,
+    "peak": 2212
+   },
+   "device_estimate_mib": {
+    "context": 64,
+    "graph": 1785,
+    "scratch_and_output": 53,
+    "peak": 1902
+   },
+   "measured": {
+    "step": "hi_medium/cuda/clean_default",
+    "source": "this preflight",
+    "triggers": "all",
+    "trigger_rows": 31898238,
+    "host_mib": {
+     "peak": 2180,
+     "file_backed": 610,
+     "index": 1420,
+     "row_buffers": 40,
+     "aux_and_rest": 110
+    },
+    "errors": 0,
+    "seconds": 15.06,
+    "device_mib": {
+     "peak": 1902,
+     "context": 10,
+     "samples": 89,
+     "graph": 1785,
+     "graph_formula": 1785,
+     "scratch_and_output": 107
+    }
+   }
+  },
+  {
+   "backend": "cuda",
+   "profile": "clean_wc_hi_medium",
+   "host_estimate_mib": {
+    "file_backed": 483,
+    "index": 1420,
+    "row_buffers": 40,
+    "aux_and_rest": 268,
+    "peak": 2212
+   },
+   "device_estimate_mib": {
+    "context": 64,
+    "graph": 1785,
+    "scratch_and_output": 53,
+    "peak": 1902
+   },
+   "measured": {
+    "step": "hi_medium/cuda/clean_wc_hi_medium/range",
+    "source": "this preflight",
+    "triggers": "range:15000000:17097152",
+    "trigger_rows": 2097152,
+    "host_mib": {
+     "peak": 2179,
+     "file_backed": 610,
+     "index": 1420,
+     "row_buffers": 40,
+     "aux_and_rest": 109
+    },
+    "errors": 0,
+    "seconds": 5.31,
+    "whole_seconds_inferred": 30.7,
+    "build_seconds": 3.52,
+    "host_whole_peak_inferred_mib": 2179,
+    "device_mib": {
+     "peak": 1902,
+     "context": 10,
+     "samples": 45,
+     "graph": 1785,
+     "graph_formula": 1785,
+     "scratch_and_output": 107
+    }
+   }
+  },
+  {
+   "backend": "hybrid",
+   "profile": "clean_default",
+   "host_estimate_mib": {
+    "file_backed": 484,
+    "index": 1420,
+    "row_buffers": 122,
+    "aux_and_rest": 292,
+    "peak": 2318
+   },
+   "device_estimate_mib": {
+    "context": 64,
+    "graph": 1785,
+    "scratch_and_output": 97,
+    "peak": 1946
+   },
+   "measured": {
+    "step": "hi_medium/hybrid/clean_default",
+    "source": "this preflight",
+    "triggers": "all",
+    "trigger_rows": 31898238,
+    "host_mib": {
+     "peak": 2402,
+     "file_backed": 610,
+     "index": 1420,
+     "row_buffers": 122,
+     "aux_and_rest": 250
+    },
+    "errors": 0,
+    "seconds": 23.14,
+    "device_mib": {
+     "peak": 2284,
+     "context": 12,
+     "samples": 119,
+     "graph": 1785,
+     "graph_formula": 1785,
+     "scratch_and_output": 487
+    }
+   }
+  },
+  {
+   "backend": "hybrid",
+   "profile": "clean_wc_hi_medium",
+   "host_estimate_mib": {
+    "file_backed": 484,
+    "index": 1420,
+    "row_buffers": 122,
+    "aux_and_rest": 292,
+    "peak": 2318
+   },
+   "device_estimate_mib": {
+    "context": 64,
+    "graph": 1785,
+    "scratch_and_output": 97,
+    "peak": 1946
+   },
+   "measured": {
+    "step": "hi_medium/hybrid/clean_wc_hi_medium/range",
+    "source": "this preflight",
+    "triggers": "range:15000000:17097152",
+    "trigger_rows": 2097152,
+    "host_mib": {
+     "peak": 2258,
+     "file_backed": 610,
+     "index": 1420,
+     "row_buffers": 40,
+     "aux_and_rest": 188
+    },
+    "errors": 0,
+    "seconds": 6.74,
+    "whole_seconds_inferred": 53.4,
+    "build_seconds": 3.45,
+    "host_whole_peak_inferred_mib": 2340,
+    "device_mib": {
+     "peak": 1914,
+     "context": 10,
+     "samples": 50,
+     "graph": 1785,
+     "graph_formula": 1785,
+     "scratch_and_output": 119
+    }
+   }
+  }
+ ],
+ "oracle_timing": {
+  "hi_small/clean_default": {
+   "sample": "sample:1:1",
+   "sample_rows": 50680,
+   "seconds": 1.39,
+   "build_seconds": 0.45,
+   "per_trigger_us": 18.62,
+   "whole_seconds_inferred": 94.9,
+   "peak_rss_mib": 213,
+   "errors": 0,
+   "error": null,
+   "whole_seconds_recorded": {
+    "seconds": 106.1,
+    "source": "results/p15_chunks_local.json (blz mine, chunk 1,000,003)"
+   }
+  },
+  "li_small/clean_default": {
+   "sample": "sample:1:1",
+   "sample_rows": 69363,
+   "seconds": 2.36,
+   "build_seconds": 0.58,
+   "per_trigger_us": 25.63,
+   "whole_seconds_inferred": 177.9,
+   "peak_rss_mib": 288,
+   "errors": 0,
+   "error": null
+  },
+  "li_small/clean_wc_li_small": {
+   "sample": "sample:1:1",
+   "sample_rows": 69363,
+   "seconds": 14.67,
+   "build_seconds": 0.58,
+   "per_trigger_us": 203.05,
+   "whole_seconds_inferred": 1406.4,
+   "peak_rss_mib": 310,
+   "errors": 0,
+   "error": null
+  },
+  "li_small/clean_all": {
+   "sample": "sample:1:1",
+   "sample_rows": 69363,
+   "seconds": 6.21,
+   "build_seconds": 0.6,
+   "per_trigger_us": 80.84,
+   "whole_seconds_inferred": 559.8,
+   "peak_rss_mib": 377,
+   "errors": 0,
+   "error": null
+  },
+  "transxion/clean_default": {
+   "sample": "sample:2:1",
+   "sample_rows": 60810,
+   "seconds": 0.11,
+   "build_seconds": 0.07,
+   "per_trigger_us": 0.67,
+   "whole_seconds_inferred": 2.1,
+   "peak_rss_mib": 96,
+   "errors": 0,
+   "error": null
+  },
+  "transxion/clean_wc_hi_small": {
+   "sample": "sample:2:1",
+   "sample_rows": 60810,
+   "seconds": 0.29,
+   "build_seconds": 0.07,
+   "per_trigger_us": 3.61,
+   "whole_seconds_inferred": 10.9,
+   "peak_rss_mib": 96,
+   "errors": 0,
+   "error": null
+  },
+  "transxion/clean_all": {
+   "sample": "sample:2:1",
+   "sample_rows": 60810,
+   "seconds": 0.2,
+   "build_seconds": 0.07,
+   "per_trigger_us": 2.11,
+   "whole_seconds_inferred": 6.2,
+   "peak_rss_mib": 145,
+   "errors": 0,
+   "error": null
+  },
+  "hi_medium/clean_default": {
+   "sample": "sample:0.2:1",
+   "sample_rows": 64047,
+   "seconds": 10.03,
+   "build_seconds": 2.88,
+   "per_trigger_us": 111.66,
+   "whole_seconds_inferred": 3564.1,
+   "peak_rss_mib": 1147,
+   "errors": 0,
+   "error": null
+  },
+  "hi_medium/clean_wc_hi_medium": {
+   "sample": "sample:0.2:1",
+   "sample_rows": 64047,
+   "seconds": 109.47,
+   "build_seconds": 2.91,
+   "per_trigger_us": 1663.81,
+   "whole_seconds_inferred": 53075.4,
+   "peak_rss_mib": 1244,
+   "errors": 0,
+   "error": null
+  },
+  "transxion/clean_e16": {
+   "sample": "sample:2:1",
+   "sample_rows": 60810,
+   "seconds": 0.16,
+   "build_seconds": 0.08,
+   "per_trigger_us": 1.29,
+   "whole_seconds_inferred": 3.7,
+   "peak_rss_mib": 145,
+   "errors": 0,
+   "error": null
+  }
+ },
+ "training": {
+  "fits": {
+   "fit/clean_default/half": {
+    "features": "features/p13/hi_small/clean_default_cpu",
+    "fit_rows": 1523608,
+    "val_rows": 1015460,
+    "columns": 40,
+    "cells": 101562720,
+    "rss_before_mib": 358,
+    "peak_rss_mib": 896,
+    "matrices_seconds": 4.6,
+    "fit_seconds": 9.6,
+    "val_f1_x100": 2.17,
+    "batch_rows": 262144,
+    "xgb": "3.4.1",
+    "rc": 0,
+    "wall_seconds": 15.5
+   },
+   "fit/clean_default/all": {
+    "features": "features/p13/hi_small/clean_default_cpu",
+    "fit_rows": 3047216,
+    "val_rows": 1015460,
+    "columns": 40,
+    "cells": 162507040,
+    "rss_before_mib": 375,
+    "peak_rss_mib": 1068,
+    "matrices_seconds": 7.4,
+    "fit_seconds": 19.1,
+    "val_f1_x100": 17.97,
+    "batch_rows": 262144,
+    "xgb": "3.4.1",
+    "rc": 0,
+    "wall_seconds": 24.6
+   },
+   "fit/clean_all/all": {
+    "features": "features/p13/hi_small/clean_all_cpu",
+    "fit_rows": 3047216,
+    "val_rows": 1015460,
+    "columns": 61,
+    "cells": 247823236,
+    "rss_before_mib": 374,
+    "peak_rss_mib": 1252,
+    "matrices_seconds": 10.1,
+    "fit_seconds": 23.9,
+    "val_f1_x100": 17.27,
+    "batch_rows": 262144,
+    "xgb": "3.4.1",
+    "rc": 0,
+    "wall_seconds": 29.4
+   }
+  },
+  "model": {
+   "rss_mib": "789 (Python, numpy, xgboost and the base columns' arrays at HI-Medium's m) + 308 + 2.315 per million cells",
+   "bytes_per_cell": 2.43,
+   "residuals_mib": [
+    -5,
+    9,
+    -4
+   ],
+   "seconds_per_fit_cell_ns": 156.7
+  },
+  "hi_medium_estimate": {
+   "clean_default": {
+    "columns": 40,
+    "fit_rows": 19139453,
+    "val_rows": 6379894,
+    "cells": 1020773880,
+    "peak_rss_mib": 3460,
+    "fit_seconds": 120
+   },
+   "clean_all": {
+    "columns": 61,
+    "fit_rows": 19139453,
+    "val_rows": 6379894,
+    "cells": 1556680167,
+    "peak_rss_mib": 4700,
+    "fit_seconds": 183
+   }
+  }
+ },
+ "verdict": {
+  "cpu/clean_default": "fits: host 2302 MiB",
+  "cpu/clean_wc_hi_medium": "fits: host 2176 MiB",
+  "oracle/clean_default": "fits: host 1185 MiB",
+  "oracle/clean_wc_hi_medium": "fits: host 1282 MiB",
+  "cuda/clean_default": "fits: host 2180 MiB, device 1902 MiB",
+  "cuda/clean_wc_hi_medium": "fits: host 2179 MiB, device 1902 MiB",
+  "hybrid/clean_default": "fits: host 2402 MiB, device 2284 MiB",
+  "hybrid/clean_wc_hi_medium": "fits: host 2340 MiB, device 1914 MiB",
+  "training/clean_default": "estimate 3460 MiB, 120 s (inferred): over \u00a72.5's 3 GiB but under the 7604 MiB free now, so it fits local while that much is free; the user chooses at P17 (\u00a76.2)",
+  "training/clean_all": "estimate 4700 MiB, 183 s (inferred): over \u00a72.5's 3 GiB but under the 7604 MiB free now, so it fits local while that much is free; the user chooses at P17 (\u00a76.2)",
+  "summary": "cpu/clean_default fits; cpu/clean_wc_hi_medium fits; oracle/clean_default fits; oracle/clean_wc_hi_medium fits; cuda/clean_default fits; cuda/clean_wc_hi_medium fits; hybrid/clean_default fits; hybrid/clean_wc_hi_medium fits; training/clean_default estimate 3460 MiB, 120 s (inferred); training/clean_all estimate 4700 MiB, 183 s (inferred)"
+ }
+}

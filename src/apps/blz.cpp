@@ -2063,6 +2063,7 @@ int measure(const std::string& graph, const std::string& profile_path, const blz
                  {"index_build_seconds", driver.build_seconds()},
                  {"upload_seconds", driver.device() ? driver.device()->upload_seconds() : 0.0},
                  {"index_bytes", driver.index() ? driver.index()->bytes() : 0},
+                 {"device_graph_bytes", driver.device() ? driver.device()->bytes() : 0},
                  {"row_buffer_bytes", driver.row_buffer_bytes()},
                  {"rss", rss_json()},
                  {"triggers", sel.rows()},
