@@ -2,7 +2,7 @@
 
 L1 (SPEC v3 §4.3) proves T3 (§4.1) for all sizes: each algorithmic shortcut the generated code takes
 over the literal rule of §3.2 gives the rule's answer. `verify/algorithms.sh` builds this project
-from scratch and fails on `sorryAx`; `verify/algorithms.sh --mutants` also runs the 37 proof
+from scratch and fails on `sorryAx`; `verify/algorithms.sh --mutants` also runs the 48 proof
 mutants in `mutants.py` (ctest `verify_algorithms`, label `verify`). Toolchain: Lean 4.36.0, core
 only.
 
@@ -49,6 +49,10 @@ theorem, and the last section names the executable check that verifies it on the
 | Clearing `seen` over the last window only | `sweep_count`'s clearing loop | `Sweep.clear_zero` |
 | Reachability pruning of the trigger and of each binding (legacy only) | `tcyc_trigger_reach` | `root_kept`, `bindings_kept`, `greedy_bindings_kept` |
 | `range`'s binary searches, `pair_exists`'s first-entry visibility, `prev_same` | include/blz/primitives.hpp | T4, not L1: `blz index-contracts` |
+| Mining a selection in chunks of `chunk_rows` triggers, not in one call (H7) | `ChunkDriver::run_block`, `run_fused`, `run_vstats` (src/runtime/chunk_driver.cpp) | `Chunks.chunks_cover`, `Chunks.mem_chunks`, `Chunks.runChunked_flatten`, `Chunks.runBlock_flatten` |
+| A sweep block mined once over the selection and put on its stream in chunks (D-79) | `run_block` when `r.whole` | `Chunks.runBlock_flatten` (any part size P ≥ 1) |
+| A chunk's rows as `slice(sel, a, b)`: a sub-range, or a sample's eids a … b − 1 | `slice` (src/runtime/triggers.cpp) | `Chunks.slice_eids` |
+| The block's FNV-1a continued across puts, not taken over the whole block | `BlockStream::put` (src/runtime/block_sink.cpp) | `Chunks.stream_hash`, `Chunks.runBlock_hash` |
 
 ## Theorems
 
@@ -175,6 +179,46 @@ binding check ld[c] > h.
   - The C++ runs 9 rounds. The proofs read ld only up to round R = 9, so `Search` is needed
     only for rounds below 9. Later rounds are the search continued, which never runs.
 
+### Chunks.lean: range mining through the chunk driver (H7)
+
+The model is the driver's loops, not a backend. A selection is a `Sel`: an eid range or a sample's
+eids (`TriggerSel`). A backend's answer for a part is a function `mine`, and its contract `Local mine
+row` says the part's cells are its triggers' rows in row order, `row e` for trigger e, whatever the
+part (D-63's shape). That is H7's premise, "rows depend only on the trigger".
+
+- **`chunks_cover`**: the chunks of `for (a = 0; a < n; a += k) { b = a + min(k, n - a); … }`,
+  concatenated, are the rows 0 … n − 1: each once, in order, the last partial chunk kept.
+  - Contract: `hk` (k ≥ 1). The driver's constructor throws on `chunk_rows == 0`, and a sweep
+    block's part size is max(rows, 1).
+- **`mem_chunks`**: each chunk [a, b) has a < b ≤ n and at most k rows, so `slice(sel, a, b)`'s
+  precondition holds and it never throws.
+- **`length_chunks`**: there are ⌈n / k⌉ chunks, the stream's `chunks` tally, which L2's chunked
+  runs compare with the count they expect.
+- **`slice_eids`**: `slice(sel, a, b)` is rows a … b − 1 of the selection: a range's
+  [first + a, first + b), a sample's eids a … b − 1.
+- **`runChunked_flatten`**: under `Local`, the puts of `run_fused` (each slot's stream, with that
+  slot's answer) and of `run_vstats`, one backend call per chunk, concatenated, are what one call
+  for the whole selection writes.
+- **`runBlock_flatten`**: the same for `run_block`, for any part size P ≥ 1 and chunk size k ≥ 1.
+  Each part [a, b) is mined into a buffer, and each chunk [c, e) of it is put from
+  `buf + (c - a) * cols`, (e − c) · cols cells. P = `chunk_rows` is the chunked path, one put per
+  part. P = max(rows, 1) is D-79's sweep path, one call and ⌈rows / k⌉ puts.
+  - Contracts: `Local`, and `hcols` (each row has `block_cols(params)` cells).
+- **`stream_hash`**: `BlockStream::put` continues the stream's FNV-1a from its last value, so the
+  stream's hash after its puts is FNV-1a over their concatenation.
+  - Contract: `hcells` (`fnv1a_cells` is byte-wise FNV-1a over the cells' bytes in memory order,
+    D-78).
+- **`runBlock_hash`**: the two together. A block's `output_fnv1a`, which `blz mine` writes and
+  `blz measure` prints, is the hash of the whole selection's cells, chunked or not.
+- Generated functions: none. The driver and the sinks are hand-written. The backends' own range
+  mining (`mine_cpu`, `CudaMiner::mine`, `mine_fused`, `mine_hybrid`, `CleanVstats::rows`, the
+  oracle's `mine`) is the contract `Local`, not a model.
+- Out of the model: `run_block`'s lost-emit count (`sat`, put with the part's first chunk), the
+  sample's `first` and `last` (the backends read its eids), the order of the blocks (lcyc first,
+  R11) and the abort path, the sinks' bytes (NpySink's file, MemorySink's map), and the pinned
+  buffers' reuse. L2's chunked runs and the unit tests (tests/unit/test_chunk_driver.cpp,
+  test_block_sink.cpp) cover them.
+
 ## Contracts and their executable checks
 
 | Lean hypothesis | What it says of the C++ | Executable check |
@@ -188,6 +232,10 @@ binding check ld[c] > h.
 | `hhi`, `hc`, `hcv`, `hvis` | vis_t is t (timestamp visibility) or kNoUpper (stream visibility) | the generated prologue `vis_t = p.ts_visibility ? t : kNoUpper` (`blzc_snapshots`); clean profiles pin timestamp visibility (E403, src/runtime/profile.cpp; unit test "profiles: a clean profile, its count blocks and E403 both ways (SPEC v3 §3.2, R7)") |
 | `hlower` | every driver's lower(t) is t − δ + 1 or t − δ | the generated `lower` lambdas (`blzc_snapshots`) |
 | `Search` (init, keep, relax) | ReachScratch's frontier search gives ld[U] ≥ t, never lowers an ld, and relaxes every visible edge x → y in [lo, hi] with x ≠ y and ts < ld[y] in the next round | `blz index-contracts`, contract `search` (src/graph/index_contracts.cpp), with the checks above. For every non-loop trigger, both visibilities and the windows 1..t, it calls `ReachScratch::search` with `tcyc_trigger_reach`'s arguments (hops 9, lo = t − δ, hi = `min_ts(t - 1, vis_t)`, `vis_e`), reusing one scratch per graph as the driver reuses one per thread. It then computes `ldJ`, a transcription of `relaxRound`, for 9 rounds over E, and requires `keep(x, h)` for every node ldJ reaches at every threshold h from lo − 1 to ldJ[x] − 1, which covers the root's t − δ − 1 and every hop time the driver tests. That is sufficient: `ldJ_search` shows ldJ meets `Search`, and the proofs read ld only at R = 9, so rounds below 9 can be ldJ's and round 9 the C++'s, which is at least ldJ's. At m=5,n=5,t=4: 195,616,496 searches, 0 violations, 33,335,148 nodes reached besides U (the path hit). The end-to-end consequence is also checked: fuzz-diff's cpu backend runs the reach-pruned path against the oracle at bounds A and B (`rel/cpu/<profile>/<bound>` in verify/codegen.sh, which report `reach-pruned rows`), and the unit tests "reach: latest departure times towards the target, hop bound, window, visibility" and "reach: hand-checked tcyc rows are the same with and without pruning" |
+| `Local` (Chunks) | a backend's rows for a part are its triggers' rows, the same as for the whole selection: `mine_cpu`, `CudaMiner::mine` and `mine_fused`, `mine_hybrid` and `CleanVstats::rows` for an eid range or a sample's eids | L2 through the chunk driver: `blz fuzz-diff --chunk-rows` runs each backend through `ChunkDriver` into a `MemorySink` over every selection kind it takes (all, a range, and on the CPU a sample) and compares every block's and vstats' rows with the oracle's at those triggers (ctest `l2_smoke_chunks_*`, label fast; the `*-chunks` checks of verify/codegen.sh); past L2's bound, the L3 property "L3 chunks: graphs past the bound through the chunk driver at chunk sizes 1 to m + 1" |
+| `hcols` (Chunks) | a block's row has `block_cols(params)` cells | the stream's own guard: `BlockStream::put` throws on a partial row, and fuzz-diff's chunked runs report a throw as a mismatch |
+| `hcells` (Chunks) | `fnv1a_cells` is byte-wise FNV-1a over the cells' bytes, from any value | the unit test "fnv1a_cells: equals FNV-1a over the bytes, from any start and with any split", and L2's chunked runs, which compare each stream's `fnv1a` with `fnv1a_bytes` over the oracle's rows |
+| `hk` (Chunks) | `chunk_rows` ≥ 1 | `ChunkDriver`'s constructor throws `--chunk-rows must be > 0`; a sweep block's part is max(rows, 1) |
 
 ## Known gaps
 

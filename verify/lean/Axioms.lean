@@ -35,3 +35,12 @@ any line names `sorryAx`. The expected axioms are `propext`, `Classical.choice` 
 #print axioms Blz.greedy_bindings_kept
 #print axioms Blz.ldJ_search
 #print axioms Blz.one_round_cuts
+-- Chunks: range mining through the chunk driver (H7)
+#print axioms Blz.Chunks.chunks_cover
+#print axioms Blz.Chunks.mem_chunks
+#print axioms Blz.Chunks.length_chunks
+#print axioms Blz.Chunks.slice_eids
+#print axioms Blz.Chunks.runChunked_flatten
+#print axioms Blz.Chunks.runBlock_flatten
+#print axioms Blz.Chunks.stream_hash
+#print axioms Blz.Chunks.runBlock_hash

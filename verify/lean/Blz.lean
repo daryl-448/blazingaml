@@ -6,6 +6,7 @@ import Blz.Scan
 import Blz.Gs
 import Blz.Sweep
 import Blz.Prune
+import Blz.Chunks
 
 /-!
 # L1: the generated code's shortcuts against SPEC v3 §3.2's rules (T3), for all sizes
@@ -25,4 +26,6 @@ code. `verify/algorithms.sh` builds this library from scratch and fails if any t
 - `Gs`: gs's two counts, its gate and its folded order test give min(|A|, |B|) (R7).
 - `Sweep`: the sweep lowering emits the per-trigger count, edge and distinct, both visibilities.
 - `Prune`: reachability pruning never cuts a cycle; legacy strict order only.
+- `Chunks`: the chunk driver's range mining (H7): a selection mined in chunks gives the whole
+  selection's rows and hash.
 -/
