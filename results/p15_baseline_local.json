@@ -1,0 +1,598 @@
+{
+ "frozen": "SPEC v3 \u00a75.2 clean baseline (P15): P16 starts here",
+ "harness_commit": "7e419b51c29f1bc3c9dbcacde0b76f9536eef484",
+ "harness_dirty": false,
+ "chunk_rows": 1048576,
+ "blz": "build/rel-cuda/blz",
+ "reps": 5,
+ "threads": 12,
+ "frozen_at": "2026-11-27T01:16:44+0800",
+ "source": "results/e17_datasets_local.json",
+ "workloads": {
+  "hi_medium/clean_default/cpu": {
+   "role": "target (primary): the stop predicate is measured here",
+   "m_seconds": {
+    "median": 35.022866875,
+    "min": 34.250659105,
+    "max": 35.2397906,
+    "all": [
+     35.188517979,
+     34.250659105,
+     35.2397906,
+     35.022866875,
+     34.891308518
+    ],
+    "spread_pct": 2.8
+   },
+   "triggers": {
+    "first": 0,
+    "last": 31898238,
+    "rows": 31898238,
+    "sampled": false,
+    "spec": "all"
+   },
+   "errors": 0,
+   "block_hash": {
+    "deg_in": 1452614701526712929,
+    "deg_out": 12744537708689423807,
+    "fan_in": 16747263252605248331,
+    "fan_out": 8229618835019761780,
+    "sg": 8357728422061867680,
+    "sg_ord": 5844904173407386979,
+    "tcyc": 8593079925211483920
+   },
+   "peak_rss_mib": 2297,
+   "backend_options": {
+    "cpu_threshold": "32",
+    "disabled_optimizations": [],
+    "fuse": false,
+    "heavy_threshold": "32",
+    "name": "cpu",
+    "pack": false,
+    "reach_prune": false,
+    "schedule": "dynamic",
+    "threads": 12,
+    "work_limit": 100000000
+   },
+   "foreign_load": {
+    "samples": 89,
+    "foreign_pct_mean": 26,
+    "foreign_pct_max": 98,
+    "ours_pct_mean": 999,
+    "loadavg1_max": 12.18359375,
+    "mem_available_gb_min": 9.3,
+    "foreign_processes_max_pct": {
+     "t3code": 39,
+     "firefox": 31,
+     "WebExtensions": 27,
+     "Isolated Web Co": 24,
+     "kcompactd0": 18,
+     "kswapd0": 13
+    }
+   },
+   "idle": {
+    "cpu_busy_at_start": 0.023,
+    "idle": true,
+    "waited_seconds": 3.0
+   }
+  },
+  "hi_medium/clean_wc_hi_medium/cpu": {
+   "role": "long-window target (primary)",
+   "m_seconds": {
+    "median": 124.758628898,
+    "min": 123.782808353,
+    "max": 124.880930761,
+    "all": [
+     123.782808353,
+     124.758628898,
+     124.545093844,
+     124.880930761,
+     124.835986837
+    ],
+    "spread_pct": 0.9
+   },
+   "triggers": {
+    "first": 0,
+    "last": 31898238,
+    "rows": 31898238,
+    "sampled": false,
+    "spec": "all"
+   },
+   "errors": 0,
+   "block_hash": {
+    "deg_in": 15842125158779209701,
+    "deg_out": 12804884186695932241,
+    "fan_in": 9027417049528794125,
+    "fan_out": 2820786789588844961,
+    "sg": 13278665336029114680,
+    "sg_ord": 5137604806821128320,
+    "tcyc": 404219534068019806
+   },
+   "peak_rss_mib": 2305,
+   "backend_options": {
+    "cpu_threshold": "32",
+    "disabled_optimizations": [],
+    "fuse": false,
+    "heavy_threshold": "32",
+    "name": "cpu",
+    "pack": false,
+    "reach_prune": false,
+    "schedule": "dynamic",
+    "threads": 12,
+    "work_limit": 100000000
+   },
+   "foreign_load": {
+    "samples": 311,
+    "foreign_pct_mean": 24,
+    "foreign_pct_max": 78,
+    "ours_pct_mean": 1114,
+    "loadavg1_max": 12.95361328125,
+    "mem_available_gb_min": 9.4,
+    "foreign_processes_max_pct": {
+     "Isolated Web Co": 34,
+     "t3code": 24,
+     "firefox": 20,
+     "syncthing": 16,
+     "WebExtensions": 14,
+     "Hyprland": 9
+    }
+   },
+   "idle": {
+    "cpu_busy_at_start": 0.023,
+    "idle": true,
+    "waited_seconds": 3.0
+   }
+  },
+  "hi_small/clean_default/cpu": {
+   "role": "guard: development loop",
+   "m_seconds": {
+    "median": 1.49827168,
+    "min": 1.484049862,
+    "max": 1.562698477,
+    "all": [
+     1.49523485,
+     1.560584726,
+     1.484049862,
+     1.562698477,
+     1.49827168
+    ],
+    "spread_pct": 5.2
+   },
+   "triggers": {
+    "first": 0,
+    "last": 5078345,
+    "rows": 5078345,
+    "sampled": false,
+    "spec": "all"
+   },
+   "errors": 0,
+   "block_hash": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_out": 11183728284829485247,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tcyc": 11166385018636528593
+   },
+   "peak_rss_mib": 422,
+   "backend_options": {
+    "cpu_threshold": "32",
+    "disabled_optimizations": [],
+    "fuse": false,
+    "heavy_threshold": "32",
+    "name": "cpu",
+    "pack": false,
+    "reach_prune": false,
+    "schedule": "dynamic",
+    "threads": 12,
+    "work_limit": 100000000
+   },
+   "foreign_load": {
+    "samples": 4,
+    "foreign_pct_mean": 42,
+    "foreign_pct_max": 60,
+    "ours_pct_mean": 812,
+    "loadavg1_max": 4.9111328125,
+    "mem_available_gb_min": 10.7,
+    "foreign_processes_max_pct": {
+     "Isolated Web Co": 22,
+     "t3code": 12,
+     "firefox": 11,
+     "Hyprland": 7,
+     "WebExtensions": 6
+    }
+   },
+   "idle": {
+    "cpu_busy_at_start": 0.043,
+    "idle": true,
+    "waited_seconds": 3.0
+   }
+  },
+  "hi_small/clean_wc_hi_small/cpu": {
+   "role": "guard: development loop",
+   "m_seconds": {
+    "median": 3.709067606,
+    "min": 3.663980145,
+    "max": 3.754656009,
+    "all": [
+     3.709067606,
+     3.721174415,
+     3.663980145,
+     3.708180167,
+     3.754656009
+    ],
+    "spread_pct": 2.4
+   },
+   "triggers": {
+    "first": 0,
+    "last": 5078345,
+    "rows": 5078345,
+    "sampled": false,
+    "spec": "all"
+   },
+   "errors": 0,
+   "block_hash": {
+    "deg_in": 14756625639117019686,
+    "deg_out": 10774860425172930340,
+    "fan_in": 14049843626550186020,
+    "fan_out": 6827340666947231606,
+    "sg": 3491313483528536066,
+    "sg_ord": 16573333899968333430,
+    "tcyc": 16566457954538582099
+   },
+   "peak_rss_mib": 423,
+   "backend_options": {
+    "cpu_threshold": "32",
+    "disabled_optimizations": [],
+    "fuse": false,
+    "heavy_threshold": "32",
+    "name": "cpu",
+    "pack": false,
+    "reach_prune": false,
+    "schedule": "dynamic",
+    "threads": 12,
+    "work_limit": 100000000
+   },
+   "foreign_load": {
+    "samples": 10,
+    "foreign_pct_mean": 28,
+    "foreign_pct_max": 46,
+    "ours_pct_mean": 920,
+    "loadavg1_max": 7.14990234375,
+    "mem_available_gb_min": 10.6,
+    "foreign_processes_max_pct": {
+     "Isolated Web Co": 16,
+     "firefox": 11,
+     "Hyprland": 7,
+     "WebExtensions": 7
+    }
+   },
+   "idle": {
+    "cpu_busy_at_start": 0.016,
+    "idle": true,
+    "waited_seconds": 3.0
+   }
+  },
+  "transxion/clean_default/cpu": {
+   "role": "guard: a different shape",
+   "m_seconds": {
+    "median": 0.449714521,
+    "min": 0.4453895,
+    "max": 0.468618954,
+    "all": [
+     0.468618954,
+     0.461573637,
+     0.4453895,
+     0.449714521,
+     0.449538347
+    ],
+    "spread_pct": 5.2
+   },
+   "triggers": {
+    "first": 0,
+    "last": 3029170,
+    "rows": 3029170,
+    "sampled": false,
+    "spec": "all"
+   },
+   "errors": 0,
+   "block_hash": {
+    "deg_in": 10102725453337140426,
+    "deg_out": 8833635815048626451,
+    "fan_in": 2639058907523897163,
+    "fan_out": 322991519697705657,
+    "sg": 5413892777057952610,
+    "sg_ord": 10928933095190659523,
+    "tcyc": 5131934618287786226
+   },
+   "peak_rss_mib": 289,
+   "backend_options": {
+    "cpu_threshold": "32",
+    "disabled_optimizations": [],
+    "fuse": false,
+    "heavy_threshold": "32",
+    "name": "cpu",
+    "pack": false,
+    "reach_prune": false,
+    "schedule": "dynamic",
+    "threads": 12,
+    "work_limit": 100000000
+   },
+   "foreign_load": {
+    "samples": 1,
+    "foreign_pct_mean": 25,
+    "foreign_pct_max": 25,
+    "ours_pct_mean": 613,
+    "loadavg1_max": 4.47021484375,
+    "mem_available_gb_min": 10.8,
+    "foreign_processes_max_pct": {}
+   },
+   "idle": {
+    "cpu_busy_at_start": 0.021,
+    "idle": true,
+    "waited_seconds": 3.0
+   }
+  },
+  "hi_small/clean_default/cuda": {
+   "role": "guard: 1650S",
+   "m_seconds": {
+    "median": 1.13578097,
+    "min": 1.130076611,
+    "max": 1.199993749,
+    "all": [
+     1.199993749,
+     1.130076611,
+     1.13578097,
+     1.134645874,
+     1.144848315
+    ],
+    "spread_pct": 6.2
+   },
+   "triggers": {
+    "first": 0,
+    "last": 5078345,
+    "rows": 5078345,
+    "sampled": false,
+    "spec": "all"
+   },
+   "errors": 0,
+   "block_hash": {
+    "deg_in": 18211911083083195014,
+    "deg_out": 9524113901528553380,
+    "fan_in": 989329027223035354,
+    "fan_out": 11183728284829485247,
+    "sg": 884033388477590431,
+    "sg_ord": 3889885039108109068,
+    "tcyc": 11166385018636528593
+   },
+   "peak_rss_mib": 550,
+   "backend_options": {
+    "cpu_threshold": "32",
+    "disabled_optimizations": [],
+    "fuse": false,
+    "heavy_threshold": "32",
+    "name": "cuda",
+    "pack": false,
+    "reach_prune": false,
+    "schedule": "dynamic",
+    "threads": 12,
+    "work_limit": 100000000
+   },
+   "foreign_load": {
+    "samples": 3,
+    "foreign_pct_mean": 31,
+    "foreign_pct_max": 50,
+    "ours_pct_mean": 131,
+    "loadavg1_max": 4.517578125,
+    "mem_available_gb_min": 10.6,
+    "foreign_processes_max_pct": {
+     "firefox": 24,
+     "Hyprland": 8,
+     "Isolated Web Co": 7
+    }
+   },
+   "idle": {
+    "cpu_busy_at_start": 0.021,
+    "idle": true,
+    "waited_seconds": 3.0
+   }
+  },
+  "hi_small/clean_wc_hi_small/cuda": {
+   "role": "guard: 1650S",
+   "m_seconds": {
+    "median": 2.087428601,
+    "min": 2.073490393,
+    "max": 2.093029999,
+    "all": [
+     2.093029999,
+     2.087428601,
+     2.091796042,
+     2.073490393,
+     2.083380749
+    ],
+    "spread_pct": 0.9
+   },
+   "triggers": {
+    "first": 0,
+    "last": 5078345,
+    "rows": 5078345,
+    "sampled": false,
+    "spec": "all"
+   },
+   "errors": 0,
+   "block_hash": {
+    "deg_in": 14756625639117019686,
+    "deg_out": 10774860425172930340,
+    "fan_in": 14049843626550186020,
+    "fan_out": 6827340666947231606,
+    "sg": 3491313483528536066,
+    "sg_ord": 16573333899968333430,
+    "tcyc": 16566457954538582099
+   },
+   "peak_rss_mib": 552,
+   "backend_options": {
+    "cpu_threshold": "32",
+    "disabled_optimizations": [],
+    "fuse": false,
+    "heavy_threshold": "32",
+    "name": "cuda",
+    "pack": false,
+    "reach_prune": false,
+    "schedule": "dynamic",
+    "threads": 12,
+    "work_limit": 100000000
+   },
+   "foreign_load": {
+    "samples": 6,
+    "foreign_pct_mean": 17,
+    "foreign_pct_max": 25,
+    "ours_pct_mean": 99,
+    "loadavg1_max": 6.7373046875,
+    "mem_available_gb_min": 10.5,
+    "foreign_processes_max_pct": {
+     "WebExtensions": 7
+    }
+   },
+   "idle": {
+    "cpu_busy_at_start": 0.018,
+    "idle": true,
+    "waited_seconds": 3.0
+   }
+  },
+  "hi_medium/clean_default/cuda": {
+   "role": "guard: 1650S, HI-Medium in trigger-range chunks",
+   "m_seconds": {
+    "median": 14.338106977,
+    "min": 14.236646029,
+    "max": 14.61023742,
+    "all": [
+     14.61023742,
+     14.428834396,
+     14.269773481,
+     14.236646029,
+     14.338106977
+    ],
+    "spread_pct": 2.6
+   },
+   "triggers": {
+    "first": 0,
+    "last": 31898238,
+    "rows": 31898238,
+    "sampled": false,
+    "spec": "all"
+   },
+   "errors": 0,
+   "block_hash": {
+    "deg_in": 1452614701526712929,
+    "deg_out": 12744537708689423807,
+    "fan_in": 16747263252605248331,
+    "fan_out": 8229618835019761780,
+    "sg": 8357728422061867680,
+    "sg_ord": 5844904173407386979,
+    "tcyc": 8593079925211483920
+   },
+   "peak_rss_mib": 2199,
+   "backend_options": {
+    "cpu_threshold": "32",
+    "disabled_optimizations": [],
+    "fuse": false,
+    "heavy_threshold": "32",
+    "name": "cuda",
+    "pack": false,
+    "reach_prune": false,
+    "schedule": "dynamic",
+    "threads": 12,
+    "work_limit": 100000000
+   },
+   "foreign_load": {
+    "samples": 38,
+    "foreign_pct_mean": 21,
+    "foreign_pct_max": 73,
+    "ours_pct_mean": 109,
+    "loadavg1_max": 11.23876953125,
+    "mem_available_gb_min": 9.5,
+    "foreign_processes_max_pct": {
+     "Isolated Web Co": 36,
+     "kcompactd0": 14,
+     "firefox": 11,
+     "WebExtensions": 11
+    }
+   },
+   "idle": {
+    "cpu_busy_at_start": 0.016,
+    "idle": true,
+    "waited_seconds": 3.0
+   }
+  },
+  "hi_medium/clean_wc_hi_medium/cuda": {
+   "role": "guard: 1650S, HI-Medium in trigger-range chunks",
+   "m_seconds": {
+    "median": 48.973254214,
+    "min": 48.896989847,
+    "max": 49.133666456,
+    "all": [
+     49.001829025,
+     48.971675262,
+     48.973254214,
+     48.896989847,
+     49.133666456
+    ],
+    "spread_pct": 0.5
+   },
+   "triggers": {
+    "first": 0,
+    "last": 31898238,
+    "rows": 31898238,
+    "sampled": false,
+    "spec": "all"
+   },
+   "errors": 0,
+   "block_hash": {
+    "deg_in": 15842125158779209701,
+    "deg_out": 12804884186695932241,
+    "fan_in": 9027417049528794125,
+    "fan_out": 2820786789588844961,
+    "sg": 13278665336029114680,
+    "sg_ord": 5137604806821128320,
+    "tcyc": 404219534068019806
+   },
+   "peak_rss_mib": 2207,
+   "backend_options": {
+    "cpu_threshold": "32",
+    "disabled_optimizations": [],
+    "fuse": false,
+    "heavy_threshold": "32",
+    "name": "cuda",
+    "pack": false,
+    "reach_prune": false,
+    "schedule": "dynamic",
+    "threads": 12,
+    "work_limit": 100000000
+   },
+   "foreign_load": {
+    "samples": 124,
+    "foreign_pct_mean": 12,
+    "foreign_pct_max": 119,
+    "ours_pct_mean": 103,
+    "loadavg1_max": 12.0546875,
+    "mem_available_gb_min": 9.4,
+    "foreign_processes_max_pct": {
+     "syncthing": 114,
+     "t3code": 36,
+     "firefox": 22,
+     "Isolated Web Co": 17,
+     "WebExtensions": 9,
+     "Hyprland": 7
+    }
+   },
+   "idle": {
+    "cpu_busy_at_start": 0.02,
+    "idle": true,
+    "waited_seconds": 3.0
+   }
+  }
+ },
+ "capacity_exclusions": {},
+ "rules": "M = median of the reps (\u00a75.1). A change is kept only when its median beats the incumbent's by more than the incumbent's min-to-max spread; a workload regresses when its median exceeds this baseline's max by more than 5 %; a candidate that cannot complete a workload this baseline completed has regressed on it."
+}
