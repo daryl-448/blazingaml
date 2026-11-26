@@ -1,0 +1,24 @@
+# TransXion (SPEC v3 §6.1). Paths are relative to the repository root. Temporal 60/20/20 split
+# with V2 D-17's boundary rule at both cuts (SPEC v3 §6.3). person.csv and merchant.csv describe
+# accounts by (bank, bank_account_number); prepare reports the tx accounts that no row resolves.
+# The invariants are `blz prepare`'s gate, pinned from bench/p15_counts.py (P15).
+id: transxion
+transactions: dataset/tx.csv
+schema: transxion
+split: temporal_60_20_20
+node_tables:
+  - {file: dataset/person.csv, bank: bank, account: bank_account_number}
+  - {file: dataset/merchant.csv, bank: bank, account: bank_account_number}
+invariants:
+  edges: 3029170
+  nodes: 47526
+  self_loops: 39
+  distinct_timestamps: 2840274
+  positives: 4641
+  b_fv: 1817503
+  b_test: 2423336
+  fit_positives: 2960
+  val_positives: 779
+  test_positives: 902
+  unresolved_accounts: 0
+  unmatched_node_rows: 204

@@ -1,0 +1,20 @@
+# HI-Small, IBM AML (SPEC v3 §6.1). Paths are relative to the repository root. The split is v2's
+# (SPEC v3 §6.3, V2 §3.3). The invariants are `blz prepare`'s gate: SPEC §3.5 and V2 §3.3's
+# values, each reproduced by bench/p15_counts.py.
+id: hi_small
+transactions: dataset/HI-Small_Trans.csv
+schema: ibm
+split: legacy_hi_small
+patterns: dataset/HI-Small_Patterns.txt
+invariants:
+  edges: 5078345
+  nodes: 515088
+  self_loops: 591212
+  distinct_timestamps: 15018
+  positives: 5177
+  b_fv: 3047216
+  b_test: 4062676
+  fit_positives: 2299
+  val_positives: 1081
+  test_positives: 1797
+  concatenated_keys: 515088

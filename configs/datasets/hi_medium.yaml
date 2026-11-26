@@ -1,0 +1,20 @@
+# HI-Medium, IBM AML (SPEC v3 §6.1). Paths are relative to the repository root. Temporal 60/20/20
+# split with V2 D-17's boundary rule at both cuts (SPEC v3 §6.3). The invariants are `blz
+# prepare`'s gate, pinned from bench/p15_counts.py (P15).
+id: hi_medium
+transactions: dataset/HI-Medium_Trans.csv
+schema: ibm
+split: temporal_60_20_20
+patterns: dataset/HI-Medium_Patterns.txt
+invariants:
+  edges: 31898238
+  nodes: 2077023
+  self_loops: 2561860
+  distinct_timestamps: 26086
+  positives: 35230
+  b_fv: 19139453
+  b_test: 25519347
+  fit_positives: 15536
+  val_positives: 9054
+  test_positives: 10640
+  concatenated_keys: 2077023

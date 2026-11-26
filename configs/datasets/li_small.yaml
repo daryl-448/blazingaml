@@ -1,0 +1,20 @@
+# LI-Small, IBM AML (SPEC v3 §6.1). Paths are relative to the repository root. Temporal 60/20/20
+# split with V2 D-17's boundary rule at both cuts (SPEC v3 §6.3). The invariants are `blz
+# prepare`'s gate, pinned from bench/p15_counts.py (P15).
+id: li_small
+transactions: dataset/LI-Small_Trans.csv
+schema: ibm
+split: temporal_60_20_20
+patterns: dataset/LI-Small_Patterns.txt
+invariants:
+  edges: 6924049
+  nodes: 705907
+  self_loops: 804477
+  distinct_timestamps: 14533
+  positives: 3565
+  b_fv: 4154859
+  b_test: 5539449
+  fit_positives: 1813
+  val_positives: 827
+  test_positives: 925
+  concatenated_keys: 705907
