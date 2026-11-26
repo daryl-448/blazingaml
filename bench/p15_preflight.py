@@ -25,7 +25,6 @@ counts and two column counts, give bytes per cell, extrapolated to HI-Medium's f
 Runs go to build/p15_preflight/ (measure.json, steps.json, logs).
 """
 import json
-import os
 import re
 import subprocess
 import sys
@@ -296,6 +295,24 @@ def estimate_host(backend, prof, f, calib, f_cal):
             "peak": round(file_ + idx + rows + rest)}
 
 
+def training_base_mib(model, f):
+    """The fitting process before the fit: Python, numpy and xgboost, and the per-row arrays the base
+    columns hold (Multi-GNN's amounts, 2 x 8 bytes, and the account codes, 4 bytes a node), scaled
+    from HI-Small's fits to dataset f."""
+    hs = model["at"]
+    return model["rss_before_mib"] + (16 * (f["m"] - hs["m"]) + 4 * (f["n"] - hs["n"])) / MIB
+
+
+def training_estimate(model, f, cols):
+    """One fit on dataset f's fit rows, scored on its validation rows, with `cols` columns: peak RSS
+    (the base, then the batched QuantileDMatrix's bytes per cell) and fit time per fit cell."""
+    fr, vr = f["b_fv"], f["b_test"] - f["b_fv"]
+    cells = (fr + vr) * cols
+    return {"columns": cols, "fit_rows": fr, "val_rows": vr, "cells": cells,
+            "peak_rss_mib": round(training_base_mib(model, f) + model["fixed_mib"] + model["mib_per_million_cells"] * cells / 1e6),
+            "fit_seconds": round(model["seconds_per_fit_cell"] * fr * cols)}
+
+
 def fit_rest(points, per):
     """Least squares rest = fixed + a x over calibration points (n, m, rest MiB), x = n (per node:
     cpu's per-thread n-sized scratch) or m (per edge: the oracle's per-node edge lists)."""
@@ -437,24 +454,18 @@ def report():
         pts = [(v["cells"], v["peak_rss_mib"] - v["rss_before_mib"]) for v in fits.values()]
         A = np.array([[1.0, c / 1e6] for c, _ in pts])
         (a, b), *_ = np.linalg.lstsq(A, np.array([r for _, r in pts]), rcond=None)
-        # Before the fit: Python, numpy and xgboost, and the per-row arrays the base columns hold
-        # (Multi-GNN's amounts, 2 x 8 bytes, and the account codes, 4 bytes a node), scaled to HI-Medium.
-        hs = F["hi_small"]
-        base = float(np.median([v["rss_before_mib"] for v in fits.values()])) + \
-            (16 * (hm["m"] - hs["m"]) + 4 * (hm["n"] - hs["n"])) / MIB
         sec = [(v["fit_rows"] * v["columns"], v["fit_seconds"]) for v in fits.values()]
         spc = float(np.median([s / c for c, s in sec]))
-        fr, vr = hm["b_fv"], hm["b_test"] - hm["b_fv"]
+        model = {"rss_before_mib": float(np.median([v["rss_before_mib"] for v in fits.values()])), "fixed_mib": float(a),
+                 "mib_per_million_cells": float(b), "seconds_per_fit_cell": spc, "at": F["hi_small"]}
         est = {}
         for name, d in (("clean_default", FITS["fit/clean_default/all"][0]), ("clean_all", FITS["fit/clean_all/all"][0])):
-            cols = next(v["columns"] for k, v in fits.items() if v["features"] == d)
-            cells = (fr + vr) * cols
-            est[name] = {"columns": cols, "fit_rows": fr, "val_rows": vr, "cells": cells,
-                         "peak_rss_mib": round(base + a + b * cells / 1e6), "fit_seconds": round(spc * fr * cols)}
+            est[name] = training_estimate(model, hm, next(v["columns"] for k, v in fits.items() if v["features"] == d))
+        base = training_base_mib(model, hm)
         train["model"] = {"rss_mib": f"{round(base)} (Python, numpy, xgboost and the base columns' arrays at HI-Medium's m) "
                                      f"+ {a:.0f} + {b:.3f} per million cells",
                           "bytes_per_cell": round(b * MIB / 1e6, 2), "residuals_mib": [round(float(r - a - b * c / 1e6)) for c, r in pts],
-                          "seconds_per_fit_cell_ns": round(spc * 1e9, 2)}
+                          "seconds_per_fit_cell_ns": round(spc * 1e9, 2), "fitted": model}
         train["hi_medium_estimate"] = est
     doc["training"] = train
     doc["verdict"] = verdict(doc)
@@ -464,8 +475,7 @@ def report():
 
 
 def verdict(doc):
-    free, gpu = doc["memory_now"]["host_available_mib"], doc["memory_now"]["gpu"]["free"]
-    out, notes = {}, []
+    free, out = doc["memory_now"]["host_available_mib"], {}
     for r in doc["hi_medium"]:
         k = f"{r['backend']}/{r['profile']}"
         m = r.get("measured", {})
