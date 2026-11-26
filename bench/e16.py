@@ -7,6 +7,7 @@
   uv run --python 3.12 bench/e16.py mine [name...]  # every configuration (or these), one at a time
   uv run --python 3.12 bench/e16.py report          # per-block effects, the v1 check, validation fits
   uv run --python 3.12 bench/e16.py clean           # delete the .npy outputs under features/e16/
+  ... --dataset transxion [--smoke]                 # the same on TransXion (P15); --smoke: a prefix
 
 Configurations (features/e16/<dir>/, all rows of data/hi_small.blzg, `blz mine --backend oracle`):
 clean_e16 clean; clean_e16 with each oracle quirk alone (Q1-Q6, Q9, Q10) and with all of them;
@@ -29,6 +30,13 @@ oracle). `mine` skips a directory whose features.json exists.
 - Validation ends at the first eid of the timestamp holding eid 4,062,676 when that eid does not
   start a timestamp (SPEC v3 §6.3); the rows in between are scored nowhere. Test rows are never read.
 Writes results/e16_clean.{json,md}.
+
+`--dataset transxion` (SPEC v3 §3.6, §7 P15): features/e16_transxion/, results/e16_clean_transxion.
+Every run mines only the fit and validation rows (`--triggers train`, [0, b_test)), and the splits
+are the .blzg's (`blz prepare`'s, §6.3). sg_ord is checked against sg_ordered_v1w mined here on the
+legacy oracle; the ledger reproduction and the AC-V2-0 hashes are HI-Small's and are not run.
+`--smoke` mines and fits the prefix [0, SMOKE_ROWS) instead (fit the first 3/4, validate the rest),
+under build/e16_<dataset>_smoke/.
 """
 import argparse
 import hashlib
@@ -55,6 +63,20 @@ FIT = (0, 3_047_216)  # SPEC v2 §3.3
 VAL_END_LEGACY = 4_062_676
 VSTATS_WINDOW = 86_400  # V2 F1 (SPEC v2 §4.4 R7): one window, time_window = vertex_stats_tw = 86,400
 P10_SG_ORD = "features/p10_sg_ordered_v1w_oracle"  # V2's sg_ordered, stream visibility, v1 windows
+# The dataset (set by configure()): HI-Small mines every row; TransXion only its fit and validation rows.
+DATASETS = {
+    "hi_small": {"name": "HI-Small", "graph": Lad.GRAPH, "blz": Lad.BLZ, "feat": "features/e16",
+                 "out": "results/e16_clean.json", "triggers": None},
+    "transxion": {"name": "TransXion", "graph": "data/transxion.blzg", "blz": "build/rel-cuda/blz",
+                  "feat": "features/e16_transxion", "out": "results/e16_clean_transxion.json", "triggers": "train"},
+}
+DS = DATASETS["hi_small"]
+GRAPH, BLZ = DS["graph"], DS["blz"]
+ROWS = None  # the eids every run mines, [a, b)
+SPLIT = None  # {"fit", "val"} when the .blzg's (or the smoke prefix's) splits are used, None on HI-Small
+SMOKE = False
+SMOKE_ROWS = 100_000  # TransXion: 52 fit and 20 validation positives
+REF_SG_ORD = ("sg_ordered_v1w", "sg_ordered_v1w")  # dir, profile: V2's legacy sg_ord, mined where P10's is not
 F32_MAX = float(np.finfo(np.float32).max)
 CHUNK = 1 << 20
 BOOT_CHUNKS, BOOT_RESAMPLES = 100, 10_000
@@ -108,6 +130,50 @@ NEVER_COPIED = [
 ]
 
 
+def configure(dataset, smoke):
+    """Point the globals at `dataset`: its graph, folders, mined rows and splits (or the smoke prefix's)."""
+    global DS, GRAPH, BLZ, FEAT, OUT, FIT, ROWS, SPLIT, SMOKE
+    DS = DATASETS[dataset]
+    GRAPH, BLZ, SMOKE = DS["graph"], DS["blz"], smoke
+    FEAT, OUT = ROOT / DS["feat"], ROOT / DS["out"]
+    g = Lad.Blzg(str(ROOT / GRAPH))
+    if smoke:
+        FEAT = ROOT / f"build/e16_{dataset}_smoke"
+        OUT = FEAT / "result.json"
+        ROWS, FIT = (0, SMOKE_ROWS), (0, SMOKE_ROWS * 3 // 4)
+        SPLIT = {"fit": FIT, "val": (FIT[1], SMOKE_ROWS)}
+    elif DS["triggers"] is None:
+        ROWS = (0, g.m)
+    else:
+        sp = g.splits()
+        ROWS, FIT, SPLIT = sp[DS["triggers"]], sp["fit"], {"fit": sp["fit"], "val": sp["val"]}
+
+
+def triggers_arg():
+    """`--triggers` for every run: None on HI-Small, whose runs mine every row."""
+    return f"range:{ROWS[0]}:{ROWS[1]}" if SMOKE else DS["triggers"]
+
+
+def mined_configs():
+    """CONFIGS, plus V2's legacy sg_ord where features/p10_sg_ordered_v1w_oracle does not cover the rows."""
+    return CONFIGS if SPLIT is None else {**CONFIGS, REF_SG_ORD[0]: (*REF_SG_ORD, "")}
+
+
+class GraphData(Lad.Data):
+    """Lad.Data on GRAPH with SPLIT's rows (Lad.Data itself requires HI-Small's SPEC v2 splits)."""
+
+    def __init__(self):
+        self.g = Lad.Blzg(str(ROOT / GRAPH))
+        self.blzg_sha256 = Lad.file_sha256(ROOT / GRAPH)
+        self.csv_sha256 = self.g.csv_sha256
+        self.splits = dict(SPLIT)
+        self._mgnn = None
+
+
+def load_data():
+    return Lad.Data(False) if SPLIT is None else GraphData()
+
+
 def log_load(path):
     """uptime, free -g and the busiest processes, written to `path` before a heavy job."""
     up = subprocess.run(["uptime"], capture_output=True, text=True).stdout.strip()
@@ -128,22 +194,24 @@ def timed(cmd, log):
 
 
 def mine_all(names):
-    for name in names or CONFIGS:
-        d, prof, quirks = CONFIGS[name]
+    cfg, tr = mined_configs(), triggers_arg()
+    rows = ["--triggers", tr] if tr else []
+    for name in names or cfg:
+        d, prof, quirks = cfg[name]
         out = FEAT / d
         if (out / "features.json").exists():
             continue
         FEAT.mkdir(parents=True, exist_ok=True)
         log_load(FEAT / f"{d}.load")
-        cmd = [Lad.BLZ, "mine", "--graph", Lad.GRAPH, "--profile", f"configs/profiles/{prof}.yaml", "--backend",
-               "oracle", "--out", str(out.relative_to(ROOT))] + (["--quirks", quirks] if quirks else [])
+        cmd = [BLZ, "mine", "--graph", GRAPH, "--profile", f"configs/profiles/{prof}.yaml", "--backend",
+               "oracle", "--out", str(out.relative_to(ROOT))] + (["--quirks", quirks] if quirks else []) + rows
         print("+", " ".join(cmd), flush=True)
         print(f"{name}: {timed(cmd, FEAT / f'{d}.log')} s", flush=True)
         if quirks is None:  # the legacy vertex statistics (Q9, Q10): blz vstats, GFP's window and guards
             vs = FEAT / f"{d}_vstats"
             log_load(FEAT / f"{d}_vstats.load")
-            cmd = [Lad.BLZ, "vstats", "--graph", Lad.GRAPH, "--window", str(VSTATS_WINDOW), "--backend", "cpu",
-                   "--out", str(vs.relative_to(ROOT))]
+            cmd = [BLZ, "vstats", "--graph", GRAPH, "--window", str(VSTATS_WINDOW), "--backend", "cpu",
+                   "--out", str(vs.relative_to(ROOT))] + rows
             print("+", " ".join(cmd), flush=True)
             print(f"{name} vstats: {timed(cmd, FEAT / f'{d}_vstats.log')} s", flush=True)
 
@@ -160,18 +228,24 @@ def time_log(log):
 # ---------------------------------------------------------------------------------------------
 # Reading a configuration's blocks.
 
+def check_manifest(d, m, data):
+    """A folder E16 reads: mined from this graph's CSV (D-89) over exactly ROWS, not sampled."""
+    t = m["triggers"]
+    if Lad.csv_sha256_of(m) != data.csv_sha256 or (t["first"], t["last"]) != ROWS or t.get("sampled"):
+        raise SystemExit(f"{d}: not rows [{ROWS[0]:,}, {ROWS[1]:,}) of {GRAPH}")
+
+
 class Blocks:
-    """A configuration's blocks (vstats included), each a read-only memory map of all rows."""
+    """A configuration's blocks (vstats included), each a read-only memory map of the mined rows."""
 
     def __init__(self, data, name):
-        d0 = FEAT / CONFIGS[name][0]
-        dirs = [d0] + ([FEAT / f"{d0.name}_vstats"] if CONFIGS[name][2] is None else [])
+        cfg = mined_configs()
+        d0 = FEAT / cfg[name][0]
+        dirs = [d0] + ([FEAT / f"{d0.name}_vstats"] if cfg[name][2] is None else [])
         self.arr, self.bins, self.cols, self.hash = {}, {}, {}, {}
         for d in dirs:
             m = json.loads((d / "features.json").read_text())
-            t = m["triggers"]
-            if Lad.csv_sha256_of(m) != data.csv_sha256 or t["first"] != 0 or t["last"] != data.g.m or t.get("sampled"):
-                raise SystemExit(f"{d}: not every row of {Lad.GRAPH}")
+            check_manifest(d, m, data)
             for b, v in m["blocks"].items():
                 self.arr[b] = np.load(d / v["file"], mmap_mode="r")
                 self.bins[b] = v.get("bins", [])
@@ -272,12 +346,17 @@ def block_stats(blocks, b, ref, y, parts):
 
 def v1_check(data):
     got, want = Blocks(data, "all+Q8"), Blocks(data, "v1_e16")
-    sgo = json.loads((ROOT / P10_SG_ORD / "features.json").read_text())
+    if SPLIT is None:
+        sgo = json.loads((ROOT / P10_SG_ORD / "features.json").read_text())
+        sg_ref = (np.load(ROOT / P10_SG_ORD / "sg_ord.npy", mmap_mode="r"), sgo["blocks"]["sg_ord"]["output_fnv1a"],
+                  f"{P10_SG_ORD} (sg_ordered_v1w, oracle)")
+    else:
+        sgo = Blocks(data, REF_SG_ORD[0])
+        sg_ref = (sgo.arr["sg_ord"], sgo.hash["sg_ord"], f"{(FEAT / REF_SG_ORD[0]).relative_to(ROOT)} (sg_ordered_v1w, oracle)")
     res = {}
     for b in got.arr:
         if b == "sg_ord":
-            ref, rhash, rname = np.load(ROOT / P10_SG_ORD / "sg_ord.npy", mmap_mode="r"), \
-                sgo["blocks"]["sg_ord"]["output_fnv1a"], f"{P10_SG_ORD} (sg_ordered_v1w, oracle)"
+            ref, rhash, rname = sg_ref
         else:
             ref, rhash, rname = want.arr[b], want.hash[b], "v1_e16" + (" (blz vstats)" if b == "vstats" else "")
         x = got.arr[b]
@@ -294,8 +373,9 @@ def v1_check(data):
                 xi, ri = xi.view(np.uint64), ri.view(np.uint64)
             bad += int((xi != ri).any(axis=1).sum())
         res[b] = {"against": rname, "equal": bad == 0, "by": "rows, bit for bit", "rows_differing": bad}
-    v1_hashes = {b: want.hash[b] for b in Lad.V1_FNV1A}
-    res["v1_e16 six blocks vs v1_default (AC-V2-0 hashes)"] = {"equal": v1_hashes == Lad.V1_FNV1A}
+    if SPLIT is None:  # AC-V2-0's hashes are of HI-Small's rows
+        v1_hashes = {b: want.hash[b] for b in Lad.V1_FNV1A}
+        res["v1_e16 six blocks vs v1_default (AC-V2-0 hashes)"] = {"equal": v1_hashes == Lad.V1_FNV1A}
     return res
 
 
@@ -460,16 +540,20 @@ def fmt_int(v):
 
 
 def render(doc):
-    L_ = ["# E16: what the clean semantics change (SPEC v3 §3.6), HI-Small", "",
-          f"git {doc['git']['sha'][:7]}{' (dirty)' if doc['git']['dirty'] else ''}, {doc['machine']}, "
-          f"{doc['started']}. Every configuration mined on the oracle (`blz mine --backend oracle`), all "
-          f"{doc['split']['m']:,} rows; nothing here changes a recipe, profile or default (E16 informs §3.5 only).", ""]
     sp = doc["split"]
+    mined = sp.get("mined")
+    rows = f"all {sp['m']:,} rows" if mined is None else f"rows [{mined[0]:,}, {mined[1]:,}) of {sp['m']:,}"
+    L_ = [f"# E16: what the clean semantics change (SPEC v3 §3.6), {doc['dataset']}", "",
+          f"git {doc['git']['sha'][:7]}{' (dirty)' if doc['git']['dirty'] else ''}, {doc['machine']}, "
+          f"{doc['started']}. Every configuration mined on the oracle (`blz mine --backend oracle`), {rows}; "
+          f"nothing here changes a recipe, profile or default (E16 informs §3.5 only).", ""]
     L_ += [f"- Rows: fit [0, {sp['fit'][1]:,}) ({sp['fit_positives']:,} positives); validation "
            f"[{sp['val'][0]:,}, {sp['val'][1]:,}) ({sp['val_positives']:,} positives). {sp['note']}",
-           f"- Classifier: {doc['classifier']['note']}",
-           f"- Fit plumbing: {doc['reproduction']['fit']} gives {doc['reproduction']['got']}, the ledger "
-           f"{doc['reproduction']['ledger']}: {'reproduces' if doc['reproduction']['reproduces'] else 'DIFFERS'}.", ""]
+           f"- Classifier: {doc['classifier']['note']}"]
+    if "reproduction" in doc:
+        L_.append(f"- Fit plumbing: {doc['reproduction']['fit']} gives {doc['reproduction']['got']}, the ledger "
+                  f"{doc['reproduction']['ledger']}: {'reproduces' if doc['reproduction']['reproduces'] else 'DIFFERS'}.")
+    L_.append("")
     L_ += ["## The v1 check", "", doc["v1_check_summary"], ""]
     L_ += ["## Quirks", "",
            "Rows changed = rows of the configuration that differ from clean_e16's (vstats bit for bit; Q8's "
@@ -550,7 +634,7 @@ def render(doc):
             sh = " / ".join(f"{cv[p]['share']:.3f} → {sv[p]['share']:.3f}" for p in ("fit", "val"))
             ch = " / ".join(f"{s[p]['changed']:,} ({s[p]['changed_pos']:,})" for p in ("fit", "val"))
             L_.append(f"| {n} | {b} | {inst} | {act} | {sh} | {ch} |")
-    L_ += ["", "Every (block, configuration) pair, with the same counts, is in `results/e16_clean.json` (`blocks`).", "",
+    L_ += ["", f"Every (block, configuration) pair, with the same counts, is in `{OUT.relative_to(ROOT)}` (`blocks`).", "",
            "## Runs", "", "| Configuration | Profile | Quirks | Wall | Peak RSS | Load before |", "|---|---|---|---:|---:|---|"]
     for n, r in doc["runs"].items():
         L_.append(f"| {n} | {r['profile']} | {r['quirks']} | {r['wall_s']:.0f} s | {r['peak_rss_mb']} MB | "
@@ -576,9 +660,11 @@ def evidence(data, y, parts):
             "positives_by_rank_decile": np.histogram(r[m & pos], bins=10, range=(0, 1))[0].tolist()}
         loop = src[a:z] == dst[a:z]
         f = np.asarray(g.format[a:z])
-        ev["self_loops"][part] = {"self_loops": int(loop.sum()), "laundering_self_loops": int((loop & pos).sum()),
-                                  "reinvestment_self_loops": int((loop & (f == fmt.index("Reinvestment"))).sum()),
-                                  "laundering_reinvestment": int((pos & (f == fmt.index("Reinvestment"))).sum())}
+        ev["self_loops"][part] = {"self_loops": int(loop.sum()), "laundering_self_loops": int((loop & pos).sum())}
+        if "Reinvestment" in fmt:  # AMLworld's formats; TransXion has none
+            ev["self_loops"][part].update({
+                "reinvestment_self_loops": int((loop & (f == fmt.index("Reinvestment"))).sum()),
+                "laundering_reinvestment": int((pos & (f == fmt.index("Reinvestment"))).sum())})
     (fa, fb), (va, vb) = parts["fit"], parts["val"]
     for n in ("clean", "Q10", "v1_e16"):
         b = Blocks(data, n)
@@ -600,34 +686,47 @@ def effect_text(doc, name):
 
 
 def report():
-    data = Lad.Data(False)
+    data = load_data()
     g = data.g
-    t = int(g.ts[VAL_END_LEGACY])
-    starts = g.ts[VAL_END_LEGACY - 1] != t
-    val_end = VAL_END_LEGACY if starts else int(np.searchsorted(g.ts, t, side="left"))
     global VAL_RANGE
-    VAL_RANGE = (FIT[1], val_end)
+    y = np.asarray(g.label[:ROWS[1]], dtype=np.uint8)  # the mined rows' labels only: no test label is read
+    if SPLIT is None:
+        t = int(g.ts[VAL_END_LEGACY])
+        starts = g.ts[VAL_END_LEGACY - 1] != t
+        val_end = VAL_END_LEGACY if starts else int(np.searchsorted(g.ts, t, side="left"))
+        VAL_RANGE = (FIT[1], val_end)
+        hi = int(np.searchsorted(g.ts, t, side="right"))
+        extra = {"eid_4062676_starts_a_timestamp": bool(starts),
+                 "note": ("Eid 4,062,676 starts a new timestamp, so validation keeps its legacy end." if starts else
+                          f"Eid 4,062,676 does not start a timestamp: ts {t:,} holds eids [{val_end:,}, {hi:,}), so "
+                          f"clean validation ends at {val_end:,} (SPEC v3 §6.3). Its {VAL_END_LEGACY - val_end} "
+                          f"rows below 4,062,676 ({int(y[val_end:VAL_END_LEGACY].sum())} positive) are scored "
+                          f"nowhere; every fit here, legacy ones included, uses the same range.")}
+    else:
+        VAL_RANGE = SPLIT["val"]
+        extra = {"mined": list(ROWS), "note": (
+            f"Smoke: the prefix [0, {ROWS[1]:,}), its first three quarters fitted, the rest validated; not a result."
+            if SMOKE else
+            f"The .blzg's fit and validation rows, as `blz prepare` stored them with V2 D-17's boundary rule at both "
+            f"cuts (SPEC v3 §6.3). Every run mines [0, {ROWS[1]:,}) (`--triggers {DS['triggers']}`); the test rows "
+            f"[{ROWS[1]:,}, {g.m:,}) are neither mined nor read.")}
     data.splits = {"fit": FIT, "val": VAL_RANGE}
-    y = np.asarray(g.label, dtype=np.uint8)
     parts = {"fit": FIT, "val": VAL_RANGE}
-    hi = int(np.searchsorted(g.ts, t, side="right"))
-    doc = {"experiment": "E16", "spec": "SPEC v3 §3.6", "dataset": "HI-Small", "git": Lad.git_info(),
+    doc = {"experiment": "E16", "spec": "SPEC v3 §3.6", "dataset": DS["name"], "git": Lad.git_info(),
            "machine": Lad.machine(), "started": Lad.now_utc(), "blzg_sha256": data.blzg_sha256,
            "split": {"m": g.m, "fit": list(FIT), "val": list(VAL_RANGE), "fit_positives": int(y[slice(*FIT)].sum()),
-                     "val_positives": int(y[slice(*VAL_RANGE)].sum()),
-                     "eid_4062676_starts_a_timestamp": bool(starts),
-                     "note": ("Eid 4,062,676 starts a new timestamp, so validation keeps its legacy end." if starts else
-                              f"Eid 4,062,676 does not start a timestamp: ts {t:,} holds eids [{val_end:,}, {hi:,}), so "
-                              f"clean validation ends at {val_end:,} (SPEC v3 §6.3). Its {VAL_END_LEGACY - val_end} "
-                              f"rows below 4,062,676 ({int(y[val_end:VAL_END_LEGACY].sum())} positive) are scored "
-                              f"nowhere; every fit here, legacy ones included, uses the same range.")},
+                     "val_positives": int(y[slice(*VAL_RANGE)].sum()), **extra},
            "vstats_window": VSTATS_WINDOW}
+    if SMOKE:
+        doc["smoke"] = True
     doc["runs"] = {}
-    for n, (d, prof, q) in CONFIGS.items():
-        r = {"dir": f"features/e16/{d}", "profile": prof, "quirks": "legacy path" if q is None else (q or "none"),
+    feat, tr = FEAT.relative_to(ROOT), triggers_arg()
+    for n, (d, prof, q) in mined_configs().items():
+        r = {"dir": f"{feat}/{d}", "profile": prof, "quirks": "legacy path" if q is None else (q or "none"),
              "profile_id": json.loads((FEAT / d / "features.json").read_text())["profile"]["id"], **time_log(FEAT / f"{d}.log")}
         if q is None:
-            r["vstats"] = {"dir": f"features/e16/{d}_vstats", "command": f"blz vstats --window {VSTATS_WINDOW} --backend cpu",
+            r["vstats"] = {"dir": f"{feat}/{d}_vstats", "command": f"blz vstats --window {VSTATS_WINDOW} --backend cpu"
+                                                                   + (f" --triggers {tr}" if tr else ""),
                            **time_log(FEAT / f"{d}_vstats.log")}
             r["wall_s"] = round(r["wall_s"] + r["vstats"]["wall_s"], 1)
         doc["runs"][n] = r
@@ -639,14 +738,21 @@ def report():
         print(f"stats {n}", flush=True)
     doc["v1_check"] = v1_check(data)
     bad = [b for b, v in doc["v1_check"].items() if not v["equal"]]
+    by_hash = [b for b, v in doc["v1_check"].items() if v.get("by") == "output_fnv1a" and b != "sg_ord"]
     doc["v1_check_summary"] = (
+        f"MISMATCH in {bad}: see `v1_check` in the JSON." if bad else
         "clean_e16_q8 under `--quirks all` (every oracle quirk, plus Q8's histograms) reproduces v1_e16 on every "
         "block: the six v1 blocks and lcyc by output hash, the vertex statistics bit for bit against `blz vstats "
         "--window 86400`, and sg_ord against V2's sg_ordered (sg_ordered_v1w, oracle). v1_e16's six blocks carry "
-        "v1_default's AC-V2-0 hashes." if not bad else f"MISMATCH in {bad}: see `v1_check` in the JSON.")
+        "v1_default's AC-V2-0 hashes." if SPLIT is None else
+        "clean_e16_q8 under `--quirks all` (every oracle quirk, plus Q8's histograms) reproduces v1_e16 on every "
+        f"block of these rows: {', '.join(by_hash) or 'no block'} against v1_e16 by output hash, the others row by row (the vertex "
+        f"statistics bit for bit against `blz vstats --window {VSTATS_WINDOW}`), and sg_ord against V2's sg_ordered "
+        f"(sg_ordered_v1w) mined on the same rows on the oracle. AC-V2-0's hashes are HI-Small's and are not checked.")
     doc["evidence"] = evidence(data, y, parts)
-    doc["reproduction"] = reproduce_ledger(data)
-    print("reproduction:", doc["reproduction"], flush=True)
+    if SPLIT is None:  # the DG-2 ledger's fit is HI-Small's
+        doc["reproduction"] = reproduce_ledger(data)
+        print("reproduction:", doc["reproduction"], flush=True)
     cache = json.loads((FEAT / "fits.json").read_text()) if (FEAT / "fits.json").exists() else {}
     doc["validation"] = {n: run_fit(data, n, cache) for n in FITS}
     for n in FITS:
@@ -687,12 +793,12 @@ def report():
             row["effect"] = what
         doc["quirks"].append(row)
     doc["never_copied"] = [{"id": a, "status": "not applicable", "why": w} for a, w in NEVER_COPIED]
-    doc["notes"] = notes(doc)
+    doc["notes"] = notes(doc) if SPLIT is None else measured_notes(doc)
     doc["finished"] = Lad.now_utc()
     OUT.write_text(json.dumps(doc, indent=1) + "\n")
     OUT.with_suffix(".md").write_text(render(doc))
     print(f"-> {OUT}, {OUT.with_suffix('.md')}")
-    return 0 if not bad and doc["reproduction"]["reproduces"] else 2
+    return 0 if not bad and doc.get("reproduction", {"reproduces": True})["reproduces"] else 2
 
 
 def draws(f, k):
@@ -761,6 +867,48 @@ def notes(doc):
     ]
 
 
+def measured_notes(doc):
+    """Notes for a dataset other than HI-Small: what was measured, without HI-Small's reading of it."""
+    V, ev, bs, sp = doc["validation"], doc["evidence"], doc["blocks"], doc["split"]
+    k = 1 + TRAIN_REPLICATES
+    d = {n: [a - b for a, b in zip(draws(V[n], "f1_x100"), draws(V["clean"], "f1_x100"))] for n in FITS}
+    dp = {n: [a - b for a, b in zip(draws(V[n], "pr_auc"), draws(V["clean"], "pr_auc"))] for n in FITS}
+    lst = lambda xs, f="+.2f": ", ".join(format(x, f) for x in xs)  # noqa: E731
+    same = [n for n in FITS[1:] if all(x == 0 for x in d[n])]
+    signed = [n for n in FITS[1:] if n not in same and (all(x > 0 for x in d[n]) or all(x < 0 for x in d[n]))]
+    unchanged = [n for n in CONFIGS if n != "clean"
+                 and not any(s[p].get("changed") for s in bs[n].values() for p in ("fit", "val"))]
+    first_tenth = sum(ev["file_order"][p]["positives_by_rank_decile"][0] for p in ("fit", "val"))
+    ranked = sum(sum(ev["file_order"][p]["positives_by_rank_decile"]) for p in ("fit", "val"))
+    sl = {key: sum(ev["self_loops"][p][key] for p in ("fit", "val")) for key in ev["self_loops"]["fit"]}
+    at = ev["absolute_time"]
+    return [
+        f"clean_e16's {k} draws (the unweighted fit, then {TRAIN_REPLICATES} refits on block-bootstrapped fit rows, "
+        f"{BOOT_CHUNKS} chunks, the same weights for every configuration) give F1 {lst(draws(V['clean'], 'f1_x100'), '.2f')} "
+        f"and PR-AUC {lst(draws(V['clean'], 'pr_auc'), '.3f')}. The [95%] column covers only the validation sample's noise.",
+        "Paired ΔF1 keeps one sign over all draws for " + (
+            "; ".join(f"{n} ({lst(d[n])}; ΔPR-AUC {lst(dp[n], '+.3f')})" for n in signed) if signed else "no configuration")
+        + ". " + (f"{', '.join(same)} give fits identical to clean's in every draw." if same else ""),
+        f"Configurations that change no block row on the fit or validation rows: {', '.join(unchanged) or 'none'} "
+        "(Q7 drops sg_ord and counts as unchanged when its other blocks are).",
+        f"The fit and validation rows hold {sl['self_loops']:,} self-loops, {sl['laundering_self_loops']:,} of them "
+        f"laundering.",
+        f"{first_tenth:,} of the {ranked:,} fit and validation positives that share their timestamp sit in the first "
+        f"tenth of its rows (mean relative rank {ev['file_order']['fit']['mean_rank_positive']:.3f} on fit and "
+        f"{ev['file_order']['val']['mean_rank_positive']:.3f} on validation; negatives "
+        f"{ev['file_order']['fit']['mean_rank_negative']:.3f} and {ev['file_order']['val']['mean_rank_negative']:.3f}).",
+        f"u_out's time mean: {100 * at['Q10']['val_share_above_fit_max']:.1f}% of validation rows lie above its fit "
+        f"maximum under Q10 (absolute timestamps), {100 * at['v1_e16']['val_share_above_fit_max']:.1f}% under v1_e16 "
+        f"and {100 * at['clean']['val_share_above_fit_max']:.1f}% under clean's ages.",
+        f"No test label is read. Every run mines [{sp['mined'][0]:,}, {sp['mined'][1]:,}), labels are read for those "
+        "rows only, and only validation rows are scored.",
+        "R0's settings (`configs/xgb_default.yaml`), not a tuned recipe: only the paired differences are read.",
+        "Count blocks: instances = rows with a count of at least 1 (one instance per trigger, R7). The ≥ 2 share is "
+        "what v1's histogram marks active.",
+        "Timings are informal (P13); the load before each run is logged with it.",
+    ]
+
+
 def clean_outputs():
     for p in sorted(FEAT.rglob("*.npy")):
         if p.name.startswith("scores_"):
@@ -774,11 +922,15 @@ def clean_outputs():
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("phase", choices=["mine", "report", "clean"])
-    ap.add_argument("names", nargs="*", help=f"mine: these configurations only, of {', '.join(CONFIGS)}")
+    ap.add_argument("names", nargs="*", help=f"mine: these configurations only, of {', '.join(CONFIGS)} "
+                                             f"(and {REF_SG_ORD[0]} off HI-Small)")
+    ap.add_argument("--dataset", choices=sorted(DATASETS), default="hi_small")
+    ap.add_argument("--smoke", action="store_true", help=f"the prefix [0, {SMOKE_ROWS:,}) under build/")
     a = ap.parse_args()
+    configure(a.dataset, a.smoke)
     if a.phase == "mine":
-        if set(a.names) - set(CONFIGS):
-            ap.error(f"unknown configuration {sorted(set(a.names) - set(CONFIGS))}")
+        if set(a.names) - set(mined_configs()):
+            ap.error(f"unknown configuration {sorted(set(a.names) - set(mined_configs()))}")
         mine_all(a.names)
         return 0
     if a.phase == "clean":
