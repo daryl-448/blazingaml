@@ -1,13 +1,14 @@
 ---
 name: verify-algorithms
-description: "L1 of SPEC_V3 §4.3 (target T3): the Lean 4 proofs in verify/lean that the generated loop nests' shortcuts (greedy earliest/latest witness, sg_ord's order test, distinct-first scans, gs's counts, the sweep lowering, legacy reachability pruning) give the literal rule's answer for all sizes. Use when a change touches blzc's planner or CPU emitter (src/ir/plan.cpp, src/codegen/cpu_emitter.cpp), the snapshots in tests/snapshots that COVERAGE.md names, include/blz/{primitives,sweep,reach}.hpp, a rule of SPEC_V3 §3.2 (R2-R7) or legacy Q5, or verify/lean itself; at P14, P16 and P17 phase exits; and for any new algorithm a speed change brings (SPEC_V3 §4.4 V-proof)."
+description: "L1 of SPEC_V3 §4.3 (target T3): the Lean 4 proofs in verify/lean that the generated loop nests' shortcuts (greedy earliest/latest witness, sg_ord's order test, distinct-first scans, gs's counts, the sweep lowering, legacy reachability pruning) give the literal rule's answer for all sizes, and that range mining in chunks gives the whole selection's rows and row hash (H7). Use when a change touches blzc's planner or CPU emitter (src/ir/plan.cpp, src/codegen/cpu_emitter.cpp), the snapshots in tests/snapshots that COVERAGE.md names, include/blz/{primitives,sweep,reach}.hpp, the chunk driver and its sinks (src/runtime/chunk_driver.cpp, block_sink.cpp, triggers.cpp's slice), a rule of SPEC_V3 §3.2 (R2-R7) or legacy Q5, or verify/lean itself; at P14, P16 and P17 phase exits; and for any new algorithm a speed change brings (SPEC_V3 §4.4 V-proof)."
 ---
 
 # verify-algorithms: the L1 proofs (T3)
 
 **Property.** Each shortcut the generated code takes over the literal rule of SPEC_V3 §3.2 (or the
 legacy rule) gives the rule's answer, for every graph size, under contracts that the executable
-checks verify on the real C++.
+checks verify on the real C++. Mining a selection in chunks, or once and put in chunks (D-79), gives
+the whole selection's rows in order and their FNV-1a, for every chunk size (H7).
 
 **Harm if broken.** A shortcut that drops one witness drops a row silently: tests on small or random
 graphs see it only by chance, and the classifier's features change.
@@ -18,17 +19,19 @@ coverage record below is how a proof stays tied to the code.
 
 ## 1. Does my change touch covered code?
 
-Sync commit: `3a02e81`. At it, COVERAGE.md matched the code: `blzc_snapshots` passed, so the
-generated text is the text the models describe; `verify/algorithms.sh --mutants` passed; and
-`blz index-contracts` checked every contract the proofs assume. Run:
+Sync commit: `b5b70af`. At it, COVERAGE.md matched the code: `blzc_snapshots` passed, so the
+generated text is the text the models describe; `verify/algorithms.sh --mutants` passed (32 main
+theorems, 48 mutants); `blz index-contracts` checked every contract the proofs assume; and L2's
+chunked runs (`fuzz-diff --chunk-rows`) checked Chunks.lean's `Local`. Run:
 
 ```
-git diff --stat 3a02e81 -- src/ir/plan.cpp src/codegen/cpu_emitter.cpp include/blz/primitives.hpp \
-  include/blz/sweep.hpp include/blz/reach.hpp tests/snapshots verify/lean SPEC_V3.md patterns
+git diff --stat b5b70af -- src/ir/plan.cpp src/codegen/cpu_emitter.cpp include/blz/primitives.hpp \
+  include/blz/sweep.hpp include/blz/reach.hpp src/runtime/chunk_driver.cpp src/runtime/block_sink.cpp \
+  src/runtime/triggers.cpp tests/snapshots verify/lean SPEC_V3.md patterns
 ```
 
 This compares the sync commit with the working tree, so uncommitted edits are listed too. Don't
-write `3a02e81..HEAD`, which compares commits only and misses a change before it is committed.
+write `b5b70af..HEAD`, which compares commits only and misses a change before it is committed.
 If it lists nothing, the proofs still describe the code. If it lists files, read the matching rows
 of `verify/lean/COVERAGE.md`. The record, in short:
 
@@ -41,12 +44,14 @@ of `verify/lean/COVERAGE.md`. The record, in short:
 | `gsRow_eq`, `clean_gs_row`, `legacy_gs_row` | Gs.lean | `clean_gs_trigger`, `gs_trigger`: clean_gs.hpp, gs.hpp | count stages |
 | `Sweep.sweep_correct`, `Sweep.clear_zero` | Sweep.lean | the `*_cpu` drivers in {clean_,}{fan,deg}_{in,out}_cpu.cpp | `sweep_count` (include/blz/sweep.hpp), `CpuEmitter::sweep_driver` |
 | `root_kept`, `bindings_kept`, `greedy_bindings_kept`, `ldJ_search`, `one_round_cuts` | Prune.lean (legacy strict order only) | `tcyc_trigger_reach`: tcyc_cpu.cpp | `ReachScratch::search`, `keep` (include/blz/reach.hpp) |
+| `Chunks.chunks_cover`, `mem_chunks`, `length_chunks`, `slice_eids`, `runChunked_flatten`, `runBlock_flatten`, `stream_hash`, `runBlock_hash` | Chunks.lean | none: hand-written C++ | `ChunkDriver::run_block`, `run_fused`, `run_vstats` (src/runtime/chunk_driver.cpp); `slice` (triggers.cpp); `BlockStream::put` (block_sink.cpp), the hash `blz mine` writes and `blz measure` prints |
 
 Every theorem takes its contracts on the code as hypotheses (`hfirst`, `hlast`, `hpl`, `hs`,
-`hsorted`, `heid`, `hin`, `hout`, `hhi`, `hvis`, `hlower`, `Search`). COVERAGE.md's last table names
-the executable check of each: `blz index-contracts` (contracts `range`, `distinct_first`,
-`distinct_first_ts`, `pair_exists`, `pair_latest`, `list`, `search`), `blzc_snapshots`, and E403.
-Those checks belong to `/verify-codegen`.
+`hsorted`, `heid`, `hin`, `hout`, `hhi`, `hvis`, `hlower`, `Search`; Chunks.lean's `Local`, `hcols`,
+`hcells`, `hk`). COVERAGE.md's last table names the executable check of each: `blz index-contracts`
+(contracts `range`, `distinct_first`, `distinct_first_ts`, `pair_exists`, `pair_latest`, `list`,
+`search`), `blzc_snapshots`, E403, and for the chunks L2 through the chunk driver (`blz fuzz-diff
+--chunk-rows`) and the unit test of `fnv1a_cells`. Those checks belong to `/verify-codegen`.
 
 There are two ways a model goes stale, and `verify/algorithms.sh` notices neither, because Lean
 does not read C++:
@@ -54,11 +59,13 @@ does not read C++:
   snapshot update, open COVERAGE.md for each changed snapshot and compare the generated bounds and
   loop order with the Lean definition that models them: `greedy` and `latestGreedy` with their bound
   arguments, `firsts`, `Sweep.advLo` and `advHi`, `relaxRound`.
-- **A hand-written header changed**: include/blz/sweep.hpp, reach.hpp or primitives.hpp. No snapshot
-  changes, and L1 passes whatever the header says. Compare the edited lines with their model by
-  hand. The models' docstrings quote the C++ they transcribe: `Sweep.enter`, `leave` and `clear` for
-  `sweep_count`, `relaxRound` for `ReachScratch::search`, Scan.lean for the primitives. Then run
-  `/verify-codegen`, which runs the real header.
+- **Hand-written code changed**: include/blz/sweep.hpp, reach.hpp or primitives.hpp, or the chunk
+  driver's loops. No snapshot changes, and L1 passes whatever the C++ says. Compare the edited lines
+  with their model by hand. The models' docstrings quote the C++ they transcribe: `Sweep.enter`,
+  `leave` and `clear` for `sweep_count`, `relaxRound` for `ReachScratch::search`, Scan.lean for the
+  primitives, `chunksFrom` and `runBlock` for `run_block`'s two loops (`run_fused` and `run_vstats`
+  are `runChunked`), `slice` for triggers.cpp's `slice`, and `fnvStep` and `streamHash` for
+  `BlockStream::put`. Then run `/verify-codegen`, which runs the real code.
 
 A green `verify/algorithms.sh` after a C++ edit proves only that the proofs still check. It says
 nothing about whether the C++ still matches them.
@@ -80,8 +87,8 @@ verify/algorithms.sh --mutants
 
 It builds a fresh copy of verify/lean in a temporary directory from an empty `.lake`. It fails on
 any build error, on `declaration uses sorry`, and on any main theorem whose axioms go beyond
-`propext`, `Classical.choice` and `Quot.sound` (Axioms.lean lists the 24 main theorems). With
-`--mutants` it then runs the 37 proof mutants of verify/lean/mutants.py. Each must fail to build at
+`propext`, `Classical.choice` and `Quot.sound` (Axioms.lean lists the 32 main theorems). With
+`--mutants` it then runs the 48 proof mutants of verify/lean/mutants.py. Each must fail to build at
 the declarations recorded for it. ctest runs the full form as `verify_algorithms` (label verify)
 when lake is found at configure time.
 
@@ -141,7 +148,9 @@ is SPEC_V3 §3.2 or legacy Q5, written literally. The code side (`greedy`, `late
 
 The edges of the model are stated in COVERAGE.md and are not bugs. Integers are unbounded (machine
 width is L3's). The DFS over node sequences and the CUDA lane schedule are L2's and L3's. Pruning is
-proved for the legacy strict order only.
+proved for the legacy strict order only. The chunk model leaves out the lost-emit count, the block
+order and the work-limit abort, the sinks' bytes and the buffers' reuse, which L2's chunked runs and
+the unit tests check.
 
 ## 5. Update the verification for an intended change
 

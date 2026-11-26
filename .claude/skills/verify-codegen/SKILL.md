@@ -1,6 +1,6 @@
 ---
 name: verify-codegen
-description: "L2, L3 and T4 of SPEC_V3 §4.3 (targets T1, T2, T4): the real compiled code that blzc generates, and every optimised path, against the profile's oracle on every graph within a bound (blz fuzz-diff --bound, verify/codegen.sh), RapidCheck properties past that bound (tests/unit/test_l3.cpp, l3_random), the index primitives' and ReachScratch::search's contracts (blz index-contracts), and the code-mutant runner (verify/mutants.py). Use when a change touches a pattern spec (patterns/, patterns/clean/), blzc (src/dsl, src/ir, src/codegen), include/blz, the index builder, a backend or driver (CPU, CUDA, hybrid, fusion, packing, vstats), an oracle, a profile that the checks use, or the checks themselves; at P14, P16 and P17 phase exits; and for every speed change (SPEC_V3 §4.4 V-code, V-diff, V-mut)."
+description: "L2, L3 and T4 of SPEC_V3 §4.3 (targets T1, T2, T4): the real compiled code that blzc generates, and every optimised path, against the profile's oracle on every graph within a bound (blz fuzz-diff --bound, verify/codegen.sh), RapidCheck properties past that bound (tests/unit/test_l3.cpp, l3_random), the index primitives' and ReachScratch::search's contracts (blz index-contracts), and the code-mutant runner (verify/mutants.py). Use when a change touches a pattern spec (patterns/, patterns/clean/), blzc (src/dsl, src/ir, src/codegen), include/blz, the index builder, a backend or driver (CPU, CUDA, hybrid, fusion, packing, vstats, the chunk driver and its sinks), an oracle, a profile that the checks use, or the checks themselves; at P14, P16 and P17 phase exits; and for every speed change (SPEC_V3 §4.4 V-code, V-diff, V-mut)."
 ---
 
 # verify-codegen: L2, L3 and T4 (T1, T2, T4)
@@ -9,8 +9,9 @@ description: "L2, L3 and T4 of SPEC_V3 §4.3 (targets T1, T2, T4): the real comp
 - T1: every generated `<pattern>_trigger`, as compiled, gives its family's oracle's rows: clean
   specs the clean oracle's, legacy specs the legacy oracle's.
 - T2: every optimised path gives the plain path's rows. The paths are the sweep lowering,
-  reachability pruning, scan fusion, packed D2H, the hybrid, CUDA's light and heavy kernels, and
-  the `blzc --disable` build.
+  reachability pruning, scan fusion, packed D2H, the hybrid, CUDA's light and heavy kernels, the
+  `blzc --disable` build, and range mining through the chunk driver (H7): each backend's rows,
+  vstats and row hash, mined in chunks of any size, equal the oracle's for the whole selection.
 - T4: the index primitives meet their contracts, and `ReachScratch::search` meets the `Search`
   contract that L1's pruning proofs assume.
 
@@ -25,12 +26,16 @@ CBMC's m = 5 domain about 60× faster, on the code as it ships (SPEC_V3 §4.2).
 ## 1. Does my change touch covered code?
 
 Sync commit: `3a02e81`. At it, the whole suite in section 2 passed and every mutant of
-`verify/mutants.py` was caught where recorded. Run:
+`verify/mutants.py` was caught where recorded. The chunk driver and its sinks (P15, from b8bfa99)
+joined the record at 6edf4ab. There the chunked checks of verify/codegen.sh, ctest and L3 passed,
+and the driver's mutants were caught where recorded (SPEC_V3 D-83, D-87). The full suite has not
+run since 3a02e81, so the sync commit stays there. Run:
 
 ```
 git diff --stat 3a02e81 -- patterns include/blz src/dsl src/ir src/codegen \
   src/graph/index.cpp src/graph/index.hpp src/graph/exhaustive.cpp src/graph/index_contracts.cpp \
   src/runtime/{cpu_backend,cuda_backend,hybrid,fusion,widen,triggers,registration,profile,fuzz_diff}.* \
+  src/runtime/{chunk_driver,block_sink}.* \
   src/runtime/*vstats* src/oracle tests/snapshots tests/profiles configs/profiles/clean_all.yaml \
   tests/unit/test_l3.cpp verify/codegen.sh verify/mutants.py CMakeLists.txt tests/CMakeLists.txt
 ```
@@ -56,6 +61,7 @@ the record:
 | src/runtime/vstats.cpp, clean_vstats.cpp, clean_vstats_cuda.cu | L2 clean_all, bit for bit |
 | `BLZ_DISABLE_OPTS=find_start,distinct_first,degree_order,count_only,sweep` (build/rel-noopt) | L2 rel-noopt: the unoptimised generated code against the oracle |
 | Memory and overflow | L2 dev (ASan + UBSan): cpu with each graph alone, and T4 |
+| src/runtime/chunk_driver.cpp: `ChunkDriver::run`, `run_block` (the chunked path and D-79's sweep path), `run_fused`, `run_vstats`, `rows_buffer`; triggers.cpp `slice`; block_sink.cpp: `BlockStream::put`, `finish`, `fnv1a_cells`, `MemorySink`, `HashSink` (`blz measure`'s hash path: the same streams, writing nothing) | L2 through the chunk driver (`blz fuzz-diff --chunk-rows`): `cpu-chunks`, `cuda-chunks`, `cuda-fuse-pack-chunks`, `hybrid-chunks` in verify/codegen.sh and ctest `l2_smoke_chunks_*`, each stream's rows, vstats and tally (rows, puts, FNV-1a, instances) against the oracle's at every selection; L3 chunks; the unit tests in test_chunk_driver.cpp and test_block_sink.cpp; the model in verify/lean/Blz/Chunks.lean (`/verify-algorithms`) |
 
 The harness is trusted code too. src/graph/exhaustive.{hpp,cpp} defines the domain. src/runtime/
 fuzz_diff.{hpp,cpp} does the comparison, the path hits and the counterexamples. Then come
@@ -72,14 +78,16 @@ desktop is shared, and other jobs move the seconds but not the verdicts.
 **Quick, on every change that touches covered code** (the times are E20's, at the sync commit):
 
 ```
-ctest --preset rel-cuda       # 630 s at 3a02e81 (E20); about 600 s of it predates P14
+ctest --preset rel-cuda       # 630 s at 3a02e81 (E20), 573 s at 024be12 with the chunked tests
 ```
 
 Without a GPU, or for a CPU-only change, `ctest --preset rel` (130 s at 3a02e81) runs the same checks
 without the CUDA ones. Label `fast` holds the L2 smoke checks: every graph of m=4,n=4,t=3 (29,119 graphs; every block has
 nonzero rows) on the three profiles, plain and at a work limit of 1, plus cuda, `--fuse --pack` and
-the hybrid in CUDA builds. It also holds T4 with `search` at that bound, every L3 property at its
-fixed seed, and the snapshot tests.
+the hybrid in CUDA builds. The `l2_smoke_chunks_*` tests run the backends through the chunk driver
+in chunks of 1, 2 and 3 triggers: cpu at that bound on the three profiles, and in CUDA builds cuda,
+`--fuse --pack` and the hybrid at m=3,n=4,t=3 and H = C = 2 on clean_all. It also holds T4 with `search` at that
+bound, every L3 property at its fixed seed, and the snapshot tests.
 
 Run the quick check first on every change, an edit to an existing algorithm's code included. If it
 fails, the change is wrong, and the full run can't reverse that verdict. To confirm that a failure
@@ -103,15 +111,29 @@ and a load sampler, and `bench/e20.py report` writes results/e20_verification.{j
   present, at bounds A = m=5,n=5,t=4 (3,105,502 graphs, 61,785,528 trigger checks) and B =
   m=6,n=4,t=3, and prints one table. Its reports go to build/verify/codegen.{json,log}, and it exits
   1 if any check fails. `ctest -L verify` in a preset build runs it for that build.
+- Its `*-chunks` checks run a backend through the chunk driver (`fuzz-diff --chunk-rows`, D-83),
+  over every trigger, the range [m/4, m − m/5) of each union and, on cpu, a 40 % sample. They
+  compare every stream's rows, vstats and tally (rows, ⌈rows / k⌉ puts, FNV-1a, instances) with the
+  oracle's at those triggers. rel runs `cpu-chunks` on the three profiles, in chunks of 1, 2 and 3
+  at SMOKE and of 3 and 1000 at A. rel-cuda runs `cuda-chunks`, `cuda-fuse-pack-chunks` and
+  `hybrid-chunks` at H = C = 4: in chunks of 1000 at A on the three profiles, and in chunks of 1, 2
+  and 3 at CHUNKS_GPU = m=4,n=4,t=3 on clean_all (--smoke: m=3,n=4,t=3 at H = C = 2). They add 5.5
+  min to rel and 28 min to rel-cuda (measured at 024be12; the GPU's chunks of 1 to 3 at
+  CHUNKS_GPU take 322 to 452 s each, as a put costs the GPU about 25 us).
+  `--only=GLOB` runs the checks whose name matches, for example `verify/codegen.sh
+  --only='*-chunks/*' rel rel-cuda`.
 - `verify/mutants.py` plants each one-line mutant of its list in a scratch worktree
   (build/mutants/src, never the main tree) and walks its build's ladder of checks, cheapest first.
   It records the check and layer that caught it, the counterexample's size and the seconds in
   build/mutants/report.json. `verify/mutants.py NAME` runs one mutant, and `--list` prints them all.
   `--escape` also confirms that each L3-only mutant passes the full-bound L2 checks that run its
-  path. `--keep` keeps the scratch builds for a faster rerun.
+  path. `--keep` keeps the scratch builds for a faster rerun. The chunk driver's 8 mutants are
+  caught by `l2-smoke-cpu-chunks` and `l2-chunks-cuda-fuse-pack`, rungs that come after the direct
+  smoke rungs. Those 8, the 5 mutants caught by `l3` and the baseline took 952 s with builds at
+  b5b70af.
 - One check by hand: `build/rel/blz fuzz-diff --bound m=5,n=5,t=4 --profile <profile>
-  [--backend cuda|hybrid] [--fuse --pack] [--batch-edges 1 --work-limit 1]`, or `build/rel/blz
-  index-contracts --bound m=5,n=5,t=4`. Exit 2 means a mismatch or a violation.
+  [--backend cuda|hybrid] [--fuse --pack] [--batch-edges 1 --work-limit 1] [--chunk-rows 1,2,3]`,
+  or `build/rel/blz index-contracts --bound m=5,n=5,t=4`. Exit 2 means a mismatch or a violation.
 - One L3 property: `build/rel/tests/blz_unit_tests "L3 k_max: cycles and chains of K_MAX - 1 to
   K_MAX + 1 edges on every profile and path"`. `blz_unit_tests "[l3]" --list-tests` lists them.
 
@@ -142,6 +164,14 @@ are not in strict order through node 1 within window 1.
   the oracle finished. Rows are not compared then, only the stop eids. "Inconclusive" counts in the
   summary are not failures.
 - vstats prints the columns that differ with 17 digits. Any bit counts (AC-V3-1).
+- A chunked run's `path` adds the chunk size and the selection: `cpu dynamic chunks of 2, all`,
+  or `range:a:b` or `sample:40:<case>`. Its trigger eid is the selection's eid of the row. A
+  mismatch that is not a row prints as a note in place of got and want, at the selection's first
+  trigger. `stream tally: fnv1a 362932690540399283, want 10211252084931458275` means the stream's
+  hash, rows, puts or instances differ from the oracle's rows at those triggers (the mutant
+  `hash_restarts`). `the chunk driver threw: row stream lcyc: 0 of 1 rows` is a `BlockStream`
+  guard or `slice`'s precondition (`chunk_last_dropped`). A note is the driver's or a sink's bug,
+  not a backend's.
 - `(fails only inside its batch: no graph of the batch fails alone)`: see section 4.
 
 **index-contracts** (T4):
@@ -197,7 +227,10 @@ rule (SPEC_V2, frozen) out by hand on it first.
   trigger's weakly connected component. Either the bug needs a graph's position in the arrays (node
   0, the arrays' ends), or a change broke locality: a row now reads beyond the component, such as a
   global count. Rerun with `--batch-edges 1` to tell them apart. Broken locality is a harness
-  question, not a code bug, until you show a single graph that fails.
+  question, not a code bug, until you show a single graph that fails. A chunked run is the
+  exception: a driver bug that needs two chunks or more (a hash restarted per put, vstats sliced
+  from the start) cannot fail on a graph of one trigger, so it fails only inside its batch. That
+  is a real bug in the driver, at the path's chunk size.
 - **The domain's assumptions.** Canonical graphs start at ts 0 and list each node relabelling once.
   That is sound only while rows depend on timestamps through t − t' alone, and on node ids only
   through ties and P-CSR order inside a component. A rule that reads absolute time or ids breaks
@@ -209,11 +242,18 @@ rule (SPEC_V2, frozen) out by hand on it first.
 - **Path hits.** A pass only covers what ran. Each fuzz-diff summary prints the reference's nonzero
   rows per block and the rows each optimised path computed: `sweep rows`, `reach-pruned rows`,
   fused and packed rows, the light, heavy and hybrid triggers. T4 prints `search: ldJ reached N
-  nodes`. Two zeros are expected. Reach-pruned rows are 0 on clean_all, because pruning is legacy
+  nodes`. A chunked run prints `chunk driver:` streams, puts, the streams of more than one put
+  (with the block that has fewest), the sweep streams mined once and put in chunks, the fused
+  streams, and the runs over a range and a sample. Its `sweep rows` are the sweep streams' rows; the
+  CPU's chunked runs are dynamic without pruning, and the hybrid's are sorted with pruning.
+  Two zeros are expected. Reach-pruned rows are 0 on clean_all, because pruning is legacy
   only (clean tcyc has `cpu_reach` false). Packed rows at 2 and 4 bytes are 0 in L2, because no cell
-  passes 255 at m ≤ 6. Any other zero means the check did not run that path, and verify/codegen.sh
+  passes 255 at m ≤ 6. Chunked: sample runs are 0 on cuda and the hybrid (they take an eid range),
+  sweep streams 0 on cuda, and the hybrid's heavy triggers 0 at H = C = 4 (its GPU gets only
+  triggers below C). Any other zero means the check did not run that path, and verify/codegen.sh
   fails it as `FAIL (<what is missing>)`: a block with no rows or stop eids compared, a limit-1 run
-  where no graph reached the limit, or a zero on a path the check asks for.
+  where no graph reached the limit, a zero on a path the check asks for, or a chunked check with a
+  block or vstats that never got a stream of more than one put.
 - **Bound errors.** L2's bound cannot reach k_max-length cycles and chains (10 edges), R10's
   saturation, packing at 2 and 4 bytes, int32 extremes or batch positions. Those are L3's, and its
   generators take their ranges from the spec constants (K_MAX, the bins). A mutant that escapes L2
