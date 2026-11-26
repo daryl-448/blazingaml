@@ -168,6 +168,7 @@ BlzgView::BlzgView(const std::string& path) : file_(path) {
   for (std::uint64_t e = 0; e < m_; ++e)
     if (src[e] >= n_ || dst[e] >= n_) throw std::runtime_error(path + ": node id out of range");
   if (const std::string err = check_file_row(file_row, ts); !err.empty()) throw std::runtime_error(path + ": " + err);
+  splits_ = compute_splits(SplitRule::legacy_hi_small, ts);
 }
 
 }  // namespace blz

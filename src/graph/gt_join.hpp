@@ -8,6 +8,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include "blz/edges.hpp"
+
 namespace blz {
 
 // What the join needs from the prepared stream.
@@ -15,6 +17,7 @@ struct GtGraph {
   std::span<const std::uint32_t> file_row;  // eid -> 0-based data row of the CSV
   std::span<const std::int32_t> ts;
   std::span<const std::uint8_t> label;
+  Splits splits;
 };
 
 // Joins the attempts of `patterns_text` (Patterns.txt) to the rows of `csv_text` (the CSV the
@@ -31,7 +34,7 @@ struct GtGraph {
 //   lines carry the candidate eids. A line with no match is `unmatched`.
 // - An attempt is `complete` when every row is unique or resolved, `unmatched` when none is,
 //   and `partial` otherwise. Its split is fit, val or test when all its mapped eids lie in that
-//   split (SPEC v2 §3.3), else `straddles` (null with no mapped eid). Its span is max ts - min ts
+//   split (g.splits), else `straddles` (null with no mapped eid). Its span is max ts - min ts
 //   over every listed row, and its account count the distinct (bank, account) pairs they touch.
 // - Unlisted positives are the positive eids that no unique or resolved row maps to.
 //

@@ -83,8 +83,9 @@ StreamCounts count_stream(const EdgeTable& t) {
   StreamCounts c;
   c.edges = t.m();
   c.nodes = t.n();
-  const std::uint64_t train = train_size(t.m());
-  c.fit_val_boundary = fit_val_boundary(t.ts);
+  const Splits sp = compute_splits(SplitRule::legacy_hi_small, t.ts);
+  const std::uint64_t train = sp.b_test;
+  c.fit_val_boundary = sp.b_fv;
   for (std::size_t e = 0; e < t.m(); ++e) {
     c.self_loops += t.src[e] == t.dst[e];
     if (t.label[e]) {
@@ -132,12 +133,12 @@ std::vector<std::string> check_hi_small_invariants(const EdgeTable& t) {
   expect("nodes", c.nodes, 515'088);
   expect("positives", c.positives, 5'177);
   expect("self-loops", c.self_loops, 591'212);
-  expect("test edges", c.edges - train_size(c.edges), 1'015'669);
+  expect("test edges", c.edges - c.edges * 4 / 5, 1'015'669);
   expect("test positives", c.test_positives, 1'797);
   expect("train positives", c.train_positives, 3'380);
   // SPEC v2 §3.3 (D-17): fit = eid < b_fv, validation = b_fv <= eid < 4,062,676.
   expect("fit/validation boundary b_fv", c.fit_val_boundary, 3'047'216);
-  expect("validation edges", train_size(c.edges) - std::min(c.fit_val_boundary, train_size(c.edges)), 1'015'460);
+  expect("validation edges", c.edges * 4 / 5 - c.fit_val_boundary, 1'015'460);
   expect("fit positives", c.fit_positives, 2'299);
   expect("validation positives", c.val_positives, 1'081);
   // SPEC v2 §4.4 R1: Multi-GNN's concatenated key yields the same 515,088 nodes as D-2.

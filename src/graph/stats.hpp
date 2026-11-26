@@ -4,6 +4,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include "blz/edges.hpp"
+
 namespace blz {
 
 struct StreamView {
@@ -11,6 +13,7 @@ struct StreamView {
   std::span<const std::int32_t> ts;
   std::span<const std::uint8_t> label;
   std::uint64_t n = 0;
+  Splits splits;  // train = [0, b_test), test = [b_test, m)
 };
 
 // Summary of a non-negative integer distribution: count, min, max, mean, p50/p90/p99/p99.9 and a

@@ -43,13 +43,28 @@ TEST_CASE("check_file_row: a permutation that reproduces the stable sort (SPEC v
   CHECK_FALSE(check_file_row(std::vector<std::uint32_t>{0, 1, 2}, unsorted).empty());
 }
 
-TEST_CASE("fit_val_boundary: the first eid >= floor(0.6 m) that starts a timestamp (SPEC v2 §3.3)") {
-  // m = 10, floor(0.6 m) = 6.
-  CHECK(fit_val_boundary(std::vector<std::int32_t>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}) == 6);
-  CHECK(fit_val_boundary(std::vector<std::int32_t>{0, 1, 2, 3, 4, 5, 5, 5, 8, 9}) == 8);  // 6, 7 continue ts 5
-  CHECK(fit_val_boundary(std::vector<std::int32_t>{0, 1, 2, 3, 4, 5, 5, 5, 5, 5}) == 10);  // none: m
-  CHECK(fit_val_boundary(std::vector<std::int32_t>{3}) == 0);                             // eid 0 starts one
-  CHECK(fit_val_boundary(std::vector<std::int32_t>{}) == 0);
+TEST_CASE("compute_splits: legacy_hi_small and temporal_60_20_20 (SPEC v3 §6.3)") {
+  using R = SplitRule;
+  // m = 10, floor(0.6 m) = 6, floor(0.8 m) = 8.
+  const std::vector<std::int32_t> distinct = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+  CHECK(compute_splits(R::legacy_hi_small, distinct) == Splits{6, 8});
+  CHECK(compute_splits(R::temporal_60_20_20, distinct) == Splits{6, 8});
+  // A tie at each cut: eids 5, 6 share ts 5 and eids 7, 8 share ts 7. Both rules move b_fv to
+  // eid 7; only the temporal rule moves b_test, to eid 9.
+  const std::vector<std::int32_t> ties = {0, 1, 2, 3, 4, 5, 5, 7, 7, 9};
+  CHECK(compute_splits(R::legacy_hi_small, ties) == Splits{7, 8});
+  CHECK(compute_splits(R::temporal_60_20_20, ties) == Splits{7, 9});
+  // No timestamp starts at or after floor(0.6 m): the temporal splits are empty past fit, and the
+  // legacy b_fv stops at its b_test.
+  const std::vector<std::int32_t> tail = {0, 1, 2, 3, 4, 5, 5, 5, 5, 5};
+  CHECK(compute_splits(R::temporal_60_20_20, tail) == Splits{10, 10});
+  CHECK(compute_splits(R::legacy_hi_small, tail) == Splits{8, 8});
+  // Eid 0 starts a timestamp.
+  CHECK(compute_splits(R::temporal_60_20_20, std::vector<std::int32_t>{3}) == Splits{0, 0});
+  CHECK(compute_splits(R::legacy_hi_small, std::vector<std::int32_t>{}) == Splits{0, 0});
+  CHECK(split_rule_name(R::temporal_60_20_20) == "temporal_60_20_20");
+  CHECK(parse_split_rule("legacy_hi_small") == R::legacy_hi_small);
+  CHECK_FALSE(parse_split_rule("temporal").has_value());
 }
 
 TEST_CASE("count_stream and the HI-Small invariants") {
@@ -61,7 +76,6 @@ TEST_CASE("count_stream and the HI-Small invariants") {
   CHECK(c.positives == 1);
   CHECK(c.train_positives == 1);  // train = eid < floor(0.8 * 4) = 3
   CHECK(c.test_positives == 0);
-  CHECK(train_size(5'078'345) == 4'062'676);
   // SPEC v2 §3.3: floor(0.6 * 4) = 2 starts ts 1200, so fit = {0, 1}, validation = {2}.
   CHECK(c.fit_val_boundary == 2);
   CHECK(c.fit_positives == 1);

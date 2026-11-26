@@ -118,7 +118,7 @@ int export_edges(const std::string& graph, const std::string& out) {
 int stats(const std::string& graph, const std::string& out) {
   auto t0 = Clock::now();
   blz::BlzgView g(graph);
-  nlohmann::json profile = blz::profile_stream({g.src, g.dst, g.ts, g.label, g.n()});
+  nlohmann::json profile = blz::profile_stream({g.src, g.dst, g.ts, g.label, g.n(), g.splits()});
   profile["source"] = {{"graph", graph}, {"csv_sha256", blz::to_hex(g.csv_sha256())}};
 
   // Keep sections other tools merged in (e.g. gfp_tcyc from tools/gfp/e0_tcyc.py).
@@ -379,7 +379,7 @@ int mine(const std::string& graph, const std::string& profile_path, const std::s
   const std::uint64_t m = edges ? edges : g.m();
   const auto src = g.src.first(m), dst = g.dst.first(m);
   const auto ts = g.ts.first(m);
-  const blz::TriggerSel sel = blz::select_triggers(triggers, ts);
+  const blz::TriggerSel sel = blz::select_triggers(triggers, m, g.splits());
   if (gpu && sel.sampled)
     throw std::runtime_error("--triggers sample: runs on the oracle and cpu backends (the preflight of SPEC v2 §2.5 "
                              "uses cpu); the CUDA kernels take an eid range");
@@ -625,7 +625,7 @@ int vstats(const std::string& graph, std::int32_t window, const std::string& bac
   if (threads > 0) omp_set_num_threads(threads);
   auto t0 = Clock::now();
   blz::BlzgView g(graph);
-  const blz::TriggerSel sel = blz::select_triggers(triggers, g.ts);
+  const blz::TriggerSel sel = blz::select_triggers(triggers, g.m(), g.splits());
   if (gpu && sel.sampled) throw std::runtime_error("vstats --backend cuda takes an eid range, not a sample");
   const blz::GraphIndex index(g.src, g.dst, g.ts, g.n());
   std::optional<blz::DeviceGraph> dgraph;
@@ -887,7 +887,7 @@ int train(const std::string& graph, const std::string& features, const std::stri
   const std::string xgb_str = xgb_text.str();
 
   blz::BlzgView g(graph);
-  const std::uint64_t m = g.m(), ntrain = blz::train_size(m);
+  const std::uint64_t m = g.m(), ntrain = g.splits().b_test;
   std::vector<std::string> columns = {"src_id", "dst_id"};
   std::vector<std::unique_ptr<blz::NpyU32View>> views;
   nlohmann::json feat = nullptr;
@@ -1869,7 +1869,7 @@ int gt_join(const std::string& graph, const std::string& csv, const std::string&
     throw std::runtime_error(csv + " is not the CSV " + graph + " was prepared from (SHA-256 differs)");
   const std::string pat_text = read_file(patterns);
   nlohmann::ordered_json j = blz::gt_join(std::string_view(csv_file.data(), csv_file.size()), pat_text,
-                                          {g.file_row, g.ts, g.label});
+                                          {g.file_row, g.ts, g.label, g.splits()});
   nlohmann::ordered_json head = {
       {"inputs",
        {{"graph", graph},
@@ -1901,9 +1901,9 @@ int coverage(const std::string& graph, const std::string& gt_path, const std::st
   const nlohmann::json gt = nlohmann::json::parse(std::ifstream(gt_path));
   if (gt.at("inputs").at("csv_sha256") != csv_sha || gt.at("inputs").at("m") != m)
     throw std::runtime_error(gt_path + " is not a gt-join of " + graph + " (CSV SHA-256 or m differs)");
-  const std::uint64_t b_fv = blz::fit_val_boundary(g.ts), b_test = blz::train_size(m);
+  const auto [b_fv, b_test] = g.splits();
   const nlohmann::json want_splits = {{"fit", {0, b_fv}}, {"val", {b_fv, b_test}}, {"test", {b_test, m}}};
-  if (gt.at("splits") != want_splits) throw std::runtime_error(gt_path + ": its splits differ from SPEC v2 §3.3's");
+  if (gt.at("splits") != want_splits) throw std::runtime_error(gt_path + ": its splits differ from " + graph + "'s");
 
   const blz::Profile prof = blz::load_profile(profile_path);   // E403
   blz::check_profile_backend(prof, blz::Backend::oracle);     // E404: eligibility runs the oracle

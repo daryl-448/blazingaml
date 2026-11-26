@@ -99,7 +99,7 @@ nlohmann::json profile_stream(const StreamView& g) {
   const std::size_t m = g.src.size();
   nlohmann::json out;
   std::uint64_t positives = 0, self_loops = 0, test_pos = 0;
-  const std::uint64_t train = train_size(m);
+  const std::uint64_t train = g.splits.b_test;
   for (std::size_t e = 0; e < m; ++e) {
     positives += g.label[e];
     self_loops += g.src[e] == g.dst[e];

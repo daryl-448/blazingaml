@@ -42,6 +42,7 @@ class BlzgView {
   std::uint64_t m() const { return m_; }
   std::uint64_t n() const { return n_; }
   const Sha256Digest& csv_sha256() const { return sha_; }
+  const Splits& splits() const { return splits_; }
 
   std::span<const std::uint32_t> src, dst;
   std::span<const std::int32_t> ts;
@@ -55,6 +56,7 @@ class BlzgView {
   MappedFile file_;
   std::uint64_t m_ = 0, n_ = 0;
   Sha256Digest sha_{};
+  Splits splits_;
 };
 
 }  // namespace blz

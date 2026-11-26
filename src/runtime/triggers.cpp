@@ -4,8 +4,6 @@
 #include <cmath>
 #include <stdexcept>
 
-#include "blz/edges.hpp"
-
 namespace blz {
 
 namespace {
@@ -40,21 +38,26 @@ nlohmann::json TriggerSel::json() const {
   return j;
 }
 
-TriggerSel select_triggers(const std::string& spec, std::span<const std::int32_t> ts) {
-  const std::uint64_t m = ts.size(), train = train_size(m);
+TriggerSel select_triggers(const std::string& spec, std::uint64_t m, const Splits& splits) {
   TriggerSel s;
   s.spec = spec;
   s.last = m;
+  const auto named = [&](std::uint64_t first, std::uint64_t last) {
+    if (first > last || last > m)
+      throw std::runtime_error("--triggers " + spec + ": the split [" + std::to_string(first) + ", " +
+                               std::to_string(last) + ") does not lie in the graph's m = " + std::to_string(m));
+    s.first = first;
+    s.last = last;
+  };
   if (spec == "all") {
   } else if (spec == "train") {
-    s.last = train;
+    named(0, splits.b_test);
   } else if (spec == "test") {
-    s.first = train;
+    named(splits.b_test, m);
   } else if (spec == "fit") {
-    s.last = std::min(fit_val_boundary(ts), train);
+    named(0, splits.b_fv);
   } else if (spec == "val") {
-    s.first = std::min(fit_val_boundary(ts), train);
-    s.last = train;
+    named(splits.b_fv, splits.b_test);
   } else if (spec.rfind("range:", 0) == 0) {
     const std::string r = spec.substr(6);
     const auto c = r.find(':');

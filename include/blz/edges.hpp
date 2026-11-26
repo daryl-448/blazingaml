@@ -1,8 +1,11 @@
 #pragma once
+#include <algorithm>
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace blz {
@@ -23,17 +26,41 @@ struct EdgeTable {
   std::size_t n() const { return node_bank.size(); }
 };
 
-// Train split: eid < floor(0.8 m) (SPEC §3.4).
-inline std::uint64_t train_size(std::uint64_t m) { return m * 4 / 5; }
+// The named splits (SPEC v3 §6.3): fit = [0, b_fv), validation = [b_fv, b_test), test =
+// [b_test, m), train = fit + validation; b_fv <= b_test <= m.
+struct Splits {
+  std::uint64_t b_fv = 0, b_test = 0;
+  bool operator==(const Splits&) const = default;
+};
 
-// The fit/validation boundary b_fv (SPEC v2 §3.3, D-17): the first eid >= floor(0.6 m) whose
-// timestamp differs from its predecessor's (eid 0 has none and counts as a boundary), or m if
-// there is none. fit = [0, b_fv), validation = [b_fv, train_size(m)), test = [train_size(m), m).
-inline std::uint64_t fit_val_boundary(std::span<const std::int32_t> ts) {
+// How a dataset's splits are cut (SPEC v3 §6.3).
+//   legacy_hi_small (SPEC §3.4, V2 §3.3, D-17): b_test = floor(0.8 m) and
+//     b_fv = min(timestamp_start(floor(0.6 m)), b_test). HI-Small keeps it.
+//   temporal_60_20_20: b_fv = timestamp_start(floor(0.6 m)), b_test = timestamp_start(floor(0.8 m)),
+//     so no timestamp straddles either cut.
+enum class SplitRule : std::uint8_t { legacy_hi_small, temporal_60_20_20 };
+
+inline constexpr std::array<std::string_view, 2> kSplitRuleNames = {"legacy_hi_small", "temporal_60_20_20"};
+inline std::string_view split_rule_name(SplitRule r) { return kSplitRuleNames[std::size_t(r)]; }
+inline std::optional<SplitRule> parse_split_rule(std::string_view s) {
+  for (std::size_t i = 0; i < kSplitRuleNames.size(); ++i)
+    if (s == kSplitRuleNames[i]) return SplitRule(i);
+  return std::nullopt;
+}
+
+// The first eid >= e that starts a timestamp (eid 0 does, and so does an eid whose timestamp
+// differs from its predecessor's), or m if there is none.
+inline std::uint64_t timestamp_start(std::span<const std::int32_t> ts, std::uint64_t e) {
   const std::uint64_t m = ts.size();
-  for (std::uint64_t e = m * 3 / 5; e < m; ++e)
+  for (; e < m; ++e)
     if (e == 0 || ts[e] != ts[e - 1]) return e;
   return m;
+}
+
+inline Splits compute_splits(SplitRule rule, std::span<const std::int32_t> ts) {
+  const std::uint64_t m = ts.size(), b_fv = timestamp_start(ts, m * 3 / 5);
+  if (rule == SplitRule::legacy_hi_small) return {std::min(b_fv, m * 4 / 5), m * 4 / 5};
+  return {b_fv, timestamp_start(ts, m * 4 / 5)};
 }
 
 }  // namespace blz

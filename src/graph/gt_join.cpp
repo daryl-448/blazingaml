@@ -249,7 +249,7 @@ nlohmann::ordered_json gt_join(std::string_view csv_text, std::string_view patte
   }
 
   // 4. Attempts, splits, and the summary.
-  const std::uint64_t train = train_size(m), b_fv = std::min(fit_val_boundary(g.ts), train);
+  const std::uint64_t b_fv = g.splits.b_fv, train = g.splits.b_test;
   auto split_of = [&](std::uint64_t e) { return e < b_fv ? "fit" : e < train ? "val" : "test"; };
   std::set<std::uint32_t> mapped, ambiguous_cands;
   std::map<std::string, std::uint64_t> rows_by_status = {{"unique", 0}, {"resolved-duplicate", 0}, {"ambiguous", 0},

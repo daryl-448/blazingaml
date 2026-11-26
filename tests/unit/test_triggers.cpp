@@ -15,8 +15,9 @@ using namespace blz;
 TEST_CASE("triggers: the named selections") {
   // m = 10, train = 8, floor(0.6 m) = 6 continues ts 5, so b_fv = 8 = train: val is empty.
   const std::vector<std::int32_t> ts = {0, 1, 2, 3, 4, 5, 5, 5, 8, 9};
+  const Splits sp = compute_splits(SplitRule::legacy_hi_small, ts);
   auto range = [&](const std::string& s) {
-    const TriggerSel t = select_triggers(s, ts);
+    const TriggerSel t = select_triggers(s, ts.size(), sp);
     return std::pair{t.first, t.last};
   };
   CHECK(range("all") == std::pair<std::uint64_t, std::uint64_t>{0, 10});
@@ -25,25 +26,32 @@ TEST_CASE("triggers: the named selections") {
   CHECK(range("fit") == std::pair<std::uint64_t, std::uint64_t>{0, 8});
   CHECK(range("val") == std::pair<std::uint64_t, std::uint64_t>{8, 8});
   CHECK(range("range:2:5") == std::pair<std::uint64_t, std::uint64_t>{2, 5});
-  const std::vector<std::int32_t> ts2 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-  CHECK(select_triggers("fit", ts2).last == 6);
-  CHECK(select_triggers("val", ts2).first == 6);
-  CHECK(select_triggers("val", ts2).rows() == 2);
-  CHECK_THROWS(select_triggers("range:5:2", ts));
-  CHECK_THROWS(select_triggers("range:0:11", ts));
-  CHECK_THROWS(select_triggers("range:1", ts));
-  CHECK_THROWS(select_triggers("sample:0:1", ts));
-  CHECK_THROWS(select_triggers("sample:101:1", ts));
-  CHECK_THROWS(select_triggers("sample:1x:1", ts));
-  CHECK_THROWS(select_triggers("sample:nan:1", ts));
-  CHECK_THROWS(select_triggers("sample:5:-1", ts));
-  CHECK_THROWS(select_triggers("everything", ts));
+  // The splits come from the caller: here temporal_60_20_20's on a stream with a tie at each cut.
+  const std::vector<std::int32_t> ts2 = {0, 1, 2, 3, 4, 5, 5, 7, 7, 9};
+  const Splits sp2 = compute_splits(SplitRule::temporal_60_20_20, ts2);
+  CHECK(select_triggers("fit", 10, sp2).last == 7);
+  CHECK(select_triggers("val", 10, sp2).first == 7);
+  CHECK(select_triggers("val", 10, sp2).rows() == 2);
+  CHECK(select_triggers("test", 10, sp2).first == 9);
+  // --edges 5 keeps the whole stream's splits: fit fits, train and test do not.
+  CHECK(select_triggers("fit", 5, Splits{3, 8}).last == 3);
+  CHECK_THROWS(select_triggers("train", 5, Splits{3, 8}));
+  CHECK_THROWS(select_triggers("test", 5, Splits{3, 8}));
+  CHECK_THROWS(select_triggers("range:5:2", 10, sp));
+  CHECK_THROWS(select_triggers("range:0:11", 10, sp));
+  CHECK_THROWS(select_triggers("range:1", 10, sp));
+  CHECK_THROWS(select_triggers("sample:0:1", 10, sp));
+  CHECK_THROWS(select_triggers("sample:101:1", 10, sp));
+  CHECK_THROWS(select_triggers("sample:1x:1", 10, sp));
+  CHECK_THROWS(select_triggers("sample:nan:1", 10, sp));
+  CHECK_THROWS(select_triggers("sample:5:-1", 10, sp));
+  CHECK_THROWS(select_triggers("everything", 10, sp));
 }
 
 TEST_CASE("triggers: a sample is reproducible, independent of m, and near its percentage") {
-  const std::vector<std::int32_t> ts(100'000, 0);
-  const TriggerSel a = select_triggers("sample:5:42", ts);
-  const TriggerSel b = select_triggers("sample:5:42", ts);
+  const std::uint64_t m = 100'000;
+  const TriggerSel a = select_triggers("sample:5:42", m, {});
+  const TriggerSel b = select_triggers("sample:5:42", m, {});
   CHECK(a.sampled);
   CHECK(a.eids == b.eids);
   CHECK(a.rows() == a.eids.size());
@@ -54,14 +62,14 @@ TEST_CASE("triggers: a sample is reproducible, independent of m, and near its pe
   CHECK(a.last == a.eids.back() + 1u);
   CHECK(a.eid(3) == a.eids[3]);
   // A shorter stream selects the same eids below its m.
-  const TriggerSel s = select_triggers("sample:5:42", std::vector<std::int32_t>(50'000, 0));
+  const TriggerSel s = select_triggers("sample:5:42", 50'000, {});
   std::vector<std::uint32_t> head;
   for (std::uint32_t e : a.eids)
     if (e < 50'000) head.push_back(e);
   CHECK(s.eids == head);
-  CHECK(select_triggers("sample:5:43", ts).eids != a.eids);
-  CHECK(select_triggers("sample:100:7", ts).rows() == 100'000);
-  CHECK(select_triggers("sample:0.5:1", ts).json()["percent"] == 0.5);
+  CHECK(select_triggers("sample:5:43", m, {}).eids != a.eids);
+  CHECK(select_triggers("sample:100:7", m, {}).rows() == 100'000);
+  CHECK(select_triggers("sample:0.5:1", m, {}).json()["percent"] == 0.5);
 }
 
 TEST_CASE("triggers: sampled rows equal the full run's rows at those eids (oracle, cpu)") {
@@ -71,7 +79,7 @@ TEST_CASE("triggers: sampled rows equal the full run's rows at those eids (oracl
     const std::uint64_t m = fg.src.size();
     const Oracle oracle({fg.src, fg.dst, fg.ts, fg.n});
     const GraphIndex index(fg.src, fg.dst, fg.ts, fg.n);
-    const TriggerSel sel = select_triggers("sample:30:" + std::to_string(seed), fg.ts);
+    const TriggerSel sel = select_triggers("sample:30:" + std::to_string(seed), m, {});
     TriggerSel all;
     all.last = m;
     for (const ProfileBlock& pb : prof.blocks) {

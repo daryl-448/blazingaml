@@ -26,7 +26,7 @@ TEST_CASE("profile_stream on a small stream") {
   std::vector<std::uint32_t> src = {0, 0, 0, 2, 0}, dst = {1, 1, 2, 2, 1};
   std::vector<std::int32_t> ts = {0, 10, 10, 20, 100};
   std::vector<std::uint8_t> label = {0, 1, 0, 0, 1};
-  auto p = profile_stream({src, dst, ts, label, 3});
+  auto p = profile_stream({src, dst, ts, label, 3, Splits{3, 4}});
   CHECK(p["graph"]["edges"] == 5);
   CHECK(p["graph"]["self_loops"] == 1);
   CHECK(p["graph"]["train_edges"] == 4);

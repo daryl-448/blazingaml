@@ -8,6 +8,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include "blz/edges.hpp"
+
 namespace blz {
 
 struct TriggerSel {
@@ -24,14 +26,14 @@ struct TriggerSel {
   nlohmann::json json() const;  // for the manifest; a sample's eids are not included
 };
 
-// The selection `spec` names on a stream with these timestamps (m = ts.size()):
-//   all = [0, m); train = [0, train_size); test = [train_size, m) (SPEC §3.4);
-//   fit = [0, b_fv); val = [b_fv, train_size) (SPEC v2 §3.3, D-17; empty if b_fv >= train_size);
+// The selection `spec` names on a graph of m edges whose named splits are `splits` (SPEC v3
+// §6.3; a graph cut short by --edges keeps its whole stream's splits, V2 §4.4 R5):
+//   all = [0, m); train = [0, b_test); test = [b_test, m); fit = [0, b_fv); val = [b_fv, b_test);
 //   range:a:b = [a, b);
 //   sample:<pct>:<seed> = each eid independently with probability pct/100 (0 < pct <= 100),
 //   decided by a hash of (seed, eid): reproducible, and independent of m and of other eids.
-// Throws std::runtime_error on a malformed spec or a range past m.
-TriggerSel select_triggers(const std::string& spec, std::span<const std::int32_t> ts);
+// Throws std::runtime_error on a malformed spec, or a range or named split past m.
+TriggerSel select_triggers(const std::string& spec, std::uint64_t m, const Splits& splits);
 
 // Whether eid `e` is in sample (percent, seed).
 bool sample_selected(double percent, std::uint64_t seed, std::uint64_t e);

@@ -121,9 +121,9 @@ TEST_CASE("sweep: the drivers equal the per-trigger plan, every window, both vis
       const GraphIndex index(src, dst, ts, n), loop_free(src, dst, ts, n, SelfLoops::drop);
       const std::uint64_t m = src.size();
       std::vector<TriggerSel> sels;
-      sels.push_back(select_triggers("all", ts));
-      sels.push_back(select_triggers("range:" + std::to_string(m / 3) + ":" + std::to_string(m - m / 4), ts));
-      sels.push_back(select_triggers("sample:30:" + std::to_string(seed), ts));
+      sels.push_back(select_triggers("all", m, {}));
+      sels.push_back(select_triggers("range:" + std::to_string(m / 3) + ":" + std::to_string(m - m / 4), m, {}));
+      sels.push_back(select_triggers("sample:30:" + std::to_string(seed), m, {}));
       ++graphs;
       for (std::int64_t span : {std::int64_t(0), std::int64_t(1), std::int64_t(3), std::int64_t(which ? fg.window : 25),
                                 std::int64_t(1) << 40})
