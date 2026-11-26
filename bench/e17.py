@@ -390,8 +390,10 @@ def freeze(mode):
     if git["dirty"] and not mode.smoke:
         sys.exit(f"the workloads were measured on a dirty tree at {git['sha']}: no commit describes the harness")
     chunks = {doc["cells"][c]["chunk_rows"] for c in wl}
+    if len(chunks) != 1:
+        sys.exit(f"the workloads were measured at different chunk sizes: {sorted(chunks)}")
     out = {"frozen": "SPEC v3 §5.2 clean baseline (P15): P16 starts here", "harness_commit": git["sha"],
-           "harness_dirty": git["dirty"], "chunk_rows": chunks.pop() if len(chunks) == 1 else sorted(chunks),
+           "harness_dirty": git["dirty"], "chunk_rows": chunks.pop(),
            "blz": BLZ, "reps": mode.reps, "threads": THREADS, "frozen_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
            "source": rel(mode.out), "workloads": wl, "capacity_exclusions": excluded,
            "rules": "M = median of the reps (§5.1). A change is kept only when its median beats the incumbent's by more "

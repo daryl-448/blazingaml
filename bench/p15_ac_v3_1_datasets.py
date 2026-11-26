@@ -162,19 +162,24 @@ def main():
                 if be == "oracle":
                     oracle_used += r["wall_s"]
                 save(os.path.join(work, "steps.json"), state)
-            # An item slower than planned: its later ranges shrink by the ratio (the plan's sizes stay recorded).
+            # An item slower than planned: its later ranges shrink to the planned length over the slowest
+            # ratio so far. `slow` compares each range with its own length, and the new length comes from
+            # the plan's, so shrinks never compound, and a resumed pass (same cached times) changes nothing.
             o = runs.get(f"{ds}/{prof}/{sel}/oracle", {})
             if o.get("seconds") and sel.startswith("range:") and not a.smoke:
                 a0, b0 = map(int, sel.split(":")[1:])
                 want = it["build_s"] + it["rate_s"] * (b0 - a0)
                 slow = max(slow, o["seconds"] / want)
                 if slow > 1.3 and i + 1 < len(it["selections"]):
-                    r_new = max(1000, int((b0 - a0) / slow))
-                    rest = three_ranges(it["m"], r_new)[i + 1:len(it["selections"])]
-                    it.setdefault("resized", []).append({"after": sel, "slower_by": round(slow, 2), "to": rest})
-                    it["selections"][i + 1:] = rest
-                    sels[i + 1:len(it["selections"])] = rest
-                    save(os.path.join(work, "steps.json"), state)
+                    p0, p1 = map(int, it["selections"][0].split(":")[1:])  # range 0 is never resized
+                    r_new = max(1000, int((p1 - p0) / slow))
+                    n0, n1 = map(int, it["selections"][i + 1].split(":")[1:])
+                    if r_new < n1 - n0:
+                        rest = three_ranges(it["m"], r_new)[i + 1:len(it["selections"])]
+                        it.setdefault("resized", []).append({"after": sel, "slower_by": round(slow, 2), "to": rest})
+                        it["selections"][i + 1:] = rest
+                        sels[i + 1:len(it["selections"])] = rest
+                        save(os.path.join(work, "steps.json"), state)
     report(state, work, a.smoke)
 
 

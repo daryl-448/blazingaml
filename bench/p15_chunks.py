@@ -85,10 +85,12 @@ def main():
                              "output_fnv1a": {b: v["output_fnv1a"] for b, v in meta["blocks"].items()}}
                 if set(meta["blocks"]) != set(whole):
                     check(run, "(blocks)", 0, 1, "the whole run's blocks")
+                rec = p13.get(prof, {}).get("cuda" if be == "cuda_fuse_pack" else be, {}).get("output_fnv1a", {})
+                if not rec or set(meta["blocks"]) != set(rec):  # a block dropped from every run fails too
+                    check(run, "(blocks)", 0, 1, f"p13_a30 {prof}'s blocks")
                 for b, v in meta["blocks"].items():
                     if chunk != m:
                         check(run, b, v["output_fnv1a"], whole.get(b), "whole")
-                    rec = p13.get(prof, {}).get("cuda" if be == "cuda_fuse_pack" else be, {}).get("output_fnv1a", {})
                     if b in rec:
                         check(run, b, v["output_fnv1a"], rec[b], f"p13_a30 {prof}")
     if not a.quick:
@@ -101,6 +103,8 @@ def main():
                           "features/p15_chunks/clean_default_oracle_1000003")
         run = "clean_default oracle chunk=1000003"
         runs[run] = {"seconds": secs, "output_fnv1a": {b: v["output_fnv1a"] for b, v in meta["blocks"].items()}}
+        if set(meta["blocks"]) != set(p13["clean_default"]["oracle"]["output_fnv1a"]):
+            check(run, "(blocks)", 0, 1, "p13_a30 clean_default's blocks")
         for b, v in meta["blocks"].items():
             check(run, b, v["output_fnv1a"], p13["clean_default"]["oracle"]["output_fnv1a"][b], "p13_a30 clean_default")
     git = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
