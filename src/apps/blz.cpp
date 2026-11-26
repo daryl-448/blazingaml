@@ -1893,22 +1893,21 @@ int metamorphic(const std::string& seeds, const std::string& bins_opt, const std
   return bad == 0 ? 0 : 2;
 }
 
-// SPEC v2 §3.5: the ground-truth join, written as results/gt_join.json.
+// SPEC v2 §3.5: the ground-truth join, written as results/gt_join.json. The CSV is read through a
+// fixed buffer (SPEC v3 §6.2), so its pages never count in the peak RSS.
 int gt_join(const std::string& graph, const std::string& csv, const std::string& patterns, const std::string& out) {
   auto t0 = Clock::now();
   const blz::BlzgView g(graph);
-  const blz::MappedFile csv_file(csv);
-  const blz::Sha256Digest csv_sha = blz::sha256(csv_file.data(), csv_file.size());
-  if (csv_sha != g.csv_sha256())
-    throw std::runtime_error(csv + " is not the CSV " + graph + " was prepared from (SHA-256 differs)");
+  std::ifstream csv_in(csv, std::ios::binary);
+  if (!csv_in) throw std::runtime_error("cannot open " + csv);
   const std::string pat_text = read_file(patterns);
-  nlohmann::ordered_json j = blz::gt_join(std::string_view(csv_file.data(), csv_file.size()), pat_text,
-                                          {g.file_row, g.ts, g.label, g.splits(), *g.dataset().schema, g.epoch()});
+  nlohmann::ordered_json j = blz::gt_join(
+      csv_in, pat_text, {g.file_row, g.ts, g.label, g.splits(), *g.dataset().schema, g.epoch(), g.csv_sha256()});
   nlohmann::ordered_json head = {
       {"inputs",
        {{"graph", graph},
         {"csv", csv},
-        {"csv_sha256", blz::to_hex(csv_sha)},
+        {"csv_sha256", blz::to_hex(g.csv_sha256())},
         {"patterns", patterns},
         {"patterns_sha256", blz::to_hex(blz::sha256(pat_text.data(), pat_text.size()))},
         {"m", g.m()}}},
@@ -1917,9 +1916,12 @@ int gt_join(const std::string& graph, const std::string& csv, const std::string&
   ensure_parent(out);
   std::ofstream(out) << blz::gt_join_dump(head);
   const auto& sm = head["summary"];
-  std::fprintf(stderr, "gt-join: %s attempts, %s rows; rows %s; attempts %s; %s unlisted positives (%.1f s) -> %s\n",
+  std::fprintf(stderr,
+               "gt-join: %s attempts, %s rows; rows %s; attempts %s; %s unlisted positives (%.1f s, peak RSS %.0f MiB) "
+               "-> %s\n",
                sm["attempts"].dump().c_str(), sm["listed_rows"].dump().c_str(), sm["rows_by_status"].dump().c_str(),
-               sm["attempts_by_status"].dump().c_str(), sm["unlisted_positives"].dump().c_str(), secs(t0), out.c_str());
+               sm["attempts_by_status"].dump().c_str(), sm["unlisted_positives"].dump().c_str(), secs(t0), peak_rss_mb(),
+               out.c_str());
   return 0;
 }
 

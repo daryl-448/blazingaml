@@ -1,7 +1,8 @@
 #pragma once
-// Ground-truth join (SPEC v2 §3.5): the laundering attempts listed in HI-Small_Patterns.txt,
-// joined to the stream's eids.
+// Ground-truth join (SPEC v2 §3.5): the laundering attempts listed in an IBM dataset's
+// Patterns.txt, joined to the stream's eids.
 #include <cstdint>
+#include <istream>
 #include <span>
 #include <string>
 #include <string_view>
@@ -21,10 +22,16 @@ struct GtGraph {
   Splits splits;
   const CsvSchema& schema;  // the CSV's and Patterns.txt's
   std::int64_t epoch;       // unix seconds of ts = 0; an attempt's ts_min and ts_max count from it
+  Sha256Digest csv_sha256;  // of the CSV the graph was prepared from
 };
 
-// Joins the attempts of `patterns_text` (Patterns.txt) to the rows of `csv_text` (the CSV the
+// Joins the attempts of `patterns_text` (Patterns.txt) to the rows of the CSV `csv` (the one the
 // graph was prepared from) and through file_row to eids.
+//
+// - The CSV is read through a buffer of `buffer_bytes` (SPEC v3 §6.2), a second time from its
+//   start when a listed line needs rule "fields", so the stream must be seekable. Only the CSV
+//   rows that match a listed line are mapped to eids, by one scan of file_row: memory is the
+//   buffer and O(listed lines + matched rows), not O(m).
 //
 // - A listed transaction line matches the CSV rows with identical text (rule "text"; a trailing
 //   CR is ignored). With none, a field-wise match is tried (rule "fields") against the CSV rows
@@ -42,8 +49,9 @@ struct GtGraph {
 // - Unlisted positives are the positive eids that no unique or resolved row maps to.
 //
 // Throws std::runtime_error on a malformed Patterns.txt (with its line number), a CSV header
-// other than the expected one, or a CSV whose data-row count differs from the graph's m.
-nlohmann::ordered_json gt_join(std::string_view csv_text, std::string_view patterns_text, const GtGraph& g);
+// other than the expected one, or a CSV whose data-row count or SHA-256 differs from the graph's.
+nlohmann::ordered_json gt_join(std::istream& csv, std::string_view patterns_text, const GtGraph& g,
+                               std::size_t buffer_bytes = kCsvBuffer);
 
 // The join as text: valid JSON with one line per attempt header, per row and per 16 unlisted
 // eids, so that the committed file diffs well.

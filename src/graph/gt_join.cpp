@@ -18,7 +18,7 @@ namespace {
 
 using Fields = std::array<std::string_view, 11>;
 
-// Calls f(line_number, line) for every line, without its '\n' and a trailing '\r'.
+// Calls f(line_number, line) for every line of Patterns.txt, without its '\n' and a trailing '\r'.
 template <class F>
 void for_each_line(std::string_view text, F&& f) {
   std::size_t pos = 0, line = 0;
@@ -100,30 +100,36 @@ std::string_view trim(std::string_view s) {
   return s;
 }
 
-// A duplicate group (SPEC v2 §3.5): its listed rows (Patterns.txt order) and matching CSV rows.
+// A duplicate group (SPEC v2 §3.5): its listed rows (Patterns.txt order) and the 0-based data rows
+// of the CSV that match them.
 struct Group {
   std::vector<std::size_t> listed;
-  std::vector<std::uint32_t> eids;
+  std::vector<std::uint32_t> file_rows;
 };
 
-void resolve(Group& g, Rule rule, std::vector<Row>& rows) {
-  std::sort(g.eids.begin(), g.eids.end());  // stream order
+using EidOf = std::unordered_map<std::uint32_t, std::uint32_t>;  // matched CSV data row -> eid
+
+void resolve(const Group& g, Rule rule, const EidOf& eid_of, std::vector<Row>& rows) {
+  std::vector<std::uint32_t> eids;
+  for (std::uint32_t r : g.file_rows) eids.push_back(eid_of.at(r));
+  std::sort(eids.begin(), eids.end());  // stream order
   for (std::size_t k = 0; k < g.listed.size(); ++k) {
     Row& r = rows[g.listed[k]];
     r.rule = rule;
-    if (g.eids.size() == g.listed.size()) {
+    if (eids.size() == g.listed.size()) {
       r.status = g.listed.size() == 1 ? Status::unique : Status::resolved;
-      r.eid = g.eids[k];
+      r.eid = eids[k];
     } else {
       r.status = Status::ambiguous;
-      r.candidates = g.eids;
+      r.candidates = eids;
     }
   }
 }
 
 }  // namespace
 
-nlohmann::ordered_json gt_join(std::string_view csv_text, std::string_view patterns_text, const GtGraph& g) {
+nlohmann::ordered_json gt_join(std::istream& csv, std::string_view patterns_text, const GtGraph& g,
+                               std::size_t buffer_bytes) {
   using json = nlohmann::ordered_json;
   const std::uint64_t m = g.file_row.size();
   if (g.ts.size() != m || g.label.size() != m) throw std::runtime_error("gt-join: graph arrays differ in length");
@@ -173,11 +179,6 @@ nlohmann::ordered_json gt_join(std::string_view csv_text, std::string_view patte
   if (open) throw std::runtime_error("patterns: the last attempt has no END");
 
   // 2. The CSV, rule "text": every data row whose text is a listed line.
-  std::vector<std::uint32_t> eid_of_row(m);
-  for (std::uint64_t e = 0; e < m; ++e) {
-    if (g.file_row[e] >= m) throw std::runtime_error("gt-join: file_row out of range");
-    eid_of_row[g.file_row[e]] = std::uint32_t(e);
-  }
   std::vector<Group> groups;
   std::unordered_map<std::string_view, std::size_t> by_text;
   for (std::size_t i = 0; i < rows.size(); ++i) {
@@ -186,39 +187,41 @@ nlohmann::ordered_json gt_join(std::string_view csv_text, std::string_view patte
     groups[it->second].listed.push_back(i);
   }
   std::uint64_t data_rows = 0;
-  bool header = true;
-  auto data_lines = [&](auto&& f) {
+  auto data_lines = [&](Sha256* sha, auto&& f) {
+    LineReader lines(csv, buffer_bytes, sha);
     data_rows = 0;
-    header = true;
-    for_each_line(csv_text, [&](std::size_t, std::string_view l) {
+    bool header = true;
+    std::string_view l;
+    while (lines.next(l)) {
       if (header) {
         if (l != g.schema.header) throw std::runtime_error("csv line 1: unexpected header");
         header = false;
-        return;
+        continue;
       }
-      if (l.empty()) return;  // read_csv allows one, as the last line
+      if (l.empty()) continue;  // read_csv allows one, as the last line
       if (data_rows >= m)
         throw std::runtime_error("gt-join: the CSV has more data rows than the graph's m = " + std::to_string(m));
-      f(data_rows, l);
+      f(std::uint32_t(data_rows), l);
       ++data_rows;
-    });
+    }
   };
-  data_lines([&](std::uint64_t r, std::string_view l) {
-    if (auto it = by_text.find(l); it != by_text.end()) groups[it->second].eids.push_back(eid_of_row[r]);
+  Sha256 sha;
+  data_lines(&sha, [&](std::uint32_t r, std::string_view l) {
+    if (auto it = by_text.find(l); it != by_text.end()) groups[it->second].file_rows.push_back(r);
   });
   if (data_rows != m)
     throw std::runtime_error("gt-join: the CSV has " + std::to_string(data_rows) + " data rows, the graph m = " +
                              std::to_string(m) + " (not the CSV the graph was prepared from?)");
+  if (sha.finish() != g.csv_sha256)
+    throw std::runtime_error("gt-join: the CSV's SHA-256 differs from the graph's (not the CSV the graph was prepared from?)");
   std::vector<std::size_t> deferred;
-  for (Group& gr : groups) {
-    if (gr.eids.empty()) deferred.insert(deferred.end(), gr.listed.begin(), gr.listed.end());
-    else resolve(gr, Rule::text, rows);
-  }
+  for (const Group& gr : groups)
+    if (gr.file_rows.empty()) deferred.insert(deferred.end(), gr.listed.begin(), gr.listed.end());
 
-  // 3. Rule "fields" for the lines no CSV row matches as text.
+  // 3. Rule "fields" for the lines no CSV row matches as text, in a second read of the CSV.
+  std::vector<Group> fgroups;
   if (!deferred.empty()) {
     std::sort(deferred.begin(), deferred.end());
-    std::vector<Group> fgroups;
     std::vector<FieldKey> fkeys;
     std::unordered_map<std::string, std::vector<std::size_t>> by_primary;  // -> fgroups
     for (std::size_t i : deferred) {
@@ -233,7 +236,9 @@ nlohmann::ordered_json gt_join(std::string_view csv_text, std::string_view patte
       }
       fgroups[gi].listed.push_back(i);
     }
-    data_lines([&](std::uint64_t r, std::string_view l) {
+    csv.clear();
+    if (!csv.seekg(0)) throw std::runtime_error("gt-join: the CSV stream is not seekable");
+    data_lines(nullptr, [&](std::uint32_t r, std::string_view l) {
       if (by_text.count(l)) return;  // a row that matches a listed line as text belongs to that line
       Fields f;
       if (!split_fields(l, f)) return;
@@ -242,11 +247,23 @@ nlohmann::ordered_json gt_join(std::string_view csv_text, std::string_view patte
       FieldKey k;
       if (!field_key(f, k)) return;
       for (std::size_t gi : it->second)
-        if (fkeys[gi] == k) fgroups[gi].eids.push_back(eid_of_row[r]);
+        if (fkeys[gi] == k) fgroups[gi].file_rows.push_back(r);
     });
-    for (Group& gr : fgroups)
-      if (!gr.eids.empty()) resolve(gr, Rule::fields, rows);
   }
+
+  // The matched rows' eids, by one scan of file_row.
+  EidOf eid_of;
+  for (const auto* gs : {&groups, &fgroups})
+    for (const Group& gr : *gs)
+      for (std::uint32_t r : gr.file_rows) eid_of.emplace(r, 0);
+  for (std::uint64_t e = 0; e < m; ++e) {
+    if (g.file_row[e] >= m) throw std::runtime_error("gt-join: file_row out of range");
+    if (const auto it = eid_of.find(g.file_row[e]); it != eid_of.end()) it->second = std::uint32_t(e);
+  }
+  for (const Group& gr : groups)
+    if (!gr.file_rows.empty()) resolve(gr, Rule::text, eid_of, rows);
+  for (const Group& gr : fgroups)
+    if (!gr.file_rows.empty()) resolve(gr, Rule::fields, eid_of, rows);
 
   // 4. Attempts, splits, and the summary.
   const std::uint64_t b_fv = g.splits.b_fv, train = g.splits.b_test;

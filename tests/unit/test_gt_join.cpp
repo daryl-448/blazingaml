@@ -1,6 +1,7 @@
 // The ground-truth join (SPEC v2 §3.5) on a fixture with every row status and attempt status.
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
+#include <sstream>
 #include <string>
 
 #include "fixtures.hpp"
@@ -49,14 +50,24 @@ const std::string kPatterns =
     "2022/09/01 00:50,099,Z,098,Y,1.00,Euro,1.00,Euro,ACH,1\n"       // unmatched
     "END LAUNDERING ATTEMPT - RANDOM\n";
 
+GtGraph graph_of(const EdgeTable& t) {
+  return {t.file_row, t.ts, t.label, compute_splits(SplitRule::legacy_hi_small, t.ts), kIbmSchema, t.epoch,
+          t.csv_sha256};
+}
+
+nlohmann::ordered_json join(const std::string& csv_text, const std::string& patterns, const GtGraph& g,
+                            std::size_t buffer_bytes = kCsvBuffer) {
+  std::istringstream in(csv_text);
+  return gt_join(in, patterns, g, buffer_bytes);
+}
+
 }  // namespace
 
 TEST_CASE("gt-join: row statuses, rules, attempts, splits and unlisted positives") {
   const std::string text = csv();
   const EdgeTable t = prepare_text(text);
   REQUIRE(t.file_row == std::vector<std::uint32_t>{1, 3, 4, 5, 0, 2, 6, 7});
-  const Splits sp = compute_splits(SplitRule::legacy_hi_small, t.ts);
-  const auto j = gt_join(text, kPatterns, {t.file_row, t.ts, t.label, sp, kIbmSchema, t.epoch});
+  const auto j = join(text, kPatterns, graph_of(t));
 
   // m = 8: train = [0, 6), floor(0.6 m) = 4 starts ts 600, so fit = [0, 4), val = [4, 6).
   CHECK(j["splits"].dump() == R"({"fit":[0,4],"val":[4,6],"test":[6,8]})");
@@ -103,21 +114,38 @@ TEST_CASE("gt-join: row statuses, rules, attempts, splits and unlisted positives
   CHECK(nlohmann::ordered_json::parse(gt_join_dump(j)) == j);
 }
 
+TEST_CASE("gt-join: the same join through any read buffer") {
+  // Lines (one with CRLF) split across reads, both duplicate groups (resolved r1/r3, ambiguous
+  // r4/r5) and the second read for rule "fields".
+  const std::string text = csv();
+  const EdgeTable t = prepare_text(text);
+  const GtGraph g = graph_of(t);
+  const auto want = join(text, kPatterns, g);
+  for (std::size_t buffer : {1, 2, 3, 7, 16, 70, 71, 72, 145}) {
+    INFO("buffer " << buffer);
+    CHECK(join(text, kPatterns, g, buffer) == want);
+  }
+}
+
 TEST_CASE("gt-join: a CSV or Patterns.txt that does not fit is an error") {
   const std::string text = csv();
   const EdgeTable t = prepare_text(text);
-  const GtGraph g{t.file_row, t.ts, t.label, compute_splits(SplitRule::legacy_hi_small, t.ts), kIbmSchema, t.epoch};
-  CHECK_THROWS_WITH(gt_join(csv(7), kPatterns, g),
+  const GtGraph g = graph_of(t);
+  CHECK_THROWS_WITH(join(csv(7), kPatterns, g),
                     "gt-join: the CSV has 7 data rows, the graph m = 8 (not the CSV the graph was prepared from?)");
-  CHECK_THROWS_WITH(gt_join(text + kRows[0] + "\n", kPatterns, g),
+  CHECK_THROWS_WITH(join(text + kRows[0] + "\n", kPatterns, g),
                     "gt-join: the CSV has more data rows than the graph's m = 8");
-  CHECK_THROWS_WITH(gt_join("x\n" + text, kPatterns, g), "csv line 1: unexpected header");
-  CHECK_THROWS_WITH(gt_join(text, "BEGIN LAUNDERING ATTEMPT - CYCLE\nBEGIN LAUNDERING ATTEMPT - CYCLE\n", g),
+  CHECK_THROWS_WITH(join("x\n" + text, kPatterns, g), "csv line 1: unexpected header");
+  std::string other = text;  // the same rows but one amount
+  other.replace(other.find("12.5,Euro,12.5"), 14, "12.6,Euro,12.6");
+  CHECK_THROWS_WITH(join(other, kPatterns, g),
+                    "gt-join: the CSV's SHA-256 differs from the graph's (not the CSV the graph was prepared from?)");
+  CHECK_THROWS_WITH(join(text, "BEGIN LAUNDERING ATTEMPT - CYCLE\nBEGIN LAUNDERING ATTEMPT - CYCLE\n", g),
                     "patterns line 2: BEGIN inside an attempt");
-  CHECK_THROWS_WITH(gt_join(text, "BEGIN LAUNDERING ATTEMPT - CYCLE\nEND LAUNDERING ATTEMPT - STACK\n", g),
+  CHECK_THROWS_WITH(join(text, "BEGIN LAUNDERING ATTEMPT - CYCLE\nEND LAUNDERING ATTEMPT - STACK\n", g),
                     "patterns line 2: END does not match its BEGIN");
-  CHECK_THROWS_WITH(gt_join(text, kRows[0] + "\n", g), "patterns line 1: a transaction outside an attempt");
-  CHECK_THROWS_WITH(gt_join(text, "BEGIN LAUNDERING ATTEMPT - CYCLE\n1,2,3\n", g),
+  CHECK_THROWS_WITH(join(text, kRows[0] + "\n", g), "patterns line 1: a transaction outside an attempt");
+  CHECK_THROWS_WITH(join(text, "BEGIN LAUNDERING ATTEMPT - CYCLE\n1,2,3\n", g),
                     "patterns line 2: expected 11 comma-separated fields");
-  CHECK_THROWS_WITH(gt_join(text, "BEGIN LAUNDERING ATTEMPT - CYCLE\n", g), "patterns: the last attempt has no END");
+  CHECK_THROWS_WITH(join(text, "BEGIN LAUNDERING ATTEMPT - CYCLE\n", g), "patterns: the last attempt has no END");
 }
